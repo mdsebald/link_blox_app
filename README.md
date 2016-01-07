@@ -12,3 +12,7 @@ $ source .\nerves-env.sh.
 after cloning project, 
 $ chmod +x relhelper.sh   # make it executable
 
+Makefile calls erlang.mk for make rules
+  Does not appear to use the correct compiler flags to compile erlang_ale/c_src, because linker errors-out, File format not recognized.
+  
+
