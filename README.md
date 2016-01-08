@@ -17,6 +17,11 @@ $ chmod +x relhelper.sh   # make it executable
 
 Erlang ALE Makefile calls erlang.mk for make rules
 
-  Does not appear to use the correct compiler flags to compile erlang_ale/c_src, because linker errors-out, File format not recognized.
+  erlang.mk is not looking in the correct erl_interface directory,  
+  nerves-env defines ERL_EI_LIBDIR and ERL_EI_INCLUDE environment variables
+  Currently set to:
+  ERL_EI_LIBDIR=/home/vagrant/nerves-system-br/buildroot/output/staging/usr/lib/erlang/lib/erl_interface-3.8/lib
+  ERL_EI_INCLUDE_DIR=/home/vagrant/nerves-system-br/buildroot/output/staging/usr/lib/erlang/lib/erl_interface-3.8/include
+  erlang.mk is not using these.
   
 
