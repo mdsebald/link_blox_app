@@ -8,12 +8,15 @@ Attempting to integrate with nerves project using linux to build.
 Under linux, follow the instructions for nerves-system-br to build with the appropriate defconfig (i.e. nerves_rpi_defconfig) for your platform 
 
 Set environment variables so your project can connect with the nerves project
+
 $ source .\nerves-env.sh.
 
 after cloning project, 
+
 $ chmod +x relhelper.sh   # make it executable
 
 Erlang ALE Makefile calls erlang.mk for make rules
+
   Does not appear to use the correct compiler flags to compile erlang_ale/c_src, because linker errors-out, File format not recognized.
   
 
