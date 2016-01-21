@@ -11,7 +11,7 @@ Under linux, follow the instructions for nerves-system-br to build with the appr
 
 Set environment variables so your project can connect with the nerves project
 
-$ source .\nerves-env.sh.
+$ source ./nerves-env.sh.
 
 after cloning project, 
 
