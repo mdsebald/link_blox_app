@@ -29,5 +29,6 @@ Made this a pull request to nerves project, to update "scripts/nerves-env-helper
 
 Pull request accepted 09-Jan-2016
 
+Need to switch Makefile to use fwup app to burn SD memory card instead of using fwtool
 
 
