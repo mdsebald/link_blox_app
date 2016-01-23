@@ -12,7 +12,7 @@ relsync:
 	../relsync/relsync --destnode demo@nerves --hooks relsync_hooks.erl --cookie democookie --sname relsync
 
 burn:
-	sudo env PATH=$(PATH) fwtool -t complete -d $(SDCARD_LOCATION) run BlockPoint.fw
+	sudo fwup -a -i _images/BlockPoint.fw -t complete
 
 DEPSOLVER_PLT=$(CURDIR)/.depsolver_plt
 ERLANG_APPS=erts kernel stdlib crypto public_key mnesia ssl
