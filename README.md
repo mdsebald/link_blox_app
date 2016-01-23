@@ -31,4 +31,7 @@ Pull request accepted 09-Jan-2016
 
 Need to switch Makefile to use fwup app to burn SD memory card instead of using fwtool
 
+fwup, not in sudo env PATH,  i.e. ./nerves-system-br/buildroot/output/target/usr/bin/fwup
+
+
 
