@@ -11,8 +11,19 @@ relsync:
 	rebar compile
 	../relsync/relsync --destnode demo@nerves --hooks relsync_hooks.erl --cookie democookie --sname relsync
 
+burn-complete: burn
 burn:
-	sudo fwup -a -i _images/BlockPoint.fw -t complete
+	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -a -i $(firstword $(wildcard *.fw)) -t complete
+
+# Upgrade the image on the SDCard (app data won't be removed)
+# This is usually the fastest way to update an SDCard that's already
+# been programmed. It won't update bootloaders, so if something is
+# really messed up, burn-complete may be better.
+burn-upgrade:
+	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -a -i $(firstword $(wildcard *.fw)) -t upgrade
+	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -y -a -i /tmp/finalize.fw -t on-reboot
+	sudo rm /tmp/finalize.fw
+
 
 DEPSOLVER_PLT=$(CURDIR)/.depsolver_plt
 ERLANG_APPS=erts kernel stdlib crypto public_key mnesia ssl
