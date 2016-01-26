@@ -7,9 +7,11 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([read_config/1, write_config/2, create_demo_config/0]).
+-export([read_config/1, write_config/2, create_demo_config/0, create_demo1_config/0]).
 
-
+create_demo1_config() ->
+    BlockValues1 = blkpnt_pi1_gpio_digital_output:create_values('Red_LED_17', 17, true),
+    [BlockValues1].
 
 create_demo_config() ->
 	BlockValues1 = blkpnt_inverter:create_values('Inverter1'),

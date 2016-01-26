@@ -46,7 +46,11 @@ init(BlockValuesFile) ->
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
 			{ok, {SupFlags, ChildSpecs} };
 		{error, Reason} ->
-			io:format("~p error, reading Block Values config file: ~p", [Reason, BlockValuesFile])
+			io:format("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
+            io:format("Loading Demo config... ~n"),
+            ChildSpecs = create_child_specs(blkpnt_config:create_demo1_config()),
+			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
+			{ok, {SupFlags, ChildSpecs} }
 		end.
 		
 %	ChildSpecs = [
