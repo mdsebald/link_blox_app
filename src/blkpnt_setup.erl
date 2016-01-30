@@ -15,6 +15,7 @@ common_values(BlockName, BlockModule) ->
 	
 	BlockTypeParam = {'BlockType', BlockModule:type_name()},
 	VersionParam = {'Version', BlockModule:version()},
+    TimeoutParam = {'Timeout', 0},  % If > 0, execute block every 'Timeout' milliseconds
 	
 	EnableInput = {'Enable', true, {fixed, null, null}},
 

@@ -12,7 +12,7 @@
 %% API functions
 %% ====================================================================
 -export([create/1, delete/1, connect/3, disconnect/2, get/2, set/2, override/2, get_values/1]).
--export([update/4, configure/1, reconfigure/2]).
+-export([execute/1, update/4, configure/1, reconfigure/2]).
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
@@ -44,6 +44,9 @@ override(BlockName, Value)->
 get_values(BlockName) ->
 	gen_server:call(BlockName, get_values).
 
+%% Execute the block with the current set of values
+execute(BlockName) ->
+    gen_server:cast(BlockName, execute).
 
 %% Send the given Value i.e {BlockName, ValueName, Value} to each block the list of BlockNames
 %% i.e. Push the value from the output of one block to the inputs of the connected blocks
@@ -99,7 +102,6 @@ disconnect(BlockName, ValueName) ->
 %% ====================================================================
 init(BlockValues) ->
 	{BlockName, BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
-	io:format("~p init()~n", [BlockName]),
 	
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
@@ -151,6 +153,28 @@ handle_call(_Request, _From, BlockValues) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
+
+%% ====================================================================
+%% Execute the block using the current set of Block values,
+%% This message is used to directly execute the block evaluate function, 
+%% This could come from another block, or the block may be operating on a timer 
+%% ====================================================================
+handle_cast(execute, CurrentBlockValues) ->
+	
+   {BlockName, BlockModule, _Params, _Inputs, CurrentOutputs, _Interms} = CurrentBlockValues,
+    
+	% call custom evaluate() function
+    % i.e. read inputs and calculate output values
+	NewBlockValues = BlockModule:evaluate(CurrentBlockValues),
+    
+	%io:format("~p cast execute message NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
+	
+	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
+	{BlockName, BlockModule, _NewParams, _NewInputs, NewOutputs, _NewIntTerms} = NewBlockValues,
+
+	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+
+	{noreply, NewBlockValues};
 
 %% ====================================================================
 %% Update the block value(s) with the block value received in this message
@@ -229,9 +253,7 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
 	
 	{BlockName, _BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
-	
-	io:format("~p connecting: ~p To: ~p~n", [BlockName, ValueName, ToBlockName]),
-	
+		
 	%% Add the connection to 'ToBlockName' to this output 'ValueName's list of connections
 	NewBlockValues = blkpnt_utils:add_connection(BlockValues, ValueName, ToBlockName),
 
@@ -337,7 +359,7 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 	
 	[Input | RemainingBlockInputs] = BlockInputs,
 	
-	{_ValueName, Value, Pointer} = Input,
+	{ValueName, Value, Pointer} = Input,
 	{PointerValueName, PointerBlockName, _PointerNodeName} = Pointer, %TODO: Handle getting values from other nodes
 	
 	% if this input is not a fixed value
@@ -348,7 +370,7 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 			   
 			%if the block input value is still empty send, a connect message to the block pointed to by this input
 			if Value == empty ->
-				io:format("~p connecting with ValueName: ~p, BlockName: ~p~n", [BlockName, PointerValueName, PointerBlockName]),
+				io:format("Connecting Input <~p:~p> To Output <~p:~p>~n", [BlockName, ValueName, PointerBlockName, PointerValueName]),
 				connect(PointerBlockName, PointerValueName, BlockName),
 				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested + 1);
 			true ->

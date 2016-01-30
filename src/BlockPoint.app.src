@@ -1,11 +1,12 @@
 {application, 'BlockPoint',
- [{description, "An OTP application"},
+ [{description, "An Erlang IoT Application"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, {'BlockPoint_app', []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    erlang_ale
    ]},
   {env,[]},
   {modules, []},

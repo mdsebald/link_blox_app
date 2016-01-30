@@ -7,7 +7,13 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([read_config/1, write_config/2, create_demo_config/0, create_demo1_config/0]).
+-export([read_config/1, write_config/2, create_demo_config/0, create_demo1_config/0, create_demo2_config/0]).
+
+create_demo2_config() ->
+    BlockValues1 = blkpnt_pi1_gpio_digital_output:create_values('Red_LED_17', 17, true),
+    DigitalOutputBlockValues = blkpnt_utils:set_input_pointer(BlockValues1, 'Input', {'Value', 'Toggle_LED', null}),
+    TimerBlockValues = blkpnt_timer:create_values('Toggle_LED'),
+    [TimerBlockValues, DigitalOutputBlockValues].
 
 create_demo1_config() ->
     BlockValues1 = blkpnt_pi1_gpio_digital_output:create_values('Red_LED_17', 17, true),
