@@ -137,9 +137,9 @@ handle_call(get_values, _From, BlockValues) ->
 	{reply, BlockValues, BlockValues};
 	
 	
-handle_call(_Request, _From, BlockValues) ->
-    Reply = ok,
-    {reply, Reply, BlockValues}.
+handle_call(Request, From, BlockValues) ->
+	io:format("Unknown call message: ~p From: ~p~n", [Request, From]),
+    {reply, ok, BlockValues}.
 
 
 %% handle_cast/2
@@ -283,7 +283,8 @@ handle_cast(Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info(_Info, State) ->
+handle_info(Info, State) ->
+    io:format("Unknown info message: ~p~n", [Info]),
     {noreply, State}.
 
 
