@@ -20,8 +20,9 @@ initiate(BlockValues) ->
         {ok, GpioPin} ->
             % Setup Intermediate Terms value storage here, use same {ValueName, Value} tuple form as other block value types.
 	        NewInterms = [{'GpioPinRef', GpioPin}],
-            gpio:register_int(GpioPin);
-            
+            gpio:register_int(GpioPin),
+            gpio:set_int(GpioPin, both);
+
         {error, ErrorResult} ->
             io:format("~p Error intitiating GPIO pin; ~p", [ErrorResult, PinNumber]),
             NewInterms = []

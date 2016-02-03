@@ -283,6 +283,10 @@ handle_cast(Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
+handle_info({gpio_interrupt, Pin, Condition}, State) ->
+    io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
+    {noreply, State};
+
 handle_info(Info, State) ->
     io:format("Unknown info message: ~p~n", [Info]),
     {noreply, State}.
@@ -371,7 +375,7 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 			   
 			%if the block input value is still empty send, a connect message to the block pointed to by this input
 			if Value == empty ->
-				io:format("Connecting Input <~p:~p> To Output <~p:~p>~n", [BlockName, ValueName, PointerBlockName, PointerValueName]),
+				io:format("Connecting Output <~p:~p> To Input <~p:~p>~n", [PointerBlockName, PointerValueName, BlockName, ValueName]),
 				connect(PointerBlockName, PointerValueName, BlockName),
 				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested + 1);
 			true ->
