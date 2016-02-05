@@ -2,24 +2,24 @@
 %% @doc Common block utility functions
 
 
--module(blkpnt_utils).
+-module(block_utils).
 
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([get_param_value/2, get_input_value/2, get_output_value/2, get_interm_value/2, get_value/2]).
--export([set_input_value/3, set_output_value/3, set_interm_value/3, set_value/3]).
+-export([get_config_value/2, get_input_value/2, get_output_value/2, get_internal_value/2, get_value/2]).
+-export([set_input_value/3, set_output_value/3, set_internal_value/3, set_value/3]).
 -export([add_connection/3, set_input_pointer/3, set_input_pointer_value/5]).
--export([update_common_outputs/3, get_value_record/2, replace_value_record/3]).
+-export([get_value_record/2, replace_value_record/3, add_parameter/2]).
 -export([sleep/1]). 
 
 %% Get the Value of ValueName 
 %% Return 'not_found', if ValueName is not found in the Values list
-get_param_value(Params, ValueName) ->
-	case get_value_record(Params, ValueName) of
+get_config_value(Configs, ValueName) ->
+	case get_value_record(Configs, ValueName) of
 		not_found ->
-			io:format("get_value() Error: ~p not found in Param values~n", [ValueName]),
+			io:format("get_value() Error: ~p not found in Config values~n", [ValueName]),
 			not_found;
 		{ValueName, Value} ->  Value
  	end.
@@ -40,35 +40,35 @@ get_output_value(Outputs, ValueName) ->
 		{ValueName, Value, _Connections} -> Value
  	end.
 
-get_interm_value(Interms, ValueName) ->
-	case get_value_record(Interms, ValueName) of
+get_internal_value(Internals, ValueName) ->
+	case get_value_record(Internals, ValueName) of
 		not_found -> 
-			io:format("get_value() Error: ~p not found in Interm values~n", [ValueName]),
+			io:format("get_value() Error: ~p not found in Internal values~n", [ValueName]),
 			not_found;
 		{ValueName, Value} -> Value
  	end.
 	
 get_value(BlockValues, ValueName)->
 	
-	{BlockName, _BlockModule, Params, Inputs, Outputs, Interms} = BlockValues,
+	{BlockName, _BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	
-	case get_value_record(Params, ValueName) of
+	case get_value_record(Configs, ValueName) of
 		not_found ->
 			case get_value_record(Inputs, ValueName) of
 				not_found ->
 					case get_value_record(Outputs, ValueName) of
 						not_found ->
-							case get_value_record(Interms, ValueName) of
+							case get_value_record(Internals, ValueName) of
 								not_found ->
 									io:format("~p get_value() Error: ~p not found in Block values~n", [BlockName, ValueName]),
 									not_found;
-								{ValueName, Value} -> Value	% IntTerm value
+								{ValueName, Value} -> Value	% Internal value
 							end;
 						{ValueName, Value, _Connections} -> Value	% Output value
 					end;
 				{ValueName, Value, _Pointer} -> Value	% Input value
 			end; 
-		{ValueName, Value} -> Value   % Parameter value
+		{ValueName, Value} -> Value   % Config value
  	end.
 
 
@@ -98,52 +98,52 @@ set_output_value(Outputs, ValueName, NewValue) ->
 			NewOutputs
 	end.	
 
-set_interm_value(Interms, ValueName, NewValue) ->
-	case get_value_record(Interms, ValueName) of
+set_internal_value(Internals, ValueName, NewValue) ->
+	case get_value_record(Internals, ValueName) of
 		not_found ->
-			io:format("set_value() Error: ~p not found in Interm values", [ValueName]),
-			Interms;
+			io:format("set_value() Error: ~p not found in Internal values", [ValueName]),
+			Internals;
 		{ValueName, _OldValue} ->
-			NewIntTerm = {ValueName, NewValue},
-			NewIntTerms = replace_value_record(Interms, ValueName, NewIntTerm),
-			NewIntTerms
+			NewInternal = {ValueName, NewValue},
+			NewInternals = replace_value_record(Internals, ValueName, NewInternal),
+			NewInternals
 	end.	
 
 set_value(BlockValues, ValueName, NewValue)->
 	
-	{BlockName, BlockModule, Params, Inputs, Outputs, Interms} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	
-	% Can't modify Params, don't bother checking those
+	% Can't modify Congigs, don't bother checking those
 
 	case get_value_record(Inputs, ValueName) of
 		not_found ->
 			case get_value_record(Outputs, ValueName) of
 				not_found ->					
-					case get_value_record(Interms, ValueName) of
+					case get_value_record(Internals, ValueName) of
 						not_found ->
 							io:format("~p set_value() Error. ~p not found in the BlockValues list~n", [BlockName, ValueName]),
 							not_found;
 						{ValueName, _OldValue1} ->
-							NewIntTerm = {ValueName, NewValue},
-							NewIntTerms = replace_value_record(Interms, ValueName, NewIntTerm),
-							{BlockName, BlockModule, Params, Inputs, Outputs, NewIntTerms}
+							NewInternal = {ValueName, NewValue},
+							NewInternals = replace_value_record(Internals, ValueName, NewInternal),
+							{BlockName, BlockModule, Configs, Inputs, Outputs, NewInternals}
 					end;
 				{ValueName, _OldValue2, Connections} -> 
 					NewOutput = {ValueName, NewValue, Connections},
 					NewOutputs = replace_value_record(Outputs, ValueName, NewOutput),
-					{BlockName, BlockModule, Params, Inputs, NewOutputs, Interms}
+					{BlockName, BlockModule, Configs, Inputs, NewOutputs, Internals}
 			end; 
 		{ValueName, _OldValue3, Pointer} -> 
 			NewInput = {ValueName, NewValue, Pointer},
 			NewInputs = replace_value_record(Inputs, ValueName, NewInput),
-			{BlockName, BlockModule, Params, NewInputs, Outputs, Interms}
+			{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}
  	end.
 
 
 %% Update the input pointer for the input value 'ValueName'
 set_input_pointer(BlockValues, ValueName, NewPointer) ->
 	
-	{BlockName, BlockModule, Params, Inputs, Outputs, Interms} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	
 	case get_value_record(Inputs, ValueName) of
 		not_found ->
@@ -153,7 +153,7 @@ set_input_pointer(BlockValues, ValueName, NewPointer) ->
 		{ValueName, Value, _Pointer} ->
 			NewInput = {ValueName, Value, NewPointer},
 			NewInputs = replace_value_record(Inputs, ValueName, NewInput),
-			{BlockName, BlockModule, Params, NewInputs, Outputs, Interms}
+			{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}
 	end.
 
 
@@ -161,7 +161,7 @@ set_input_pointer(BlockValues, ValueName, NewPointer) ->
 %% Return the updated list of Input values
 set_input_pointer_value(BlockValues, NewValueName, FromBlockName, NodeName, NewValue) ->
 	
-	{BlockName, BlockModule, Params, Inputs, Outputs, Interms} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 
 	TargetPointer = {NewValueName, FromBlockName, NodeName},
 
@@ -176,13 +176,13 @@ set_input_pointer_value(BlockValues, NewValueName, FromBlockName, NodeName, NewV
 		end, 
 		Inputs),
 	
-	{BlockName, BlockModule, Params, NewInputs, Outputs, Interms}.
+	{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}.
 
 
 %% Add a connection 'ToBlockName' to the connection list of the value record of the given ValueName
 add_connection(BlockValues, ValueName, ToBlockName) ->
 	
-	{BlockName, BlockModule, Params, Inputs, Outputs, Interms} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	 
 	case get_value_record(Outputs, ValueName) of
 		
@@ -203,27 +203,12 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 				NewConnections = [ToBlockName | Connections],
 				NewOutput = {ValueName, Value, NewConnections},
 				NewOutputs = replace_value_record(Outputs, ValueName, NewOutput),
-				{BlockName, BlockModule, Params, Inputs, NewOutputs, Interms}
+				{BlockName, BlockModule, Configs, Inputs, NewOutputs, Internals}
 			end;
 		Unknown ->
 			io:format("~p add_connection() Error. Unknown output value record  ~p~n", [BlockName, Unknown]),
 			BlockValues
 	end.
-
-%% Update the Output values common to all blocks, Value, Status, Execute Count, Last Executed Time
-update_common_outputs(Outputs, Value, Status) ->	
-	NewOutputs1 = set_output_value(Outputs, 'Value', Value),
-	NewOutputs2 = set_output_value(NewOutputs1, 'Status', Status),
-	NewOutputs3 = update_exec_count(NewOutputs2),
-	set_output_value(NewOutputs3, 'LastExec', calendar:now_to_local_time(erlang:timestamp())).
-
-update_exec_count(Outputs) ->
-	% Arbitrarily roll over Execute Counter at 1,000,000,000
-	case get_output_value(Outputs, 'ExecCount') + 1 of
-		1000000000   -> set_output_value(Outputs, 'ExecCount', 0);
-		NewExecCount -> set_output_value(Outputs, 'ExecCount', NewExecCount)
-	end.
-
 
 	
 %% Get the value record for the given ValueName
@@ -244,6 +229,13 @@ replace_value_record(ValueRecords, ValueName, NewValueRecord) ->
 	lists:keyreplace(ValueName, 1, ValueRecords, NewValueRecord).
 
 
+%% Add a new parameter tuple {name, value} to the end of the given parameter list
+%% Use this for Config, Inputs, Outputs, and Internal lists of block parmeters
+
+add_parameter(ParameterList, NewParameter) ->
+    lists:reverse([NewParameter | lists:reverse(ParameterList)]).
+
+    
 %% common delay function
 sleep(T) ->
 	receive
