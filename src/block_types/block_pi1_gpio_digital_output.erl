@@ -39,14 +39,14 @@ create(BlockName, InitConfigs, InitInputs)->
 initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
     % Perform common block initializations
-    {NewOutputs, NewInternals} = block_common:initialize(Configs, Outputs, Internals),
+    {InitOutputs, InitInternals} = block_common:initialize(Configs, Outputs, Internals),
 	
 	PinNumber = block_utils:get_config_value(Configs, 'GpioPinNumber'),
-	DefaultValue = bock_utils:get_config_value(Configs, 'DefaultValue'),
+	DefaultValue = block_utils:get_config_value(Configs, 'DefaultValue'),
 	    
     case gpio:start_link(PinNumber, output) of
         {ok, GpioPin} ->
- 	        NewInternals = block_utils:merge_parameter_lists(Internals, [{'GpioPinRef', GpioPin}]),
+ 	        NewInternals = block_utils:merge_parameter_lists(InitInternals, [{'GpioPinRef', GpioPin}]),
             set_pin_value_bool(GpioPin, DefaultValue);
             
         {error, ErrorResult} ->
@@ -54,7 +54,7 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
             NewInternals = Internals
     end,
 
-	{BlockName, BlockModule, Configs, Inputs, NewOutputs, NewInternals}.
+	{BlockName, BlockModule, Configs, Inputs, InitOutputs, NewInternals}.
 
 %%
 %%  Execute the block specific functionality

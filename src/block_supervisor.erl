@@ -1,8 +1,8 @@
 %% @author Mark Sebald
-%% @doc Supervisor for BlockPoint app.
+%% @doc Supervisor for BlockLinks app.
 
 
--module('BlockPoint_sup').
+-module(block_supervisor).
 
 -behaviour(supervisor).
 
@@ -42,7 +42,7 @@ init(BlockValuesFile) ->
     % Start up the timer server, for blocks executed on a timer
 	timer:start(),
     
-	case blkpnt_config:read_config(BlockValuesFile) of
+	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
 			% TODO: Check for good, "ok" return value
 			ChildSpecs = create_child_specs(BlockValuesList),
@@ -51,7 +51,7 @@ init(BlockValuesFile) ->
 		{error, Reason} ->
 			io:format("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
             io:format("Loading Demo config... ~n"),
-            ChildSpecs = create_child_specs(blkpnt_config:create_demo_config()),
+            ChildSpecs = create_child_specs(block_config:create_demo_config()),
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
 			{ok, {SupFlags, ChildSpecs} }
 		end.
@@ -74,7 +74,7 @@ create_child_specs(BlockValuesList, ChildSpecs) ->
 	% TODO: Check for expected term match, before creating child spec 
 	{BlockName, _BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
 
-	ChildSpec = #{id => BlockName, start => {'BlockPoint_srv', create, [BlockValues]}},
+	ChildSpec = #{id => BlockName, start => {block_server, create, [BlockValues]}},
 	NewChildSpecs = [ChildSpec | ChildSpecs],
 	
 	create_child_specs(RemainingBlockValuesList, NewChildSpecs).

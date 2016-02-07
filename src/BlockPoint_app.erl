@@ -28,7 +28,7 @@
 	| {error, Reason :: term()}.
 %% ====================================================================
 start(normal, BlockValuesFile) ->
-    case 'BlockPoint_sup':start_link(BlockValuesFile) of
+    case block_supervisor:start_link(BlockValuesFile) of
 		{ok, Pid} ->
 			{ok, Pid};
 		Error ->

@@ -79,7 +79,7 @@ get_value(BlockValues, ValueName)->
 set_input_value(Inputs, ValueName, NewValue) ->
 	case get_parameter_value(Inputs, ValueName) of
 		not_found ->
-			io:format("set_value() Error: ~p not found in Input values", [ValueName]),
+			io:format("set_value() Error: ~p not found in Input values~n", [ValueName]),
 			Inputs;
 		{ValueName, _OldValue, Link} ->
 			NewInput = {ValueName, NewValue, Link},
@@ -90,7 +90,7 @@ set_input_value(Inputs, ValueName, NewValue) ->
 set_output_value(Outputs, ValueName, NewValue) ->
 	case get_parameter_value(Outputs, ValueName) of
 		not_found ->
-			io:format("set_value() Error: ~p not found in Output values", [ValueName]),
+			io:format("set_value() Error: ~p not found in Output values~n", [ValueName]),
 			Outputs;
 		{ValueName, _OldValue, Connections} ->
 			NewOutput = {ValueName, NewValue, Connections},
@@ -101,7 +101,7 @@ set_output_value(Outputs, ValueName, NewValue) ->
 set_internal_value(Internals, ValueName, NewValue) ->
 	case get_parameter_value(Internals, ValueName) of
 		not_found ->
-			io:format("set_value() Error: ~p not found in Internal values", [ValueName]),
+			io:format("set_value() Error: ~p not found in Internal values~n", [ValueName]),
 			Internals;
 		{ValueName, _OldValue} ->
 			NewInternal = {ValueName, NewValue},

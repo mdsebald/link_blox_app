@@ -95,7 +95,7 @@ execute(Configs, Outputs, Internals, Value, Status) ->
 delete(Configs, Internals) ->
     log_state("Deleting", Configs),    
     % Cancel execution timer if it exists
-    TimerReferenceValue = block_utils:get_internal_value(Internals, 'TimerReference' ),
+    TimerReferenceValue = block_utils:get_internal_value(Internals, 'TimerRef' ),
     case TimerReferenceValue of
         empty -> empty;
         
@@ -113,12 +113,12 @@ setup_execute_timer(Configs, Internals) ->
             if (ExecuteTimerValue > 0 ) ->
                 BlockName = block_utils:get_config_value(Configs, 'BlockName'),
                 % Setup timer to execute block after timer expires
-                case timer:apply_after(ExecuteTimerValue, 'BlockPoint_srv', execute, [BlockName]) of
+                case timer:apply_after(ExecuteTimerValue, 'block_server', execute, [BlockName]) of
                     {ok, TimerReferenceValue} -> 
-                        NewInternals = block_utils:set_internal_value(Internals, 'TimerReference', TimerReferenceValue);
+                        NewInternals = block_utils:set_internal_value(Internals, 'TimerRef', TimerReferenceValue);
          
                     {error, Reason} -> 
-                        NewInternals = block_utils:set_internal_value(Internals, 'TimerReference', empty),
+                        NewInternals = block_utils:set_internal_value(Internals, 'TimerRef', empty),
                         io:format("Error: ~p Setting execution timer ~n", [Reason])
                 end;
             true ->  % Timeout value is less than or equal to zero, don't set up execution via timer
@@ -143,5 +143,5 @@ log_state (State, Configs) ->
     BlockName = block_utils:get_config_value(Configs, 'BlockName'),
     BlockType = block_utils:get_config_value(Configs, 'BlockType'),
     
-    io:format("~p: ~p Type: ~p", [State, BlockName, BlockType]).
+    io:format("~s: ~p Type: ~p~n", [State, BlockName, BlockType]).
     

@@ -1,8 +1,8 @@
 %% @author Mark Sebald
-%% @doc Plock Point application server.  gen_server behavior to execute custom block functionality
+%% @doc Plock server.  gen_server behavior to execute custom block functionality
 
 
--module('BlockPoint_srv').
+-module(block_server).
 
 -behaviour(gen_server).
 
@@ -105,7 +105,7 @@ init(BlockValues) ->
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
 	% Perform custom block initialization if needed
-	NewBlockValues = BlockModule:create(BlockValues),
+	NewBlockValues = BlockModule:initialize(BlockValues),
 		
 	% Call configure, to send a configure cast message to self
 	% Already have initial block values in State variable, 
