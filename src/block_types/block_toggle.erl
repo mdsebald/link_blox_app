@@ -1,10 +1,10 @@
 %%
 %% @author Mark Sebald
-%% @doc Block Template module. 
-%% Copy this module to begin coding a new block type
+%% @doc Block Type Toggle module. 
+%% Description: Block toggles a boolean Value output based on the Timeout timer Config value 
 %% 
 
--module(block_template).
+-module(block_toggle).
 
 %% ====================================================================
 %% API functions
@@ -29,10 +29,10 @@ create(BlockName, InitConfigs, InitInputs)->
     
     %% Update Config and Input parameter values with the
     %% Initial Config and Input values passed into this function
-    %% If any block type specific Config, Input, Output 
-    %% parameter does not exist yet, create it here 
-    %% (e.g. The number of inputs for certain block types 
-    %%  will not be known until the block is created.)
+    %% Any block type sp Config or Input parameter does not exist yet, 
+    %% create it here 
+    %%(e.g. The number of inputs for certain block types 
+    %% will not be known until the block is created.)
     
     Configs = block_utils:merge_parameter_lists(CommonConfigs, InitConfigs),
     Inputs = block_utils:merge_parameter_lists(CommonInputs, InitInputs), 
@@ -55,6 +55,7 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
 	{BlockName, BlockModule, Configs, Inputs, NewOutputs, NewInternals}.
 
+
 %%
 %%  Execute the block specific functionality
 %%
@@ -64,8 +65,11 @@ execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
     % Always check if block is enabled first
 	case block_utils:get_input_value(Inputs, 'Enable') of
 		true ->
-		    % Perform block type specific actions here, calculate new outut value(s)
-            Value = true,
+            case block_utils:get_output_value(Outputs, 'Value') of
+                true ->  Value = false;
+                false -> Value = true;
+                not_active -> Value = true
+            end,
             % Perform common execute function for normally executing block
             {NewOutputs, NewInternals} = block_common:execute(Configs, Outputs, Internals, Value, normal); 
 
@@ -90,6 +94,6 @@ delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
 %% Internal functions
 %% ====================================================================
 
-type_name()-> 'Template'.
+type_name()-> 'Toggle'.
 
 version() -> "0.1.0".

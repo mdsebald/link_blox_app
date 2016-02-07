@@ -4,7 +4,7 @@
 %% Copy this module to begin coding a new block type
 %% 
 
--module(block_template).
+-module(block_pi1_gpio_digital_output).
 
 %% ====================================================================
 %% API functions
@@ -23,16 +23,6 @@ create(BlockName, InitConfigs, InitInputs)->
     % Create an initial set of common block values
 	{CommonConfigs, CommonInputs, CommonOutputs, CommonInternals} = 
                              block_common:create(BlockName, type_name(), version()),
-	
-    % Create any Config, Input, Output, and/or Internal parameters
-    % specific for this block type and intialize them to their default values
-    
-    %% Update Config and Input parameter values with the
-    %% Initial Config and Input values passed into this function
-    %% If any block type specific Config, Input, Output 
-    %% parameter does not exist yet, create it here 
-    %% (e.g. The number of inputs for certain block types 
-    %%  will not be known until the block is created.)
     
     Configs = block_utils:merge_parameter_lists(CommonConfigs, InitConfigs),
     Inputs = block_utils:merge_parameter_lists(CommonInputs, InitInputs), 
@@ -51,7 +41,18 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
     % Perform common block initializations
     {NewOutputs, NewInternals} = block_common:initialize(Configs, Outputs, Internals),
 	
-    % Perform block type specific initializations here, and update the state variables
+	PinNumber = block_utils:get_config_value(Configs, 'GpioPinNumber'),
+	DefaultValue = bock_utils:get_config_value(Configs, 'DefaultValue'),
+	    
+    case gpio:start_link(PinNumber, output) of
+        {ok, GpioPin} ->
+ 	        NewInternals = block_utils:merge_parameter_lists(Internals, [{'GpioPinRef', GpioPin}]),
+            set_pin_value_bool(GpioPin, DefaultValue);
+            
+        {error, ErrorResult} ->
+            io:format("~p Error intitiating GPIO pin; ~p", [ErrorResult, PinNumber]),
+            NewInternals = Internals
+    end,
 
 	{BlockName, BlockModule, Configs, Inputs, NewOutputs, NewInternals}.
 
@@ -61,15 +62,49 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
 execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
+	%io:format("~p Type: Pi GPIO Digital Output, evaluate() ~n", [BlockName]),
+    GpioPin = block_utils:get_internal_value(Internals, 'GpioPinRef'),
+    DefaultValue = block_utils:get_config_value(Configs, 'DefaultValue'),
+
     % Always check if block is enabled first
 	case block_utils:get_input_value(Inputs, 'Enable') of
 		true ->
-		    % Perform block type specific actions here, calculate new outut value(s)
-            Value = true,
-            % Perform common execute function for normally executing block
-            {NewOutputs, NewInternals} = block_common:execute(Configs, Outputs, Internals, Value, normal); 
+			Input = block_utils:get_input_value(Inputs, 'Input'),
+ 	
+			% Set Output Val to input and set the actual GPIO pin value too
+			case Input of
+				empty -> 
+					PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+					Value = not_active,
+                    Status = normal;
+					
+				not_active ->
+					PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+					Value = not_active,
+                    Status = normal;
+					
+				true ->  
+					PinValue = true, 
+					Value = true,
+                    Status = normal;
+					
+				false ->
+					PinValue = false,
+					Value = false,
+                    Status = normal;
 
-		false ->	% Block is Disabled, perform common execute function for a disabled block 
+				Other -> 
+					io:format("~p Error: Invalid input value: ~p~n", [BlockName, Other]),
+					PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+					Value = not_active,
+                    Status = error
+			end,
+            set_pin_value_bool(GpioPin, PinValue),
+            % Perform common execute function for normally executing block
+            {NewOutputs, NewInternals} = block_common:execute(Configs, Outputs, Internals, Value, Status); 
+
+		false ->	% Block is Disabled, set GPIO pin to default value
+            set_pin_value_bool(GpioPin, DefaultValue),
 			{NewOutputs, NewInternals} = block_common:execute(Configs, Outputs, Internals, not_active, disabled) 
 	end,
     
@@ -90,6 +125,12 @@ delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
 %% Internal functions
 %% ====================================================================
 
-type_name()-> 'Template'.
+set_pin_value_bool(GpioPin, BoolValue) ->
+    case BoolValue of
+        true  -> gpio:write(GpioPin, 1);
+		false -> gpio:write(GpioPin, 0)
+    end.
+
+type_name()-> 'Pi1GpioDigitalOutput'.
 
 version() -> "0.1.0".

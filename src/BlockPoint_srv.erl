@@ -16,8 +16,7 @@
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
-	{BlockName, _BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
-	io:format("Creating block: ~p~n", [BlockName]),
+	{BlockName, _BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
 	gen_server:start_link({local, BlockName}, ?MODULE, BlockValues, []).
 
 
@@ -101,12 +100,12 @@ disconnect(BlockName, ValueName) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(BlockValues) ->
-	{BlockName, BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
+	{BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
 	
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
 	% Perform custom block initialization if needed
-	NewBlockValues = BlockModule:initiate(BlockValues),
+	NewBlockValues = BlockModule:create(BlockValues),
 		
 	% Call configure, to send a configure cast message to self
 	% Already have initial block values in State variable, 
@@ -161,41 +160,41 @@ handle_call(Request, From, BlockValues) ->
 %% ====================================================================
 handle_cast(execute, CurrentBlockValues) ->
 	
-   {BlockName, BlockModule, _Params, _Inputs, CurrentOutputs, _Interms} = CurrentBlockValues,
+   {BlockName, BlockModule, _Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
     
 	% call custom evaluate() function
     % i.e. read inputs and calculate output values
-	NewBlockValues = BlockModule:evaluate(CurrentBlockValues),
+	NewBlockValues = BlockModule:execute(CurrentBlockValues),
     
 	%io:format("~p cast execute message NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
 	
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _NewParams, _NewInputs, NewOutputs, _NewIntTerms} = NewBlockValues,
+	{BlockName, BlockModule, _NewConifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
 
 	update_blocks(BlockName, CurrentOutputs, NewOutputs),
 
 	{noreply, NewBlockValues};
 
 %% ====================================================================
-%% Update the block value(s) with the block value received in this message
+%% Update this block's input value(s) with the block value received in this message
 %% ====================================================================
-handle_cast({update, FromBlockName, ValueName, Value}, OldBlockValues) ->
+handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	
-	{BlockName, BlockModule, Params, _Inputs, OldOutputs, _Interms} = OldBlockValues,
+	{BlockName, BlockModule, Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
 	
-	% Update the block input(s) that are pointing at this value, with the new Value
-	UpdatedInputBlockValues = blkpnt_utils:set_input_pointer_value(OldBlockValues, ValueName, FromBlockName, null, Value),
+	% Update the block input(s), that are linked this value, with the new Value
+	UpdatedInputBlockValues = block_utils:set_input_link_value(CurrentBlockValues, ValueName, FromBlockName, null, Value),
 	
 	% call custom evaluate() function
     % i.e. read inputs and calculate output values
-	NewBlockValues = BlockModule:evaluate(UpdatedInputBlockValues),
+	NewBlockValues = BlockModule:execute(UpdatedInputBlockValues),
 	
 	%io:format("~p cast update message NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
 	
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, Params, _NInputs, NewOutputs, _NIntTerms} = NewBlockValues,
+	{BlockName, BlockModule, Conifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
 
-	update_blocks(BlockName, OldOutputs, NewOutputs),
+	update_blocks(BlockName, CurrentOutputs, NewOutputs),
 
 	{noreply, NewBlockValues};
 
@@ -213,20 +212,20 @@ handle_cast(configure, BlockValues) ->
 	
 	% If any of this block's inputs are pointing at another block that is not running / registered yet
 	% Set the block status output and last error output, delay, and call configuration again.
-	{BlockName, _BlockModule, _Params, Inputs, _Outputs, _IntTerms} = BlockValues,
+	{BlockName, _BlockModule, _Conifgs, Inputs, _Outputs, _Internals} = BlockValues,
 	
 	case unregistered_blocks(Inputs) of
 		ok ->
-			io:format("~p all pointed to blocks running~n", [BlockName]),
+			io:format("~p all linked blocks running~n", [BlockName]),
 			% All blocks connected to this block's inputs are running/registered.
-			% Connect this block's inputs to other block's outputs as specified by the input pointers
+			% Connect this block's inputs to other block's outputs as specified by the input linkss
 			connect_blocks(BlockName, Inputs);
 				
 		{error, MissingBlockName} ->
 			io:format("~p waiting for ~p to start~n", [BlockName, MissingBlockName]),
 			% Not all blocks connected to this block or runnning/registerd yet.
 			% Delay and try configuring again
-			blkpnt_utils:sleep(1000),  % TODO: Is this the correct delay?, could it be shorter? 
+			block_utils:sleep(100),  % TODO: Is this the correct delay?, could it be shorter? 
 			configure(BlockName)
 	end,
 	
@@ -238,12 +237,12 @@ handle_cast(configure, BlockValues) ->
 %% =====================================================================
 handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 	% TODO: Sanity check make sure new block name, type and version match old block name, type and version/(same major rev)
-	{BlockName, _BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues, 
+	{BlockName, _BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues, 
 	io:format("~p: Reconfiguring block~n", [BlockName]),
 
 	% Replace current state Block values with new values and configure block again
 	% Check that new block values match the current block type and block name that is running
-	% Disconnect existing block pointers first
+	% Disconnect existing block links first
 	configure(BlockName),
 	{noreply, NewBlockValues};
 
@@ -252,15 +251,15 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 %% =====================================================================
 handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
 	
-	{BlockName, _BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
+	{BlockName, _BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
 		
 	%% Add the connection to 'ToBlockName' to this output 'ValueName's list of connections
-	NewBlockValues = blkpnt_utils:add_connection(BlockValues, ValueName, ToBlockName),
+	NewBlockValues = block_utils:add_connection(BlockValues, ValueName, ToBlockName),
 
 	%io:format("~p connecting NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
 	
 	% Send the current value of this output to the block 'ToBlockName'
-	Value = blkpnt_utils:get_value(BlockValues, ValueName),
+	Value = block_utils:get_value(BlockValues, ValueName),
 	
 	% Make ToBlockName into a list of 1 connection
 	update([ToBlockName], BlockName, ValueName, Value),
@@ -283,9 +282,14 @@ handle_cast(Msg, State) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info({gpio_interrupt, Pin, Condition}, State) ->
-    io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
-    {noreply, State};
+handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
+    
+    {_BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = CurrentBlockValues,
+    % GPIO Interupt message from Erlang ALE library, 
+    % Execute the block connected to this interrupt
+    % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
+    NewBlockValues = BlockModule:execute(CurrentBlockValues),
+    {noreply, NewBlockValues};
 
 handle_info(Info, State) ->
     io:format("Unknown info message: ~p~n", [Info]),
@@ -302,7 +306,7 @@ handle_info(Info, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, BlockValues) ->
-	{_BlockName, BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
+	{_BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
 	BlockModule:terminate(BlockValues),
     ok.
 
@@ -332,17 +336,17 @@ unregistered_blocks(BlockInputs)->
 	
 	[Input | RemainingInputs] = BlockInputs,
 
-	{_ValueName, _Value, Pointer} = Input,
-	% get the value name, block name, and node name components of this input value pointer
+	{_ValueName, _Value, Link} = Input,
+	% get the value name, block name, and node name components of this input value link
 	
-	{PointerValueName, PointerBlockName, _PointerNodeName} = Pointer,   %TODO: Handle getting values from other nodes
+	{LinkValueName, LinkBlockName, _LinkNodeName} = Link,   %TODO: Handle getting values from other nodes
 	
 	% if this input is not a fixed value
-	if PointerValueName /= fixed ->
-		% if the block name of this pointer is not null
-		if PointerBlockName /= null ->
-			case whereis(PointerBlockName) of
-				undefined  -> {error, PointerBlockName};
+	if LinkValueName /= fixed ->
+		% if the block name of this link is not null
+		if LinkBlockName /= null ->
+			case whereis(LinkBlockName) of
+				undefined  -> {error, LinkBlockName};
 		        	 _Pid  -> unregistered_blocks(RemainingInputs)
 			end;
 		true ->
@@ -353,7 +357,7 @@ unregistered_blocks(BlockInputs)->
 	end.
 
 
-%% Send a connect message to each block pointed at by the input pointers of this block
+%% Send a connect message to each block linked to the input of this block
 connect_blocks(BlockName, BlockInputs)->
 	connect_blocks(BlockName, BlockInputs, 0).
 
@@ -364,19 +368,19 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 	
 	[Input | RemainingBlockInputs] = BlockInputs,
 	
-	{ValueName, Value, Pointer} = Input,
-	{PointerValueName, PointerBlockName, _PointerNodeName} = Pointer, %TODO: Handle getting values from other nodes
+	{ValueName, Value, Link} = Input,
+	{LinkValueName, LinkBlockName, _LinkNodeName} = Link, %TODO: Handle getting values from other nodes
 	
 	% if this input is not a fixed value
-	if PointerValueName /= fixed ->
+	if LinkValueName /= fixed ->
 		   
-		% if the block name of this pointer is not null
-		if PointerBlockName /= null ->
+		% if the block name of this link is not null
+		if LinkBlockName /= null ->
 			   
-			%if the block input value is still empty send, a connect message to the block pointed to by this input
+			%if the block input value is still empty, send a connect message to the block linked to this input
 			if Value == empty ->
-				io:format("Connecting Output <~p:~p> To Input <~p:~p>~n", [PointerBlockName, PointerValueName, BlockName, ValueName]),
-				connect(PointerBlockName, PointerValueName, BlockName),
+				io:format("Connecting Output <~p:~p> To Input <~p:~p>~n", [LinkBlockName, LinkValueName, BlockName, ValueName]),
+				connect(LinkBlockName, LinkValueName, BlockName),
 				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested + 1);
 			true ->
 				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested)
@@ -390,29 +394,29 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 
 
 %% Send an update message to each block connected to any output value that has changed
-%% This assumes OldOutputs and NewOutputs, have the same ValueNames and order for all outputs
+%% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
 update_blocks(_FromBlockName, [], [])-> 
 	%io:format("~p compared all outputs~n", [FromBlockName]),
 	ok;
 
-update_blocks(FromBlockName, OldOutputs, NewOutputs)->
+update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 	
-	[OldOutput | RemainingOldOutputs] = OldOutputs,
+	[CurrentOutput | RemainingCurrentOutputs] = CurrentOutputs,
 	[NewOutput | RemainingNewOutputs] = NewOutputs,
 	
-	{ValueName, OldValue, Connections} = OldOutput,
+	{ValueName, CurrentValue, Connections} = CurrentOutput,
 	{ValueName, NewValue, Connections} = NewOutput,
 	
-	%io:format("~p update_blocks, ValueName: ~p, comparing OldValue: ~p and NewValue: ~p~n", [FromBlockName, ValueName, OldValue, NewValue]),
+	%io:format("~p update_blocks, ValueName: ~p, comparing CurrentValue: ~p and NewValue: ~p~n", [FromBlockName, ValueName, CurrentValue, NewValue]),
 
     % For each output value that changed, call update() to send a the new value message to each connected block.
-	case OldValue /= NewValue of
+	case CurrentValue /= NewValue of
 		true ->
 			update(Connections, FromBlockName, ValueName, NewValue),
-			update_blocks(FromBlockName, RemainingOldOutputs, RemainingNewOutputs);
+			update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs);
 
 		false ->  
 			% output values are same, just continue
-	   		update_blocks(FromBlockName, RemainingOldOutputs, RemainingNewOutputs)
+	   		update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs)
 	end.
 	
