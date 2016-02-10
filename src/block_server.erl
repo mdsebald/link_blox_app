@@ -284,11 +284,17 @@ handle_cast(Msg, State) ->
 %% ====================================================================
 handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
     
-    {_BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = CurrentBlockValues,
+    {BlockName, BlockModule, _Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
     % GPIO Interupt message from Erlang ALE library, 
     % Execute the block connected to this interrupt
     % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
     NewBlockValues = BlockModule:execute(CurrentBlockValues),
+    
+    % Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
+	{BlockName, BlockModule, _Conifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
+
+	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+
     {noreply, NewBlockValues};
 
 handle_info(Info, State) ->

@@ -12,17 +12,21 @@
 -export([create/3, initialize/1, execute/1, delete/1]).
 
 
+%%
 %% Create a set of block values for this block type.  
 %% Any Config, Input, Output, or Internal parameters 
 %% not already defined in the set of common block values, 
 %% will be created here and intialized to their default values.  
 %% Initial Config and Input values are set here.
-   
+%%   
 create(BlockName, InitConfigs, InitInputs)->
 
     % Create an initial set of common block values
 	{CommonConfigs, CommonInputs, CommonOutputs, CommonInternals} = 
                              block_common:create(BlockName, type_name(), version()),
+                             
+    % TODO: Still need to create Config: default value, Input: input value, 
+    % In case they are not created and set by the InitConfigs and InitInputs parameters
     
     Configs = block_utils:merge_parameter_lists(CommonConfigs, InitConfigs),
     Inputs = block_utils:merge_parameter_lists(CommonInputs, InitInputs), 
@@ -32,13 +36,14 @@ create(BlockName, InitConfigs, InitInputs)->
     % This is the block state, 
 	{BlockName, ?MODULE, Configs, Inputs, Outputs, Internals}.
 
- 
-%% Initialize block values before starting execution
-%% Perform any setup here as needed before starting execution
 
+%% 
+%% Initialize block values before starting execution
+%%
 initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
     % Perform common block initializations
+    % Non-common Internal values are created here
     {InitOutputs, InitInternals} = block_common:initialize(Configs, Outputs, Internals),
 	
 	PinNumber = block_utils:get_config_value(Configs, 'GpioPinNumber'),
@@ -59,7 +64,6 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 %%
 %%  Execute the block specific functionality
 %%
-
 execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
 	%io:format("~p Type: Pi GPIO Digital Output, evaluate() ~n", [BlockName]),
