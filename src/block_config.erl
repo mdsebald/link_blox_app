@@ -1,5 +1,5 @@
 %% @author Mark
-%% @doc Save block configuration in a file
+%% @doc Create initial block configuration
 
 
 -module(block_config).

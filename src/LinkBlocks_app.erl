@@ -1,8 +1,8 @@
 %% @author Mark Sebald
-%% @doc BlockEngine application'.
+%% @doc LinkBlocks application'.
 
 
--module('BlockPoint_app').
+-module('LinkBlocks_app').
 
 -behaviour(application).
 

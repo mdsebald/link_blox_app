@@ -1,6 +1,6 @@
--sname BlockPoint
+-sname LinkBlocks
 
--setcookie BlockPoint_cookie
+-setcookie LinkBlocks_cookie
 
 +K true
 +A30

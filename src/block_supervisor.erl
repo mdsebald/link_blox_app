@@ -1,5 +1,5 @@
 %% @author Mark Sebald
-%% @doc Supervisor for BlockLinks app.
+%% @doc Supervisor for LinkBlocks app.
 
 
 -module(block_supervisor).
