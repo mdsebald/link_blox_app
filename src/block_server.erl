@@ -162,12 +162,10 @@ handle_cast(execute, CurrentBlockValues) ->
 	
    {BlockName, BlockModule, _Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
     
-	% call custom evaluate() function
+	% call custom execute() function
     % i.e. read inputs and calculate output values
 	NewBlockValues = BlockModule:execute(CurrentBlockValues),
-    
-	%io:format("~p cast execute message NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
-	
+    	
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
 	{BlockName, BlockModule, _NewConifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
 
@@ -185,12 +183,12 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	% Update the block input(s), that are linked this value, with the new Value
 	UpdatedInputBlockValues = block_utils:set_input_link_value(CurrentBlockValues, ValueName, FromBlockName, null, Value),
 	
-	% call custom evaluate() function
+	% call custom execute() function
+    % TODO: Don't execute block if block is executed via timer timeout, or direct execution
+    %       Just update the input values and leave it at that
     % i.e. read inputs and calculate output values
 	NewBlockValues = BlockModule:execute(UpdatedInputBlockValues),
-	
-	%io:format("~p cast update message NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
-	
+		
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
 	{BlockName, BlockModule, Conifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
 

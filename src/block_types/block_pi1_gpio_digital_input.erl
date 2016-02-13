@@ -99,7 +99,7 @@ delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
 %% Internal functions
 %% ====================================================================
 
-type_name()-> 'Template'.
+type_name()-> 'Pi1GpioDigitalInput'.
 
 version() -> "0.1.0".
 
