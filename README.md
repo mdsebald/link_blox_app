@@ -1,5 +1,5 @@
-# BlockPoint
-##Test Erlang project
+# LinkBlocks
+## An Erlang IoT project
 
 Might be some useful information here:
 
