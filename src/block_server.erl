@@ -311,7 +311,7 @@ handle_info(Info, State) ->
 %% ====================================================================
 terminate(_Reason, BlockValues) ->
 	{_BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
-	BlockModule:terminate(BlockValues),
+	BlockModule:delete(BlockValues),
     ok.
 
 

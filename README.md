@@ -37,4 +37,10 @@ Copy source from Vagrant synced folder (Local GitHub Repo) to nerves LinkBlocks 
 
 $ rsync -avC /vagrant/github/LinkBlocks .  
 
+Error running rebar:  rebar.config references ./relhelper.sh  sript.  Error: could not find ./relhelper.sh  
+
+Cause: relhelper.sh had DOS line endings.  Needed to switch to unix line endings used this:
+
+ http://stackoverflow.com/questions/2920416/configure-bin-shm-bad-interpreter
+
 

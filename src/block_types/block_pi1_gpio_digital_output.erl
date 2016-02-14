@@ -1,7 +1,7 @@
 %%
 %% @author Mark Sebald
-%% @doc Block Template module. 
-%% Copy this module to begin coding a new block type
+%% @doc Block Type: Digital Outputs 
+%% Description: Configure a Raspberry Pi 1 GPIO Pin as a Digital Output block
 %% 
 
 -module(block_pi1_gpio_digital_output).
@@ -14,7 +14,7 @@
 
 %%
 %% Create a set of block values for this block type.  
-%% Any Config, Input, Output, or Internal parameters 
+%% Any Config, Input, Output, or Internal attributes 
 %% not already defined in the set of common block values, 
 %% will be created here and intialized to their default values.  
 %% Initial Config and Input values are set here.
@@ -26,10 +26,10 @@ create(BlockName, InitConfigs, InitInputs)->
                              block_common:create(BlockName, type_name(), version()),
                              
     % TODO: Still need to create Config: default value, Input: input value, 
-    % In case they are not created and set by the InitConfigs and InitInputs parameters
+    % In case they are not created and set by the InitConfigs and InitInputs attributes
     
-    Configs = block_utils:merge_parameter_lists(CommonConfigs, InitConfigs),
-    Inputs = block_utils:merge_parameter_lists(CommonInputs, InitInputs), 
+    Configs = block_utils:merge_attribute_lists(CommonConfigs, InitConfigs),
+    Inputs = block_utils:merge_attribute_lists(CommonInputs, InitInputs), 
     Outputs = CommonOutputs,
     Internals = CommonInternals,
 
@@ -51,7 +51,7 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 	    
     case gpio:start_link(PinNumber, output) of
         {ok, GpioPin} ->
- 	        NewInternals = block_utils:merge_parameter_lists(InitInternals, [{'GpioPinRef', GpioPin}]),
+ 	        NewInternals = block_utils:merge_attribute_lists(InitInternals, [{'GpioPinRef', GpioPin}]),
             set_pin_value_bool(GpioPin, DefaultValue);
             
         {error, ErrorResult} ->

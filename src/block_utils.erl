@@ -11,13 +11,13 @@
 -export([get_config_value/2, get_input_value/2, get_output_value/2, get_internal_value/2, get_value/2]).
 -export([set_input_value/3, set_output_value/3, set_internal_value/3, set_value/3]).
 -export([add_connection/3, set_input_link/3, set_input_link_value/5]).
--export([update_parameter_list/2, merge_parameter_lists/2]).
+-export([update_attribute_list/2, merge_attribute_lists/2]).
 -export([sleep/1]). 
 
 %% Get the Value of ValueName 
 %% Return 'not_found', if ValueName is not found in the Values list
 get_config_value(Configs, ValueName) ->
-	case get_parameter_value(Configs, ValueName) of
+	case get_attribute_value(Configs, ValueName) of
 		not_found ->
 			io:format("get_value() Error: ~p not found in Config values~n", [ValueName]),
 			not_found;
@@ -25,7 +25,7 @@ get_config_value(Configs, ValueName) ->
  	end.
 
 get_input_value(Inputs, ValueName) ->
-	case get_parameter_value(Inputs, ValueName) of
+	case get_attribute_value(Inputs, ValueName) of
 		not_found ->
 			io:format("get_value() Error: ~p not found in Input values~n", [ValueName]),
 			not_found;
@@ -33,7 +33,7 @@ get_input_value(Inputs, ValueName) ->
  	end.
 
 get_output_value(Outputs, ValueName) ->
-	case get_parameter_value(Outputs, ValueName) of
+	case get_attribute_value(Outputs, ValueName) of
 		not_found -> 
 			io:format("get_value() Error: ~p not found in Output values~n", [ValueName]),
 			not_found;
@@ -41,7 +41,7 @@ get_output_value(Outputs, ValueName) ->
  	end.
 
 get_internal_value(Internals, ValueName) ->
-	case get_parameter_value(Internals, ValueName) of
+	case get_attribute_value(Internals, ValueName) of
 		not_found -> 
 			io:format("get_value() Error: ~p not found in Internal values~n", [ValueName]),
 			not_found;
@@ -52,13 +52,13 @@ get_value(BlockValues, ValueName)->
 	
 	{BlockName, _BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	
-	case get_parameter_value(Configs, ValueName) of
+	case get_attribute_value(Configs, ValueName) of
 		not_found ->
-			case get_parameter_value(Inputs, ValueName) of
+			case get_attribute_value(Inputs, ValueName) of
 				not_found ->
-					case get_parameter_value(Outputs, ValueName) of
+					case get_attribute_value(Outputs, ValueName) of
 						not_found ->
-							case get_parameter_value(Internals, ValueName) of
+							case get_attribute_value(Internals, ValueName) of
 								not_found ->
 									io:format("~p get_value() Error: ~p not found in Block values~n", [BlockName, ValueName]),
 									not_found;
@@ -77,35 +77,35 @@ get_value(BlockValues, ValueName)->
 %% Return BlockValues list with the Value of ValueName updated 
 %% Return original values list if value 'ValueName' not found 
 set_input_value(Inputs, ValueName, NewValue) ->
-	case get_parameter_value(Inputs, ValueName) of
+	case get_attribute_value(Inputs, ValueName) of
 		not_found ->
 			io:format("set_value() Error: ~p not found in Input values~n", [ValueName]),
 			Inputs;
 		{ValueName, _OldValue, Link} ->
 			NewInput = {ValueName, NewValue, Link},
-			NewInputs = replace_parameter_value(Inputs, ValueName, NewInput),
+			NewInputs = replace_attribute_value(Inputs, ValueName, NewInput),
 			NewInputs
 	end.
 
 set_output_value(Outputs, ValueName, NewValue) ->
-	case get_parameter_value(Outputs, ValueName) of
+	case get_attribute_value(Outputs, ValueName) of
 		not_found ->
 			io:format("set_value() Error: ~p not found in Output values~n", [ValueName]),
 			Outputs;
 		{ValueName, _OldValue, Connections} ->
 			NewOutput = {ValueName, NewValue, Connections},
-			NewOutputs = replace_parameter_value(Outputs, ValueName, NewOutput),
+			NewOutputs = replace_attribute_value(Outputs, ValueName, NewOutput),
 			NewOutputs
 	end.	
 
 set_internal_value(Internals, ValueName, NewValue) ->
-	case get_parameter_value(Internals, ValueName) of
+	case get_attribute_value(Internals, ValueName) of
 		not_found ->
 			io:format("set_value() Error: ~p not found in Internal values~n", [ValueName]),
 			Internals;
 		{ValueName, _OldValue} ->
 			NewInternal = {ValueName, NewValue},
-			NewInternals = replace_parameter_value(Internals, ValueName, NewInternal),
+			NewInternals = replace_attribute_value(Internals, ValueName, NewInternal),
 			NewInternals
 	end.	
 
@@ -115,27 +115,27 @@ set_value(BlockValues, ValueName, NewValue)->
 	
 	% Can't modify Congigs, don't bother checking those
 
-	case get_parameter_value(Inputs, ValueName) of
+	case get_attribute_value(Inputs, ValueName) of
 		not_found ->
-			case get_parameter_value(Outputs, ValueName) of
+			case get_attribute_value(Outputs, ValueName) of
 				not_found ->					
-					case get_parameter_value(Internals, ValueName) of
+					case get_attribute_value(Internals, ValueName) of
 						not_found ->
 							io:format("~p set_value() Error. ~p not found in the BlockValues list~n", [BlockName, ValueName]),
 							not_found;
 						{ValueName, _OldValue1} ->
 							NewInternal = {ValueName, NewValue},
-							NewInternals = replace_parameter_value(Internals, ValueName, NewInternal),
+							NewInternals = replace_attribute_value(Internals, ValueName, NewInternal),
 							{BlockName, BlockModule, Configs, Inputs, Outputs, NewInternals}
 					end;
 				{ValueName, _OldValue2, Connections} -> 
 					NewOutput = {ValueName, NewValue, Connections},
-					NewOutputs = replace_parameter_value(Outputs, ValueName, NewOutput),
+					NewOutputs = replace_attribute_value(Outputs, ValueName, NewOutput),
 					{BlockName, BlockModule, Configs, Inputs, NewOutputs, Internals}
 			end; 
 		{ValueName, _OldValue3, Link} -> 
 			NewInput = {ValueName, NewValue, Link},
-			NewInputs = replace_parameter_value(Inputs, ValueName, NewInput),
+			NewInputs = replace_attribute_value(Inputs, ValueName, NewInput),
 			{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}
  	end.
 
@@ -145,14 +145,14 @@ set_input_link(BlockValues, ValueName, NewLink) ->
 	
 	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	
-	case get_parameter_value(Inputs, ValueName) of
+	case get_attribute_value(Inputs, ValueName) of
 		not_found ->
 			io:format("~p set_input_link() Error.  ~p not found in Input values.~n", [BlockName, ValueName]),
 			% Input value not found, just return the BlockValues unchanged
 			BlockValues;
 		{ValueName, Value, _Link} ->
 			NewInput = {ValueName, Value, NewLink},
-			NewInputs = replace_parameter_value(Inputs, ValueName, NewInput),
+			NewInputs = replace_attribute_value(Inputs, ValueName, NewInput),
 			{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}
 	end.
 
@@ -184,7 +184,7 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 	
 	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	 
-	case get_parameter_value(Outputs, ValueName) of
+	case get_attribute_value(Outputs, ValueName) of
 		
 		not_found ->
 			% This block doesn't have an output called 'ValueName'
@@ -202,7 +202,7 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 				% add 'ToBlockName' to list of connection for this output
 				NewConnections = [ToBlockName | Connections],
 				NewOutput = {ValueName, Value, NewConnections},
-				NewOutputs = replace_parameter_value(Outputs, ValueName, NewOutput),
+				NewOutputs = replace_attribute_value(Outputs, ValueName, NewOutput),
 				{BlockName, BlockModule, Configs, Inputs, NewOutputs, Internals}
 			end;
 		Unknown ->
@@ -211,52 +211,52 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 	end.
 
 
-%% Update parameter values in the Parameter List with the values in the NewParameterList 
-%% and add any new parameters if they are not already in the ParameterList
+%% Update attribute values in the attribute List with the values in the NewattributeList 
+%% and add any new attributes if they are not already in the attributeList
 %% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
-merge_parameter_lists(ParameterList, []) -> ParameterList;
+merge_attribute_lists(attributeList, []) -> attributeList;
 
-merge_parameter_lists(ParameterList, NewParameterList) ->
-    [NewParameterValue | RemainingNewParameters] = NewParameterList,
-    UpdatedParameterList = update_parameter_list(ParameterList, NewParameterValue),
-    merge_parameter_lists(UpdatedParameterList, RemainingNewParameters).
+merge_attribute_lists(attributeList, NewattributeList) ->
+    [NewattributeValue | RemainingNewattributes] = NewattributeList,
+    UpdatedattributeList = update_attribute_list(attributeList, NewattributeValue),
+    merge_attribute_lists(UpdatedattributeList, RemainingNewattributes).
 
 
-%% Update the ParameterList with the new ParameterValue
+%% Update the attributeList with the new attributeValue
 %% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
-update_parameter_list(ParameterList, NewParameterValue) ->
-    % First element of any parameter value tuple is always the name 
-    ParameterName = element(1, NewParameterValue),
+update_attribute_list(attributeList, NewattributeValue) ->
+    % First element of any attribute value tuple is always the name 
+    attributeName = element(1, NewattributeValue),
  
-    case get_parameter_value(ParameterList, ParameterName) of
-        not_found -> add_parameter_value(ParameterList, NewParameterValue);
-        _ParameterValue -> replace_parameter_value(ParameterList, ParameterName, NewParameterValue)
+    case get_attribute_value(attributeList, attributeName) of
+        not_found -> add_attribute_value(attributeList, NewattributeValue);
+        _attributeValue -> replace_attribute_value(attributeList, attributeName, NewattributeValue)
     end.
 
 	
-%% Get the parameter value record for the given ParameterName
+%% Get the attribute value record for the given attributeName
 %% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
-get_parameter_value(ParameterList, ParameterName) ->
+get_attribute_value(attributeList, attributeName) ->
 	% ValueName is always the first element in the tuple, regardless of the ValueRecord type
-	case lists:keyfind(ParameterName, 1, ParameterList) of 
+	case lists:keyfind(attributeName, 1, attributeList) of 
 		        false -> not_found;
-	   ParameterValue -> ParameterValue
+	   attributeValue -> attributeValue
  	end.
 
 
-%% Replace the ParameterName record in the ParameterList with the NewParameterValue
-%% Return the updated ParameterList
-%% This works on all types of value parameter value lists, Configs, Inputs, Outputs, and Internals
-replace_parameter_value(ParameterList, ParameterName, NewParameterValue) ->
-	% ParameterName is always the first element in the tuple, regardless of the ParameterValue type
-	lists:keyreplace(ParameterName, 1, ParameterList, NewParameterValue).
+%% Replace the attributeName record in the attributeList with the NewattributeValue
+%% Return the updated attributeList
+%% This works on all types of value attribute value lists, Configs, Inputs, Outputs, and Internals
+replace_attribute_value(attributeList, attributeName, NewattributeValue) ->
+	% attributeName is always the first element in the tuple, regardless of the attributeValue type
+	lists:keyreplace(attributeName, 1, attributeList, NewattributeValue).
 
 
-%% Add a new parameter value, {name, value} tuple, 
-%% to the end of the given parameter list and return a new list
-%% This works on all types of parameter value lists, Configs, Inputs, Outputs, and Internals
-add_parameter_value(ParameterList, NewParameterValue) ->
-    ParameterList ++ [NewParameterValue].
+%% Add a new attribute value, {name, value} tuple, 
+%% to the end of the given attribute list and return a new list
+%% This works on all types of attribute value lists, Configs, Inputs, Outputs, and Internals
+add_attribute_value(attributeList, NewattributeValue) ->
+    attributeList ++ [NewattributeValue].
 
     
 %% common delay function

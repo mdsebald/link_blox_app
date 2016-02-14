@@ -1,7 +1,7 @@
 %%
 %% @author Mark Sebald
-%% @doc Block Template module. 
-%% Copy this module to begin coding a new block type
+%% @doc Block Type:  
+%% Description: 
 %% 
 
 -module(block_template).
@@ -13,7 +13,7 @@
 
 
 %% Create a set of block values for this block type.  
-%% Any Config, Input, Output, or Internal parameters 
+%% Any Config, Input, Output, or Internal attributes 
 %% not already defined in the set of common block values, 
 %% will be created here and intialized to their default values.  
 %% Initial Config and Input values are set here.
@@ -24,18 +24,18 @@ create(BlockName, InitConfigs, InitInputs)->
 	{CommonConfigs, CommonInputs, CommonOutputs, CommonInternals} = 
                              block_common:create(BlockName, type_name(), version()),
 	
-    % Create any Config, Input, Output, and/or Internal parameters
+    % Create any Config, Input, Output, and/or Internal attributes
     % specific for this block type and intialize them to their default values
     
-    %% Update Config and Input parameter values with the
+    %% Update Config and Input attribute values with the
     %% Initial Config and Input values passed into this function
     %% If any block type specific Config, Input, Output 
-    %% parameter does not exist yet, create it here 
+    %% attribute does not exist yet, create it here 
     %% (e.g. The number of inputs for certain block types 
     %%  will not be known until the block is created.)
     
-    Configs = block_utils:merge_parameter_lists(CommonConfigs, InitConfigs),
-    Inputs = block_utils:merge_parameter_lists(CommonInputs, InitInputs), 
+    Configs = block_utils:merge_attribute_lists(CommonConfigs, InitConfigs),
+    Inputs = block_utils:merge_attribute_lists(CommonInputs, InitInputs), 
     Outputs = CommonOutputs,
     Internals = CommonInternals,
 
