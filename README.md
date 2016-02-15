@@ -1,4 +1,4 @@
-# LinkBlocks
+# LinkBlox
 ## An Erlang IoT project
 
 Might be some useful information here:
