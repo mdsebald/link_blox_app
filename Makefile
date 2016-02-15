@@ -5,7 +5,7 @@ DIALYZER_OPTS = -Wrace_conditions -Wunderspecs
 
 all:
 	rebar get-deps compile
-	if [ -n "$(NERVES_ROOT)" ]; then $(NERVES_ROOT)/scripts/rel2fw.sh _rel/LinkBlocks; fi
+	if [ -n "$(NERVES_ROOT)" ]; then $(NERVES_ROOT)/scripts/rel2fw.sh _rel/LinkBlox; fi
 
 relsync:
 	rebar compile

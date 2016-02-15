@@ -63,9 +63,9 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
     % Always check if block is enabled first
-	case block_utils:get_input_value(Inputs, 'Enable') of
+	case block_utils:get_input_value(Inputs, enable) of
 		true ->
-            case block_utils:get_output_value(Outputs, 'Value') of
+            case block_utils:get_output_value(Outputs, value) of
                 true ->  Value = false;
                 false -> Value = true;
                 not_active -> Value = true
@@ -94,6 +94,6 @@ delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
 %% Internal functions
 %% ====================================================================
 
-type_name()-> 'Toggle'.
+type_name()-> toggle.
 
 version() -> "0.1.0".

@@ -47,12 +47,12 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
     % Non-Common Internal values are created here
     {InitOutputs, InitInternals} = block_common:initialize(Configs, Outputs, Internals),
     
-	PinNumber = block_utils:get_config_value(Configs, 'GpioPinNumber'),
+	PinNumber = block_utils:get_config_value(Configs, gpio_pin),
 
     % Perform block type specific initializations here, and update the state variables
     case gpio:start_link(PinNumber, input) of
         {ok, GpioPin} ->
-	        NewInternals = block_utils:merge_attribute_lists(InitInternals, [{'GpioPinRef', GpioPin}]),
+	        NewInternals = block_utils:merge_attribute_lists(InitInternals, [{gpio_pin_ref, GpioPin}]),
             gpio:register_int(GpioPin),
             gpio:set_int(GpioPin, both);  % TODO: Make interrupt type selectable via config value
 
@@ -70,10 +70,10 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
     % Always check if block is enabled first
-	case block_utils:get_input_value(Inputs, 'Enable') of
+	case block_utils:get_input_value(Inputs, enable) of
 		true ->
 		    % Perform block type specific actions here, calculate new outut value(s)
-            GpioPin = block_utils:get_internal_value(Internals, 'GpioPinRef'),
+            GpioPin = block_utils:get_internal_value(Internals, gpio_pin_ref),
             DigitalInputValue = read_pin_value_bool(GpioPin),
 
             % Perform common execute function for normally executing block
@@ -100,7 +100,7 @@ delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
 %% Internal functions
 %% ====================================================================
 
-type_name()-> 'Pi1GpioDigitalInput'.
+type_name()-> pi1_gpio_digital_input.
 
 version() -> "0.1.0".
 

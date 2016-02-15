@@ -37,7 +37,7 @@ create(BlockName, InitConfigs, InitInputs, InitOutputs, InitInternals)->
     Configs = block_utils:merge_attribute_lists(default_configs(BlockName), InitConfigs),
     Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
     Outputs = block_utils:merge_attribut_lists(default_outputs(), InitOutputs),
-    Internals = block_utils:merge_attribute_lists(defaul_internals(), InitInternals),
+    Internals = block_utils:merge_attribute_lists(default_internals(), InitInternals),
 
     % This is the block state, 
 	{BlockName, ?MODULE, Configs, Inputs, Outputs, Internals}.

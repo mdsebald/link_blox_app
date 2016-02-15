@@ -21,34 +21,34 @@
 create(Name, Type, Version) ->
     
     % Common Configs
-    BlockName = {'BlockName', Name},
-	BlockType = {'BlockType', Type},
+    BlockName = {block_name, Name},
+	BlockType = {block_type, Type},
     
     log_state("Creating", [BlockName, BlockType]),
     
-	BlockVersion = {'Version', Version},
+	BlockVersion = {version, Version},
     
-    Executors = {'Executors', []},  % List of other blocks that are allowed execute this block.
+    Executors = {executors, []},  % List of other blocks that are allowed execute this block.
                                     % If this list contains one or more block names, 
                                     % then execute only on receiving an execute command message
                                     % i.e. Implement Control Flow 
 
-    Timeout = {'Timeout', 0},  % If > 0, execute block every 'Timeout' milliseconds.
+    Timeout = {timeout, 0},  % If > 0, execute block every 'Timeout' milliseconds.
                                % This is used to execute a block at fixed intervals
                                % instead of being executed by other blocks.
                                % or executed on change of input value
     
     % Comnon Inputs
-	Enable = {'Enable', true, {fixed, null, null}},
+	Enable = {enable, true, {fixed, null, null}},
 
     % Common Outputs
-	Value = {'Value', not_active, []},
-	Status = {'Status', created, []},
+	Value = {value, not_active, []},
+	Status = {status, created, []},
     
     % Common Internals
-	ExecCount = {'ExecCount', 0},
-	LastExec = {'LastExec', not_active},
-    TimerRef = {'TimerRef', empty},
+	ExecCount = {exec_count, 0},
+	LastExec = {last_exec, not_active},
+    TimerRef = {timer_ref, empty},
 	
 	% Return a set of initial common block values consisting of:
     % Configs, Inputs, Outputs, and Internal values

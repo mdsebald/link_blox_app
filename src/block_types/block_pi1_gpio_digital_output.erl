@@ -46,12 +46,12 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
     % Non-common Internal values are created here
     {InitOutputs, InitInternals} = block_common:initialize(Configs, Outputs, Internals),
 	
-	PinNumber = block_utils:get_config_value(Configs, 'GpioPinNumber'),
-	DefaultValue = block_utils:get_config_value(Configs, 'DefaultValue'),
+	PinNumber = block_utils:get_config_value(Configs, gpio_pin),
+	DefaultValue = block_utils:get_config_value(Configs, default_value),
 	    
     case gpio:start_link(PinNumber, output) of
         {ok, GpioPin} ->
- 	        NewInternals = block_utils:merge_attribute_lists(InitInternals, [{'GpioPinRef', GpioPin}]),
+ 	        NewInternals = block_utils:merge_attribute_lists(InitInternals, [{gpio_pin_ref, GpioPin}]),
             set_pin_value_bool(GpioPin, DefaultValue);
             
         {error, ErrorResult} ->
@@ -67,13 +67,13 @@ initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 
 	%io:format("~p Type: Pi GPIO Digital Output, evaluate() ~n", [BlockName]),
-    GpioPin = block_utils:get_internal_value(Internals, 'GpioPinRef'),
-    DefaultValue = block_utils:get_config_value(Configs, 'DefaultValue'),
+    GpioPin = block_utils:get_internal_value(Internals, gpio_pin_ref),
+    DefaultValue = block_utils:get_config_value(Configs, default_value),
 
     % Always check if block is enabled first
-	case block_utils:get_input_value(Inputs, 'Enable') of
+	case block_utils:get_input_value(Inputs, enable) of
 		true ->
-			Input = block_utils:get_input_value(Inputs, 'Input'),
+			Input = block_utils:get_input_value(Inputs, input),
  	
 			% Set Output Val to input and set the actual GPIO pin value too
 			case Input of
@@ -135,6 +135,6 @@ set_pin_value_bool(GpioPin, BoolValue) ->
 		false -> gpio:write(GpioPin, 0)
     end.
 
-type_name()-> 'Pi1GpioDigitalOutput'.
+type_name()-> pi1_gpio_digital_output.
 
 version() -> "0.1.0".

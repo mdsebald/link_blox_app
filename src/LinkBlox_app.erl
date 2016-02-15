@@ -1,8 +1,8 @@
 %% @author Mark Sebald
-%% @doc LinkBlocks application'.
+%% @doc LinkBlox application'.
 
 
--module('LinkBlocks_app').
+-module('LinkBlox_app').
 
 -behaviour(application).
 

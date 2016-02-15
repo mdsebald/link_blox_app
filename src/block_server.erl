@@ -1,5 +1,5 @@
 %% @author Mark Sebald
-%% @doc Plock server.  gen_server behavior to execute custom block functionality
+%% @doc Block server.  gen_server behavior to execute custom block functionality
 
 
 -module(block_server).
@@ -11,7 +11,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/1, delete/1, connect/3, disconnect/2, get/2, set/2, override/2, get_values/1]).
+-export([create/1, delete/1, connect/3, disconnect/2, get_value/2, set_value/3, override/2, get_values/1]).
 -export([execute/1, update/4, configure/1, reconfigure/2]).
 
 %% Create a function block with the given Name, Functionality, and Values
@@ -26,16 +26,16 @@ delete(BlockName)->
 
 
 %% Get the value of 'ValueName' from this block
-get(BlockName, ValueName)->
-	gen_server:call(BlockName, {get, ValueName}).
+get_value(BlockName, ValueName)->
+	gen_server:call(BlockName, {get_value, ValueName}).
 
 
-%% Set the Value = {ValueName, ValueType, Value...} in this block
-set(BlockName, Value)->
-	gen_server:call(BlockName, {set, Value}).
+%% Set the ValueName = Value in this block
+set_value(BlockName, ValueName, Value)->
+	gen_server:call(BlockName, {set_value, ValueName, Value}).
 
 
-%% Override the Value of this block with the given Value = {ValueName, ValueType, Value}
+%% Override the Value of this block with the given Value
 override(BlockName, Value)->
 	gen_server:call(BlockName, {override, Value}).
 
@@ -134,7 +134,14 @@ init(BlockValues) ->
 
 handle_call(get_values, _From, BlockValues) ->
 	{reply, BlockValues, BlockValues};
-	
+    
+handle_call({get_value, ValueName}, _From, BlockValues) ->
+    Value = block_utils:get_value(BlockValues, ValueName),
+    {reply, Value, BlockValues};
+
+handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
+    NewBlockValues = block_utils:set_value(BlockValues, ValueName, Value),
+    {reply, {ValueName, Value}, NewBlockValues};
 	
 handle_call(Request, From, BlockValues) ->
 	io:format("Unknown call message: ~p From: ~p~n", [Request, From]),

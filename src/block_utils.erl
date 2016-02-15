@@ -113,7 +113,7 @@ set_value(BlockValues, ValueName, NewValue)->
 	
 	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
 	
-	% Can't modify Congigs, don't bother checking those
+	% Can't modify Configs, don't bother checking those
 
 	case get_attribute_value(Inputs, ValueName) of
 		not_found ->
@@ -122,7 +122,7 @@ set_value(BlockValues, ValueName, NewValue)->
 					case get_attribute_value(Internals, ValueName) of
 						not_found ->
 							io:format("~p set_value() Error. ~p not found in the BlockValues list~n", [BlockName, ValueName]),
-							not_found;
+							BlockValues;  % Return Block values unchanged
 						{ValueName, _OldValue1} ->
 							NewInternal = {ValueName, NewValue},
 							NewInternals = replace_attribute_value(Internals, ValueName, NewInternal),
