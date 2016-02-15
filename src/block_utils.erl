@@ -212,51 +212,51 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 
 
 %% Update attribute values in the attribute List with the values in the NewattributeList 
-%% and add any new attributes if they are not already in the attributeList
+%% and add any new attributes if they are not already in the AttributeList
 %% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
-merge_attribute_lists(attributeList, []) -> attributeList;
+merge_attribute_lists(AttributeList, []) -> AttributeList;
 
-merge_attribute_lists(attributeList, NewattributeList) ->
+merge_attribute_lists(AttributeList, NewattributeList) ->
     [NewattributeValue | RemainingNewattributes] = NewattributeList,
-    UpdatedattributeList = update_attribute_list(attributeList, NewattributeValue),
+    UpdatedattributeList = update_attribute_list(AttributeList, NewattributeValue),
     merge_attribute_lists(UpdatedattributeList, RemainingNewattributes).
 
 
-%% Update the attributeList with the new attributeValue
+%% Update the AttributeList with the new attributeValue
 %% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
-update_attribute_list(attributeList, NewattributeValue) ->
+update_attribute_list(AttributeList, NewattributeValue) ->
     % First element of any attribute value tuple is always the name 
-    attributeName = element(1, NewattributeValue),
+    AttributeName = element(1, NewattributeValue),
  
-    case get_attribute_value(attributeList, attributeName) of
-        not_found -> add_attribute_value(attributeList, NewattributeValue);
-        _attributeValue -> replace_attribute_value(attributeList, attributeName, NewattributeValue)
+    case get_attribute_value(AttributeList, AttributeName) of
+        not_found -> add_attribute_value(AttributeList, NewattributeValue);
+        _attributeValue -> replace_attribute_value(AttributeList, AttributeName, NewattributeValue)
     end.
 
 	
-%% Get the attribute value record for the given attributeName
+%% Get the attribute value record for the given AttributeName
 %% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
-get_attribute_value(attributeList, attributeName) ->
+get_attribute_value(AttributeList, AttributeName) ->
 	% ValueName is always the first element in the tuple, regardless of the ValueRecord type
-	case lists:keyfind(attributeName, 1, attributeList) of 
+	case lists:keyfind(AttributeName, 1, AttributeList) of 
 		        false -> not_found;
-	   attributeValue -> attributeValue
+	   AttributeValue -> AttributeValue
  	end.
 
 
-%% Replace the attributeName record in the attributeList with the NewattributeValue
-%% Return the updated attributeList
+%% Replace the attributeName record in the AttributeList with the NewattributeValue
+%% Return the updated AttributeList
 %% This works on all types of value attribute value lists, Configs, Inputs, Outputs, and Internals
-replace_attribute_value(attributeList, attributeName, NewattributeValue) ->
+replace_attribute_value(AttributeList, AttributeName, NewattributeValue) ->
 	% attributeName is always the first element in the tuple, regardless of the attributeValue type
-	lists:keyreplace(attributeName, 1, attributeList, NewattributeValue).
+	lists:keyreplace(AttributeName, 1, AttributeList, NewattributeValue).
 
 
 %% Add a new attribute value, {name, value} tuple, 
 %% to the end of the given attribute list and return a new list
 %% This works on all types of attribute value lists, Configs, Inputs, Outputs, and Internals
-add_attribute_value(attributeList, NewattributeValue) ->
-    attributeList ++ [NewattributeValue].
+add_attribute_value(AttributeList, NewattributeValue) ->
+    AttributeList ++ [NewattributeValue].
 
     
 %% common delay function

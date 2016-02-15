@@ -9,7 +9,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/3, initialize/3, execute/5, delete/2]).
+-export([create/3, configs/3, inputs/0, outputs/0, internals/0, initialize/3, execute/5, delete/2]).
 
 
 %% 
@@ -62,6 +62,60 @@ create(Name, Type, Version) ->
 
 
 %%
+%% Create list of common block config attributes
+%%
+configs(Name, Type, Version) ->
+    Configs = 
+    [ 
+      {block_name, Name},
+	  {block_type, Type},
+	  {version, Version},
+    
+      {executors, []},  % List of other blocks that are allowed execute this block.
+                          % If this list contains one or more block names, 
+                          % then execute only on receiving an execute command message
+                          % i.e. Implement Control Flow 
+
+      {timeout, 0}  % If > 0, execute block every 'Timeout' milliseconds.
+    ],                % This is used to execute a block at fixed intervals
+                      % instead of being executed by other blocks.
+                      % or executed on change of input value
+    
+    log_state("Creating", Configs),
+    Configs.
+
+
+%%
+%% Common Inputs
+%%
+inputs() ->
+    [
+      {enable, true, {fixed, null, null}} % Block will execute as long as enable input is true
+    ].
+    
+%%
+%% Common Outputs
+%%
+outputs() ->
+    [ 
+      {value, not_active, []},
+	  {status, created, []}
+    ].
+    
+%%
+%% Common Internals
+%%
+internals() ->
+    [ 
+      {exec_count, 0},
+	  {last_exec, not_active},
+      {timer_ref, empty}
+    ].
+       
+
+
+
+%%
 %% Common block initialization funcion
 %%
 
@@ -69,7 +123,7 @@ initialize(Configs, Outputs, Internals) ->
 
     log_state("Initializing", Configs),
     NewInternals = setup_execute_timer(Configs, Internals), 
-    NewOutputs = block_utils:set_output_value(Outputs, 'Status', initialized),
+    NewOutputs = block_utils:set_output_value(Outputs, status, initialized),
     
     {NewOutputs, NewInternals}.
 
@@ -80,11 +134,11 @@ initialize(Configs, Outputs, Internals) ->
 %%
 execute(Configs, Outputs, Internals, Value, Status) ->
 
-	NewOutputs1 = block_utils:set_output_value(Outputs, 'Value', Value),
-	NewOutputs2 = block_utils:set_output_value(NewOutputs1, 'Status', Status),
+	NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
+	NewOutputs2 = block_utils:set_output_value(NewOutputs1, status, Status),
     
 	NewInternals1 = update_exec_count(Internals),
-	NewInternals2 = block_utils:set_internal_value(NewInternals1, 'LastExec', calendar:now_to_local_time(erlang:timestamp())),
+	NewInternals2 = block_utils:set_internal_value(NewInternals1, last_exec, calendar:now_to_local_time(erlang:timestamp())),
     NewInternals3 = setup_execute_timer(Configs, NewInternals2),
     {NewOutputs2, NewInternals3}.
 
@@ -95,7 +149,7 @@ execute(Configs, Outputs, Internals, Value, Status) ->
 delete(Configs, Internals) ->
     log_state("Deleting", Configs),    
     % Cancel execution timer if it exists
-    TimerReferenceValue = block_utils:get_internal_value(Internals, 'TimerRef' ),
+    TimerReferenceValue = block_utils:get_internal_value(Internals, timer_ref),
     case TimerReferenceValue of
         empty -> empty;
         
@@ -107,18 +161,18 @@ delete(Configs, Internals) ->
 %% ====================================================================
 
 setup_execute_timer(Configs, Internals) ->
-    case block_utils:get_config_value(Configs, 'Executors') of
+    case block_utils:get_config_value(Configs, executors) of
         [] ->  % The list of executors is empty, check if this block should be executed via timer
-            ExecuteTimerValue = block_utils:get_config_value(Configs, 'Timeout'),
+            ExecuteTimerValue = block_utils:get_config_value(Configs, timeout),
             if (ExecuteTimerValue > 0 ) ->
-                BlockName = block_utils:get_config_value(Configs, 'BlockName'),
+                BlockName = block_utils:get_config_value(Configs, block_name),
                 % Setup timer to execute block after timer expires
                 case timer:apply_after(ExecuteTimerValue, 'block_server', execute, [BlockName]) of
                     {ok, TimerReferenceValue} -> 
-                        NewInternals = block_utils:set_internal_value(Internals, 'TimerRef', TimerReferenceValue);
+                        NewInternals = block_utils:set_internal_value(Internals, timer_ref, TimerReferenceValue);
          
                     {error, Reason} -> 
-                        NewInternals = block_utils:set_internal_value(Internals, 'TimerRef', empty),
+                        NewInternals = block_utils:set_internal_value(Internals, timer_ref, empty),
                         io:format("Error: ~p Setting execution timer ~n", [Reason])
                 end;
             true ->  % Timeout value is less than or equal to zero, don't set up execution via timer
@@ -133,15 +187,15 @@ setup_execute_timer(Configs, Internals) ->
 
 update_exec_count(Internals) ->
 	% Arbitrarily roll over Execution Counter at 1,000,000,000
-	case block_utils:get_internal_value(Internals, 'ExecCount') + 1 of
-		1000000000   -> block_utils:set_internal_value(Internals, 'ExecCount', 0);
-		NewExecCount -> block_utils:set_internal_value(Internals, 'ExecCount', NewExecCount)
+	case block_utils:get_internal_value(Internals, exec_count) + 1 of
+		1000000000   -> block_utils:set_internal_value(Internals, exec_count, 0);
+		NewExecCount -> block_utils:set_internal_value(Internals, exec_count, NewExecCount)
 	end.
 
 %% print the indicated state to the shell
 log_state (State, Configs) ->
-    BlockName = block_utils:get_config_value(Configs, 'BlockName'),
-    BlockType = block_utils:get_config_value(Configs, 'BlockType'),
+    BlockName = block_utils:get_config_value(Configs, block_name),
+    BlockType = block_utils:get_config_value(Configs, block_type),
     
     io:format("~s: ~p Type: ~p~n", [State, BlockName, BlockType]).
     

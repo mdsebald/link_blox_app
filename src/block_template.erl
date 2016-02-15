@@ -9,35 +9,35 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/3, initialize/1, execute/1, delete/1]).
+-export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-%% Create a set of block values for this block type.  
-%% Any Config, Input, Output, or Internal attributes 
-%% not already defined in the set of common block values, 
-%% will be created here and intialized to their default values.  
-%% Initial Config and Input values are set here.
+type_name()-> template.  % atom, specifying the block type, usually the module name minus "block_"
+
+version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking change
+
+  
+%% Create a set of block attributes for this block type.  
+%% Init attributes are used to override the default 
+%% attribute values and add attributes to the lists of default attributes
+
+create(BlockName) -> create(BlockName, [], [], [], []).
    
-create(BlockName, InitConfigs, InitInputs)->
+create(BlockName, InitConfigs, InitInputs) -> create(BlockName, InitConfigs, InitInputs, [],[]).
 
-    % Create an initial set of common block values
-	{CommonConfigs, CommonInputs, CommonOutputs, CommonInternals} = 
-                             block_common:create(BlockName, type_name(), version()),
-	
-    % Create any Config, Input, Output, and/or Internal attributes
-    % specific for this block type and intialize them to their default values
+create(BlockName, InitConfigs, InitInputs, InitOutputs, InitInternals)->
+     
+    %% Update Default Config, Input, Output, and Internal attribute values 
+    %% with the initial values passed into this function.
+    %%
+    %% If any of the intial attributes do not already exist in the 
+    %% default attribute lists, merge_attribute_lists() will create it.
+    %% (This is useful for block types where the number of attributes is not fixed)
     
-    %% Update Config and Input attribute values with the
-    %% Initial Config and Input values passed into this function
-    %% If any block type specific Config, Input, Output 
-    %% attribute does not exist yet, create it here 
-    %% (e.g. The number of inputs for certain block types 
-    %%  will not be known until the block is created.)
-    
-    Configs = block_utils:merge_attribute_lists(CommonConfigs, InitConfigs),
-    Inputs = block_utils:merge_attribute_lists(CommonInputs, InitInputs), 
-    Outputs = CommonOutputs,
-    Internals = CommonInternals,
+    Configs = block_utils:merge_attribute_lists(default_configs(BlockName), InitConfigs),
+    Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+    Outputs = block_utils:merge_attribut_lists(default_outputs(), InitOutputs),
+    Internals = block_utils:merge_attribute_lists(defaul_internals(), InitInternals),
 
     % This is the block state, 
 	{BlockName, ?MODULE, Configs, Inputs, Outputs, Internals}.
@@ -87,11 +87,22 @@ delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
     % Perform any other block type specific delete functionality here
 
 
-
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-type_name()-> 'Template'.
-
-version() -> "0.1.0".
+default_configs(BlockName) -> 
+    block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
+                            []).  % Insert block type specific config attributes here
+ 
+default_inputs() -> 
+     block_utils:merge_attribute_lists(block_common:inputs(),
+                            []). % Insert block type specific input attributes here
+                            
+default_outputs() -> 
+        block_utils:merge_attribute_lists(block_common:outputs(),
+                            []). % Insert block type specific output attributes here
+                            
+default_internals() -> 
+        block_utils:merge_attribute_lists(block_common:internals(),
+                            []). % Insert block type specific internal attributes here

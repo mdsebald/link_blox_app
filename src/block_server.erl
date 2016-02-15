@@ -311,6 +311,8 @@ handle_info(Info, State) ->
 %% ====================================================================
 terminate(_Reason, BlockValues) ->
 	{_BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
+    % TODO: Need to unlink this block from the supervisor, or it will just get restarted
+    % TODO: delete the links between this block and other blocks
 	BlockModule:delete(BlockValues),
     ok.
 
