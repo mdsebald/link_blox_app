@@ -134,12 +134,19 @@ initialize(Configs, Outputs, Internals) ->
 %%
 execute(Configs, Outputs, Internals, Value, Status) ->
 
-	NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
-	NewOutputs2 = block_utils:set_output_value(NewOutputs1, status, Status),
+	case block_utils:get_output_value(Outputs, status) of
+        normal ->
+	       NewInternals1 = update_exec_count(Internals),
+	       NewInternals2 = block_utils:set_internal_value(NewInternals1, last_exec, calendar:now_to_local_time(erlang:timestamp())),
+           NewInternals3 = setup_execute_timer(Configs, NewInternals2);
+        _ -> % block is not executing freeze the exec_count and last_exec time
+           NewInternals3 = Internal 
+    end,
     
-	NewInternals1 = update_exec_count(Internals),
-	NewInternals2 = block_utils:set_internal_value(NewInternals1, last_exec, calendar:now_to_local_time(erlang:timestamp())),
-    NewInternals3 = setup_execute_timer(Configs, NewInternals2),
+    % Now update the value and status outputs
+    NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
+	NewOutputs2 = block_utils:set_output_value(NewOutputs1, status, Status),
+
     {NewOutputs2, NewInternals3}.
 
 
