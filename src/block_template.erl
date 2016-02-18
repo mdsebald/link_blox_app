@@ -18,8 +18,8 @@ version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking 
 
   
 %% Create a set of block attributes for this block type.  
-%% Init attributes are used to override the default 
-%% attribute values and add attributes to the lists of default attributes
+%% Init attributes are used to override the default attribute values
+%% and to add attributes to the lists of default attributes
 
 create(BlockName) -> create(BlockName, [], [], [], []).
    
@@ -31,12 +31,12 @@ create(BlockName, InitConfigs, InitInputs, InitOutputs, InitInternals)->
     %% with the initial values passed into this function.
     %%
     %% If any of the intial attributes do not already exist in the 
-    %% default attribute lists, merge_attribute_lists() will create it.
+    %% default attribute lists, merge_attribute_lists() will create them.
     %% (This is useful for block types where the number of attributes is not fixed)
     
     Configs = block_utils:merge_attribute_lists(default_configs(BlockName), InitConfigs),
     Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-    Outputs = block_utils:merge_attribut_lists(default_outputs(), InitOutputs),
+    Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
     Internals = block_utils:merge_attribute_lists(default_internals(), InitInternals),
 
     % This is the block state, 

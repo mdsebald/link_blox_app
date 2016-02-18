@@ -33,7 +33,7 @@ $(DEPSOLVER_PLT):
 					--apps $(ERLANG_APPS) -r deps
 
 dialyzer: $(DEPSOLVER_PLT)
-		dialyzer --plt $(DEPSOLVER_PLT) $(DIALYZER_OPTS) --src src
+		dialyzer --plt $(DEPSOLVER_PLT) $(DIALYZER_OPTS) --src src -r src
 
 typer: $(DEPSOLVER_PLT)
 		typer --plt $(DEPSOLVER_PLT) -r ./src
