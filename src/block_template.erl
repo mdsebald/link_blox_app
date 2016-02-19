@@ -6,6 +6,8 @@
 
 -module(block_template).
 
+-include("block_state.hrl").
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -20,6 +22,7 @@ version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking 
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
 %% and to add attributes to the lists of default attributes
+-spec create(BlockName :: atom()) -> block_state().
 
 create(BlockName) -> create(BlockName, [], [], [], []).
    

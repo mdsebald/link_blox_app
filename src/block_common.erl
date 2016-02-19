@@ -140,7 +140,7 @@ execute(Configs, Outputs, Internals, Value, Status) ->
 	       NewInternals2 = block_utils:set_internal_value(NewInternals1, last_exec, calendar:now_to_local_time(erlang:timestamp())),
            NewInternals3 = setup_execute_timer(Configs, NewInternals2);
         _ -> % block is not executing freeze the exec_count and last_exec time
-           NewInternals3 = Internal 
+           NewInternals3 = Internals 
     end,
     
     % Now update the value and status outputs
