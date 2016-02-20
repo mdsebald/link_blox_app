@@ -1,8 +1,13 @@
-%% @author Mark Sebald
-%% @doc Block server.  gen_server behavior to execute custom block functionality
-
+%%% @doc 
+%%% Block server.  gen_server behavior to execute custom block functionality
+%%%
+%%% @end
 
 -module(block_server).
+
+-author("Mark Sebald").
+
+-include("block_state.hrl").
 
 -behaviour(gen_server).
 
@@ -16,7 +21,7 @@
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
-	{BlockName, _BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
 	gen_server:start_link({local, BlockName}, ?MODULE, BlockValues, []).
 
 
@@ -100,7 +105,7 @@ disconnect(BlockName, ValueName) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(BlockValues) ->
-	{BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
+	{BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
 	
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
@@ -167,14 +172,14 @@ handle_call(Request, From, BlockValues) ->
 %% ====================================================================
 handle_cast(execute, CurrentBlockValues) ->
 	
-   {BlockName, BlockModule, _Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
+    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
     
 	% call custom execute() function
     % i.e. read inputs and calculate output values
 	NewBlockValues = BlockModule:execute(CurrentBlockValues),
     	
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _NewConifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
+	{BlockName, BlockModule, _NewConfig, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
 
 	update_blocks(BlockName, CurrentOutputs, NewOutputs),
 
@@ -185,7 +190,7 @@ handle_cast(execute, CurrentBlockValues) ->
 %% ====================================================================
 handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	
-	{BlockName, BlockModule, Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
+	{BlockName, BlockModule, Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
 	UpdatedInputBlockValues = block_utils:set_input_link_value(CurrentBlockValues, ValueName, FromBlockName, null, Value),
@@ -197,7 +202,7 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	NewBlockValues = BlockModule:execute(UpdatedInputBlockValues),
 		
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, Conifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
+	{BlockName, BlockModule, Config, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
 
 	update_blocks(BlockName, CurrentOutputs, NewOutputs),
 
@@ -217,7 +222,7 @@ handle_cast(configure, BlockValues) ->
 	
 	% If any of this block's inputs are pointing at another block that is not running / registered yet
 	% Set the block status output and last error output, delay, and call configuration again.
-	{BlockName, _BlockModule, _Conifgs, Inputs, _Outputs, _Internals} = BlockValues,
+	{BlockName, _BlockModule, _Config, Inputs, _Outputs, _Private} = BlockValues,
 	
 	case unregistered_blocks(Inputs) of
 		ok ->
@@ -242,7 +247,7 @@ handle_cast(configure, BlockValues) ->
 %% =====================================================================
 handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 	% TODO: Sanity check make sure new block name, type and version match old block name, type and version/(same major rev)
-	{BlockName, _BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues, 
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues, 
 	io:format("~p: Reconfiguring block~n", [BlockName]),
 
 	% Replace current state Block values with new values and configure block again
@@ -256,7 +261,7 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 %% =====================================================================
 handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
 	
-	{BlockName, _BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
 		
 	%% Add the connection to 'ToBlockName' to this output 'ValueName's list of connections
 	NewBlockValues = block_utils:add_connection(BlockValues, ValueName, ToBlockName),
@@ -289,14 +294,14 @@ handle_cast(Msg, State) ->
 %% ====================================================================
 handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
     
-    {BlockName, BlockModule, _Conifgs, _Inputs, CurrentOutputs, _Internals} = CurrentBlockValues,
+    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
     % GPIO Interupt message from Erlang ALE library, 
     % Execute the block connected to this interrupt
     % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
     NewBlockValues = BlockModule:execute(CurrentBlockValues),
     
     % Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _Conifgs, _NewInputs, NewOutputs, _NewInternals} = NewBlockValues,
+	{BlockName, BlockModule, _Config, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
 
 	update_blocks(BlockName, CurrentOutputs, NewOutputs),
 
@@ -317,7 +322,7 @@ handle_info(Info, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, BlockValues) ->
-	{_BlockName, BlockModule, _Conifgs, _Inputs, _Outputs, _Internals} = BlockValues,
+	{_BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
     % TODO: Need to unlink this block from the supervisor, or it will just get restarted
     % TODO: delete the links between this block and other blocks
 	BlockModule:delete(BlockValues),

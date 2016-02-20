@@ -1,17 +1,16 @@
-%%
-%% @author Mark Sebald
-%% @doc Block State Type Definition  
-%% Description:  Block State is used in many places, 
-%%               Define it once here.
-%% 
+%%% @doc 
+%%% Block State Type Definition  
+%%% Block State is used in many places, 
+%%% Define it once here.
+%%% @end 
+
+-author("Mark Sebald").
 
 -type block_state() :: { 
                          BlockName :: atom(), 
                          BlockModule :: module(), 
-                         Configs :: list(), 
+                         Config :: list(), 
                          Inputs :: list(), 
                          Outputs :: list(), 
-                         Internals :: list() 
+                         Private :: list() 
                        }.
-
-%%

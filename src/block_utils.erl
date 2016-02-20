@@ -1,15 +1,18 @@
-%% @author Mark Sebald
-%% @doc Common block utility functions
-
+%%% @doc 
+%%% Common block utility functions     
+%%%               
+%%% @end 
 
 -module(block_utils).
+
+-author("Mark Sebald").
 
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([get_config_value/2, get_input_value/2, get_output_value/2, get_internal_value/2, get_value/2]).
--export([set_input_value/3, set_output_value/3, set_internal_value/3, set_value/3]).
+-export([get_config_value/2, get_input_value/2, get_output_value/2, get_private_value/2, get_value/2]).
+-export([set_input_value/3, set_output_value/3, set_private_value/3, set_value/3]).
 -export([add_connection/3, set_input_link/3, set_input_link_value/5]).
 -export([update_attribute_list/2, merge_attribute_lists/2]).
 -export([sleep/1]). 
@@ -40,17 +43,17 @@ get_output_value(Outputs, ValueName) ->
 		{ValueName, Value, _Connections} -> Value
  	end.
 
-get_internal_value(Internals, ValueName) ->
-	case get_attribute_value(Internals, ValueName) of
+get_private_value(Private, ValueName) ->
+	case get_attribute_value(Private, ValueName) of
 		not_found -> 
-			io:format("get_value() Error: ~p not found in Internal values~n", [ValueName]),
+			io:format("get_value() Error: ~p not found in Private values~n", [ValueName]),
 			not_found;
 		{ValueName, Value} -> Value
  	end.
 	
 get_value(BlockValues, ValueName)->
 	
-	{BlockName, _BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
+	{BlockName, _BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
 	
 	case get_attribute_value(Configs, ValueName) of
 		not_found ->
@@ -58,7 +61,7 @@ get_value(BlockValues, ValueName)->
 				not_found ->
 					case get_attribute_value(Outputs, ValueName) of
 						not_found ->
-							case get_attribute_value(Internals, ValueName) of
+							case get_attribute_value(Private, ValueName) of
 								not_found ->
 									io:format("~p get_value() Error: ~p not found in Block values~n", [BlockName, ValueName]),
 									not_found;
@@ -98,20 +101,20 @@ set_output_value(Outputs, ValueName, NewValue) ->
 			NewOutputs
 	end.	
 
-set_internal_value(Internals, ValueName, NewValue) ->
-	case get_attribute_value(Internals, ValueName) of
+set_private_value(Private, ValueName, NewValue) ->
+	case get_attribute_value(Private, ValueName) of
 		not_found ->
-			io:format("set_value() Error: ~p not found in Internal values~n", [ValueName]),
-			Internals;
+			io:format("set_value() Error: ~p not found in Private values~n", [ValueName]),
+			Private;
 		{ValueName, _OldValue} ->
-			NewInternal = {ValueName, NewValue},
-			NewInternals = replace_attribute_value(Internals, ValueName, NewInternal),
-			NewInternals
+			NewPrivateValue = {ValueName, NewValue},
+			NewPrivate = replace_attribute_value(Private, ValueName, NewPrivateValue),
+			NewPrivate
 	end.	
 
 set_value(BlockValues, ValueName, NewValue)->
 	
-	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
 	
 	% Can't modify Configs, don't bother checking those
 
@@ -119,31 +122,31 @@ set_value(BlockValues, ValueName, NewValue)->
 		not_found ->
 			case get_attribute_value(Outputs, ValueName) of
 				not_found ->					
-					case get_attribute_value(Internals, ValueName) of
+					case get_attribute_value(Private, ValueName) of
 						not_found ->
 							io:format("~p set_value() Error. ~p not found in the BlockValues list~n", [BlockName, ValueName]),
 							BlockValues;  % Return Block values unchanged
 						{ValueName, _OldValue1} ->
-							NewInternal = {ValueName, NewValue},
-							NewInternals = replace_attribute_value(Internals, ValueName, NewInternal),
-							{BlockName, BlockModule, Configs, Inputs, Outputs, NewInternals}
+							NewPrivateValue = {ValueName, NewValue},
+							NewPrivate = replace_attribute_value(Private, ValueName, NewPrivateValue),
+							{BlockName, BlockModule, Configs, Inputs, Outputs, NewPrivate}
 					end;
 				{ValueName, _OldValue2, Connections} -> 
 					NewOutput = {ValueName, NewValue, Connections},
 					NewOutputs = replace_attribute_value(Outputs, ValueName, NewOutput),
-					{BlockName, BlockModule, Configs, Inputs, NewOutputs, Internals}
+					{BlockName, BlockModule, Configs, Inputs, NewOutputs, Private}
 			end; 
 		{ValueName, _OldValue3, Link} -> 
 			NewInput = {ValueName, NewValue, Link},
 			NewInputs = replace_attribute_value(Inputs, ValueName, NewInput),
-			{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}
+			{BlockName, BlockModule, Configs, NewInputs, Outputs, Private}
  	end.
 
 
 %% Update the input Link for the input value 'ValueName'
 set_input_link(BlockValues, ValueName, NewLink) ->
 	
-	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
 	
 	case get_attribute_value(Inputs, ValueName) of
 		not_found ->
@@ -153,7 +156,7 @@ set_input_link(BlockValues, ValueName, NewLink) ->
 		{ValueName, Value, _Link} ->
 			NewInput = {ValueName, Value, NewLink},
 			NewInputs = replace_attribute_value(Inputs, ValueName, NewInput),
-			{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}
+			{BlockName, BlockModule, Configs, NewInputs, Outputs, Private}
 	end.
 
 
@@ -161,7 +164,7 @@ set_input_link(BlockValues, ValueName, NewLink) ->
 %% Return the updated list of Input values
 set_input_link_value(BlockValues, NewValueName, FromBlockName, NodeName, NewValue) ->
 	
-	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
 
 	TargetLink = {NewValueName, FromBlockName, NodeName},
 
@@ -176,13 +179,13 @@ set_input_link_value(BlockValues, NewValueName, FromBlockName, NodeName, NewValu
 		end, 
 		Inputs),
 	
-	{BlockName, BlockModule, Configs, NewInputs, Outputs, Internals}.
+	{BlockName, BlockModule, Configs, NewInputs, Outputs, Private}.
 
 
 %% Add a connection 'ToBlockName' to the connection list of the value record of the given ValueName
 add_connection(BlockValues, ValueName, ToBlockName) ->
 	
-	{BlockName, BlockModule, Configs, Inputs, Outputs, Internals} = BlockValues,
+	{BlockName, BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
 	 
 	case get_attribute_value(Outputs, ValueName) of
 		
@@ -203,7 +206,7 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 				NewConnections = [ToBlockName | Connections],
 				NewOutput = {ValueName, Value, NewConnections},
 				NewOutputs = replace_attribute_value(Outputs, ValueName, NewOutput),
-				{BlockName, BlockModule, Configs, Inputs, NewOutputs, Internals}
+				{BlockName, BlockModule, Configs, Inputs, NewOutputs, Private}
 			end;
 		Unknown ->
 			io:format("~p add_connection() Error. Unknown output value record  ~p~n", [BlockName, Unknown]),
@@ -213,7 +216,7 @@ add_connection(BlockValues, ValueName, ToBlockName) ->
 
 %% Update attribute values in the attribute List with the values in the NewattributeList 
 %% and add any new attributes if they are not already in the AttributeList
-%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
+%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Private
 merge_attribute_lists(AttributeList, []) -> AttributeList;
 
 merge_attribute_lists(AttributeList, NewattributeList) ->
@@ -223,7 +226,7 @@ merge_attribute_lists(AttributeList, NewattributeList) ->
 
 
 %% Update the AttributeList with the new attributeValue
-%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
+%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Private
 update_attribute_list(AttributeList, NewattributeValue) ->
     % First element of any attribute value tuple is always the name 
     AttributeName = element(1, NewattributeValue),
@@ -235,7 +238,7 @@ update_attribute_list(AttributeList, NewattributeValue) ->
 
 	
 %% Get the attribute value record for the given AttributeName
-%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Internals
+%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Private
 get_attribute_value(AttributeList, AttributeName) ->
 	% ValueName is always the first element in the tuple, regardless of the ValueRecord type
 	case lists:keyfind(AttributeName, 1, AttributeList) of 
@@ -246,7 +249,7 @@ get_attribute_value(AttributeList, AttributeName) ->
 
 %% Replace the attributeName record in the AttributeList with the NewattributeValue
 %% Return the updated AttributeList
-%% This works on all types of value attribute value lists, Configs, Inputs, Outputs, and Internals
+%% This works on all types of value attribute value lists, Configs, Inputs, Outputs, and Private
 replace_attribute_value(AttributeList, AttributeName, NewattributeValue) ->
 	% attributeName is always the first element in the tuple, regardless of the attributeValue type
 	lists:keyreplace(AttributeName, 1, AttributeList, NewattributeValue).
@@ -254,7 +257,7 @@ replace_attribute_value(AttributeList, AttributeName, NewattributeValue) ->
 
 %% Add a new attribute value, {name, value} tuple, 
 %% to the end of the given attribute list and return a new list
-%% This works on all types of attribute value lists, Configs, Inputs, Outputs, and Internals
+%% This works on all types of attribute value lists, Configs, Inputs, Outputs, and Private
 add_attribute_value(AttributeList, NewattributeValue) ->
     AttributeList ++ [NewattributeValue].
 

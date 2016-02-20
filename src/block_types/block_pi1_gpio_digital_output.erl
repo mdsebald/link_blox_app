@@ -1,10 +1,14 @@
-%%
-%% @author Mark Sebald
-%% @doc Block Type: Digital Outputs 
-%% Description: Configure a Raspberry Pi 1 GPIO Pin as a Digital Output block
-%% 
+%%% @doc 
+%%% Block Type: Pi 1 GPIO Digital Output 
+%%% Description: Configure a Raspberry Pi 1 GPIO Pin as a Digital Output block
+%%%               
+%%% @end 
 
 -module(block_pi1_gpio_digital_output).
+
+-author("Mark Sebald").
+
+-include("../block_state.hrl").
 
 %% ====================================================================
 %% API functions
@@ -14,61 +18,65 @@
 
 %%
 %% Create a set of block values for this block type.  
-%% Any Config, Input, Output, or Internal attributes 
+%% Any Config, Input, Output, or Private attributes 
 %% not already defined in the set of common block values, 
 %% will be created here and intialized to their default values.  
 %% Initial Config and Input values are set here.
 %%   
-create(BlockName, InitConfigs, InitInputs)->
+create(BlockName, InitConfig, InitInputs)->
 
     % Create an initial set of common block values
-	{CommonConfigs, CommonInputs, CommonOutputs, CommonInternals} = 
+	{CommonConfig, CommonInputs, CommonOutputs, CommonPrivate} = 
                              block_common:create(BlockName, type_name(), version()),
                              
     % TODO: Still need to create Config: default value, Input: input value, 
-    % In case they are not created and set by the InitConfigs and InitInputs attributes
+    % In case they are not created and set by the InitConfig and InitInputs attributes
     
-    Configs = block_utils:merge_attribute_lists(CommonConfigs, InitConfigs),
+    Config = block_utils:merge_attribute_lists(CommonConfig, InitConfig),
     Inputs = block_utils:merge_attribute_lists(CommonInputs, InitInputs), 
     Outputs = CommonOutputs,
-    Internals = CommonInternals,
+    Private = CommonPrivate,
 
     % This is the block state, 
-	{BlockName, ?MODULE, Configs, Inputs, Outputs, Internals}.
+	{BlockName, ?MODULE, Config, Inputs, Outputs, Private}.
 
 
 %% 
 %% Initialize block values before starting execution
 %%
-initialize({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
+-spec initialize(block_state()) -> block_state().
+
+initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
     % Perform common block initializations
-    % Non-common Internal values are created here
-    {InitOutputs, InitInternals} = block_common:initialize(Configs, Outputs, Internals),
+    % Non-common Private values are created here
+    {InitOutputs, InitPrivate} = block_common:initialize(Config, Outputs, Private),
 	
-	PinNumber = block_utils:get_config_value(Configs, gpio_pin),
-	DefaultValue = block_utils:get_config_value(Configs, default_value),
+	PinNumber = block_utils:get_config_value(Config, gpio_pin),
+	DefaultValue = block_utils:get_config_value(Config, default_value),
 	    
     case gpio:start_link(PinNumber, output) of
         {ok, GpioPin} ->
- 	        NewInternals = block_utils:merge_attribute_lists(InitInternals, [{gpio_pin_ref, GpioPin}]),
+ 	        NewPrivate = block_utils:merge_attribute_lists(InitPrivate, [{gpio_pin_ref, GpioPin}]),
             set_pin_value_bool(GpioPin, DefaultValue);
             
         {error, ErrorResult} ->
             io:format("~p Error intitiating GPIO pin; ~p", [ErrorResult, PinNumber]),
-            NewInternals = Internals
+            NewPrivate = Private
     end,
 
-	{BlockName, BlockModule, Configs, Inputs, InitOutputs, NewInternals}.
+	{BlockName, BlockModule, Config, Inputs, InitOutputs, NewPrivate}.
 
 %%
 %%  Execute the block specific functionality
 %%
-execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
+-spec execute(block_state()) -> block_state().
+
+execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 	%io:format("~p Type: Pi GPIO Digital Output, evaluate() ~n", [BlockName]),
-    GpioPin = block_utils:get_internal_value(Internals, gpio_pin_ref),
-    DefaultValue = block_utils:get_config_value(Configs, default_value),
+    GpioPin = block_utils:get_private_value(Private, gpio_pin_ref),
+    DefaultValue = block_utils:get_config_value(Config, default_value),
 
     % Always check if block is enabled first
 	case block_utils:get_input_value(Inputs, enable) of
@@ -105,22 +113,22 @@ execute({BlockName, BlockModule, Configs, Inputs, Outputs, Internals}) ->
 			end,
             set_pin_value_bool(GpioPin, PinValue),
             % Perform common execute function for normally executing block
-            {NewOutputs, NewInternals} = block_common:execute(Configs, Outputs, Internals, Value, Status); 
+            {NewOutputs, NewPrivate} = block_common:execute(Config, Outputs, Private, Value, Status); 
 
 		false ->	% Block is Disabled, set GPIO pin to default value
             set_pin_value_bool(GpioPin, DefaultValue),
-			{NewOutputs, NewInternals} = block_common:execute(Configs, Outputs, Internals, not_active, disabled) 
+			{NewOutputs, NewPrivate} = block_common:execute(Config, Outputs, Private, not_active, disabled) 
 	end,
     
-    {BlockName, BlockModule, Configs, Inputs, NewOutputs, NewInternals}.
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 
 %% 
 %%  Delete the block
 %%	
     
-delete({_BlockName, _BlockModule, Configs, _Inputs, _Outputs, Internals}) ->
-	block_common:delete(Configs, Internals).
+delete({_BlockName, _BlockModule, Config, _Inputs, _Outputs, Private}) ->
+	block_common:delete(Config, Private).
     % Perform any other block type specific delete functionality here
 
 
