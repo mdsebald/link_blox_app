@@ -48,9 +48,18 @@ override(BlockName, Value)->
 get_values(BlockName) ->
 	gen_server:call(BlockName, get_values).
 
-%% Execute the block with the current set of values
+%% Execute the block 
 execute(BlockName) ->
     gen_server:cast(BlockName, execute).
+    
+%% Execute the block on timer timeout
+timer_execute(BlockName) ->
+    gen_server:cast(BlockName, timer_execute).
+
+%% Execute the block on timer timeout
+executor_execute(BlockName) ->
+    gen_server:cast(BlockName, executor_execute).
+
 
 %% Send the given Value i.e {BlockName, ValueName, Value} to each block the list of BlockNames
 %% i.e. Push the value from the output of one block to the inputs of the connected blocks
@@ -168,14 +177,49 @@ handle_call(Request, From, BlockValues) ->
 %% ====================================================================
 %% Execute the block using the current set of Block values,
 %% This message is used to directly execute the block evaluate function, 
-%% This could come from another block, or the block may be operating on a timer 
 %% ====================================================================
 handle_cast(execute, CurrentBlockValues) ->
 	
     {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
     
-	% call custom execute() function
-    % i.e. read inputs and calculate output values
+	% Execute the block code
+	NewBlockValues = BlockModule:execute(CurrentBlockValues),
+    	
+	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
+	{BlockName, BlockModule, _NewConfig, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
+
+	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+
+	{noreply, NewBlockValues};
+    
+%% ====================================================================
+%% Execute the block using the current set of Block values,
+%% This message is used to execute the block on a timer timeout, 
+%% ====================================================================
+handle_cast(timer_execute, CurrentBlockValues) ->
+	
+    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
+    
+	% Execute the block code
+	NewBlockValues = BlockModule:execute(CurrentBlockValues),
+    	
+	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
+	{BlockName, BlockModule, _NewConfig, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
+
+	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+
+	{noreply, NewBlockValues};
+
+
+%% ====================================================================
+%% Execute the block using the current set of Block values,
+%% This message is used to execute the block on command from another block,  
+%% ====================================================================
+handle_cast(executor_execute, CurrentBlockValues) ->
+	
+    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
+    
+	% Execute the block code
 	NewBlockValues = BlockModule:execute(CurrentBlockValues),
     	
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
@@ -195,10 +239,9 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	% Update the block input(s), that are linked this value, with the new Value
 	UpdatedInputBlockValues = block_utils:set_input_link_value(CurrentBlockValues, ValueName, FromBlockName, null, Value),
 	
-	% call custom execute() function
-    % TODO: Don't execute block if block is executed via timer timeout, or direct execution
+    % TODO: Don't execute block if block is executed via timer or executor execution
     %       Just update the input values and leave it at that
-    % i.e. read inputs and calculate output values
+    % Execute the block code
 	NewBlockValues = BlockModule:execute(UpdatedInputBlockValues),
 		
 	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
@@ -437,4 +480,109 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 			% output values are same, just continue
 	   		update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs)
 	end.
-	
+
+%%
+%% Execute the block code
+%%
+execute_block(BlockValues) ->
+
+    {BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
+    
+    EnableInput = block_utils:get_input_value(Inputs, enable),
+    
+    % If block is enabled
+    if is_boolean(EnableInput) andalso EnableInput ->
+        NewBlockValues = BlockModule:execute(BlockValues),
+        % if status is normal
+        %     update 
+        if blockutils:get_output_value(Outputs, status) == normal
+        
+    end,
+    
+    % If block is disabled
+    if is_boolean(EnableInput) andalso not EnableInput ->
+        DisabledValue = block_utils:get_input_value(Inputs, disabled_value),
+        
+    
+    end,
+    
+    % Check if Enable input value is a valid value
+    if not is_boolean(EnableInput) ->
+        io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput])
+    end,
+    
+    {BlockName, BlockModule, Config, _NewInputs, NewOutputs, NewPrivate} = NewBlockValues,
+   
+    {Status, NewPrivate2} = update_execution_timer(BlockName, Inputs, NewPrivate),
+    
+	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+    NewBlockValues.
+
+
+
+%%
+%% Update the block execution timer 
+%% Return status and updated Timer Reference 
+%%
+update_execution_timer(BlockName, Inputs, Private) ->
+
+    ExecuteInterval = block_utils:get_input_value(Inputs, execute_interval),
+    TimerRef = block_utils:get_input_value(Private, timer_ref),
+    
+    % Cancel block execution timer, if it is set   
+    cancel_timer(BlockName, TimerRef), 
+    
+    % Check validity of ExecuteInterval input value
+    if is_integer(ExecuteInterval) andalso (ExecuteInterval == 0) ->
+        Status = normal, 
+        NewTimerRef = empty
+    end,
+    
+    if is_integer(ExecuteInterval) andalso (0 < ExecuteInterval) ->
+        {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval, TimerRef)
+    end,
+    
+    if not is_integer(ExecuteInterval) orelse (ExecuteInterval < 0) ->
+        Status = input_error, 
+        NewTimerRef = empty,
+        io:format("~p Error: Invalid execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
+    end,
+    NewPrivate = block_utils:set_private_value(Private, timer_ref, NewTimerRef),
+    {Status, NewPrivate}.
+    
+% Cancel block execution timer, if the timer is set   
+cancel_timer(BlockName, TimerRef)
+    if (TimerRev /= empty) ->
+        case timer:cancel(TimerRef) of 
+            {ok, cancel} -> 
+                ok;
+            
+            {error, Reason} ->
+                io:format("~p Error: ~p Canceling execution timer ~p ~n", [BlockName, Reason, TimerRef]),
+                error
+        end,
+        
+        true -> ok
+    end.
+
+% Setup timer to execute block after timer expires 
+set_timer(BlockName, ExecuteInterval) ->
+    case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
+        {ok, TimerRef} -> 
+            {normal, TimerRef};
+         
+        {error, Reason} -> 
+            io:format("~p Error: ~p Setting execution timer ~n", [BlockName, Reason]),
+            {process_error, empty}
+    end.   	
+
+% Track execute time and count
+update_execute_track(Private) ->
+    % Record last executed timestamp
+	NewPrivate = block_utils:set_private_value(Private, last_exec, calendar:now_to_local_time(erlang:timestamp())),
+
+	% Arbitrarily roll over Execution Counter at 999,999,999
+	case block_utils:get_private_value(NewPrivate, exec_count) + 1 of
+		1000000000   -> block_utils:set_private_value(NewPrivate, exec_count, 0);
+		NewExecCount -> block_utils:set_private_value(NewPrivate, exec_count, NewExecCount)
+	end.

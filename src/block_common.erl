@@ -83,15 +83,19 @@ inputs() ->
     [
       {enable, true, {fixed, null, null}},      % Block will execute as long as enable input is true
       
-      {executors, [], {fixed, null, null}},     % List of other blocks that are allowed execute this block.
+      {disabled_value, not_active, {fixed, null, null}},  % Set block output(s) to this value 
+                                                          % when block is disaabled or in error 
+      
+      {execute_in, empty, {fixed, null, null}},     % Link to block allowed execute this block.
                                                 % If this list contains one or more block names, 
                                                 % then execute only on receiving an execute command message
                                                 % i.e. Implement Control Flow 
       
-      {exec_interval, 0, {fixed, null, null}}   % If > 0, execute block every 'exec_interval' milliseconds.
+      {execute_interval, 0, {fixed, null, null}}   % If > 0, execute block every 'execute_interval' milliseconds.
                                                 % This is used to execute a block at fixed intervals
                                                 % instead of being executed by other blocks.
                                                 % or executed on change of input value
+      
     ].
     
 %%
@@ -100,7 +104,8 @@ inputs() ->
 outputs() ->
     [ 
       {value, not_active, []},
-	  {status, created, []}
+	  {status, created, []},
+      {execute_out, false, []}
     ].
     
     
@@ -199,7 +204,7 @@ setup_execute_timer(Config, Private) ->
 
 
 update_exec_count(Private) ->
-	% Arbitrarily roll over Execution Counter at 1,000,000,000
+	% Arbitrarily roll over Execution Counter at 999,999,999
 	case block_utils:get_private_value(Private, exec_count) + 1 of
 		1000000000   -> block_utils:set_private_value(Private, exec_count, 0);
 		NewExecCount -> block_utils:set_private_value(Private, exec_count, NewExecCount)
