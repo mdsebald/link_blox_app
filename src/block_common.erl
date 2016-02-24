@@ -103,9 +103,9 @@ inputs() ->
 %%
 outputs() ->
     [ 
-      {value, not_active, []},
-	  {status, created, []},
-      {execute_out, false, []}
+      {execute_out, false, []},
+      {status, created, []},
+      {value, not_active, []}
     ].
     
     

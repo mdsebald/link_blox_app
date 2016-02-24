@@ -19,6 +19,8 @@
 
 %% Get the Value of ValueName 
 %% Return 'not_found', if ValueName is not found in the Values list
+%% TODO: Just combine get/set_..._value() to one get/set_value() function
+%%       Change get_attribute_value() name to just get_attribute(),
 get_config_value(Configs, ValueName) ->
 	case get_attribute_value(Configs, ValueName) of
 		not_found ->

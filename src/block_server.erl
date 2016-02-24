@@ -55,14 +55,20 @@ execute(BlockName) ->
 %% Execute the block on timer timeout
 timer_execute(BlockName) ->
     gen_server:cast(BlockName, timer_execute).
-
-%% Execute the block on timer timeout
-executor_execute(BlockName) ->
-    gen_server:cast(BlockName, executor_execute).
-
+    
+%% Execute blocks connected to the 'execute_out' output 
+%% i.e Control Flow
+execute_out_execute([]) ->
+    ok;
+execute_out_execute(BlockNames) ->
+    [BlockName | RemainingBlockNames] = BlockNames,
+    gen_server:cast(BlockName, execute_out_execute).
+    execute_out_execute(RemainingBlockNames).
 
 %% Send the given Value i.e {BlockName, ValueName, Value} to each block the list of BlockNames
-%% i.e. Push the value from the output of one block to the inputs of the connected blocks
+%% Push the value from the output of one block to the inputs of the connected blocks
+%% i.e. Data Flow
+%% TODO: Convert to a common Target Link: {NodeName, BlockName, ValueName} plus Value
 update([], _FromBlockName, _ValueName, _Value) ->
 	ok;
 update(BlockNames, FromBlockName, ValueName, Value) ->
@@ -179,17 +185,8 @@ handle_call(Request, From, BlockValues) ->
 %% This message is used to directly execute the block evaluate function, 
 %% ====================================================================
 handle_cast(execute, CurrentBlockValues) ->
-	
-    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
-    
 	% Execute the block code
-	NewBlockValues = BlockModule:execute(CurrentBlockValues),
-    	
-	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _NewConfig, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
-
-	update_blocks(BlockName, CurrentOutputs, NewOutputs),
-
+	NewBlockValues = execute_block(CurrentBlockValues),
 	{noreply, NewBlockValues};
     
 %% ====================================================================
@@ -197,17 +194,8 @@ handle_cast(execute, CurrentBlockValues) ->
 %% This message is used to execute the block on a timer timeout, 
 %% ====================================================================
 handle_cast(timer_execute, CurrentBlockValues) ->
-	
-    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
-    
 	% Execute the block code
-	NewBlockValues = BlockModule:execute(CurrentBlockValues),
-    	
-	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _NewConfig, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
-
-	update_blocks(BlockName, CurrentOutputs, NewOutputs),
-
+	NewBlockValues = execute_block(CurrentBlockValues),
 	{noreply, NewBlockValues};
 
 
@@ -215,18 +203,9 @@ handle_cast(timer_execute, CurrentBlockValues) ->
 %% Execute the block using the current set of Block values,
 %% This message is used to execute the block on command from another block,  
 %% ====================================================================
-handle_cast(executor_execute, CurrentBlockValues) ->
-	
-    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
-    
+handle_cast(execute_out_execute, CurrentBlockValues) ->
 	% Execute the block code
-	NewBlockValues = BlockModule:execute(CurrentBlockValues),
-    	
-	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _NewConfig, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
-
-	update_blocks(BlockName, CurrentOutputs, NewOutputs),
-
+	NewBlockValues = execute_block(CurrentBlockValues),
 	{noreply, NewBlockValues};
 
 %% ====================================================================
@@ -234,20 +213,22 @@ handle_cast(executor_execute, CurrentBlockValues) ->
 %% ====================================================================
 handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	
-	{BlockName, BlockModule, Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
+	{BlockName, BlockModule, Config, Inputs, CurrentOutputs, Private} = CurrentBlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
-	UpdatedInputBlockValues = block_utils:set_input_link_value(CurrentBlockValues, ValueName, FromBlockName, null, Value),
+	NewInputs = update_linked_input_values(Inputs, ValueName, FromBlockName, null, Value),
 	
-    % TODO: Don't execute block if block is executed via timer or executor execution
-    %       Just update the input values and leave it at that
-    % Execute the block code
-	NewBlockValues = BlockModule:execute(UpdatedInputBlockValues),
-		
-	% Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, Config, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
-
-	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+    % Don't execute block if block is executed via timer or executor execution
+    % Just update the input values and leave it at that
+    TimerRef = block_utils:get_private_value(Private, timer_ref),
+    {execute_in, _Value, LinkedBlocks} = block_utils:get_attribute_value(NewInputs, execute_in),
+    
+    if (TimerRev == empty) andalso (LinkedBlocks == []) ->
+        % Block is executed via change of input value, Data Flow
+	    NewBlockValues = execute_block({BlockName, BlockModule, Config, NewInputs, Outputs, Private});
+	true -> % Block will be executed via timer timeout or linked block execution, just return
+        NewBlockValues = {BlockName, BlockModule, Config, NewInputs, Outputs, Private},
+    end,
 
 	{noreply, NewBlockValues};
 
@@ -471,15 +452,22 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 	%io:format("~p update_blocks, ValueName: ~p, comparing CurrentValue: ~p and NewValue: ~p~n", [FromBlockName, ValueName, CurrentValue, NewValue]),
 
     % For each output value that changed, call update() to send a the new value message to each connected block.
-	case CurrentValue /= NewValue of
-		true ->
-			update(Connections, FromBlockName, ValueName, NewValue),
-			update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs);
+    % don't check the 'execute_out' output, that is for control flow execution
+	if (ValueName /= execute_out) andalso (CurrentValue /= NewValue) -> 
+        update(Connections, FromBlockName, ValueName, NewValue)
+    end,
+    
+    update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs).
+  
+%%    
+%% Send an execute message to each block connected to the 'execute_out' output of this block
+%% This will implement control flow execution, versus data flow done in the update_blocks function. 
+%%
+update_execute(Outputs)->
+	
+    {execute_out,  _Value, BlockNames} = block_utils:get_attribute_value(Outputs, execute_out),
+    execute_out_execute(BlockNames).
 
-		false ->  
-			% output values are same, just continue
-	   		update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs)
-	end.
 
 %%
 %% Execute the block code
@@ -493,27 +481,35 @@ execute_block(BlockValues) ->
     % If block is enabled
     if is_boolean(EnableInput) andalso EnableInput ->
         NewBlockValues = BlockModule:execute(BlockValues),
+        {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate} = NewBlockValues,
         % if status is normal
-        %     update 
-        if blockutils:get_output_value(Outputs, status) == normal
-        
+        if blockutils:get_output_value(NewOutputs, status) == normal ->
+            NewPrivate2 = update_execute_track(NewPrivate);
+        true->  % Block Status is not normal
+            % Assume 
+            % Don't update execution track
+        end;
     end,
     
     % If block is disabled
     if is_boolean(EnableInput) andalso not EnableInput ->
         DisabledValue = block_utils:get_input_value(Inputs, disabled_value),
-        
-    
+        % Set output Value(s) to disabled value
+        % Set status output to 'disabled'
+        % Don't update execution track
     end,
     
     % Check if Enable input value is a valid value
     if not is_boolean(EnableInput) ->
         io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput])
+        % Set output Value(s) to disabled value
+        % Set status output to 'input_error'
+        % Don't update execution track
     end,
     
-    {BlockName, BlockModule, Config, _NewInputs, NewOutputs, NewPrivate} = NewBlockValues,
+    {BlockName, BlockModule, Config, NewInputs, NewOutputs, NewPrivate} = NewBlockValues,
    
-    {Status, NewPrivate2} = update_execution_timer(BlockName, Inputs, NewPrivate),
+    {Status, NewPrivate2} = update_execution_timer(BlockName, NewInputs, NewPrivate),
     
 	update_blocks(BlockName, CurrentOutputs, NewOutputs),
     NewBlockValues.
@@ -579,10 +575,32 @@ set_timer(BlockName, ExecuteInterval) ->
 % Track execute time and count
 update_execute_track(Private) ->
     % Record last executed timestamp
-	NewPrivate = block_utils:set_private_value(Private, last_exec, calendar:now_to_local_time(erlang:timestamp())),
+	NewPrivate = block_utils:set_private_value(Private, last_exec, erlang:monotonic_time(native)),
 
 	% Arbitrarily roll over Execution Counter at 999,999,999
 	case block_utils:get_private_value(NewPrivate, exec_count) + 1 of
 		1000000000   -> block_utils:set_private_value(NewPrivate, exec_count, 0);
 		NewExecCount -> block_utils:set_private_value(NewPrivate, exec_count, NewExecCount)
 	end.
+    
+    
+    
+%% Update the value of every input in this block linked to the 
+%% 'ValueName:FromBlockName:NodeName' output value
+%% Return the updated list of Input values
+%% TODO: Switch to passing around a target link {NodeName, BlockName, ValueName}
+update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewValue) ->
+
+	TargetLink = {NewValueName, FromBlockName, NodeName},
+
+	% Update the value of each input record pointing at the given value 
+	lists:map(
+		fun(Input) -> 
+			{ValueName, _Value, Link} = Input,
+			case Link =:= TargetLink of
+				true  -> {ValueName, NewValue, Link};
+				false -> Input	% This block input is not linked to the target block output, don't change the input value 
+			end
+		end, 
+		Inputs).
+ 
