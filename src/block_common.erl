@@ -83,9 +83,6 @@ inputs() ->
     [
       {enable, true, {fixed, null, null}},      % Block will execute as long as enable input is true
       
-      {disabled_value, not_active, {fixed, null, null}},  % Set block output(s) to this value 
-                                                          % when block is disaabled or in error 
-      
       {execute_in, empty, {fixed, null, null}},     % Link to block allowed execute this block.
                                                 % If this list contains one or more block names, 
                                                 % then execute only on receiving an execute command message

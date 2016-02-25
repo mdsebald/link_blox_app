@@ -493,19 +493,16 @@ execute_block(BlockValues) ->
     
     % If block is disabled
     if is_boolean(EnableInput) andalso not EnableInput ->
-        DisabledValue = block_utils:get_input_value(Inputs, disabled_value),
-        % Set output Value(s) to disabled value
-        % Set status output to 'disabled'
-        % Don't update execution track
+        NewOutputs = update_all_outputs(Outputs, not_active, disabled)
+        % Don't update execution tracking
     end,
     
     % Check if Enable input value is a valid value
     if not is_boolean(EnableInput) ->
         io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput])
-        % Set output Value(s) to disabled value
-        % Set status output to 'input_error'
-        % Don't update execution track
-    end,
+        NewOutputs = update_all_outputs(Outputs, not_active, input_error)
+        % Don't udpate execution tracking
+     end,
     
     {BlockName, BlockModule, Config, NewInputs, NewOutputs, NewPrivate} = NewBlockValues,
    
@@ -604,3 +601,19 @@ update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewVal
 		end, 
 		Inputs).
  
+ 
+%% 
+%% Update all outputs to the New value,
+%% except update status output to the New Staus value
+%% Used to mass update block outputs in disabled or error conditions
+%% 
+update_all_outputs(Outputs, NewValue, NewStatus) ->
+    lists:map(
+        fun(Output) ->
+            {ValueName, Value, BlockNames} = Output,
+            case ValueName of
+                status -> {ValueName, NewStatus, BlockNames};
+                _      -> {ValueName, NewValue,  BlockNames}
+            end
+         end,
+         Outputs).
