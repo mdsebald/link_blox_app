@@ -69,7 +69,7 @@ configs(Name, Type, Version) ->
     [ 
       {block_name, Name},
 	  {block_type, Type},
-	  {version, Version},
+	  {version, Version}
     ],
     
     log_state("Creating", Config),

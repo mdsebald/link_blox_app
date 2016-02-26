@@ -1,6 +1,6 @@
 %%% @doc 
-%%% Block Type: Toggle 
-%%% Description: Toggle the binary Value output each time the block is executed
+%%% Block Type: Toggle
+%%% Description: Toggle binary output valie    
 %%%               
 %%% @end 
 
@@ -13,35 +13,36 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/3, initialize/1, execute/1, delete/1]).
+-export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-%% Create a set of block values for this block type.  
-%% Any Config, Input, Output, or Private attributes 
-%% not already defined in the set of common block values, 
-%% will be created here and intialized to their default values.  
-%% Initial Config and Input values are set here.
+type_name()-> toggle.  % atom, specifying the block type, usually the module name minus "block_"
+
+version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking change
+
+  
+%% Create a set of block attributes for this block type.  
+%% Init attributes are used to override the default attribute values
+%% and to add attributes to the lists of default attributes
+-spec create(BlockName :: atom()) -> block_state().
+
+create(BlockName) -> create(BlockName, [], [], [], []).
    
-create(BlockName, InitConfig, InitInputs)->
+create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitInputs, [],[]).
 
-    % Create an initial set of common block values
-	{CommonConfig, CommonInputs, CommonOutputs, CommonPrivate} = 
-                             block_common:create(BlockName, type_name(), version()),
-	
-    % Create any Config, Input, Output, and/or Private attributes
-    % specific for this block type and intialize them to their default values
+create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
+     
+    %% Update Default Config, Input, Output, and Private attribute values 
+    %% with the initial values passed into this function.
+    %%
+    %% If any of the intial attributes do not already exist in the 
+    %% default attribute lists, merge_attribute_lists() will create them.
+    %% (This is useful for block types where the number of attributes is not fixed)
     
-    %% Update Config and Input attribute values with the
-    %% Initial Config and Input values passed into this function
-    %% Any block type sp Config or Input attribute does not exist yet, 
-    %% create it here 
-    %%(e.g. The number of inputs for certain block types 
-    %% will not be known until the block is created.)
-    
-    Config = block_utils:merge_attribute_lists(CommonConfig, InitConfig),
-    Inputs = block_utils:merge_attribute_lists(CommonInputs, InitInputs), 
-    Outputs = CommonOutputs,
-    Private = CommonPrivate,
+    Config = block_utils:merge_attribute_lists(default_configs(BlockName), InitConfig),
+    Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+    Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+    Private = block_utils:merge_attribute_lists(default_private(), InitPrivate),
 
     % This is the block state, 
 	{BlockName, ?MODULE, Config, Inputs, Outputs, Private}.
@@ -49,17 +50,19 @@ create(BlockName, InitConfig, InitInputs)->
  
 %% Initialize block values before starting execution
 %% Perform any setup here as needed before starting execution
+
 -spec initialize(block_state()) -> block_state().
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
     % Perform common block initializations
-    {NewOutputs, NewPrivate} = block_common:initialize(Config, Outputs, Private),
+    {InitOutputs, InitPrivate} = block_common:initialize(Config, Outputs, Private),
 	
     % Perform block type specific initializations here, and update the state variables
+    NewOutputs = InitOutputs,
+    NewPrivate = InitPrivate,
 
 	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
-
 
 %%
 %%  Execute the block specific functionality
@@ -67,23 +70,18 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
-
-    % Always check if block is enabled first
-	case block_utils:get_input_value(Inputs, enable) of
-		true ->
-            case block_utils:get_output_value(Outputs, value) of
-                true ->  Value = false;
-                false -> Value = true;
-                not_active -> Value = true
-            end,
-            % Perform common execute function for normally executing block
-            {NewOutputs, NewPrivate} = block_common:execute(Config, Outputs, Private, Value, normal); 
-
-		false ->	% Block is Disabled, perform common execute function for a disabled block 
-			{NewOutputs, NewPrivate} = block_common:execute(Config, Outputs, Private, not_active, disabled) 
-	end,
+    % Toggle output everytime block is executed
+    case block_utils:get_output_value(Outputs, value) of
+        true       -> Value = false,      Status = normal;
+        false      -> Value = true,       Status = normal;
+        not_active -> Value = true,       Status = normal;
+        _          -> Value = not_active, Status = error
+    end,
+	
+    NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
+    NewOutputs2 = block_utils:set_output_Value(NewOutputs1, status, Status),
     
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
+    {BlockName, BlockModule, Config, Inputs, NewOutputs2, Private}.
 
 
 %% 
@@ -95,11 +93,22 @@ delete({_BlockName, _BlockModule, Config, _Inputs, _Outputs, Private}) ->
     % Perform any other block type specific delete functionality here
 
 
-
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-type_name()-> toggle.
-
-version() -> "0.1.0".
+default_configs(BlockName) -> 
+    block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
+                            []).  % Insert block type specific config attributes here
+ 
+default_inputs() -> 
+     block_utils:merge_attribute_lists(block_common:inputs(),
+                            []). % Insert block type specific input attributes here
+                            
+default_outputs() -> 
+        block_utils:merge_attribute_lists(block_common:outputs(),
+                            []). % Insert block type specific output attributes here
+                            
+default_private() -> 
+        block_utils:merge_attribute_lists(block_common:private(),
+                            []). % Insert block type specific private attributes here

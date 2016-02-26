@@ -71,18 +71,12 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
-    % Always check if block is enabled first
-	case block_utils:get_input_value(Inputs, 'Enable') of
-		true ->
-		    % Perform block type specific actions here, calculate new outut value(s)
-            Value = true,
-            % Perform common execute function for normally executing block
-            {NewOutputs, NewPrivate} = block_common:execute(Config, Outputs, Private, Value, normal); 
+    % Perform block type specific actions here, 
+    % read input value(s) calculate new outut value(s)
+    % set block output status value
+    NewOutputs = Outputs,
+    NewPrivate = Private,
 
-		false ->	% Block is Disabled, perform common execute function for a disabled block 
-			{NewOutputs, NewPrivate} = block_common:execute(Config, Outputs, Private, not_active, disabled) 
-	end,
-    
     {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 
