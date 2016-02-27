@@ -56,10 +56,11 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
     % Perform common block initializations
-    {InitOutputs, InitPrivate} = block_common:initialize(Config, Outputs, Private),
+    InitPrivate = block_common:initialize(Config, Inputs, Private),
 	
     % Perform block type specific initializations here, and update the state variables
-    NewOutputs = InitOutputs,
+    NewOutputsX = block_utils:set_output_value(Outputs, value, not_active),
+    NewOutputs = block_utils:set_output_value(NewOutputsX, status, initialized),
     NewPrivate = InitPrivate,
 
 	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.

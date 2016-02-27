@@ -9,7 +9,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/3, configs/3, inputs/0, outputs/0, private/0, initialize/3, execute/5, delete/2]).
+-export([createx/3, configs/3, inputs/0, outputs/0, private/0, initialize/3, executex/5, delete/2]).
 
 
 %% 
@@ -18,7 +18,7 @@
 %% block values that are common for all block types
 %%
 
-create(Name, Type, Version) ->
+createx(Name, Type, Version) ->
     
     % Common Config
     BlockName = {block_name, Name},
@@ -121,22 +121,19 @@ private() ->
 
 %%
 %% Common block initialization funcion
-%%
+%% TODO: Fold this function into custom block code, use or break set timer function from block server module
 
-initialize(Config, Outputs, Private) ->
+initialize(Config, Inputs, Private) ->
 
     log_state("Initializing", Config),
-    NewPrivate = setup_execute_timer(Config, Private), 
-    NewOutputs = block_utils:set_output_value(Outputs, status, initialized),
-    
-    {NewOutputs, NewPrivate}.
+    setup_execute_timer(Config, Inputs, Private).
 
 
 %%
 %% Common block execute function
 %% Update the Output values common to all blocks, Value, Status, Execute Count, Last Executed Time
 %%
-execute(Config, Outputs, Private, Value, Status) ->
+executex(Config, Outputs, Private, Value, Status) ->
 
 	case block_utils:get_output_value(Outputs, status) of
         initialized ->
@@ -175,27 +172,21 @@ delete(Config, Private) ->
 %% Internal functions
 %% ====================================================================
 
-setup_execute_timer(Config, Private) ->
-    case block_utils:get_config_value(Config, executors) of
-        [] ->  % The list of executors is empty, check if this block should be executed via timer
-            ExecuteTimerValue = block_utils:get_config_value(Config, timeout),
-            if (ExecuteTimerValue > 0 ) ->
-                BlockName = block_utils:get_config_value(Config, block_name),
-                % Setup timer to execute block after timer expires
-                case timer:apply_after(ExecuteTimerValue, block_server, execute, [BlockName]) of
-                    {ok, TimerReferenceValue} -> 
-                        NewPrivate = block_utils:set_private_value(Private, timer_ref, TimerReferenceValue);
+setup_execute_timer(Config, Inputs, Private) ->
+    ExecuteInterval = block_utils:get_input_value(Inputs, execute_interval),
+    if (ExecuteInterval > 0 ) ->
+        BlockName = block_utils:get_config_value(Config, block_name),
+        % Setup timer to execute block after timer expires
+        case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
+            {ok, TimerReferenceValue} -> 
+                NewPrivate = block_utils:set_private_value(Private, timer_ref, TimerReferenceValue);
          
-                    {error, Reason} -> 
-                        NewPrivate = block_utils:set_private_value(Private, timer_ref, empty),
-                        io:format("Error: ~p Setting execution timer ~n", [Reason])
-                end;
-            true ->  % Timeout value is less than or equal to zero, don't set up execution via timer
-                NewPrivate = Private
-            end;
-            
-        _ ->  % there is something in the executors list, don't setup execution via timer  
-            NewPrivate = Private
+            {error, Reason} -> 
+                NewPrivate = block_utils:set_private_value(Private, timer_ref, empty),
+                io:format("~p Error: ~p Setting execution timer ~n", [BlockName, Reason])
+        end;
+    true ->  % Timeout value is less than or equal to zero, don't set up execution via timer
+        NewPrivate = Private
     end,
     NewPrivate.
 

@@ -57,7 +57,7 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
     % Perform common block initializations
-    {InitOutputs, InitPrivate} = block_common:initialize(Config, Outputs, Private),
+    InitPrivate = block_common:initialize(Config, Inputs, Private),
 	
     % Perform block type specific initializations here, and update the state variables
     PinNumber = block_utils:get_config_value(Config, gpio_pin),
