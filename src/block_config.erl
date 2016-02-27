@@ -4,6 +4,8 @@
 
 -module(block_config).
 
+-include("block_state.hrl").
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -14,12 +16,12 @@ create_demo_config() ->
     Led17DigitalOutput = block_pi1_gpio_digital_output:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
                                 [{input, empty, {value, toggle_led, null}}]),
                                     
-    PbSwDigitalOutput = block_pi1_gpio_digital_output:create(led_22, [{gpio_pin, 22}], 
+    PbSwDigitalOutput = block_pi1_gpio_digital_output:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
                                 [{input, empty, {value, switch_27, null}}]),
                                 
     PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
    
-    ToggleBlockValues = block_toggle:create(toggle_led, [], [{execute_interval, 250, {fixed, null, null}}]),
+    ToggleBlockValues = block_toggle:create(toggle_led, [], [{execute_interval, 250, ?EMPTY_LINK}]),
     
     [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput].
 

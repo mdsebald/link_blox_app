@@ -14,3 +14,9 @@
                          Outputs :: list(), 
                          Private :: list() 
                        }.
+                       
+%%
+%% specifies an empty input value link
+%% useful for initializing block inputs
+%%
+-define( EMPTY_LINK, {fixed, null, null}).             

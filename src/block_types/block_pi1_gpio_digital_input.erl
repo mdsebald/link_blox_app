@@ -60,7 +60,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     InitPrivate = block_common:initialize(Config, Inputs, Private),
 	
     % Perform block type specific initializations here, and update the state variables
-    PinNumber = block_utils:get_config_value(Config, gpio_pin),
+    PinNumber = block_utils:get_value(Config, gpio_pin),
     % TODO: Check Pin Number is an integer in the right range
 
     % Perform block type specific initializations here, and update the state variables
@@ -79,8 +79,8 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             NewPrivate = InitPrivate
     end,
   
-    NewOutputsX = block_utils:set_output_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_output_value(NewOutputsX, status, Status),
+    NewOutputsX = block_utils:set_value(Outputs, value, Value),
+    NewOutputs = block_utils:set_value(NewOutputsX, status, Status),
     
 	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
@@ -96,11 +96,11 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     % set block output status value
     % Perform block type specific actions here, calculate new outut value(s)
     
-    GpioPinRef = block_utils:get_private_value(Private, gpio_pin_ref),
+    GpioPinRef = block_utils:get_value(Private, gpio_pin_ref),
     Value = read_pin_value_bool(GpioPinRef),
 
-    NewOutputsX = block_utils:set_output_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_output_value(NewOutputsX, status, normal), 
+    NewOutputsX = block_utils:set_value(Outputs, value, Value),
+    NewOutputs = block_utils:set_value(NewOutputsX, status, normal), 
         
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 

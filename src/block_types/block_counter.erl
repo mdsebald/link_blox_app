@@ -1,14 +1,14 @@
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type: Counter
+%%% Description: Count number of times boolean input value changes state  
 %%%               
 %%% @end 
 
--module(block_template).
+-module(block_counter).
 
 -author("Mark Sebald").
 
--include("block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
+-include("../block_state.hrl"). 
 
 %% ====================================================================
 %% API functions
@@ -16,7 +16,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name()-> template.  % atom, specifying the block type, usually the module name minus "block_"
+type_name()-> counter.  
 
 version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking change
 
@@ -58,7 +58,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
     % Perform common block initializations
     InitPrivate = block_common:initialize(Config, Inputs, Private),
-    
+    	
     % Perform block type specific initializations here, and update the state variables
     NewOutputs = Outputs,
     NewPrivate = InitPrivate,
@@ -75,6 +75,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     % Perform block type specific actions here, 
     % read input value(s) calculate new outut value(s)
     % set block output status value
+    
     NewOutputs = Outputs,
     NewPrivate = Private,
 
@@ -96,16 +97,26 @@ delete({_BlockName, _BlockModule, Config, _Inputs, _Outputs, Private}) ->
 
 default_configs(BlockName) -> 
     block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
-                            []).  % Insert block type specific config attributes here
+                            [
+                                {trigger, false_true}  %Trigger count on any_change, true_false, or false_true transition
+                            ]).  % Insert block type specific config attributes here
  
 default_inputs() -> 
      block_utils:merge_attribute_lists(block_common:inputs(),
-                            []). % Insert block type specific input attributes here
+                            [
+                               {input, empty, ?EMPTY_LINK},
+                               {inital_value, 0, ?EMPTY_LINK},
+                               {final_value, 9, ?EMPTY_LINK}
+                            ]). % Insert block type specific input attributes here
                             
 default_outputs() -> 
         block_utils:merge_attribute_lists(block_common:outputs(),
-                            []). % Insert block type specific output attributes here
+                            [
+                              {carry, not_active, []}
+                            ]). % Insert block type specific output attributes here
                             
 default_private() -> 
         block_utils:merge_attribute_lists(block_common:private(),
-                            []). % Insert block type specific private attributes here
+                            [
+                               {last_input, empty}
+                            ]). % Insert block type specific private attributes here

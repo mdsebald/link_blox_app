@@ -156,11 +156,11 @@ handle_call(get_values, _From, BlockValues) ->
 	{reply, BlockValues, BlockValues};
     
 handle_call({get_value, ValueName}, _From, BlockValues) ->
-    Value = block_utils:get_value(BlockValues, ValueName),
+    Value = block_utils:get_value_any(BlockValues, ValueName),
     {reply, Value, BlockValues};
 
 handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
-    NewBlockValues = block_utils:set_value(BlockValues, ValueName, Value),
+    NewBlockValues = block_utils:set_value_any(BlockValues, ValueName, Value),
     {reply, {ValueName, Value}, NewBlockValues};
 	
 handle_call(Request, From, BlockValues) ->
@@ -220,11 +220,11 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	
     % Don't execute block if block is executed via timer or executor execution
     % Just update the input values and leave it at that
-    TimerRef = block_utils:get_private_value(Private, timer_ref),
-    {execute_in, _Value, ExecuteLink} = block_utils:get_attribute_value(NewInputs, execute_in),
+    TimerRef = block_utils:get_value(Private, timer_ref),
+    {execute_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, execute_in),
     
     % TODO: Make {fixed, null, null} a constant null_link
-    if (TimerRef == empty) andalso (ExecuteLink == {fixed, null, null}) ->
+    if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
         % Block is executed via change of input value, Data Flow
 	    NewBlockValues = execute_block({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private});
 	true -> % Block will be executed via timer timeout or linked block execution, just return
@@ -286,20 +286,20 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 %% =====================================================================
 handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
 	
-	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+	{BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
 		
 	%% Add the connection to 'ToBlockName' to this output 'ValueName's list of connections
-	NewBlockValues = block_utils:add_connection(BlockValues, ValueName, ToBlockName),
+	NewOutputs = block_utils:add_connection(Outputs, ValueName, ToBlockName),
 
 	%io:format("~p connecting NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
 	
 	% Send the current value of this output to the block 'ToBlockName'
-	Value = block_utils:get_value(BlockValues, ValueName),
+	Value = block_utils:get_value(NewOutputs, ValueName),
 	
 	% Make ToBlockName into a list of 1 connection
 	update([ToBlockName], BlockName, ValueName, Value),
 			
-	{noreply, NewBlockValues};
+	{noreply, {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}};
 	
 handle_cast(Msg, State) ->
 	io:format("Unknown cast message: ~p~n", [Msg]),
@@ -461,7 +461,7 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 %%
 update_execute(Outputs)->
 	
-    {execute_out,  _Value, BlockNames} = block_utils:get_attribute_value(Outputs, execute_out),
+    {execute_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, execute_out),
     execute_out_execute(BlockNames).
 
 
@@ -472,12 +472,12 @@ execute_block(BlockValues) ->
 
     {BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
     
-    EnableInput = block_utils:get_input_value(Inputs, enable),
+    EnableInput = block_utils:get_value(Inputs, enable),
     
     if is_boolean(EnableInput) ->
         if EnableInput -> % Block is enabled
             {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
-            NewStatus = block_utils:get_output_value(NewOutputsX, status),
+            NewStatus = block_utils:get_value(NewOutputsX, status),
             if  NewStatus == normal ->
                 NewPrivateY = update_execute_track(NewPrivateX);
             true ->  % Block Status is not normal
@@ -523,8 +523,8 @@ execute_block(BlockValues) ->
 %%
 update_execution_timer(BlockName, Inputs, Private) ->
 
-    ExecuteInterval = block_utils:get_input_value(Inputs, execute_interval),
-    TimerRef = block_utils:get_private_value(Private, timer_ref),
+    ExecuteInterval = block_utils:get_value(Inputs, execute_interval),
+    TimerRef = block_utils:get_value(Private, timer_ref),
     
     % Cancel block execution timer, if it is set   
     cancel_timer(BlockName, TimerRef), 
@@ -549,7 +549,7 @@ update_execution_timer(BlockName, Inputs, Private) ->
         NewTimerRef = empty,
         io:format("~p Error: Invalid execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
     end,
-    NewPrivate = block_utils:set_private_value(Private, timer_ref, NewTimerRef),
+    NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
     {Status, NewPrivate}.
     
 % Cancel block execution timer, if the timer is set   
@@ -580,12 +580,12 @@ set_timer(BlockName, ExecuteInterval) ->
 % Track execute time and count
 update_execute_track(Private) ->
     % Record last executed timestamp
-	NewPrivate = block_utils:set_private_value(Private, last_exec, erlang:monotonic_time(micro_seconds)),
+	NewPrivate = block_utils:set_value(Private, last_exec, erlang:monotonic_time(micro_seconds)),
 
 	% Arbitrarily roll over Execution Counter at 999,999,999
-	case block_utils:get_private_value(NewPrivate, exec_count) + 1 of
-		1000000000   -> block_utils:set_private_value(NewPrivate, exec_count, 0);
-		NewExecCount -> block_utils:set_private_value(NewPrivate, exec_count, NewExecCount)
+	case block_utils:get_value(NewPrivate, exec_count) + 1 of
+		1000000000   -> block_utils:set_value(NewPrivate, exec_count, 0);
+		NewExecCount -> block_utils:set_value(NewPrivate, exec_count, NewExecCount)
 	end.
     
     

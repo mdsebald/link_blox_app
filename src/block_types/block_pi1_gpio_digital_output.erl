@@ -60,16 +60,16 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     InitPrivate = block_common:initialize(Config, Inputs, Private),
 
     % Perform block type specific initializations here, and update the state variables   
-	PinNumber = block_utils:get_config_value(Config, gpio_pin),
+	PinNumber = block_utils:get_value(Config, gpio_pin),
     % TODO: Check if Pin Number is an integer, and range
-	DefaultValue = block_utils:get_config_value(Config, default_value),
-    InvertOutput = block_utils:get_config_value(Config, invert_output),
+	DefaultValue = block_utils:get_value(Config, default_value),
+    InvertOutput = block_utils:get_value(Config, invert_output),
 	    
     case gpio:start_link(PinNumber, output) of
         {ok, GpioPinRef} ->
             Status = initialized,
             Value = DefaultValue,
- 	        NewPrivate = block_utils:set_private_value(InitPrivate, gpio_pin_ref, GpioPinRef),
+ 	        NewPrivate = block_utils:set_value(InitPrivate, gpio_pin_ref, GpioPinRef),
             set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
         {error, ErrorResult} ->
@@ -79,8 +79,8 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             NewPrivate = InitPrivate
     end,	
   
-    NewOutputsX = block_utils:set_output_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_output_value(NewOutputsX, status, Status),
+    NewOutputsX = block_utils:set_value(Outputs, value, Value),
+    NewOutputs = block_utils:set_value(NewOutputsX, status, Status),
     
 	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
@@ -95,11 +95,11 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     % read input value(s) calculate new outut value(s)
     % set block output status value
     
-    GpioPin = block_utils:get_private_value(Private, gpio_pin_ref),
-    DefaultValue = block_utils:get_config_value(Config, default_value),
-    InvertOutput = block_utils:get_config_value(Config, invert_output),
+    GpioPin = block_utils:get_value(Private, gpio_pin_ref),
+    DefaultValue = block_utils:get_value(Config, default_value),
+    InvertOutput = block_utils:get_value(Config, invert_output),
      
-    Input = block_utils:get_input_value(Inputs, input),
+    Input = block_utils:get_value(Inputs, input),
  	
     % Set Output Val to input and set the actual GPIO pin value too
 	case Input of
@@ -131,8 +131,8 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 	end,
     set_pin_value_bool(GpioPin, PinValue, InvertOutput),
        
-    NewOutputsX = block_utils:set_output_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_output_value(NewOutputsX, status, Status),     
+    NewOutputsX = block_utils:set_value(Outputs, value, Value),
+    NewOutputs = block_utils:set_value(NewOutputsX, status, Status),     
  
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
