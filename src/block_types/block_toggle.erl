@@ -47,10 +47,10 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
     % This is the block state, 
 	{BlockName, ?MODULE, Config, Inputs, Outputs, Private}.
 
- 
+%%
 %% Initialize block values before starting execution
 %% Perform any setup here as needed before starting execution
-
+%%
 -spec initialize(block_state()) -> block_state().
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->

@@ -11,15 +11,15 @@
 
 create_demo_config() ->
   
-    Led17DigitalOutput = block_pi1_gpio_digital_output:create(led_17, [{gpio_pin, 17}, {default_value, false}], 
+    Led17DigitalOutput = block_pi1_gpio_digital_output:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
                                 [{input, empty, {value, toggle_led, null}}]),
                                     
-    PbSwDigitalOutput = block_pi1_gpio_digital_output:create(led_22, [{gpio_pin, 22}, {default_value, false}], 
+    PbSwDigitalOutput = block_pi1_gpio_digital_output:create(led_22, [{gpio_pin, 22}], 
                                 [{input, empty, {value, switch_27, null}}]),
                                 
     PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
    
-    ToggleBlockValues = block_toggle:create(toggle_led, [{timeout, 500}], []),
+    ToggleBlockValues = block_toggle:create(toggle_led, [{timeout, 250}], []),
     
     [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput].
 

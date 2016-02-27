@@ -8,7 +8,7 @@
 
 -author("Mark Sebald").
 
--include("block_state.hrl").
+-include("block_state.hrl").  % Adjust path to hrl file as needed
 
 %% ====================================================================
 %% API functions
@@ -20,10 +20,11 @@ type_name()-> template.  % atom, specifying the block type, usually the module n
 
 version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking change
 
-  
+%%  
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
 %% and to add attributes to the lists of default attributes
+%%
 -spec create(BlockName :: atom()) -> block_state().
 
 create(BlockName) -> create(BlockName, [], [], [], []).
@@ -47,10 +48,10 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
     % This is the block state, 
 	{BlockName, ?MODULE, Config, Inputs, Outputs, Private}.
 
- 
+%%
 %% Initialize block values before starting execution
 %% Perform any setup here as needed before starting execution
-
+%%
 -spec initialize(block_state()) -> block_state().
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->

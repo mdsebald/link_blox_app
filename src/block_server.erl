@@ -478,46 +478,46 @@ execute_block(BlockValues) ->
     
     EnableInput = block_utils:get_input_value(Inputs, enable),
     
-    % If block is enabled
-    if is_boolean(EnableInput) andalso EnableInput ->
-        NewBlockValues = BlockModule:execute(BlockValues),
-        {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate} = NewBlockValues,
-        % if status is normal
-        NewStatus = blockutils:get_output_value(NewOutputs, status),
-        if normal == NewStatus ->
-            NewPrivate2 = update_execute_track(NewPrivate);
-        true ->  % Block Status is not normal
-            % Assume custom block code has taken care of updating output value(s) appropriately
-            % Don't update execution track
-            NewPrivate2 = NewPrivate
-        end
-    end,
+    if is_boolean(EnableInput) ->
+        if EnableInput -> % Block is enabled
+            {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
+            NewStatus = blockutils:get_output_value(NewOutputsX, status),
+            if  NewStatus == normal ->
+                NewPrivateY = update_execute_track(NewPrivateX);
+            true ->  % Block Status is not normal
+                % Assume custom block code has taken care of updating output value(s) appropriately
+                % Don't update execution tracking
+                NewPrivateY = NewPrivateX
+            end;
+        true  ->   % Block is disabled
+            NewOutputsX = update_all_outputs(Outputs, not_active, disabled),
+            % Don't udpate execution tracking
+            NewPrivateY = Private
+        end;
     
-    % If block is disabled
-    if is_boolean(EnableInput) andalso not EnableInput ->
-        NewOutputs = update_all_outputs(Outputs, not_active, disabled),
-        % Don't update execution tracking
-        NewPrivate2 = Private
-    end,
-    
-    % Check if Enable input value is a valid value
-    if not is_boolean(EnableInput) ->
+    true -> % Invalid Enable input type or value
         io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
-        NewOutputs = update_all_outputs(Outputs, not_active, input_error),
+        NewOutputsX = update_all_outputs(Outputs, not_active, input_error),
         % Don't udpate execution tracking
-        NewPrivate2 = Private
-     end,
-
-    {_TimerStatus, NewPrivate3} = update_execution_timer(BlockName, Inputs, NewPrivate2),    
+        NewPrivateY = Private
+    end,
     
-    % Update the block inputs linked to the block outputs that have just been updated
+    {Status, NewPrivate} = update_execution_timer(BlockName, Inputs, NewPrivateY), 
+    
+    if (Status /= normal) ->  % Some kind error setting execution timer
+        NewOutputs = update_all_outputs(NewOutputsX, not_active, Status);
+    true -> % Execution timer status is normal
+        NewOutputs = NewOutputsX
+    end,
+ 
+    % Update the block inputs linked to the block outputs that have just been updated (Data Flow)
 	update_blocks(BlockName, Outputs, NewOutputs),
     
     % Execute the blocks connected to the execute_out output value (Control Flow)
     update_execute(NewOutputs),
     
     % Return the new updated block state
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate3}.
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 
 
@@ -534,16 +534,21 @@ update_execution_timer(BlockName, Inputs, Private) ->
     cancel_timer(BlockName, TimerRef), 
     
     % Check validity of ExecuteInterval input value
-    if is_integer(ExecuteInterval) andalso (ExecuteInterval == 0) ->
-        Status = normal, 
-        NewTimerRef = empty
-    end,
-    
-    if is_integer(ExecuteInterval) andalso (0 < ExecuteInterval) ->
-        {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval)
-    end,
-    
-    if (not is_integer(ExecuteInterval)) orelse (ExecuteInterval < 0) ->
+    if is_integer(ExecuteInterval) ->
+     
+        if (ExecuteInterval == 0) ->
+            Status = normal, 
+            NewTimerRef = empty;
+        true ->
+            if (ExecuteInterval > 0) ->
+                {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval);
+            true -> % Execute Interval input value is negative
+                Status = input_error, 
+                NewTimerRef = empty,
+                io:format("~p Error: Negative execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
+            end
+        end;
+    true ->  % Execute Interval input value is not an integer
         Status = input_error, 
         NewTimerRef = empty,
         io:format("~p Error: Invalid execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
@@ -588,11 +593,12 @@ update_execute_track(Private) ->
 	end.
     
     
-    
+%%    
 %% Update the value of every input in this block linked to the 
 %% 'ValueName:FromBlockName:NodeName' output value
 %% Return the updated list of Input values
 %% TODO: Switch to passing around a target link {NodeName, BlockName, ValueName}
+%%
 update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewValue) ->
 
 	TargetLink = {NewValueName, FromBlockName, NodeName},
