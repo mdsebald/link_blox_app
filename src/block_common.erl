@@ -9,7 +9,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([createx/3, configs/3, inputs/0, outputs/0, private/0, initialize/3, executex/5, delete/2]).
+-export([createx/3, configs/3, inputs/0, outputs/0, private/0, initialize/3, delete/2]).
 
 
 %% 
@@ -133,26 +133,26 @@ initialize(Config, Inputs, Private) ->
 %% Common block execute function
 %% Update the Output values common to all blocks, Value, Status, Execute Count, Last Executed Time
 %%
-executex(Config, Outputs, Private, Value, Status) ->
+%executex(Config, Outputs, Private, Value, Status) ->
 
-	case block_utils:get_output_value(Outputs, status) of
-        initialized ->
-           NewPrivate2 = block_utils:set_private_value(Private, last_exec, calendar:now_to_local_time(erlang:timestamp())),
-           NewPrivate3 = setup_execute_timer(Config, NewPrivate2);
+%	case block_utils:get_output_value(Outputs, status) of
+%        initialized ->
+%           NewPrivate2 = block_utils:set_private_value(Private, last_exec, calendar:now_to_local_time(erlang:timestamp())),
+%           NewPrivate3 = setup_execute_timer(Config, NewPrivate2);
 
-        normal ->
-	       NewPrivate1 = update_exec_count(Private),
-	       NewPrivate2 = block_utils:set_private_value(NewPrivate1, last_exec, calendar:now_to_local_time(erlang:timestamp())),
-           NewPrivate3 = setup_execute_timer(Config, NewPrivate2);
-        _ -> % block is not executing freeze the exec_count and last_exec time
-           NewPrivate3 = Private 
-    end,
+%        normal ->
+%	       NewPrivate1 = update_exec_count(Private),
+%	       NewPrivate2 = block_utils:set_private_value(NewPrivate1, last_exec, calendar:now_to_local_time(erlang:timestamp())),
+ %          NewPrivate3 = setup_execute_timer(Config, NewPrivate2);
+%        _ -> % block is not executing freeze the exec_count and last_exec time
+%           NewPrivate3 = Private 
+%    end,
     
     % Now update the value and status outputs
-    NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
-	NewOutputs2 = block_utils:set_output_value(NewOutputs1, status, Status),
+%    NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
+%	NewOutputs2 = block_utils:set_output_value(NewOutputs1, status, Status),
 
-    {NewOutputs2, NewPrivate3}.
+%    {NewOutputs2, NewPrivate3}.
 
 
 %%
@@ -191,12 +191,12 @@ setup_execute_timer(Config, Inputs, Private) ->
     NewPrivate.
 
 
-update_exec_count(Private) ->
+%update_exec_count(Private) ->
 	% Arbitrarily roll over Execution Counter at 999,999,999
-	case block_utils:get_private_value(Private, exec_count) + 1 of
-		1000000000   -> block_utils:set_private_value(Private, exec_count, 0);
-		NewExecCount -> block_utils:set_private_value(Private, exec_count, NewExecCount)
-	end.
+%	case block_utils:get_private_value(Private, exec_count) + 1 of
+%		1000000000   -> block_utils:set_private_value(Private, exec_count, 0);
+%		NewExecCount -> block_utils:set_private_value(Private, exec_count, NewExecCount)
+%	end.
 
 %% print the indicated state to the shell
 log_state (State, Config) ->

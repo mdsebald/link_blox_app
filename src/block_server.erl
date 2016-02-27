@@ -221,9 +221,10 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
     % Don't execute block if block is executed via timer or executor execution
     % Just update the input values and leave it at that
     TimerRef = block_utils:get_private_value(Private, timer_ref),
-    {execute_in, _Value, LinkedBlocks} = block_utils:get_attribute_value(NewInputs, execute_in),
+    {execute_in, _Value, ExecuteLink} = block_utils:get_attribute_value(NewInputs, execute_in),
     
-    if (TimerRef == empty) andalso (LinkedBlocks == []) ->
+    % TODO: Make {fixed, null, null} a constant null_link
+    if (TimerRef == empty) andalso (ExecuteLink == {fixed, null, null}) ->
         % Block is executed via change of input value, Data Flow
 	    NewBlockValues = execute_block({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private});
 	true -> % Block will be executed via timer timeout or linked block execution, just return
@@ -317,17 +318,11 @@ handle_cast(Msg, State) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
-    
-    {BlockName, BlockModule, _Config, _Inputs, CurrentOutputs, _Private} = CurrentBlockValues,
+
     % GPIO Interupt message from Erlang ALE library, 
     % Execute the block connected to this interrupt
     % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
-    NewBlockValues = BlockModule:execute(CurrentBlockValues),
-    
-    % Update each block connected to any of the outputs that changed when the block inputs were evaluated,  
-	{BlockName, BlockModule, _Config, _NewInputs, NewOutputs, _NewPrivate} = NewBlockValues,
-
-	update_blocks(BlockName, CurrentOutputs, NewOutputs),
+    NewBlockValues = execute_block(CurrentBlockValues),
 
     {noreply, NewBlockValues};
 
@@ -454,7 +449,8 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
     % For each output value that changed, call update() to send a the new value message to each connected block.
     % don't check the 'execute_out' output, that is for control flow execution
 	if (ValueName /= execute_out) andalso (CurrentValue /= NewValue) -> 
-        update(Connections, FromBlockName, ValueName, NewValue)
+        update(Connections, FromBlockName, ValueName, NewValue);
+    true -> ok % else do nothing
     end,
     
     update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs).
@@ -481,7 +477,7 @@ execute_block(BlockValues) ->
     if is_boolean(EnableInput) ->
         if EnableInput -> % Block is enabled
             {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
-            NewStatus = blockutils:get_output_value(NewOutputsX, status),
+            NewStatus = block_utils:get_output_value(NewOutputsX, status),
             if  NewStatus == normal ->
                 NewPrivateY = update_execute_track(NewPrivateX);
             true ->  % Block Status is not normal
@@ -528,7 +524,7 @@ execute_block(BlockValues) ->
 update_execution_timer(BlockName, Inputs, Private) ->
 
     ExecuteInterval = block_utils:get_input_value(Inputs, execute_interval),
-    TimerRef = block_utils:get_input_value(Private, timer_ref),
+    TimerRef = block_utils:get_private_value(Private, timer_ref),
     
     % Cancel block execution timer, if it is set   
     cancel_timer(BlockName, TimerRef), 
@@ -584,7 +580,7 @@ set_timer(BlockName, ExecuteInterval) ->
 % Track execute time and count
 update_execute_track(Private) ->
     % Record last executed timestamp
-	NewPrivate = block_utils:set_private_value(Private, last_exec, erlang:monotonic_time(native)),
+	NewPrivate = block_utils:set_private_value(Private, last_exec, erlang:monotonic_time(micro_seconds)),
 
 	% Arbitrarily roll over Execution Counter at 999,999,999
 	case block_utils:get_private_value(NewPrivate, exec_count) + 1 of

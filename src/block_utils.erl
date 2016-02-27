@@ -14,13 +14,15 @@
 -export([get_config_value/2, get_input_value/2, get_output_value/2, get_private_value/2, get_value/2]).
 -export([set_input_value/3, set_output_value/3, set_private_value/3, set_value/3]).
 -export([add_connection/3, set_input_link/3, set_input_link_value/5]).
--export([update_attribute_list/2, merge_attribute_lists/2]).
+-export([get_attribute_value/2, update_attribute_list/2, merge_attribute_lists/2]).
 -export([sleep/1]). 
 
 %% Get the Value of ValueName 
 %% Return 'not_found', if ValueName is not found in the Values list
 %% TODO: Just combine get/set_..._value() to one get/set_value() function
 %%       Change get_attribute_value() name to just get_attribute(),
+%% TODO: Create update_values function to update more than one value at a time.
+
 get_config_value(Configs, ValueName) ->
 	case get_attribute_value(Configs, ValueName) of
 		not_found ->

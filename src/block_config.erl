@@ -19,7 +19,7 @@ create_demo_config() ->
                                 
     PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
    
-    ToggleBlockValues = block_toggle:create(toggle_led, [{timeout, 250}], []),
+    ToggleBlockValues = block_toggle:create(toggle_led, [], [{execute_interval, 250, {fixed, null, null}}]),
     
     [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput].
 

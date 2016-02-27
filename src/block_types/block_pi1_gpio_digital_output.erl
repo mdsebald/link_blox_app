@@ -79,7 +79,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             NewPrivate = InitPrivate
     end,	
   
-    NewOutputsX = block_utils:set_output_value(InitOutputs, value, Value),
+    NewOutputsX = block_utils:set_output_value(Outputs, value, Value),
     NewOutputs = block_utils:set_output_value(NewOutputsX, status, Status),
     
 	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.

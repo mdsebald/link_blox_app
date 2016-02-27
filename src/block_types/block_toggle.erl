@@ -80,7 +80,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     end,
 	
     NewOutputs1 = block_utils:set_output_value(Outputs, value, Value),
-    NewOutputs2 = block_utils:set_output_Value(NewOutputs1, status, Status),
+    NewOutputs2 = block_utils:set_output_value(NewOutputs1, status, Status),
     
     {BlockName, BlockModule, Config, Inputs, NewOutputs2, Private}.
 
