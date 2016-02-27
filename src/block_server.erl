@@ -616,6 +616,9 @@ update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewVal
 %% except update status output to the New Staus value
 %% Used to mass update block outputs in disabled or error conditions
 %% 
+
+-spec update_all_outputs(Outputs :: list(), NewValue :: term(), NewStatus :: atom()) -> list().
+
 update_all_outputs(Outputs, NewValue, NewStatus) ->
     lists:map(
         fun(Output) ->

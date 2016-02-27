@@ -23,7 +23,7 @@
 
 %%	
 %% Get the attribute for the given AttributeName in the list of Attributes
-%% List of attributes may be Config, Inputs, Outputs, or Private
+%% List of attributes may be Config, Inputs, Outputs, or Private type
 %%
 -spec get_attribute(Attributes :: list(), AttributeName :: atom()) -> tuple() | not_found.
 
@@ -67,7 +67,7 @@ set_value(Attributes, AttributeName, NewValue) ->
 			NewAttribute = {AttributeName, NewValue, LinkOrConnections},
 			replace_attribute(Attributes, AttributeName, NewAttribute)
 	end.
-
+    
 
 %%	
 %% Get the value of the attribute ValueName
@@ -75,7 +75,7 @@ set_value(Attributes, AttributeName, NewValue) ->
 %%
 -spec get_value_any(BlockValues :: block_state(), AttributeName :: atom()) -> term() | not_found.
 	
-get_value_any(BlockValues, AttributeName)->
+get_value_any(BlockValues, AttributeName) ->
 	
 	{_BlockName, _BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
 	
@@ -209,42 +209,56 @@ add_connection(Outputs, AttributeName, ToBlockName) ->
 	end.
 
 
-%% Update attribute values in the attribute List with the values in the NewattributeList 
-%% and add any new attributes if they are not already in the AttributeList
-%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Private
-merge_attribute_lists(AttributeList, []) -> AttributeList;
+%%
+%% Update attributes in the Attribute List with the New Attributes list 
+%% Add any new attributes if they are not already in the Attribute list
+%% Both lists of Attributes must be the same type
+%% Attributes may be Config, Inputs, Outputs, or Private type
+%%
+-spec merge_attribute_lists(Attributes :: list(), NewAttributes :: list()) -> list().
 
-merge_attribute_lists(AttributeList, NewattributeList) ->
-    [NewattributeValue | RemainingNewattributes] = NewattributeList,
-    UpdatedattributeList = update_attribute_list(AttributeList, NewattributeValue),
-    merge_attribute_lists(UpdatedattributeList, RemainingNewattributes).
+merge_attribute_lists(Attributes, []) -> Attributes;
 
+merge_attribute_lists(Attributes, NewAttributes) ->
+    [NewAttribute | RemainingNewAttributes] = NewAttributes,
+    UpdatedAttributes = update_attribute_list(Attributes, NewAttribute),
+    merge_attribute_lists(UpdatedAttributes, RemainingNewAttributes).
 
-%% Update the AttributeList with the new attributeValue
-%% This works on all types of paramter value lists, Configs, Inputs, Outputs, and Private
-update_attribute_list(AttributeList, NewattributeValue) ->
+%%
+%% Update the Attribute list with a new attribute
+%% Attribute list may be Config, Inputs, Outputs, or Private type
+%%
+-spec update_attribute_list(Attribtes :: list(), NewAttribute :: tuple()) -> list().
+
+update_attribute_list(Attributes, NewAttribute) ->
     % First element of any attribute value tuple is always the name 
-    AttributeName = element(1, NewattributeValue),
+    AttributeName = element(1, NewAttribute),
  
-    case get_attribute(AttributeList, AttributeName) of
-        not_found -> add_attribute(AttributeList, NewattributeValue);
-        _attributeValue -> replace_attribute(AttributeList, AttributeName, NewattributeValue)
+    case get_attribute(Attributes, AttributeName) of
+        not_found       -> add_attribute(Attributes, NewAttribute);
+        _attributeValue -> replace_attribute(Attributes, AttributeName, NewAttribute)
     end.
 
+%%
+%% Replace the AttributeName  attribute in the Attribute list with the New Attribute
+%% Return the updated Attribute List
+%% Attribute list may be Config, Inputs, Outputs, or Private type
+%%
+-spec replace_attribute(Attributes :: list(), AttributeName :: atom(), NewAttribute :: tuple()) -> list().
 
-%% Replace the attributeName record in the AttributeList with the NewattributeValue
-%% Return the updated AttributeList
-%% This works on all types of value attribute value lists, Configs, Inputs, Outputs, and Private
-replace_attribute(AttributeList, AttributeName, NewattributeValue) ->
+replace_attribute(Attributes, AttributeName, NewAttribute) ->
 	% attributeName is always the first element in the tuple, regardless of the attributeValue type
-	lists:keyreplace(AttributeName, 1, AttributeList, NewattributeValue).
+	lists:keyreplace(AttributeName, 1, Attributes, NewAttribute).
 
 
-%% Add a new attribute {name, value} tuple, 
-%% to the end of the given attribute list and return a new list
-%% This works on all types of attribute value lists, Configs, Inputs, Outputs, and Private
-add_attribute(AttributeList, NewattributeValue) ->
-    AttributeList ++ [NewattributeValue].
+%%
+%% Add a new attribute to the end of the Attribute list 
+%% Attribute list may be Config, Inputs, Outputs, or Private type
+%%
+-spec add_attribute(Attributes :: list(), NewAttribute :: tuple()) -> list().
+
+add_attribute(Attributes, Newattribute) ->
+    Attributes ++ [Newattribute].
 
     
 %% common delay function

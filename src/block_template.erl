@@ -94,18 +94,29 @@ delete({_BlockName, _BlockModule, Config, _Inputs, _Outputs, Private}) ->
 %% Internal functions
 %% ====================================================================
 
+-spec default_configs(BlockName :: atom()) -> list().
+
 default_configs(BlockName) -> 
     block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
                             []).  % Insert block type specific config attributes here
- 
+
+
+ -spec default_inputs() -> list().
+
 default_inputs() -> 
      block_utils:merge_attribute_lists(block_common:inputs(),
                             []). % Insert block type specific input attributes here
+
+
+-spec default_outputs() -> list().
                             
 default_outputs() -> 
         block_utils:merge_attribute_lists(block_common:outputs(),
                             []). % Insert block type specific output attributes here
-                            
+
+
+ -spec default_private() -> list().
+                           
 default_private() -> 
         block_utils:merge_attribute_lists(block_common:private(),
                             []). % Insert block type specific private attributes here
