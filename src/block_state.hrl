@@ -15,6 +15,11 @@
                          Private :: list() 
                        }.
                        
+-type input_link() :: { AttributeName :: atom() | fixed,
+                        BlockName :: atom() | null,
+                        NodeName :: atom() | null
+                      }.
+                       
 %%
 %% specifies an empty input value link
 %% useful for initializing block inputs

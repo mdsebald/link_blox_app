@@ -66,7 +66,8 @@ private() ->
     [ 
       {exec_count, 0},
 	  {last_exec, not_active},
-      {timer_ref, empty}
+      {timer_ref, empty},
+      {exec_method, empty}
     ].
        
 

@@ -185,8 +185,9 @@ handle_call(Request, From, BlockValues) ->
 %% This message is used to directly execute the block evaluate function, 
 %% ====================================================================
 handle_cast(execute, CurrentBlockValues) ->
+ 
 	% Execute the block code
-	NewBlockValues = execute_block(CurrentBlockValues),
+	NewBlockValues = execute_block(CurrentBlockValues, manual),
 	{noreply, NewBlockValues};
     
 %% ====================================================================
@@ -194,8 +195,9 @@ handle_cast(execute, CurrentBlockValues) ->
 %% This message is used to execute the block on a timer timeout, 
 %% ====================================================================
 handle_cast(timer_execute, CurrentBlockValues) ->
+
 	% Execute the block code
-	NewBlockValues = execute_block(CurrentBlockValues),
+	NewBlockValues = execute_block(CurrentBlockValues, timeout),
 	{noreply, NewBlockValues};
 
 
@@ -205,7 +207,7 @@ handle_cast(timer_execute, CurrentBlockValues) ->
 %% ====================================================================
 handle_cast(execute_out_execute, CurrentBlockValues) ->
 	% Execute the block code
-	NewBlockValues = execute_block(CurrentBlockValues),
+ 	NewBlockValues = execute_block(CurrentBlockValues, execute_out),
 	{noreply, NewBlockValues};
 
 %% ====================================================================
@@ -223,10 +225,8 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
     TimerRef = block_utils:get_value(Private, timer_ref),
     {execute_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, execute_in),
     
-    % TODO: Make {fixed, null, null} a constant null_link
     if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-        % Block is executed via change of input value, Data Flow
-	    NewBlockValues = execute_block({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private});
+      	NewBlockValues = execute_block({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, NewPrivate}, input_change);
 	true -> % Block will be executed via timer timeout or linked block execution, just return
         NewBlockValues = {BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}
     end,
@@ -322,7 +322,7 @@ handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
     % GPIO Interupt message from Erlang ALE library, 
     % Execute the block connected to this interrupt
     % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
-    NewBlockValues = execute_block(CurrentBlockValues),
+    NewBlockValues = execute_block(CurrentBlockValues, hardware_interrupt),
 
     {noreply, NewBlockValues};
 
@@ -468,7 +468,9 @@ update_execute(Outputs)->
 %%
 %% Execute the block code
 %%
-execute_block(BlockValues) ->
+-spec execute_block(BlockValues :: block_state(), ExecMethod :: atom()) -> block_state().
+
+execute_block(BlockValues, ExecMethod) ->
 
     {BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
     
@@ -479,7 +481,7 @@ execute_block(BlockValues) ->
             {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
             NewStatus = block_utils:get_value(NewOutputsX, status),
             if  NewStatus == normal ->
-                NewPrivateY = update_execute_track(NewPrivateX);
+                NewPrivateY = update_execute_track(NewPrivateX, ExecMethod);
             true ->  % Block Status is not normal
                 % Assume custom block code has taken care of updating output value(s) appropriately
                 % Don't update execution tracking
@@ -577,15 +579,23 @@ set_timer(BlockName, ExecuteInterval) ->
             {process_error, empty}
     end.   	
 
-% Track execute time and count
-update_execute_track(Private) ->
+%
+% Track execute method, time and count
+%
+-spec update_execute_track(Private :: list(), ExecMethod :: atom()) -> list().
+
+update_execute_track(Private, ExecMethod) ->
+   
+    % Record method of execution
+    PrivateX = block_utils:set_value(Private, exec_method, ExecMethod),
+    
     % Record last executed timestamp
-	NewPrivate = block_utils:set_value(Private, last_exec, erlang:monotonic_time(micro_seconds)),
+	PrivateY = block_utils:set_value(PrivateX, last_exec, erlang:monotonic_time(micro_seconds)),
 
 	% Arbitrarily roll over Execution Counter at 999,999,999
-	case block_utils:get_value(NewPrivate, exec_count) + 1 of
-		1000000000   -> block_utils:set_value(NewPrivate, exec_count, 0);
-		NewExecCount -> block_utils:set_value(NewPrivate, exec_count, NewExecCount)
+	case block_utils:get_value(PrivateY, exec_count) + 1 of
+		1000000000   -> block_utils:set_value(PrivateY, exec_count, 0);
+		NewExecCount -> block_utils:set_value(PrivateY, exec_count, NewExecCount)
 	end.
     
     
@@ -605,7 +615,8 @@ update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewVal
 			{ValueName, _Value, Link} = Input,
 			case Link =:= TargetLink of
 				true  -> {ValueName, NewValue, Link};
-				false -> Input	% This block input is not linked to the target block output, don't change the input value 
+				false -> Input	% This block input is not linked to the target block output. 
+                                % Don't change the input value 
 			end
 		end, 
 		Inputs).
@@ -616,7 +627,6 @@ update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewVal
 %% except update status output to the New Staus value
 %% Used to mass update block outputs in disabled or error conditions
 %% 
-
 -spec update_all_outputs(Outputs :: list(), NewValue :: term(), NewStatus :: atom()) -> list().
 
 update_all_outputs(Outputs, NewValue, NewStatus) ->
