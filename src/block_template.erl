@@ -1,12 +1,16 @@
+% INSTRUCTIONS: Copy this module and modify as appropriate 
+%               for the function this block will perform.
+%               Comments marked "INSTRUCTIONS:" may be deleted 
+
 %%% @doc 
 %%% Block Type:  
 %%% Description:   
 %%%               
 %%% @end 
 
--module(block_template).
+-module(block_template).  % INSTRUCTIONS: Modify to match new module name
 
--author("Mark Sebald").
+-author("Your Name").
 
 -include("block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
 
@@ -16,9 +20,9 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name()-> template.  % atom, specifying the block type, usually the module name minus "block_"
+type_name()-> template.  % INSTRUCTIONS: Atom, specifying the block type, usually the module name minus "block_"
 
-version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking change
+version() -> "0.1.0".   % INSTRUCTIONS: Major.Minor.Patch, Major version change implies a breaking change
 
 %%  
 %% Create a set of block attributes for this block type.  
@@ -32,7 +36,9 @@ create(BlockName) -> create(BlockName, [], [], [], []).
 create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitInputs, [],[]).
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
-     
+
+    block_common:log_state("Creating", BlockName, type_name()),
+
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
     %%
@@ -55,15 +61,13 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
-
-    % Perform common block initializations
-    InitPrivate = block_common:initialize(Config, Inputs, Private),
     
-    % Perform block type specific initializations here, and update the state variables
+    % Perform block type specific initializations here
     NewOutputs = Outputs,
-    NewPrivate = InitPrivate,
+    NewPrivate = Private,
 
-	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
+    % Perform initial block execution
+    block_common:execute({BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}, initial).
 
 %%
 %%  Execute the block specific functionality
@@ -72,7 +76,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
-    % Perform block type specific actions here, 
+    % INSTRUCTIONS: Perform block type specific actions here, 
     % read input value(s) calculate new outut value(s)
     % set block output status value
     NewOutputs = Outputs,
@@ -84,10 +88,12 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
-    
-delete({_BlockName, _BlockModule, Config, _Inputs, _Outputs, Private}) ->
-	block_common:delete(Config, Private).
-    % Perform any other block type specific delete functionality here
+-spec delete(block_state()) -> block_state().
+
+delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) -> 
+    % INSTRUCTIONS: Perform any block type specific delete functionality here
+    {BlockName, BlockModule, Config, Inputs, Outputs, Private}.
+
 
 
 %% ====================================================================
@@ -98,25 +104,25 @@ delete({_BlockName, _BlockModule, Config, _Inputs, _Outputs, Private}) ->
 
 default_configs(BlockName) -> 
     block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
-                            []).  % Insert block type specific config attributes here
+                            []).  % INTRUCTIONS: Insert block type specific config attributes here
 
 
  -spec default_inputs() -> list().
 
 default_inputs() -> 
      block_utils:merge_attribute_lists(block_common:inputs(),
-                            []). % Insert block type specific input attributes here
+                            []). % INTRUCTIONS: Insert block type specific input attributes here
 
 
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
         block_utils:merge_attribute_lists(block_common:outputs(),
-                            []). % Insert block type specific output attributes here
+                            []). % INTRUCTIONS: Insert block type specific output attributes here
 
 
  -spec default_private() -> list().
                            
 default_private() -> 
         block_utils:merge_attribute_lists(block_common:private(),
-                            []). % Insert block type specific private attributes here
+                            []). % INTRUCTIONS: Insert block type specific private attributes here

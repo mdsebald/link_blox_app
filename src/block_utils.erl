@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([get_value/2, get_value_any/2]).
--export([set_value/3, set_value_any/3]).
+-export([set_value/3, set_values/2, set_value_any/3]).
 -export([add_connection/3, set_input_link/3, set_input_link_value/5]).
 -export([get_attribute/2, update_attribute_list/2, merge_attribute_lists/2]).
 -export([sleep/1]). 
@@ -60,14 +60,31 @@ set_value(Attributes, AttributeName, NewValue) ->
 		not_found ->
 			io:format("set_value() Error: ~p not found in attributes list~n", [AttributeName]),
 			Attributes;
-		{AttributeName, _OldValue} -> % Config or Private values
+            
+		{AttributeName, _OldValue} -> % Config or Private value
 			NewAttribute = {AttributeName, NewValue},
 			replace_attribute(Attributes, AttributeName, NewAttribute);
+            
         {AttributeName, _OldValue, LinkOrConnections} ->  % Input or Output value
 			NewAttribute = {AttributeName, NewValue, LinkOrConnections},
 			replace_attribute(Attributes, AttributeName, NewAttribute)
 	end.
     
+
+%%	
+%% Set multiple values in the attribute list 
+%% Values are in the form of Attribute Name, Value tuples
+%% All values must belong to the same attribute list
+%% List of attributes may be Config, Inputs, Outputs, or Private
+%%
+-spec set_values(Attributes :: list(), Values :: list()) -> list().
+   
+set_values(Attributes, []) -> Attributes;
+
+set_values(Attributes, [{AttributeName, NewValue} | RemainingValues]) ->
+    NewAttributes = set_values(Attributes, AttributeName, NewValue),
+    set_values(NewAttributes, RemainingValues).
+
 
 %%	
 %% Get the value of the attribute ValueName
@@ -97,9 +114,6 @@ get_value_any(BlockValues, AttributeName) ->
 			end; 
 		{AttributeName, Value} -> Value   % Config value
  	end.
-
-
-% TODO: Update multiple values, with a list of ValueName, Value pairs
 
 
 set_value_any(BlockValues, AttributeName, NewValue)->

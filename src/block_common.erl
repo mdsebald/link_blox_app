@@ -1,32 +1,36 @@
-%%
-%% @author Mark
-%% @doc Block functions common to all block types 
-%% 
-
+%%%
+%%% @doc 
+%%% Block functions common to all block types 
+%%% 
+%%% @end
+%%%
 
 -module(block_common).
+
+-author ("Mark Sebald").
 
 -include("block_state.hrl").
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([configs/3, inputs/0, outputs/0, private/0, initialize/3, delete/2]).
+-export([configs/3, inputs/0, outputs/0, private/0]).
+-export([execute/2, initialize/1, delete/1]).
 
 
 %%
 %% Common Config Attributes
 %%
 configs(Name, Type, Version) ->
-    Config = 
     [ 
       {block_name, Name},
 	  {block_type, Type},
-	  {version, Version}
-    ],
-    
-    log_state("Creating", Config),
-    Config.
+	  {version, Version},
+      {execute_interval, 0}   % If > 0, execute block every 'execute_interval' milliseconds.
+                              % Used to execute a block at fixed intervals
+                              % instead of being executed via execute_out/execute_in link
+                              % or executed on change of input value  
+    ].
 
 
 %%
@@ -36,15 +40,10 @@ inputs() ->
     [
       {enable, true, ?EMPTY_LINK},      % Block will execute as long as enable input is true
       
-      {execute_in, empty, ?EMPTY_LINK},     % Link to block allowed execute this block.
-                                                % If this list contains one or more block names, 
-                                                % then execute only on receiving an execute command message
-                                                % i.e. Implement Control Flow 
+      {execute_in, empty, ?EMPTY_LINK}, % Link to block that will execute this block.
+                                        % May only be linked to the 'execute_out' block output value
+                                        % i.e. implement Control Flow 
       
-      {execute_interval, 0, ?EMPTY_LINK}   % If > 0, execute block every 'execute_interval' milliseconds.
-                                                % This is used to execute a block at fixed intervals
-                                                % instead of being executed by other blocks.
-                                                % or executed on change of input value  
     ].
     
     
@@ -53,7 +52,9 @@ inputs() ->
 %%
 outputs() ->
     [ 
-      {execute_out, false, []},
+      {execute_out, false, []}, % Blocks with the 'execute_in' input linked to this output 
+                                % will be executed by this block, each time this block is executed
+                                % This output may only be linked to execute_in inputs
       {status, created, []},
       {value, not_active, []}
     ].
@@ -72,21 +73,185 @@ private() ->
        
 
 
+%%
+%% Common block execute function
+%% TODO: Handle initial execution (if needed)
+%%
+-spec execute(BlockValues :: block_state(), ExecMethod :: atom()) -> block_state().
+
+execute(BlockValues, ExecMethod) ->
+
+    {BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
+    
+    EnableInput = block_utils:get_value(Inputs, enable),
+    
+    if is_boolean(EnableInput) ->
+        if EnableInput -> % Block is enabled
+            {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
+            NewStatus = block_utils:get_value(NewOutputsX, status),
+            if  NewStatus == normal ->
+                NewPrivateY = update_execute_track(NewPrivateX, ExecMethod);
+            true ->  % Block Status is not normal
+                % Assume custom block code has taken care of updating output value(s) appropriately
+                % Don't update execution tracking
+                NewPrivateY = NewPrivateX
+            end;
+        true  ->   % Block is disabled
+            NewOutputsX = update_all_outputs(Outputs, not_active, disabled),
+            % Don't udpate execution tracking
+            NewPrivateY = Private
+        end;
+    
+    true -> % Invalid Enable input type or value
+        io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
+        NewOutputsX = update_all_outputs(Outputs, not_active, input_error),
+        % Don't udpate execution tracking
+        NewPrivateY = Private
+    end,
+    
+    {Status, NewPrivate} = update_execution_timer(BlockName, Inputs, NewPrivateY), 
+    
+    if (Status /= normal) ->  % Some kind error setting execution timer
+        NewOutputs = update_all_outputs(NewOutputsX, not_active, Status);
+    true -> % Execution timer status is normal
+        NewOutputs = NewOutputsX
+    end,
+ 
+    % Update the block inputs linked to the block outputs that have just been updated (Data Flow)
+	update_blocks(BlockName, Outputs, NewOutputs),
+    
+    % Execute the blocks connected to the execute_out output value (Control Flow)
+    update_execute(NewOutputs),
+    
+    % Return the new updated block state
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
+
 
 %%
-%% Common block initialization funcion
-%% TODO: Fold this function into custom block code, use or block set timer function from block server module
+%% Update the block execution timer 
+%% Return status and updated Timer Reference 
+%%
+update_execution_timer(BlockName, Inputs, Private) ->
 
-initialize(Config, Inputs, Private) ->
+    ExecuteInterval = block_utils:get_value(Config, execute_interval),
+    TimerRef = block_utils:get_value(Private, timer_ref),
+    
+    % Cancel block execution timer, if it is set   
+    cancel_timer(BlockName, TimerRef), 
+    
+    % Check validity of ExecuteInterval input value
+    if is_integer(ExecuteInterval) ->
+     
+        if (ExecuteInterval == 0) ->
+            Status = normal, 
+            NewTimerRef = empty;
+        true ->
+            if (ExecuteInterval > 0) ->
+                {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval);
+            true -> % Execute Interval input value is negative
+                Status = input_error, 
+                NewTimerRef = empty,
+                io:format("~p Error: Negative execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
+            end
+        end;
+    true ->  % Execute Interval input value is not an integer
+        Status = config_error, 
+        NewTimerRef = empty,
+        io:format("~p Error: Invalid execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
+    end,
+    NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
+    {Status, NewPrivate}.
+    
+% Cancel block execution timer, if the timer is set   
+cancel_timer(BlockName, TimerRef) ->
+    if (TimerRef /= empty) ->
+        case timer:cancel(TimerRef) of 
+            {ok, cancel} -> 
+                ok;
+            
+            {error, Reason} ->
+                io:format("~p Error: ~p Canceling execution timer ~p ~n", [BlockName, Reason, TimerRef]),
+                error
+        end;
+    true -> ok
+    end.
 
-    log_state("Initializing", Config),
-    setup_execute_timer(Config, Inputs, Private).
+% Setup timer to execute block after timer expires 
+set_timer(BlockName, ExecuteInterval) ->
+    case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
+        {ok, TimerRef} -> 
+            {normal, TimerRef};
+         
+        {error, Reason} -> 
+            io:format("~p Error: ~p Setting execution timer ~n", [BlockName, Reason]),
+            {process_error, empty}
+    end.   	
+
+%
+% Track execute method, time and count
+%
+-spec update_execute_track(Private :: list(), ExecMethod :: atom()) -> list().
+
+update_execute_track(Private, ExecMethod) ->
+   
+    % Record method of execution
+    PrivateX = block_utils:set_value(Private, exec_method, ExecMethod),
+    
+    % Record last executed timestamp
+	PrivateY = block_utils:set_value(PrivateX, last_exec, erlang:monotonic_time(micro_seconds)),
+
+	% Arbitrarily roll over Execution Counter at 999,999,999
+	case block_utils:get_value(PrivateY, exec_count) + 1 of
+		1000000000   -> block_utils:set_value(PrivateY, exec_count, 0);
+		NewExecCount -> block_utils:set_value(PrivateY, exec_count, NewExecCount)
+	end.
+    
+%% 
+%% Update all outputs to the New value,
+%% except update status output to the New Staus value
+%% Used to mass update block outputs in disabled or error conditions
+%% 
+-spec update_all_outputs(Outputs :: list(), NewValue :: term(), NewStatus :: atom()) -> list().
+
+update_all_outputs(Outputs, NewValue, NewStatus) ->
+    lists:map(
+        fun(Output) ->
+            {ValueName, _Value, BlockNames} = Output,
+            case ValueName of
+                status -> {ValueName, NewStatus, BlockNames};
+                _      -> {ValueName, NewValue,  BlockNames}
+            end
+         end,
+         Outputs).
+         
+%%    
+%% Send an execute message to each block connected to the 'execute_out' output of this block
+%% This will implement control flow execution, versus data flow done in the update_blocks function. 
+%%
+
+update_execute(Outputs)->
+	
+    {execute_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, execute_out),
+    block_server:execute_out_execute(BlockNames).
+
+
+
+%%
+%% Common block initialization function
+%%
+-spec initialize(BlockValues :: block_state()) -> block_state().
+
+initialize(BlockValues) ->
+    {_BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+    
+    % Perform block type specific initialization 
+    BlockModule:initialize(BlockValues).
+    
 
 %%
 %%  Common block delete function
 %%
 delete(Config, Private) ->
-    log_state("Deleting", Config),    
     % Cancel execution timer if it exists
     TimerReferenceValue = block_utils:get_value(Private, timer_ref),
     case TimerReferenceValue of
@@ -95,32 +260,8 @@ delete(Config, Private) ->
         _ ->  timer:cancel(TimerReferenceValue)
     end.
 
+    
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-setup_execute_timer(Config, Inputs, Private) ->
-    ExecuteInterval = block_utils:get_value(Inputs, execute_interval),
-    if (ExecuteInterval > 0 ) ->
-        BlockName = block_utils:get_value(Config, block_name),
-        % Setup timer to execute block after timer expires
-        case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
-            {ok, TimerReferenceValue} -> 
-                NewPrivate = block_utils:set_value(Private, timer_ref, TimerReferenceValue);
-         
-            {error, Reason} -> 
-                NewPrivate = block_utils:set_value(Private, timer_ref, empty),
-                io:format("~p Error: ~p Setting execution timer ~n", [BlockName, Reason])
-        end;
-    true ->  % Timeout value is less than or equal to zero, don't set up execution via timer
-        NewPrivate = Private
-    end,
-    NewPrivate.
-
-%% print the indicated state to the shell
-log_state (State, Config) ->
-    BlockName = block_utils:get_value(Config, block_name),
-    BlockType = block_utils:get_value(Config, block_type),
-    
-    io:format("~s: ~p Type: ~p~n", [State, BlockName, BlockType]).
-    

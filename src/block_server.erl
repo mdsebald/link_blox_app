@@ -60,8 +60,7 @@ timer_execute(BlockName) ->
 %% i.e Control Flow
 execute_out_execute([]) ->
     ok;
-execute_out_execute(BlockNames) ->
-    [BlockName | RemainingBlockNames] = BlockNames,
+execute_out_execute([BlockName | RemainingBlockNames]) ->
     gen_server:cast(BlockName, execute_out_execute),
     execute_out_execute(RemainingBlockNames).
 
@@ -121,11 +120,13 @@ disconnect(BlockName, ValueName) ->
 %% ====================================================================
 init(BlockValues) ->
 	{BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
-	
+
+    io:format("Initializing: ~p~n", [BlockName]),
+ 	
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
 	% Perform custom block initialization if needed
-	NewBlockValues = BlockModule:initialize(BlockValues),
+	NewBlockValues = block_common:initialize(BlockValues),
 		
 	% Call configure, to send a configure cast message to self
 	% Already have initial block values in State variable, 
@@ -186,8 +187,8 @@ handle_call(Request, From, BlockValues) ->
 %% ====================================================================
 handle_cast(execute, CurrentBlockValues) ->
  
-	% Execute the block code
-	NewBlockValues = execute_block(CurrentBlockValues, manual),
+	% Execute the block
+	NewBlockValues = block_common:execute(CurrentBlockValues, manual),
 	{noreply, NewBlockValues};
     
 %% ====================================================================
@@ -196,8 +197,8 @@ handle_cast(execute, CurrentBlockValues) ->
 %% ====================================================================
 handle_cast(timer_execute, CurrentBlockValues) ->
 
-	% Execute the block code
-	NewBlockValues = execute_block(CurrentBlockValues, timeout),
+	% Execute the block
+	NewBlockValues = block_common:execute(CurrentBlockValues, timeout),
 	{noreply, NewBlockValues};
 
 
@@ -207,7 +208,7 @@ handle_cast(timer_execute, CurrentBlockValues) ->
 %% ====================================================================
 handle_cast(execute_out_execute, CurrentBlockValues) ->
 	% Execute the block code
- 	NewBlockValues = execute_block(CurrentBlockValues, execute_out),
+ 	NewBlockValues = block_common:execute(CurrentBlockValues, execute_out),
 	{noreply, NewBlockValues};
 
 %% ====================================================================
@@ -226,7 +227,7 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
     {execute_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, execute_in),
     
     if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-      	NewBlockValues = execute_block({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, NewPrivate}, input_change);
+      	NewBlockValues = block_common:execute({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, NewPrivate}, input_change);
 	true -> % Block will be executed via timer timeout or linked block execution, just return
         NewBlockValues = {BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}
     end,
@@ -322,7 +323,7 @@ handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
     % GPIO Interupt message from Erlang ALE library, 
     % Execute the block connected to this interrupt
     % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
-    NewBlockValues = execute_block(CurrentBlockValues, hardware_interrupt),
+    NewBlockValues = block_common:execute(CurrentBlockValues, hardware_interrupt),
 
     {noreply, NewBlockValues};
 
@@ -341,9 +342,14 @@ handle_info(Info, State) ->
 			| term().
 %% ====================================================================
 terminate(_Reason, BlockValues) ->
-	{_BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
-    % TODO: Need to unlink this block from the supervisor, or it will just get restarted
-    % TODO: delete the links between this block and other blocks
+	{BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+    
+    io:format("Deleting: ~p~n", [BlockName]),
+
+    % Cancel Timer, if running
+    % Unlink from other blocks
+    % Unlink this block from the supervisor, so it will not be restarted
+    % Perform custom block specific delete action
 	BlockModule:delete(BlockValues),
     ok.
 
@@ -525,7 +531,7 @@ execute_block(BlockValues, ExecMethod) ->
 %%
 update_execution_timer(BlockName, Inputs, Private) ->
 
-    ExecuteInterval = block_utils:get_value(Inputs, execute_interval),
+    ExecuteInterval = block_utils:get_value(Config, execute_interval),
     TimerRef = block_utils:get_value(Private, timer_ref),
     
     % Cancel block execution timer, if it is set   
