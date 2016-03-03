@@ -5,7 +5,7 @@
 
 Written in Erlang and built on the nerves project
 
-Current state:  
+Current state as of 02-Mar-2016:
 
  - Built on the nerves project, running on a Raspberry Pi 1.
   
