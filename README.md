@@ -1,7 +1,7 @@
 # LinkBlox
-#### An application to assist the programming of inexpensive 
-#### single board computers,
-#### by linking blocks of functionality instead of writing code.
+#### An application to assist in the programming of inexpensive 
+#### single board computers, by creating and linking blocks
+#### of functionality, instead of writing code.
 
 Written in Erlang and built on the nerves project
 
