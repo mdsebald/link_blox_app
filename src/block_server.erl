@@ -165,7 +165,7 @@ handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
     {reply, {ValueName, Value}, NewBlockValues};
 	
 handle_call(Request, From, BlockValues) ->
-	error_logger:info_msg("Unknown call message: ~p From: ~p~n", [Request, From]),
+	error_logger:warning_msg("Unknown call message: ~p From: ~p~n", [Request, From]),
     {reply, ok, BlockValues}.
 
 

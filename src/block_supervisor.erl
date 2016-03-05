@@ -11,7 +11,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1]).
+-export([start_link/1, block_status/0]).
 
 start_link(BlockValuesFile) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
@@ -60,6 +60,18 @@ init(BlockValuesFile) ->
 %					#{id => BlockName, start => {'BlockPoint_srv', create, [BlockValues]}},
 %
 %				 ],
+
+block_status() -> block_status(supervisor:which_children(?MODULE)).
+    
+block_status([]) -> ok;
+
+block_status([BlockProcess | RemainingProcesses]) ->
+    BlockName = element(1, BlockProcess),
+    Value = block_server:get_value(BlockName, value),
+    Status = block_server:get_value(BlockName, status),
+    io:format("Block: ~p Value: ~p Status: ~p~n", [BlockName, Value, Status]),
+    block_status(RemainingProcesses).
+
 
 %% ====================================================================
 %% Internal functions
