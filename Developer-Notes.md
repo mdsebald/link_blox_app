@@ -1,6 +1,4 @@
-
-# LinkBlox
-## Developer Notes
+#### LinkBlox Developer Notes
 
 Might be some useful information here:
 
