@@ -33,8 +33,8 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
-    io:format("Creating: ~p Type: ~p~n", [BlockName, type_name()]),
-     
+    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+         
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
     %%
@@ -78,7 +78,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             NewPrivate = Private
     end,
     
-    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
+    NewOutputs = block_utils:set_value_status(Outputs, Value, Status),
 
     {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
     
@@ -94,7 +94,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     GpioPinRef = block_utils:get_value(Private, gpio_pin_ref),
     Value = read_pin_value_bool(GpioPinRef),
 
-    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, normal}]),
+    NewOutputs = block_utils:set_value_status(Outputs, Value, normal),
         
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 

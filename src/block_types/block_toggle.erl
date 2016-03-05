@@ -32,7 +32,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
  
-    io:format("Creating: ~p Type: ~p~n", [BlockName, type_name()]),
+    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
     
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -57,7 +57,7 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 	
-    NewOutputs = block_utils:set_values(Outputs, [{value, not_active}, {status, initialized}]),
+    NewOutputs = block_utils:set_value_status(Outputs, not_active, initialized),
      
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
@@ -77,7 +77,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
         _          -> Value = not_active, Status = error
     end,
 	
-    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
+    NewOutputs = block_utils:set_value_status(Outputs, Value, Status),
      
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 

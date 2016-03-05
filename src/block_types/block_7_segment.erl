@@ -34,7 +34,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
-    io:format("Creating: ~p Type: ~p~n", [BlockName, type_name()]),
+    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
 
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -60,11 +60,10 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     
     % Perform block type specific initializations here
-    NewOutputs = Outputs,
-    NewPrivate = Private,
+    NewOutputs = block_utils:set_value(Outputs, status, initialized),
 
     % Perform initial block execution
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
 %%
 %%  Execute the block specific functionality
@@ -73,55 +72,65 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
+    Input = block_utils:get_value(Inputs, input),
+    
     % Decode input integer value into 7 segment outputs 
-    case block_utils:get_value(Inputs, input) of
-        0 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, true}, {seg_c, true}, {seg_d, true}, 
-            {seg_e, true}, {seg_f, true}, {seg_g, false}
-            ]);
-        1 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, false}, {seg_b, true}, {seg_c, true}, {seg_d, false}, 
-            {seg_e, false}, {seg_f, false}, {seg_g, false}
-            ]);
-        2 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, true}, {seg_c, false}, {seg_d, true}, 
-            {seg_e, true}, {seg_f, false}, {seg_g, true}
-            ]);
-        3 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, true}, {seg_c, true}, {seg_d, true}, 
-            {seg_e, false}, {seg_f, false}, {seg_g, true}
-            ]);
-        4 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, false}, {seg_b, true}, {seg_c, true}, {seg_d, false}, 
-            {seg_e, false}, {seg_f, true}, {seg_g, true}
-            ]);
-        5 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, false}, {seg_c, true}, {seg_d, true}, 
-            {seg_e, false}, {seg_f, true}, {seg_g, true}
-            ]);
-        6 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, false}, {seg_c, true}, {seg_d, true}, 
-            {seg_e, true}, {seg_f, true}, {seg_g, true}
-            ]);
-        7 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, true}, {seg_c, true}, {seg_d, false}, 
-            {seg_e, false}, {seg_f, false}, {seg_g, false}
-            ]);
-        8 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, true}, {seg_c, true}, {seg_d, true}, 
-            {seg_e, true}, {seg_f, true}, {seg_g, true}
-            ]);
-        9 -> NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, true}, {seg_b, true}, {seg_c, true}, {seg_d, false}, 
-            {seg_e, false}, {seg_f, true}, {seg_g, true}
-            ]);
+    % If the input value is not an integer from 0-9, just set output error
+    case Input of
+        0 -> Value = Input, Status = normal,
+             SegA = true,  SegB = true,  SegC = true, 
+             SegD = true,  SegE = true,  SegF = true,  SegG = false;
+            
+        1 -> Value = Input, Status = normal,
+             SegA = false, SegB = true,  SegC = true, 
+             SegD = false, SegE = false, SegF = false, SegG = false;
+            
+        2 -> Value = Input, Status = normal,
+             SegA = true,  SegB = true,  SegC = false, 
+             SegD = true,  SegE = true,  SegF = false, SegG = true;
+            
+        3 -> Value = Input, Status = normal,
+             SegA = true, SegB = true, SegC = true, 
+             SegD = true, SegE = false, SegF = false, SegG = true;
+            
+        4 -> Value = Input, Status = normal,
+             SegA = false, SegB = true,  SegC = true, 
+             SegD = false, SegE = false, SegF = true,  SegG = true;
+             
+        5 -> Value = Input, Status = normal,
+             SegA = true,  SegB = false, SegC = true, 
+             SegD = true,  SegE = false, SegF = true,  SegG = true;
+            
+        6 -> Value = Input, Status = normal,
+             SegA = true,  SegB = false, SegC = true, 
+             SegD = true,  SegE = true,  SegF = true,  SegG = true;
+            
+        7 -> Value = Input, Status = normal,
+             SegA = true,  SegB = true,  SegC = true, 
+             SegD = false, SegE = false, SegF = false, SegG = false;
+             
+        8 -> Value = Input, Status = normal,
+             SegA = true, SegB = true, SegC = true, 
+             SegD = true, SegE = true, SegF = true, SegG = true;
+            
+        9 -> Value = Input, Status = normal,
+             SegA = true, SegB = true, SegC = true, 
+             SegD = false, SegE = false, SegF = true, SegG = true;
+            
          Invalid ->
-            io:format("Error: Invalid Decimal 7 Segment Value: ~p~n", [Invalid]), 
-            NewOutputs = block_utils:set_values(Outputs, [
-            {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false}, 
-            {seg_e, false}, {seg_f, false}, {seg_g, false}
-            ])
-     end,  
+            io:format("Error: Invalid Value: ~p~n", [Invalid]), 
+            Value = not_active, Status = input_error,
+            SegA = not_active, SegB = not_active, SegC = not_active, 
+            SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active 
+      end,  
+ 
+    % update the outputs
+    NewOutputs = block_utils:set_values(Outputs, 
+           [
+               {value, Value}, {status, Status},
+               {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, 
+               {seg_d, SegD}, {seg_e, SegE}, {seg_f, SegF}, {seg_g, SegG}
+           ]),
  
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 

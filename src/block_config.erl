@@ -15,12 +15,20 @@
  
  create_demo_config() ->
  
-    DispCount = block_7_segment:create(disp_count,
+    PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
+
+    TimedCount = block_exec_counter:create(timed_count,
                                  [
-                                     {execute_interval, 500}
+                                     {execute_interval, 1000}
                                  ],
                                  [
-                                     {input, 8, {fixed, null, null}}
+                                     {reset, empty, {value, switch_27, null}}
+                                 ]),
+ 
+    DispCount = block_7_segment:create(disp_count,
+                                 [],
+                                 [
+                                    {input, empty, {value, timed_count, null}}
                                  ]),
                                  
     SegA = block_pi1_gpio_digital_output:create(seg_a, 
@@ -29,17 +37,17 @@
                                 ),
 
     SegB = block_pi1_gpio_digital_output:create(seg_b, 
-                                 [{gpio_pin, 18}, {invert_output, true}], 
+                                 [{gpio_pin, 23}, {invert_output, true}], 
                                  [{input, empty, {seg_b, disp_count, null}}]
                                 ),
 
     SegC = block_pi1_gpio_digital_output:create(seg_c, 
-                                 [{gpio_pin, 19}, {invert_output, true}], 
+                                 [{gpio_pin, 25}, {invert_output, true}], 
                                  [{input, empty, {seg_c, disp_count, null}}]
                                 ),
 
     SegD = block_pi1_gpio_digital_output:create(seg_d, 
-                                 [{gpio_pin, 20}, {invert_output, true}], 
+                                 [{gpio_pin, 16}, {invert_output, true}], 
                                  [{input, empty, {seg_d, disp_count, null}}]
                                 ),
 
@@ -54,11 +62,11 @@
                                 ),
         
     SegG = block_pi1_gpio_digital_output:create(seg_g, 
-                                 [{gpio_pin, 21}, {invert_output, true}], 
+                                 [{gpio_pin, 24}, {invert_output, true}], 
                                  [{input, empty, {seg_g, disp_count, null}}]
                                 ),
 
-    [DispCount, SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
+    [PbSwDigitalInput, TimedCount, DispCount, SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
 
 create_demo_config1() ->
   
@@ -84,28 +92,6 @@ create_demo_config1() ->
                                 
     [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput, Led26DigitalOutput].
 
-
-%
-%create_demo1_config() ->
-%	BlockValues1 = blkpnt_inverter:create_values('Inverter1'),
-%	BlockValues1a = blkpnt_utils:set_input_pointer(BlockValues1, 'InputVal', {'Value', 'Priority1', null}),
-%	
-%	BlockValues2 = blkpnt_inverter:create_values('Inverter2'),
-%	BlockValues2a = blkpnt_utils:set_input_pointer(BlockValues2, 'InputVal', {'Value', 'Inverter1', null}),
-%
-%	BlockValues3 = blkpnt_inverter:create_values('Inverter3'),
-%	BlockValues3a = blkpnt_utils:set_input_pointer(BlockValues3, 'InputVal', {'Value', 'Inverter2', null}),
-%
-%	BlockValues4 = blkpnt_priority:create_values('Priority1'),
-%	BlockValues4a = blkpnt_utils:set_input_pointer(BlockValues4, 'InputVal1', {'Value', 'Inverter3', null}),
-%	BlockValues4b = blkpnt_utils:set_input_pointer(BlockValues4a, 'InputVal2', {fixed, null, null}),
-%	BlockValues4c = blkpnt_utils:set_value(BlockValues4b, 'InputVal2', true),
-%	
-%	BlockValues5 = blkpnt_type_gpio_digital_output:create_values('Red_LED_17'),
-%	
-%	BlockValuesList = [BlockValues1a, BlockValues2a, BlockValues3a, BlockValues4c, BlockValues5],
-%	
-%	write_config("/vagrant/BlockPoint/TestConfig.bpt", BlockValuesList).
 
 %% Read a set of block values from a config file
 % TODO: Check for existence and validity
