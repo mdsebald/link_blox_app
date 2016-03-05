@@ -119,13 +119,13 @@ disconnect(BlockName, ValueName) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(BlockValues) ->
-	{BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
 
     io:format("Initializing: ~p~n", [BlockName]),
  	
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
-	% Perform custom block initialization if needed
+	% Perform block initialization
 	NewBlockValues = block_common:initialize(BlockValues),
 		
 	% Call configure, to send a configure cast message to self
@@ -227,7 +227,8 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
     {execute_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, execute_in),
     
     if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-      	NewBlockValues = block_common:execute({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, NewPrivate}, input_change);
+      	NewBlockValues = block_common:execute({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}, input_change);
+          
 	true -> % Block will be executed via timer timeout or linked block execution, just return
         NewBlockValues = {BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}
     end,
@@ -341,8 +342,8 @@ handle_info(Info, State) ->
 			| {shutdown, term()}
 			| term().
 %% ====================================================================
-terminate(_Reason, BlockValues) ->
-	{BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+terminate(normal, BlockValues) ->
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
     
     io:format("Deleting: ~p~n", [BlockName]),
 
@@ -350,7 +351,13 @@ terminate(_Reason, BlockValues) ->
     % Unlink from other blocks
     % Unlink this block from the supervisor, so it will not be restarted
     % Perform custom block specific delete action
-	BlockModule:delete(BlockValues),
+	block_common:delete(BlockValues),
+    ok;
+    
+terminate(Reason, BlockValues) ->
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+    
+    io:format("Abnormal Termination: ~p  Reason: ~p~n", [BlockName, Reason]),
     ok.
 
 
@@ -436,174 +443,7 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 	end.
 
 
-%% Send an update message to each block connected to any output value that has changed
-%% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
-update_blocks(_FromBlockName, [], [])-> 
-	%io:format("~p compared all outputs~n", [FromBlockName]),
-	ok;
 
-update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
-	
-	[CurrentOutput | RemainingCurrentOutputs] = CurrentOutputs,
-	[NewOutput | RemainingNewOutputs] = NewOutputs,
-	
-	{ValueName, CurrentValue, Connections} = CurrentOutput,
-	{ValueName, NewValue, Connections} = NewOutput,
-	
-	%io:format("~p update_blocks, ValueName: ~p, comparing CurrentValue: ~p and NewValue: ~p~n", [FromBlockName, ValueName, CurrentValue, NewValue]),
-
-    % For each output value that changed, call update() to send a the new value message to each connected block.
-    % don't check the 'execute_out' output, that is for control flow execution
-	if (ValueName /= execute_out) andalso (CurrentValue /= NewValue) -> 
-        update(Connections, FromBlockName, ValueName, NewValue);
-    true -> ok % else do nothing
-    end,
-    
-    update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs).
-  
-%%    
-%% Send an execute message to each block connected to the 'execute_out' output of this block
-%% This will implement control flow execution, versus data flow done in the update_blocks function. 
-%%
-update_execute(Outputs)->
-	
-    {execute_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, execute_out),
-    execute_out_execute(BlockNames).
-
-
-%%
-%% Execute the block code
-%%
--spec execute_block(BlockValues :: block_state(), ExecMethod :: atom()) -> block_state().
-
-execute_block(BlockValues, ExecMethod) ->
-
-    {BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
-    
-    EnableInput = block_utils:get_value(Inputs, enable),
-    
-    if is_boolean(EnableInput) ->
-        if EnableInput -> % Block is enabled
-            {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
-            NewStatus = block_utils:get_value(NewOutputsX, status),
-            if  NewStatus == normal ->
-                NewPrivateY = update_execute_track(NewPrivateX, ExecMethod);
-            true ->  % Block Status is not normal
-                % Assume custom block code has taken care of updating output value(s) appropriately
-                % Don't update execution tracking
-                NewPrivateY = NewPrivateX
-            end;
-        true  ->   % Block is disabled
-            NewOutputsX = update_all_outputs(Outputs, not_active, disabled),
-            % Don't udpate execution tracking
-            NewPrivateY = Private
-        end;
-    
-    true -> % Invalid Enable input type or value
-        io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
-        NewOutputsX = update_all_outputs(Outputs, not_active, input_error),
-        % Don't udpate execution tracking
-        NewPrivateY = Private
-    end,
-    
-    {Status, NewPrivate} = update_execution_timer(BlockName, Inputs, NewPrivateY), 
-    
-    if (Status /= normal) ->  % Some kind error setting execution timer
-        NewOutputs = update_all_outputs(NewOutputsX, not_active, Status);
-    true -> % Execution timer status is normal
-        NewOutputs = NewOutputsX
-    end,
- 
-    % Update the block inputs linked to the block outputs that have just been updated (Data Flow)
-	update_blocks(BlockName, Outputs, NewOutputs),
-    
-    % Execute the blocks connected to the execute_out output value (Control Flow)
-    update_execute(NewOutputs),
-    
-    % Return the new updated block state
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
-
-
-
-%%
-%% Update the block execution timer 
-%% Return status and updated Timer Reference 
-%%
-update_execution_timer(BlockName, Inputs, Private) ->
-
-    ExecuteInterval = block_utils:get_value(Config, execute_interval),
-    TimerRef = block_utils:get_value(Private, timer_ref),
-    
-    % Cancel block execution timer, if it is set   
-    cancel_timer(BlockName, TimerRef), 
-    
-    % Check validity of ExecuteInterval input value
-    if is_integer(ExecuteInterval) ->
-     
-        if (ExecuteInterval == 0) ->
-            Status = normal, 
-            NewTimerRef = empty;
-        true ->
-            if (ExecuteInterval > 0) ->
-                {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval);
-            true -> % Execute Interval input value is negative
-                Status = input_error, 
-                NewTimerRef = empty,
-                io:format("~p Error: Negative execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
-            end
-        end;
-    true ->  % Execute Interval input value is not an integer
-        Status = input_error, 
-        NewTimerRef = empty,
-        io:format("~p Error: Invalid execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
-    end,
-    NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
-    {Status, NewPrivate}.
-    
-% Cancel block execution timer, if the timer is set   
-cancel_timer(BlockName, TimerRef) ->
-    if (TimerRef /= empty) ->
-        case timer:cancel(TimerRef) of 
-            {ok, cancel} -> 
-                ok;
-            
-            {error, Reason} ->
-                io:format("~p Error: ~p Canceling execution timer ~p ~n", [BlockName, Reason, TimerRef]),
-                error
-        end;
-    true -> ok
-    end.
-
-% Setup timer to execute block after timer expires 
-set_timer(BlockName, ExecuteInterval) ->
-    case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
-        {ok, TimerRef} -> 
-            {normal, TimerRef};
-         
-        {error, Reason} -> 
-            io:format("~p Error: ~p Setting execution timer ~n", [BlockName, Reason]),
-            {process_error, empty}
-    end.   	
-
-%
-% Track execute method, time and count
-%
--spec update_execute_track(Private :: list(), ExecMethod :: atom()) -> list().
-
-update_execute_track(Private, ExecMethod) ->
-   
-    % Record method of execution
-    PrivateX = block_utils:set_value(Private, exec_method, ExecMethod),
-    
-    % Record last executed timestamp
-	PrivateY = block_utils:set_value(PrivateX, last_exec, erlang:monotonic_time(micro_seconds)),
-
-	% Arbitrarily roll over Execution Counter at 999,999,999
-	case block_utils:get_value(PrivateY, exec_count) + 1 of
-		1000000000   -> block_utils:set_value(PrivateY, exec_count, 0);
-		NewExecCount -> block_utils:set_value(PrivateY, exec_count, NewExecCount)
-	end.
-    
     
 %%    
 %% Update the value of every input in this block linked to the 
@@ -627,21 +467,3 @@ update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewVal
 		end, 
 		Inputs).
  
- 
-%% 
-%% Update all outputs to the New value,
-%% except update status output to the New Staus value
-%% Used to mass update block outputs in disabled or error conditions
-%% 
--spec update_all_outputs(Outputs :: list(), NewValue :: term(), NewStatus :: atom()) -> list().
-
-update_all_outputs(Outputs, NewValue, NewStatus) ->
-    lists:map(
-        fun(Output) ->
-            {ValueName, _Value, BlockNames} = Output,
-            case ValueName of
-                status -> {ValueName, NewStatus, BlockNames};
-                _      -> {ValueName, NewValue,  BlockNames}
-            end
-         end,
-         Outputs).

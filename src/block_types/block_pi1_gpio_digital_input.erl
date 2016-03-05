@@ -8,7 +8,7 @@
 
 -author("Mark Sebald").
 
--include("../block_state.hrl").  % Adjust path to hrl file as needed
+-include("../block_state.hrl"). 
 
 %% ====================================================================
 %% API functions
@@ -58,16 +58,16 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 	
-    % Perform block type specific initializations here, and update the state variables
+    % Get the GPIO pin number used by this block
     PinNumber = block_utils:get_value(Config, gpio_pin),
     % TODO: Check Pin Number is an integer in the right range
 
-    % Perform block type specific initializations here, and update the state variables
+    % Initialize the GPIO pin as an input
     case gpio:start_link(PinNumber, input) of
         {ok, GpioPinRef} ->
             Status = initialized,
             Value = not_active,
-	        NewPrivate = block_utils:merge_attribute_lists(Private, [{gpio_pin_ref, GpioPinRef}]),
+	        NewPrivate = block_utils:set_value(Private, gpio_pin_ref, GpioPinRef),
             gpio:register_int(GpioPinRef),
             gpio:set_int(GpioPinRef, both);  % TODO: Make interrupt type selectable via config value
 
@@ -77,12 +77,10 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             Value = not_active,
             NewPrivate = Private
     end,
-  
-    NewOutputsX = block_utils:set_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_value(NewOutputsX, status, Status),
     
-    % Perform initial block execution
-    block_common:execute({BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}, initial).
+    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
+
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
     
 
 %%
@@ -92,16 +90,11 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
-    % Perform block type specific actions here, 
-    % read input value(s) calculate new outut value(s)
-    % set block output status value
-    % Perform block type specific actions here, calculate new outut value(s)
-    
+    % Read the current value of the GPIO pin 
     GpioPinRef = block_utils:get_value(Private, gpio_pin_ref),
     Value = read_pin_value_bool(GpioPinRef),
 
-    NewOutputsX = block_utils:set_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_value(NewOutputsX, status, normal), 
+    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, normal}]),
         
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
@@ -112,7 +105,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 -spec delete(block_state()) -> block_state().
 
 delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) -> 
-    % Perform any block type specific delete functionality here
+    % Release the GPIO pin?
     {BlockName, BlockModule, Config, Inputs, Outputs, Private}.
 
 

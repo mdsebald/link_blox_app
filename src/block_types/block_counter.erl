@@ -63,7 +63,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     NewPrivate = Private,
     
     % Perform initial block execution
-	block_common:execute({BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}, initial).
+	{BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 
 %%

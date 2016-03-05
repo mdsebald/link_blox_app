@@ -57,12 +57,9 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 	
-    % Perform block type specific initializations here, and update the state variables
-    NewOutputsX = block_utils:set_value(Outputs, value, not_active),
-    NewOutputs = block_utils:set_value(NewOutputsX, status, initialized),
-
-    % Perform initial block execution
-    block_common:execute({BlockName, BlockModule, Config, Inputs, NewOutputs, Private}, initial).
+    NewOutputs = block_utils:set_values(Outputs, [{value, not_active}, {status, initialized}]),
+     
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
 
 %%
@@ -71,6 +68,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
+
     % Toggle output everytime block is executed
     case block_utils:get_value(Outputs, value) of
         true       -> Value = false,      Status = normal;
@@ -79,10 +77,9 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
         _          -> Value = not_active, Status = error
     end,
 	
-    NewOutputs1 = block_utils:set_value(Outputs, value, Value),
-    NewOutputs2 = block_utils:set_value(NewOutputs1, status, Status),
-    
-    {BlockName, BlockModule, Config, Inputs, NewOutputs2, Private}.
+    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
+     
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
 
 %% 

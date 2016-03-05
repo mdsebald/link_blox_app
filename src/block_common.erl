@@ -40,7 +40,7 @@ inputs() ->
     [
       {enable, true, ?EMPTY_LINK},      % Block will execute as long as enable input is true
       
-      {execute_in, empty, ?EMPTY_LINK}, % Link to block that will execute this block.
+      {execute_in, empty, ?EMPTY_LINK} % Link to block that will execute this block.
                                         % May only be linked to the 'execute_out' block output value
                                         % i.e. implement Control Flow 
       
@@ -109,7 +109,7 @@ execute(BlockValues, ExecMethod) ->
         NewPrivateY = Private
     end,
     
-    {Status, NewPrivate} = update_execution_timer(BlockName, Inputs, NewPrivateY), 
+    {Status, NewPrivate} = update_execution_timer(BlockName, Config, NewPrivateY), 
     
     if (Status /= normal) ->  % Some kind error setting execution timer
         NewOutputs = update_all_outputs(NewOutputsX, not_active, Status);
@@ -131,7 +131,7 @@ execute(BlockValues, ExecMethod) ->
 %% Update the block execution timer 
 %% Return status and updated Timer Reference 
 %%
-update_execution_timer(BlockName, Inputs, Private) ->
+update_execution_timer(BlockName, Config, Private) ->
 
     ExecuteInterval = block_utils:get_value(Config, execute_interval),
     TimerRef = block_utils:get_value(Private, timer_ref),
@@ -140,6 +140,7 @@ update_execution_timer(BlockName, Inputs, Private) ->
     cancel_timer(BlockName, TimerRef), 
     
     % Check validity of ExecuteInterval input value
+    % TODO: Check validity of config values once on startup
     if is_integer(ExecuteInterval) ->
      
         if (ExecuteInterval == 0) ->
@@ -223,13 +224,45 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
             end
          end,
          Outputs).
+
+
+%% Send an update message to each block connected to any output value that has changed
+%% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
+
+-spec update_blocks(atom(), list(), list()) -> ok.
+
+update_blocks(_FromBlockName, [], [])-> 
+	%io:format("~p compared all outputs~n", [FromBlockName]),
+	ok;
+
+update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
+	
+	[CurrentOutput | RemainingCurrentOutputs] = CurrentOutputs,
+	[NewOutput | RemainingNewOutputs] = NewOutputs,
+	
+	{ValueName, CurrentValue, Connections} = CurrentOutput,
+	{ValueName, NewValue, Connections} = NewOutput,
+	
+	%io:format("~p update_blocks, ValueName: ~p, comparing CurrentValue: ~p and NewValue: ~p~n", [FromBlockName, ValueName, CurrentValue, NewValue]),
+
+    % For each output value that changed, call update() to send a the new value message to each connected block.
+    % don't check the 'execute_out' output, that is for control flow execution
+	if (ValueName /= execute_out) andalso (CurrentValue /= NewValue) -> 
+        block_server:update(Connections, FromBlockName, ValueName, NewValue);
+    true -> ok % else do nothing
+    end,
+    
+    update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs).
+
+
+
          
 %%    
 %% Send an execute message to each block connected to the 'execute_out' output of this block
 %% This will implement control flow execution, versus data flow done in the update_blocks function. 
 %%
 
-update_execute(Outputs)->
+update_execute(Outputs) ->
 	
     {execute_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, execute_out),
     block_server:execute_out_execute(BlockNames).
@@ -241,24 +274,31 @@ update_execute(Outputs)->
 %%
 -spec initialize(BlockValues :: block_state()) -> block_state().
 
-initialize(BlockValues) ->
-    {_BlockName, BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
+    
+    % In case this block is set to execute via timer, initialize the timer
+    {_Status, NewPrivate} = update_execution_timer(BlockName, Config, Private), 
     
     % Perform block type specific initialization 
-    BlockModule:initialize(BlockValues).
+    BlockModule:initialize({BlockName, BlockModule, Config, Inputs, Outputs, NewPrivate}).
     
 
 %%
 %%  Common block delete function
 %%
-delete(Config, Private) ->
+-spec delete(BlockValues :: block_state()) -> block_state().
+
+delete(BlockValues) ->
+    {_BlockName, BlockModule, _Config, _Inputs, _Outputs, Private} = BlockValues,
+
     % Cancel execution timer if it exists
-    TimerReferenceValue = block_utils:get_value(Private, timer_ref),
-    case TimerReferenceValue of
+    case block_utils:get_value(Private, timer_ref) of
         empty -> empty;
-        
-        _ ->  timer:cancel(TimerReferenceValue)
-    end.
+        TimerRef ->  timer:cancel(TimerRef)
+    end,
+    
+    % Perform block type specific delete
+    BlockModule:delete(BlockValues).
 
     
 %% ====================================================================

@@ -11,7 +11,56 @@
 %% ====================================================================
 -export([read_config/1, write_config/2, create_demo_config/0]).
 
-create_demo_config() ->
+ 
+ 
+ create_demo_config() ->
+ 
+    DispCount = block_7_segment:create(disp_count,
+                                 [
+                                     {execute_interval, 500}
+                                 ],
+                                 [
+                                     {input, 8, {fixed, null, null}}
+                                 ]),
+                                 
+    SegA = block_pi1_gpio_digital_output:create(seg_a, 
+                                 [{gpio_pin, 17}, {invert_output, true}], 
+                                 [{input, empty, {seg_a, disp_count, null}}]
+                                ),
+
+    SegB = block_pi1_gpio_digital_output:create(seg_b, 
+                                 [{gpio_pin, 18}, {invert_output, true}], 
+                                 [{input, empty, {seg_b, disp_count, null}}]
+                                ),
+
+    SegC = block_pi1_gpio_digital_output:create(seg_c, 
+                                 [{gpio_pin, 19}, {invert_output, true}], 
+                                 [{input, empty, {seg_c, disp_count, null}}]
+                                ),
+
+    SegD = block_pi1_gpio_digital_output:create(seg_d, 
+                                 [{gpio_pin, 20}, {invert_output, true}], 
+                                 [{input, empty, {seg_d, disp_count, null}}]
+                                ),
+
+    SegE = block_pi1_gpio_digital_output:create(seg_e, 
+                                 [{gpio_pin, 26}, {invert_output, true}], 
+                                 [{input, empty, {seg_e, disp_count, null}}]
+                                ),
+        
+    SegF = block_pi1_gpio_digital_output:create(seg_f, 
+                                 [{gpio_pin, 22}, {invert_output, true}], 
+                                 [{input, empty, {seg_f, disp_count, null}}]
+                                ),
+        
+    SegG = block_pi1_gpio_digital_output:create(seg_g, 
+                                 [{gpio_pin, 21}, {invert_output, true}], 
+                                 [{input, empty, {seg_g, disp_count, null}}]
+                                ),
+
+    [DispCount, SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
+
+create_demo_config1() ->
   
     Led17DigitalOutput = block_pi1_gpio_digital_output:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
                                 [{input, empty, {value, toggle_led, null}}]),
@@ -21,9 +70,19 @@ create_demo_config() ->
                                 
     PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
    
-    ToggleBlockValues = block_toggle:create(toggle_led, [{execute_interval, 250], []),
+    ToggleBlockValues = block_toggle:create(toggle_led, [{execute_interval, 2000}], []),
     
-    [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput].
+    Led26DigitalOutput = block_pi1_gpio_digital_output:create(led_26, 
+                                [
+                                    {gpio_pin, 26},
+                                    {invert_output, true}
+                                ], 
+                                [
+                                    {input, empty, {value, switch_27, null}}, 
+                                    {execute_in, empty, {execute_out, toggle_led, null}}
+                                ]),
+                                
+    [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput, Led26DigitalOutput].
 
 
 %

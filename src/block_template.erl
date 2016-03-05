@@ -37,8 +37,8 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
-    block_common:log_state("Creating", BlockName, type_name()),
-
+    io:format("Creating: ~p Type: ~p~n", [BlockName, type_name()]),
+    
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
     %%
@@ -66,8 +66,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     NewOutputs = Outputs,
     NewPrivate = Private,
 
-    % Perform initial block execution
-    block_common:execute({BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}, initial).
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 %%
 %%  Execute the block specific functionality

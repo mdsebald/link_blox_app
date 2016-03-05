@@ -82,7 +82,7 @@ set_value(Attributes, AttributeName, NewValue) ->
 set_values(Attributes, []) -> Attributes;
 
 set_values(Attributes, [{AttributeName, NewValue} | RemainingValues]) ->
-    NewAttributes = set_values(Attributes, AttributeName, NewValue),
+    NewAttributes = set_value(Attributes, AttributeName, NewValue),
     set_values(NewAttributes, RemainingValues).
 
 

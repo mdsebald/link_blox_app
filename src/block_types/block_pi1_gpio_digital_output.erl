@@ -16,7 +16,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> pi1_gpio_digital_output.  % atom, specifying the block type, usually the module name minus "block_"
+type_name() -> pi1_gpio_digital_output.  
 
 version() -> "0.1.0".   % Major.Minor.Patch, Major version change is a breaking change
 
@@ -58,9 +58,10 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
-    % Perform block type specific initializations here, and update the state variables   
+    % Get the GPIO Pin number used for digital outputs 
 	PinNumber = block_utils:get_value(Config, gpio_pin),
     % TODO: Check if Pin Number is an integer, and range
+    
 	DefaultValue = block_utils:get_value(Config, default_value),
     InvertOutput = block_utils:get_value(Config, invert_output),
 	    
@@ -68,21 +69,19 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
         {ok, GpioPinRef} ->
             Status = initialized,
             Value = DefaultValue,
- 	        NewPrivate = block_utils:set_value(InitPrivate, gpio_pin_ref, GpioPinRef),
+ 	        NewPrivate = block_utils:set_value(Private, gpio_pin_ref, GpioPinRef),
             set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
         {error, ErrorResult} ->
             io:format("~p Error: ~p intitiating GPIO pin; ~p~n", [BlockName, ErrorResult, PinNumber]),
             Status = process_error,
             Value = not_active,
-            NewPrivate = InitPrivate
+            NewPrivate = Private
     end,	
   
-    NewOutputsX = block_utils:set_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_value(NewOutputsX, status, Status),
-
-    % Perform initial block execution
-    block_common:execute({BlockName, BlockModule, Config, Inputs, NewOutputs, Private}, initial).
+    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
+    
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
     
 
 %%
@@ -91,10 +90,6 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
-
-    % Perform block type specific actions here, 
-    % read input value(s) calculate new outut value(s)
-    % set block output status value
     
     GpioPin = block_utils:get_value(Private, gpio_pin_ref),
     DefaultValue = block_utils:get_value(Config, default_value),
@@ -131,9 +126,8 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
              Status = input_error
 	end,
     set_pin_value_bool(GpioPin, PinValue, InvertOutput),
-       
-    NewOutputsX = block_utils:set_value(Outputs, value, Value),
-    NewOutputs = block_utils:set_value(NewOutputsX, status, Status),     
+ 
+    NewOutputs = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),     
  
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
