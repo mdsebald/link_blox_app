@@ -1,46 +1,20 @@
 # LinkBlox
-## An Erlang IoT project
+#### An application to assist in the programming of inexpensive 
+#### single board computers, by creating and linking blocks
+#### of functionality, instead of writing code.
 
-Might be some useful information here:
+Written in Erlang and built on the nerves project
 
-https://coelhorjc.wordpress.com/2015/02/25/how-to-build-and-package-erlang-otp-applications-using-rebar/
+Current state as of 02-Mar-2016:
 
-Attempting to integrate with nerves project using linux to build.
-
-Under linux, follow the instructions for nerves-system-br to build with the appropriate defconfig (i.e. nerves_rpi_defconfig) for your platform 
-
-Set environment variables so your project can connect with the nerves project
-
-$ source ./nerves-env.sh.
-
-after cloning project, 
-
-$ chmod +x relhelper.sh   # make it executable
-
-Erlang ALE Makefile calls erlang.mk for make rules
-
-ERTS_INCLUDE_DIR="$(ERTS_DIR)/include"
-
-ERL_INTERFACE_LIB_DIR="$(ERL_EI_LIBDIR)"
-
-ERL_INTERFACE_INCLUDE_DIR="$(ERL_EI_INCLUDE_DIR)"  
-
-Made this a pull request to nerves project, to update "scripts/nerves-env-helper.sh" and nerves.mk
-
-Pull request accepted 09-Jan-2016
-
-Need to switch Makefile to use fwup app to burn SD memory card instead of using fwtool
-
-fwup, not in sudo env PATH,  i.e. ./nerves-system-br/buildroot/output/target/usr/bin/fwup
-
-Copy source from Vagrant synced folder (Local GitHub Repo) to nerves LinkBlocks build directory (under /home/vagrant)
-
-$ rsync -avC /vagrant/github/LinkBlocks .  
-
-Error running rebar:  rebar.config references ./relhelper.sh  sript.  Error: could not find ./relhelper.sh  
-
-Cause: relhelper.sh had DOS line endings.  Needed to switch to unix line endings used this:
-
- http://stackoverflow.com/questions/2920416/configure-bin-shm-bad-interpreter
+ - Built on the nerves project, running on a Raspberry Pi 1.
+  
+ - Basic block execution framework is built, but still being fine tuned
+  
+ - Block data structure and associate block code defined, but still being fine tuned
+ 
+ - 3 block types created so far: Toggle, GPIO Digital Out, GPIO Digital In 
+ 
+ - No User Interface
 
 
