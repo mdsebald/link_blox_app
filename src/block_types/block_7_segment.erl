@@ -34,7 +34,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
-    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
 
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -118,7 +118,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
              SegD = false, SegE = false, SegF = true, SegG = true;
             
          Invalid ->
-            io:format("Error: Invalid Value: ~p~n", [Invalid]), 
+            error_logger:error_msg("~p Invalid Value: ~p~n", [BlockName, Invalid]), 
             Value = not_active, Status = input_error,
             SegA = not_active, SegB = not_active, SegC = not_active, 
             SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active 

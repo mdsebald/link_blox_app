@@ -33,7 +33,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
-    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+    error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
          
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -72,7 +72,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             gpio:set_int(GpioPinRef, both);  % TODO: Make interrupt type selectable via config value
 
         {error, ErrorResult} ->
-            io:format("~p Error: ~p intitiating GPIO pin; ~p~n", [BlockName, ErrorResult, PinNumber]),
+            error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", [BlockName, ErrorResult, PinNumber]),
             Status = process_error,
             Value = not_active,
             NewPrivate = Private

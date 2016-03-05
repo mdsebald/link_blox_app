@@ -121,7 +121,7 @@ disconnect(BlockName, ValueName) ->
 init(BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
 
-    io:format("Initializing: ~p~n", [BlockName]),
+    error_logger:info_msg("Initializing: ~p~n", [BlockName]),
  	
 	%TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
    	
@@ -165,7 +165,7 @@ handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
     {reply, {ValueName, Value}, NewBlockValues};
 	
 handle_call(Request, From, BlockValues) ->
-	io:format("Unknown call message: ~p From: ~p~n", [Request, From]),
+	error_logger:info_msg("Unknown call message: ~p From: ~p~n", [Request, From]),
     {reply, ok, BlockValues}.
 
 
@@ -242,24 +242,19 @@ handle_cast(configure, BlockValues) ->
 	% Perform configuration in a message handling routine because
 	% it may take several config passes as we wait for other blocks to start up
 	
-	
-	%io:format("~p cast configure message~n", [BlockName]),
-	
-	%io:format("~p BlockValues: ~p~n", [BlockName, BlockValues]),
-	
 	% If any of this block's inputs are pointing at another block that is not running / registered yet
 	% Set the block status output and last error output, delay, and call configuration again.
 	{BlockName, _BlockModule, _Config, Inputs, _Outputs, _Private} = BlockValues,
 	
 	case unregistered_blocks(Inputs) of
 		ok ->
-			io:format("~p all linked blocks running~n", [BlockName]),
+			error_logger:info_msg("~p all linked blocks running~n", [BlockName]),
 			% All blocks connected to this block's inputs are running/registered.
 			% Connect this block's inputs to other block's outputs as specified by the input linkss
 			connect_blocks(BlockName, Inputs);
 				
 		{error, MissingBlockName} ->
-			io:format("~p waiting for ~p to start~n", [BlockName, MissingBlockName]),
+			error_logger:info_msg("~p waiting for ~p to start~n", [BlockName, MissingBlockName]),
 			% Not all blocks connected to this block or runnning/registerd yet.
 			% Delay and try configuring again
 			block_utils:sleep(100),  % TODO: Is this the correct delay?, could it be shorter? 
@@ -275,7 +270,7 @@ handle_cast(configure, BlockValues) ->
 handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 	% TODO: Sanity check make sure new block name, type and version match old block name, type and version/(same major rev)
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues, 
-	io:format("~p: Reconfiguring block~n", [BlockName]),
+	error_logger:info_msg("~p: Reconfiguring block~n", [BlockName]),
 
 	% Replace current state Block values with new values and configure block again
 	% Check that new block values match the current block type and block name that is running
@@ -292,8 +287,6 @@ handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
 		
 	%% Add the connection to 'ToBlockName' to this output 'ValueName's list of connections
 	NewOutputs = block_utils:add_connection(Outputs, ValueName, ToBlockName),
-
-	%io:format("~p connecting NewBlockValues: ~p~n", [BlockName, NewBlockValues]),
 	
 	% Send the current value of this output to the block 'ToBlockName'
 	Value = block_utils:get_value(NewOutputs, ValueName),
@@ -304,7 +297,7 @@ handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
 	{noreply, {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}};
 	
 handle_cast(Msg, State) ->
-	io:format("Unknown cast message: ~p~n", [Msg]),
+	error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
     {noreply, State}.
 
 
@@ -329,7 +322,7 @@ handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
     {noreply, NewBlockValues};
 
 handle_info(Info, State) ->
-    io:format("Unknown info message: ~p~n", [Info]),
+    error_logger:warning_msg("Unknown info message: ~p~n", [Info]),
     {noreply, State}.
 
 
@@ -345,7 +338,7 @@ handle_info(Info, State) ->
 terminate(normal, BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
     
-    io:format("Deleting: ~p~n", [BlockName]),
+    error_logger:info_msg("Deleting: ~p~n", [BlockName]),
 
     % Cancel Timer, if running
     % Unlink from other blocks
@@ -357,7 +350,7 @@ terminate(normal, BlockValues) ->
 terminate(Reason, BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
     
-    io:format("Abnormal Termination: ~p  Reason: ~p~n", [BlockName, Reason]),
+    error_logger:error_msg("Abnormal Termination: ~p  Reason: ~p~n", [BlockName, Reason]),
     ok.
 
 
@@ -429,7 +422,7 @@ connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
 			   
 			%if the block input value is still empty, send a connect message to the block linked to this input
 			if Value == empty ->
-				io:format("Connecting Output <~p:~p> To Input <~p:~p>~n", [LinkBlockName, LinkValueName, BlockName, ValueName]),
+				error_logger:info_msg("Connecting Output <~p:~p> To Input <~p:~p>~n", [LinkBlockName, LinkValueName, BlockName, ValueName]),
 				connect(LinkBlockName, LinkValueName, BlockName),
 				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested + 1);
 			true ->

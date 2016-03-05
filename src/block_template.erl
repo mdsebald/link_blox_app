@@ -37,7 +37,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
-    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+    error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
 
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.

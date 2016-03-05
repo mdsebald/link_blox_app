@@ -43,7 +43,7 @@ get_attribute(Attributes, AttributeName) ->
 get_value(Attributes, AttributeName) ->
 	case get_attribute(Attributes, AttributeName) of
 		not_found ->
-			io:format("get_value() Error: ~p not found in attributes list~n", [AttributeName]),
+			error_logger:error_msg("get_value() Error: ~p not found in attributes list~n", [AttributeName]),
 			not_found;
 		{AttributeName, Value}     -> Value; % Config or Private Value
         {AttributeName, Value, _ } -> Value  % Input or Output value
@@ -64,7 +64,7 @@ get_integer(Attributes, AttributeName) ->
         Value      -> 
             if  is_integer(Value) -> Value;
             true -> 
-                io:format("get_integer() Error: ~p  value is not an integer: ~p~n", [AttributeName,Value]),
+                error_logger:error_msg("get_integer() Error: ~p  value is not an integer: ~p~n", [AttributeName,Value]),
                 error
             end
     end.
@@ -73,7 +73,7 @@ get_integer(Attributes, AttributeName) ->
 %% Get a boolean value, return error if value found is not a boolean or other standard value
 %%
 -spec get_boolean(Attributes :: list(), AttributeName :: atom()) -> 
-                     boolean() | not_found | not_activ | empty | error. 
+                     boolean() | not_found | not_active | empty | error. 
 
 get_boolean(Attributes, AttributeName) ->
     case get_value(Attributes, AttributeName) of
@@ -83,7 +83,7 @@ get_boolean(Attributes, AttributeName) ->
         Value     -> 
             if  is_boolean(Value) -> Value;
             true -> 
-                io:format("get_boolean() Error: ~p  value is not a boolean: ~p~n", [AttributeName,Value]),
+                error_logger:error_msg("get_boolean() Error: ~p  value is not a boolean: ~p~n", [AttributeName,Value]),
                 error
             end
     end.
@@ -98,7 +98,7 @@ get_boolean(Attributes, AttributeName) ->
 set_value(Attributes, AttributeName, NewValue) ->
 	case get_attribute(Attributes, AttributeName) of
 		not_found ->
-			io:format("set_value() Error: ~p not found in attributes list~n", [AttributeName]),
+			error_logger:error_msg("set_value() Error: ~p not found in attributes list~n", [AttributeName]),
 			Attributes;
             
 		{AttributeName, _OldValue} -> % Config or Private value
@@ -165,7 +165,7 @@ get_value_any(BlockValues, AttributeName) ->
 						not_found ->
 							case get_attribute(Private, AttributeName) of
 								not_found ->
-									io:format("get_value_any() Error: ~p not found in Block values~n", [AttributeName]),
+									error_logger:error_msg("get_value_any() Error: ~p not found in Block values~n", [AttributeName]),
 									not_found;
 								{AttributeName, Value} -> Value	% Internal value
 							end;
@@ -189,7 +189,7 @@ set_value_any(BlockValues, AttributeName, NewValue)->
 				not_found ->					
 					case get_attribute(Private, AttributeName) of
 						not_found ->
-							io:format("~p set_value() Error. ~p not found in the BlockValues list~n", [BlockName, AttributeName]),
+							error_logger:error_msg("~p set_value() Error. ~p not found in the BlockValues list~n", [BlockName, AttributeName]),
 							BlockValues;  % Return Block values unchanged
 						{AttributeName, _OldValue1} ->
 							NewPrivateValue = {AttributeName, NewValue},
@@ -216,7 +216,7 @@ set_input_link(BlockValues, ValueName, NewLink) ->
 	
 	case get_attribute(Inputs, ValueName) of
 		not_found ->
-			io:format("~p set_input_link() Error.  ~p not found in Input values.~n", [BlockName, ValueName]),
+			error_logger:error_msg("~p set_input_link() Error.  ~p not found in Input values.~n", [BlockName, ValueName]),
 			% Input value not found, just return the BlockValues unchanged
 			BlockValues;
 		{ValueName, Value, _Link} ->
@@ -262,7 +262,7 @@ add_connection(Outputs, AttributeName, ToBlockName) ->
 		not_found ->
 			% This block doesn't have an output called 'AttributeName'
 			% Just return the original Outputs list
-			io:format("add_connection() Error. ~p Doesn't exist for this block~n", [AttributeName]),
+			error_logger:error_msg("add_connection() Error. ~p Doesn't exist for this block~n", [AttributeName]),
 			Outputs;
 		
 		{AttributeName, Value, Connections} ->  
@@ -279,7 +279,7 @@ add_connection(Outputs, AttributeName, ToBlockName) ->
 				replace_attribute(Outputs, AttributeName, NewOutput)
 			end;
 		Unknown ->
-			io:format("add_connection() Error. Unknown output value record  ~p~n", [Unknown]),
+			error_logger:error_msg("add_connection() Error. Unknown output value record  ~p~n", [Unknown]),
 			Outputs
 	end.
 

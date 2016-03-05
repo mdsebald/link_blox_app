@@ -32,7 +32,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
  
-    io:format("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+    error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
     
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -73,7 +73,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
         {error, ErrorResult} ->
-            io:format("~p Error: ~p intitiating GPIO pin; ~p~n", [BlockName, ErrorResult, PinNumber]),
+            error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", [BlockName, ErrorResult, PinNumber]),
             Status = process_error,
             Value = not_active,
             NewPrivate = Private
@@ -120,7 +120,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
              Status = normal;
 
 		Other -> 
-             io:format("~p Error: Invalid input value: ~p~n", [BlockName, Other]),
+             error_logger:error_msg("~p Error: Invalid input value: ~p~n", [BlockName, Other]),
 			 PinValue = DefaultValue, % TODO: Set pin to default value or input? 
 		     Value = not_active,
              Status = input_error

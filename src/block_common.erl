@@ -103,7 +103,7 @@ execute(BlockValues, ExecMethod) ->
         end;
     
     true -> % Invalid Enable input type or value
-        io:format("~p Error: Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
+        error_logger:error_msg("~p Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
         NewOutputsX = update_all_outputs(Outputs, not_active, input_error),
         % Don't udpate execution tracking
         NewPrivateY = Private
@@ -152,13 +152,13 @@ update_execution_timer(BlockName, Config, Private) ->
             true -> % Execute Interval input value is negative
                 Status = input_error, 
                 NewTimerRef = empty,
-                io:format("~p Error: Negative execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
+                error_logger:error_msg("~p Negative execute_interval value: ~p ~n", [BlockName, ExecuteInterval])
             end
         end;
     true ->  % Execute Interval input value is not an integer
         Status = config_error, 
         NewTimerRef = empty,
-        io:format("~p Error: Invalid execute_interval Input value: ~p ~n", [BlockName, ExecuteInterval])
+        error_logger:error_msg("~p Invalid execute_interval value: ~p ~n", [BlockName, ExecuteInterval])
     end,
     NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
     {Status, NewPrivate}.
@@ -171,7 +171,7 @@ cancel_timer(BlockName, TimerRef) ->
                 ok;
             
             {error, Reason} ->
-                io:format("~p Error: ~p Canceling execution timer ~p ~n", [BlockName, Reason, TimerRef]),
+                error_logger:error_msg("~p Error: ~p Canceling execution timer ~p ~n", [BlockName, Reason, TimerRef]),
                 error
         end;
     true -> ok
@@ -184,7 +184,7 @@ set_timer(BlockName, ExecuteInterval) ->
             {normal, TimerRef};
          
         {error, Reason} -> 
-            io:format("~p Error: ~p Setting execution timer ~n", [BlockName, Reason]),
+           error_logger:error_msg("~p Error: ~p Setting execution timer ~n", [BlockName, Reason]),
             {process_error, empty}
     end.   	
 
@@ -242,8 +242,6 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 	
 	{ValueName, CurrentValue, Connections} = CurrentOutput,
 	{ValueName, NewValue, Connections} = NewOutput,
-	
-	%io:format("~p update_blocks, ValueName: ~p, comparing CurrentValue: ~p and NewValue: ~p~n", [FromBlockName, ValueName, CurrentValue, NewValue]),
 
     % For each output value that changed, call update() to send a the new value message to each connected block.
     % don't check the 'execute_out' output, that is for control flow execution
