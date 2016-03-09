@@ -61,6 +61,9 @@ init(BlockValuesFile) ->
 %
 %				 ],
 
+%%
+%% Print out block name current value and status of each created block
+%%
 block_status() -> block_status(supervisor:which_children(?MODULE)).
     
 block_status([]) -> ok;
@@ -84,7 +87,11 @@ create_child_specs([], ChildSpecs) -> ChildSpecs;
 create_child_specs(BlockValuesList, ChildSpecs) ->
 	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
 	% TODO: Check for expected term match, before creating child spec 
-	{BlockName, _BlockModule, _Params, _Inputs, _Outputs, _Interms} = BlockValues,
+	{BlockName, _BlockModule, Config, _Inputs, _Outputs, _Private} = BlockValues,
+    error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
+                          [BlockName, 
+                           block_utils:get_value(Config, block_type), 
+                           block_utils:get_value(Config, version)]),
 
 	ChildSpec = #{id => BlockName, start => {block_server, create, [BlockValues]}},
 	NewChildSpecs = [ChildSpec | ChildSpecs],

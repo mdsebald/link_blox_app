@@ -1,8 +1,14 @@
-%% @author Mark
-%% @doc Create initial block configuration
+%%%
+%%%  @doc 
+%%% 
+%%%  Create initial block configuration
+%%%
+%%%  @ndd
 
 
 -module(block_config).
+
+-author("Mark Sebald").
 
 -include("block_state.hrl").
 

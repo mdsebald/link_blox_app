@@ -24,6 +24,56 @@ type_name()-> template.  % INSTRUCTIONS: Atom, specifying the block type, usuall
 
 version() -> "0.1.0".   % INSTRUCTIONS: Major.Minor.Patch, Major version change implies a breaking change
 
+
+%% Merge the block type specific, Config, Input, Output, and Private attributes
+%% with the common Config, Input, Output, and Private attributes, that all block types have
+ 
+-spec default_configs(BlockName :: atom()) -> list().
+
+default_configs(BlockName) -> 
+    block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
+                            [
+                                % INTRUCTIONS: Insert block type specific config attribute tuples here
+                                % Config attribute tuples consist of a value name a value
+                                % Example: {gpio_pin, 0}
+                            ]). 
+
+
+ -spec default_inputs() -> list().
+
+default_inputs() -> 
+     block_utils:merge_attribute_lists(block_common:inputs(),
+                            [
+                                % INTRUCTIONS: Insert block type specific input attribute tuples here
+                                % Input attribute tuples consist of a value name, a value, and a link
+                                % Example: {input, empty, ?EMPTY_LINK}
+                            ]). 
+
+
+-spec default_outputs() -> list().
+                            
+default_outputs() -> 
+        block_utils:merge_attribute_lists(block_common:outputs(),
+                            [
+                                % INTRUCTIONS: Insert block type specific output attribute tuples here
+                                % Output attribute tuples consist of a value name, a value, 
+                                % and a list of block names
+                                % Example: {freeze, not_active, []}
+                            ]). 
+
+
+ -spec default_private() -> list().
+                           
+default_private() -> 
+        block_utils:merge_attribute_lists(block_common:private(),
+                            [
+                                % INTRUCTIONS: Insert block type specific private attribute tuples here
+                                % Private attribute tuples consist of a value name, and a value
+                                % Example {gpio_ref, empty}
+                            ]). 
+
+
+
 %%  
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
@@ -32,12 +82,14 @@ version() -> "0.1.0".   % INSTRUCTIONS: Major.Minor.Patch, Major version change 
 -spec create(BlockName :: atom()) -> block_state().
 
 create(BlockName) -> create(BlockName, [], [], [], []).
+
+-spec create(BlockName :: atom(), list(), list()) -> block_state().
    
 create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitInputs, [],[]).
 
-create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
+-spec create(BlockName :: atom(), list(), list(), list(), list()) -> block_state().
 
-    error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -99,29 +151,3 @@ delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %% Internal functions
 %% ====================================================================
 
--spec default_configs(BlockName :: atom()) -> list().
-
-default_configs(BlockName) -> 
-    block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
-                            []).  % INTRUCTIONS: Insert block type specific config attributes here
-
-
- -spec default_inputs() -> list().
-
-default_inputs() -> 
-     block_utils:merge_attribute_lists(block_common:inputs(),
-                            []). % INTRUCTIONS: Insert block type specific input attributes here
-
-
--spec default_outputs() -> list().
-                            
-default_outputs() -> 
-        block_utils:merge_attribute_lists(block_common:outputs(),
-                            []). % INTRUCTIONS: Insert block type specific output attributes here
-
-
- -spec default_private() -> list().
-                           
-default_private() -> 
-        block_utils:merge_attribute_lists(block_common:private(),
-                            []). % INTRUCTIONS: Insert block type specific private attributes here

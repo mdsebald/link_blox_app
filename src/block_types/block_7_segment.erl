@@ -21,6 +21,50 @@ type_name()-> '7_segment'.
 
 version() -> "0.1.0".  
 
+%% Merge the block type specific, Config, Input, Output, and Private attributes
+%% with the common Config, Input, Output, and Private attributes, that all block types have
+
+-spec default_configs(BlockName :: atom()) -> list().
+
+default_configs(BlockName) -> 
+    block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
+                            [
+                                
+                            ]).  
+
+
+-spec default_inputs() -> list().
+
+default_inputs() -> 
+     block_utils:merge_attribute_lists(block_common:inputs(),
+                            [
+                                {input, empty, ?EMPTY_LINK}
+                            ]). 
+
+
+-spec default_outputs() -> list().
+                            
+default_outputs() -> 
+        block_utils:merge_attribute_lists(block_common:outputs(),
+                            [
+                                {seg_a, not_active, []},
+                                {seg_b, not_active, []},
+                                {seg_c, not_active, []},
+                                {seg_d, not_active, []},
+                                {seg_e, not_active, []},
+                                {seg_f, not_active, []},
+                                {seg_g, not_active, []}
+                            ]). 
+
+
+-spec default_private() -> list().
+                           
+default_private() -> 
+        block_utils:merge_attribute_lists(block_common:private(),
+                            [
+                                
+                            ]).
+
 %%  
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
@@ -30,11 +74,13 @@ version() -> "0.1.0".
 
 create(BlockName) -> create(BlockName, [], [], [], []).
    
+-spec create(BlockName :: atom(), list(), list()) -> block_state().
+   
 create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitInputs, [],[]).
 
-create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
+-spec create(BlockName :: atom(), list(), list(), list(), list()) -> block_state().
 
-   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", [BlockName, type_name(), version()]),
+create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
@@ -150,42 +196,6 @@ delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %% Internal functions
 %% ====================================================================
 
--spec default_configs(BlockName :: atom()) -> list().
-
-default_configs(BlockName) -> 
-    block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
-                            []).  
-
-
- -spec default_inputs() -> list().
-
-default_inputs() -> 
-     block_utils:merge_attribute_lists(block_common:inputs(),
-                            [
-                                {input, empty, ?EMPTY_LINK}
-                            ]). 
-
-
--spec default_outputs() -> list().
-                            
-default_outputs() -> 
-        block_utils:merge_attribute_lists(block_common:outputs(),
-                            [
-                                {seg_a, not_active, []},
-                                {seg_b, not_active, []},
-                                {seg_c, not_active, []},
-                                {seg_d, not_active, []},
-                                {seg_e, not_active, []},
-                                {seg_f, not_active, []},
-                                {seg_g, not_active, []}
-                            ]). 
-
-
- -spec default_private() -> list().
-                           
-default_private() -> 
-        block_utils:merge_attribute_lists(block_common:private(),
-                            []).
              
  
         
