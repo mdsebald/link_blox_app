@@ -20,6 +20,7 @@ type_name()-> toggle.
 
 version() -> "0.1.0". 
 
+
 %% Merge the block type specific, Config, Input, Output, and Private attributes
 %% with the common Config, Input, Output, and Private attributes, that all block types have
 
@@ -125,11 +126,10 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(block_state()) -> block_state().
+-spec delete(block_state()) -> ok.
 
-delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) -> 
-    % Perform any block type specific delete functionality here
-    {BlockName, BlockModule, Config, Inputs, Outputs, Private}.
+delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
+    ok.
 
 
 

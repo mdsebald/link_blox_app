@@ -339,8 +339,10 @@ terminate(normal, BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
     
     error_logger:info_msg("Deleting: ~p~n", [BlockName]),
-
-    % Cancel Timer, if running
+    
+    % Unlink from the block supervisor, so it will not be restarted.
+    unlink(whereis(BlockName));
+    
     % Unlink from other blocks
     % Unlink this block from the supervisor, so it will not be restarted
     % Perform custom block specific delete action
@@ -400,7 +402,7 @@ unregistered_blocks(BlockInputs)->
 	end.
 
 
-%% Send a connect message to each block linked to the input of this block
+%% Send a connect message to each block linked to the inputs of this block
 connect_blocks(BlockName, BlockInputs)->
 	connect_blocks(BlockName, BlockInputs, 0).
 

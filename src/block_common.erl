@@ -188,9 +188,9 @@ set_timer(BlockName, ExecuteInterval) ->
             {process_error, empty}
     end.   	
 
-%
-% Track execute method, time and count
-%
+%%
+%% Track execute method, time and count
+%%
 -spec update_execute_track(Private :: list(), ExecMethod :: atom()) -> list().
 
 update_execute_track(Private, ExecMethod) ->
@@ -226,9 +226,10 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
          Outputs).
 
 
+%%
 %% Send an update message to each block connected to any output value that has changed
 %% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
-
+%%
 -spec update_blocks(atom(), list(), list()) -> ok.
 
 update_blocks(_FromBlockName, [], [])-> 
@@ -284,7 +285,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %%
 %%  Common block delete function
 %%
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> ok.
 
 delete(BlockValues) ->
     {_BlockName, BlockModule, _Config, _Inputs, _Outputs, Private} = BlockValues,
