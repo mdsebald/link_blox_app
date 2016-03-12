@@ -29,7 +29,7 @@ create(BlockValues)->
 
 %% Delete the named block
 delete(BlockName)->
-	gen_server:stop(BlockName).
+	gen_server:cast(BlockName, stop).
 
 
 %% Get the value of 'ValueName' from this block
@@ -330,6 +330,16 @@ handle_cast({dereference, DeleteBlockName}, BlockValues) ->
     true -> % Reference count is zero, no input links dereferenced, just continue
 	    {noreply, {BlockName, BlockModule, Config, Inputs, Outputs, Private}}
     end;
+    
+handle_cast(stop, BlockValues) ->
+	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+    
+    error_logger:info_msg("Deleting: ~p~n", [BlockName]),
+    
+    % Perform common block delete actions
+	block_common:delete(BlockValues),
+    
+    {stop, normal, BlockValues};
         	
 handle_cast(Msg, State) ->
 	error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
@@ -370,16 +380,8 @@ handle_info(Info, State) ->
 			| {shutdown, term()}
 			| term().
 %% ====================================================================
-terminate(normal, BlockValues) ->
-	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
-    
-    error_logger:info_msg("Deleting: ~p~n", [BlockName]),
-    
-    % Unlink from the block supervisor, so it will not be restarted.
-    unlink(whereis(BlockName)),
-    
-    % Perform common block delete action
-	block_common:delete(BlockValues);
+terminate(normal, _BlockValues) ->
+	ok;
     
 terminate(Reason, BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,

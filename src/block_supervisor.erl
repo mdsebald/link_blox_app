@@ -113,7 +113,8 @@ create_child_specs(BlockValuesList, ChildSpecs) ->
                            block_utils:get_value(Config, block_type), 
                            block_utils:get_value(Config, version)]),
 
-	ChildSpec = #{id => BlockName, start => {block_server, create, [BlockValues]}},
+	ChildSpec = #{id => BlockName, restart => transient,
+                   start => {block_server, create, [BlockValues]}},
 	NewChildSpecs = [ChildSpec | ChildSpecs],
 	
 	create_child_specs(RemainingBlockValuesList, NewChildSpecs).
