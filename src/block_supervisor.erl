@@ -68,7 +68,7 @@ init(BlockValuesFile) ->
 block_processes() -> supervisor:which_children(?MODULE).
 
 %% 
-%% get the current list of block names
+%% get the  block names of currently running processes
 %%
 block_names() -> 
     block_names(block_processes(), []).    
@@ -77,23 +77,37 @@ block_names([], BlockNames) ->
     BlockNames;
     
 block_names([BlockProcess | RemainingProcesses], BlockNames) ->
-    BlockName = element(1, BlockProcess),
-    NewBlockNames = [BlockName | BlockNames],
+    % Only return block names of processes that are running
+    case element(2, BlockProcess) of
+        restarting -> NewBlockNames = BlockNames;
+        undefined  -> NewBlockNames = BlockNames;
+        _Pid       ->
+            BlockName = element(1, BlockProcess),
+            NewBlockNames = [BlockName | BlockNames]
+    end,
     block_names(RemainingProcesses, NewBlockNames).
 
 %%
-%% Print out block name current value and status of each created block
+%% Print out status off each running block
 %%
-block_status() -> block_status(block_processes()).
+block_status() ->
+    io:fwrite("~n~-16s ~-16s ~-12s ~-12s ~-12s ~-10s~n", 
+                  ["Block Type", "Block Name", "Output Val", "Status", "Exec Method", "Last Exec"]), 
+    block_status(block_names()).
     
 block_status([]) -> ok;
 
-block_status([BlockProcess | RemainingProcesses]) ->
-    BlockName = element(1, BlockProcess),
+block_status([BlockName | RemainingBlockNames]) ->
+    BlockType = block_server:get_value(BlockName, block_type),
     Value = block_server:get_value(BlockName, value),
     Status = block_server:get_value(BlockName, status),
-    io:format("Block: ~p Value: ~p Status: ~p~n", [BlockName, Value, Status]),
-    block_status(RemainingProcesses).
+    ExecMethod = block_server:get_value(BlockName, exec_method),
+    LastExecuted = block_server:get_value(BlockName, last_exec),
+    
+    io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-10w~n", 
+              [io_lib:write(BlockType), io_lib:write(BlockName), 
+               Value, Status, ExecMethod, LastExecuted]),
+    block_status(RemainingBlockNames).
 
 
 %% ====================================================================
