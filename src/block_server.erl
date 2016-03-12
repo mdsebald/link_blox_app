@@ -16,8 +16,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/1, delete/1, connect/3, disconnect/2, get_value/2, set_value/3, override/2, get_values/1]).
--export([execute/1, timer_execute/1, execute_out_execute/1, update/4, configure/1, reconfigure/2]).
+-export([create/1, delete/1]). 
+-export([get_value/2, set_value/3, override/2, get_values/1]).
+-export([execute/1, timer_execute/1, execute_out_execute/1]).
+-export([update/4, configure/1, reconfigure/2, link/3, unlink/3, dereference/2]).
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
@@ -44,37 +46,36 @@ set_value(BlockName, ValueName, Value)->
 override(BlockName, Value)->
 	gen_server:call(BlockName, {override, Value}).
 
+
 %% Get the current set of values for this block
 get_values(BlockName) ->
 	gen_server:call(BlockName, get_values).
 
+
 %% Execute the block 
 execute(BlockName) ->
     gen_server:cast(BlockName, execute).
+
     
 %% Execute the block on timer timeout
 timer_execute(BlockName) ->
     gen_server:cast(BlockName, timer_execute).
-    
-%% Execute blocks connected to the 'execute_out' output 
-%% i.e Control Flow
-execute_out_execute([]) ->
-    ok;
-execute_out_execute([BlockName | RemainingBlockNames]) ->
-    gen_server:cast(BlockName, execute_out_execute),
-    execute_out_execute(RemainingBlockNames).
 
-%% Send the given Value i.e {BlockName, ValueName, Value} to each block the list of BlockNames
-%% Push the value from the output of one block to the inputs of the connected blocks
-%% i.e. Data Flow
+    
+%% This block's 'execute_in' is linked to an 'execute_out' output 
+%% i.e Implement Control Flow
+execute_out_execute(BlockName) ->
+    gen_server:cast(BlockName, execute_out_execute).
+
+
+%% Update this block's input value that is linked
+%% to the given output value i.e {BlockName, ValueName, Value} 
+%% In other words, push the value from the output of one block 
+%% to the input(s) of the linked block
+%% i.e. Implement Data Flow
 %% TODO: Convert to a common Target Link: {NodeName, BlockName, ValueName} plus Value
-update([], _FromBlockName, _ValueName, _Value) ->
-	ok;
-update(BlockNames, FromBlockName, ValueName, Value) ->
-	[BlockName | RemainingBlockNames] = BlockNames,
-	%io:format("~p sending update message to: ~p~n", [FromBlockName, BlockName]),
-	gen_server:cast(BlockName, {update, FromBlockName, ValueName, Value}),
-	update(RemainingBlockNames, FromBlockName, ValueName, Value).
+update(BlockName, FromBlockName, ValueName, Value) ->
+	gen_server:cast(BlockName, {update, FromBlockName, ValueName, Value}).
 
 
 %% Perform initial configuration of the block.  Block values are already in the state variable
@@ -88,22 +89,24 @@ reconfigure(BlockName, BlockValues)->
 	gen_server:cast(BlockName, {reconfigure, BlockValues}).
 
 
-%% Connect the value 'ValueName' of this block to 'ToBlockName' 
-connect(BlockName, ValueName, ToBlockName) ->
-	gen_server:cast(BlockName, {connect, ValueName, ToBlockName}).
+%% Link the value 'ValueName' of this block to 'ToBlockName' 
+link(BlockName, ValueName, ToBlockName) ->
+	gen_server:cast(BlockName, {link, ValueName, ToBlockName}).
 
 
-%% Disconnect the value 'ValueName' of this block from the calling block 
-disconnect(BlockName, ValueName) ->
-	gen_server:cast(BlockName, {disconnect, ValueName}).
+%% Unlink the value 'ValueName' of this block from the calling block 
+unlink(BlockName, ValueName, ToBlockName) ->
+	gen_server:cast(BlockName, {unlink, ValueName, ToBlockName}).
+
+    
+%% Delete any references to DeleteBlockName in the input value links of this block 
+dereference(BlockName, DeleteBlockName) ->
+	gen_server:cast(BlockName, {dereference, DeleteBlockName}).
 
 
 %% ====================================================================
 %% Behavioural functions
 %% ====================================================================
-
-
-
 	
 
 %% init/1
@@ -219,7 +222,7 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 	{BlockName, BlockModule, Config, Inputs, CurrentOutputs, Private} = CurrentBlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
-	NewInputs = update_linked_input_values(Inputs, ValueName, FromBlockName, null, Value),
+	NewInputs = block_links:update_linked_input_values(Inputs, ValueName, FromBlockName, null, Value),
 	
     % Don't execute block if block is executed via timer or executor execution
     % Just update the input values and leave it at that
@@ -246,18 +249,19 @@ handle_cast(configure, BlockValues) ->
 	% Set the block status output and last error output, delay, and call configuration again.
 	{BlockName, _BlockModule, _Config, Inputs, _Outputs, _Private} = BlockValues,
 	
-	case unregistered_blocks(Inputs) of
+	case block_links:unregistered_blocks(Inputs) of
 		ok ->
 			error_logger:info_msg("~p all linked blocks running~n", [BlockName]),
-			% All blocks connected to this block's inputs are running/registered.
-			% Connect this block's inputs to other block's outputs as specified by the input linkss
-			connect_blocks(BlockName, Inputs);
+			% All blocks referenced by this block's input links are running (registered).
+			% Link this block's inputs to other block's outputs as specified by the input links
+			block_links:link_blocks(BlockName, Inputs);
 				
 		{error, MissingBlockName} ->
 			error_logger:info_msg("~p waiting for ~p to start~n", [BlockName, MissingBlockName]),
 			% Not all blocks connected to this block or runnning/registerd yet.
 			% Delay and try configuring again
 			block_utils:sleep(100),  % TODO: Is this the correct delay?, could it be shorter? 
+                                     % TODO: Increase delay, each time block is missing?
 			configure(BlockName)
 	end,
 	
@@ -274,28 +278,59 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 
 	% Replace current state Block values with new values and configure block again
 	% Check that new block values match the current block type and block name that is running
-	% Disconnect existing block links first
+	%  TODO: Disconnect existing block links first
 	configure(BlockName),
 	{noreply, NewBlockValues};
 
 %% =====================================================================
-%% Connect the value 'ValueName' of this block to the block 'ToBlockName'
+%% Link the value 'ValueName' of this block to the block 'ToBlockName'
 %% =====================================================================
-handle_cast({connect, ValueName, ToBlockName}, BlockValues) ->
+handle_cast({link, ValueName, ToBlockName}, BlockValues) ->
 	
 	{BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
 		
-	%% Add the connection to 'ToBlockName' to this output 'ValueName's list of connections
-	NewOutputs = block_utils:add_connection(Outputs, ValueName, ToBlockName),
+	%% Add the block 'ToBlockName' to the output 'ValueName's list of linked blocks
+	NewOutputs = block_links:add_link(Outputs, ValueName, ToBlockName),
 	
 	% Send the current value of this output to the block 'ToBlockName'
 	Value = block_utils:get_value(NewOutputs, ValueName),
 	
-	% Make ToBlockName into a list of 1 connection
-	update([ToBlockName], BlockName, ValueName, Value),
+	update(ToBlockName, BlockName, ValueName, Value),
 			
 	{noreply, {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}};
+    
+%% =====================================================================
+%% Unlink the value 'ValueName' of this block to the block 'ToBlockName'
+%% =====================================================================
+handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
 	
+	{BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
+		
+	%% remove the block 'ToBlockName' from the output 'ValueName's list of linked blocks
+	NewOutputs = block_links:delete_link(Outputs, ValueName, ToBlockName),
+			
+	{noreply, {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}};
+    
+%% =====================================================================
+%% Delete any references to DeleteBlockName in the input links of this block
+%% =====================================================================
+handle_cast({dereference, DeleteBlockName}, BlockValues) ->
+	
+	{BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
+		
+	% delete any input links that reference 'DeleteBlockName' 
+	{NewInputs, ReferenceCount} = block_links:dereference_links(DeleteBlockName, Inputs),
+    
+    % if any links were changed, execute the block, 
+    if ReferenceCount > 0 ->
+        error_logger:info_msg("~p Removed ~p references to deleted block: ~p", 
+                                               [BlockName, ReferenceCount, DeleteBlockName]),
+        {noreply, block_common:execute({BlockName, BlockModule, Config, NewInputs, Outputs, Private}, input_change)};
+        
+    true -> % Reference count is zero, no input links dereferenced, just continue
+	    {noreply, {BlockName, BlockModule, Config, Inputs, Outputs, Private}}
+    end;
+        	
 handle_cast(Msg, State) ->
 	error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
     {noreply, State}.
@@ -341,13 +376,10 @@ terminate(normal, BlockValues) ->
     error_logger:info_msg("Deleting: ~p~n", [BlockName]),
     
     % Unlink from the block supervisor, so it will not be restarted.
-    unlink(whereis(BlockName));
+    unlink(whereis(BlockName)),
     
-    % Unlink from other blocks
-    % Unlink this block from the supervisor, so it will not be restarted
-    % Perform custom block specific delete action
-	block_common:delete(BlockValues),
-    ok;
+    % Perform common block delete action
+	block_common:delete(BlockValues);
     
 terminate(Reason, BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
@@ -371,94 +403,3 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-
-%% Return the name of the first block connected to this block, that is not registered, 
-%% Return 'ok' if all bocks connected to this block are registered / running
-unregistered_blocks([])->
-	ok;
-unregistered_blocks(BlockInputs)->
-	
-	[Input | RemainingInputs] = BlockInputs,
-
-	{_ValueName, _Value, Link} = Input,
-	% get the value name, block name, and node name components of this input value link
-	
-	{LinkValueName, LinkBlockName, _LinkNodeName} = Link,   %TODO: Handle getting values from other nodes
-	
-	% if this input is not a fixed value
-	if LinkValueName /= fixed ->
-		% if the block name of this link is not null
-		if LinkBlockName /= null ->
-			case whereis(LinkBlockName) of
-				undefined  -> {error, LinkBlockName};
-		        	 _Pid  -> unregistered_blocks(RemainingInputs)
-			end;
-		true ->
-			unregistered_blocks(RemainingInputs)
-		end;
-	true -> 
-		unregistered_blocks(RemainingInputs)
-	end.
-
-
-%% Send a connect message to each block linked to the inputs of this block
-connect_blocks(BlockName, BlockInputs)->
-	connect_blocks(BlockName, BlockInputs, 0).
-
-connect_blocks(_BlockName, [], ConnectionsRequested)->
-	{ok, ConnectionsRequested};
-
-connect_blocks(BlockName, BlockInputs, ConnectionsRequested)->
-	
-	[Input | RemainingBlockInputs] = BlockInputs,
-	
-	{ValueName, Value, Link} = Input,
-	{LinkValueName, LinkBlockName, _LinkNodeName} = Link, %TODO: Handle getting values from other nodes
-	
-	% if this input is not a fixed value
-	if LinkValueName /= fixed ->
-		   
-		% if the block name of this link is not null
-		if LinkBlockName /= null ->
-			   
-			%if the block input value is still empty, send a connect message to the block linked to this input
-			if Value == empty ->
-				error_logger:info_msg("Connecting Output <~p:~p> To Input <~p:~p>~n", [LinkBlockName, LinkValueName, BlockName, ValueName]),
-				connect(LinkBlockName, LinkValueName, BlockName),
-				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested + 1);
-			true ->
-				connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested)
-			end;
-		true ->
-			connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested)
-		end;
-	true -> 
-		connect_blocks(BlockName, RemainingBlockInputs, ConnectionsRequested)
-	end.
-
-
-
-    
-%%    
-%% Update the value of every input in this block linked to the 
-%% 'ValueName:FromBlockName:NodeName' output value
-%% Return the updated list of Input values
-%% TODO: Switch to passing around a target link {NodeName, BlockName, ValueName}
-%%
-update_linked_input_values(Inputs, NewValueName, FromBlockName, NodeName, NewValue) ->
-
-	TargetLink = {NewValueName, FromBlockName, NodeName},
-
-	% Update the value of each input record pointing at the given value 
-	lists:map(
-		fun(Input) -> 
-			{ValueName, _Value, Link} = Input,
-			case Link =:= TargetLink of
-				true  -> {ValueName, NewValue, Link};
-				false -> Input	% This block input is not linked to the target block output. 
-                                % Don't change the input value 
-			end
-		end, 
-		Inputs).
- 

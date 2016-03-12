@@ -14,12 +14,10 @@
 %% ====================================================================
 -export([get_attribute/2, get_value/2, get_integer/2, get_boolean/2, get_value_any/2]).
 -export([set_value/3, set_values/2, set_value_status/3, set_value_normal/2, set_value_any/3]).
--export([add_connection/3, set_input_link/3, set_input_link_value/5]).
--export([update_attribute_list/2, merge_attribute_lists/2]).
+-export([set_input_link/3]).
+-export([update_attribute_list/2, merge_attribute_lists/2, replace_attribute/3]).
 -export([sleep/1]). 
 
-
-%% TODO: Create update_values function to update more than one value at a time.
 
 %%	
 %% Get the attribute for the given AttributeName in the list of Attributes
@@ -208,8 +206,10 @@ set_value_any(BlockValues, AttributeName, NewValue)->
  	end.
 
 
+%%
 %% Update the input Link for the input value 'ValueName'
 %% TODO: Do we need this? not used right now
+%%
 set_input_link(BlockValues, ValueName, NewLink) ->
 	
 	{BlockName, BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
@@ -223,64 +223,6 @@ set_input_link(BlockValues, ValueName, NewLink) ->
 			NewInput = {ValueName, Value, NewLink},
 			NewInputs = replace_attribute(Inputs, ValueName, NewInput),
 			{BlockName, BlockModule, Configs, NewInputs, Outputs, Private}
-	end.
-
-
-%% Update the value of every input in this block, linked to the 'ValueName:FromBlockName:NodeName' output value
-%% Return the updated list of Input values
-%% TODO: Do we need this? not used right now
-set_input_link_value(BlockValues, NewValueName, FromBlockName, NodeName, NewValue) ->
-	
-	{BlockName, BlockModule, Configs, Inputs, Outputs, Private} = BlockValues,
-
-	TargetLink = {NewValueName, FromBlockName, NodeName},
-
-	% Update the value of each input record pointing at the given value 
-	NewInputs = lists:map(
-		fun(Input) -> 
-			{ValueName, _Value, Link} = Input,
-			case Link =:= TargetLink of
-				true  -> {ValueName, NewValue, Link};
-				false -> Input	% This block input is not linked to the target block output, don't change the input value 
-			end
-		end, 
-		Inputs),
-	
-	{BlockName, BlockModule, Configs, NewInputs, Outputs, Private}.
-
-
-%%
-%% Add a connection 'ToBlockName' to the connection list of the ValueName output attribute
-%% Returns updated Outputs list
-%%
--spec add_connection(Ouutputs :: list(), AttributeName :: atom(), ToBlockName :: atom()) -> list().
-
-add_connection(Outputs, AttributeName, ToBlockName) ->
-	 
-	case get_attribute(Outputs, AttributeName) of
-		
-		not_found ->
-			% This block doesn't have an output called 'AttributeName'
-			% Just return the original Outputs list
-			error_logger:error_msg("add_connection() Error. ~p Doesn't exist for this block~n", [AttributeName]),
-			Outputs;
-		
-		{AttributeName, Value, Connections} ->  
-			case lists:member(ToBlockName, Connections) of
-			true ->
-				% This output is already connected to block 'ToBlockName' 
-				% Just return the original Outputs list
-				Outputs;
-			false ->
-				% add 'ToBlockName' to list of connection for this output
-                % Return updated Outputs list
-				NewConnections = [ToBlockName | Connections],
-				NewOutput = {AttributeName, Value, NewConnections},
-				replace_attribute(Outputs, AttributeName, NewOutput)
-			end;
-		Unknown ->
-			error_logger:error_msg("add_connection() Error. Unknown output value record  ~p~n", [Unknown]),
-			Outputs
 	end.
 
 
@@ -342,8 +284,6 @@ sleep(T) ->
 	after T -> ok
 	end.
 
-
-	
 %% ====================================================================
 %% Internal functions
 %% ====================================================================

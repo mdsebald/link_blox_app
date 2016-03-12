@@ -11,7 +11,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1, block_status/0]).
+-export([start_link/1, block_names/0, block_status/0]).
 
 start_link(BlockValuesFile) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
@@ -61,10 +61,30 @@ init(BlockValuesFile) ->
 %
 %				 ],
 
+
+%% 
+%% get the current list of block processes
+%%
+block_processes() -> supervisor:which_children(?MODULE).
+
+%% 
+%% get the current list of block names
+%%
+block_names() -> 
+    block_names(block_processes(), []).    
+    
+block_names([], BlockNames) -> 
+    BlockNames;
+    
+block_names([BlockProcess | RemainingProcesses], BlockNames) ->
+    BlockName = element(1, BlockProcess),
+    NewBlockNames = [BlockName | BlockNames],
+    block_names(RemainingProcesses, NewBlockNames).
+
 %%
 %% Print out block name current value and status of each created block
 %%
-block_status() -> block_status(supervisor:which_children(?MODULE)).
+block_status() -> block_status(block_processes()).
     
 block_status([]) -> ok;
 

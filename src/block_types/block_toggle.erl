@@ -128,7 +128,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(block_state()) -> ok.
 
-delete({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
+delete({_BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private}) ->
     ok.
 
 

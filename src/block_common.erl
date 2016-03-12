@@ -227,44 +227,58 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
 
 
 %%
-%% Send an update message to each block connected to any output value that has changed
+%% Send an update message to each block linked to any output value that has changed
 %% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
 %%
--spec update_blocks(atom(), list(), list()) -> ok.
+-spec update_blocks(FromBlockName :: atom(), 
+                    CurrentOutputs :: list(), NewOutputs :: list()) -> ok.
 
-update_blocks(_FromBlockName, [], [])-> 
-	%io:format("~p compared all outputs~n", [FromBlockName]),
-	ok;
+update_blocks(_FromBlockName, [], [])-> ok;
 
 update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 	
 	[CurrentOutput | RemainingCurrentOutputs] = CurrentOutputs,
 	[NewOutput | RemainingNewOutputs] = NewOutputs,
 	
-	{ValueName, CurrentValue, Connections} = CurrentOutput,
-	{ValueName, NewValue, Connections} = NewOutput,
+	{ValueName, CurrentValue, Links} = CurrentOutput,
+	{ValueName, NewValue, Links} = NewOutput,
 
-    % For each output value that changed, call update() to send a the new value message to each connected block.
-    % don't check the 'execute_out' output, that is for control flow execution
+    % For each output value that changed, call update() to send 
+    % a new value message to each linked block.
+    % Don't check the 'execute_out' output, that is for control flow execution
 	if (ValueName /= execute_out) andalso (CurrentValue /= NewValue) -> 
-        block_server:update(Connections, FromBlockName, ValueName, NewValue);
-    true -> ok % else do nothing
+        update_linked_inputs(Links, FromBlockName, ValueName, NewValue);
+        true -> ok % else do nothing
     end,
     
     update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs).
 
-
+%% update each block input value in the list of block names, 
+%% linked to this block's output value        
+update_linked_inputs([], _FromBlockName, _ValueName, _NewValue) -> 
+    ok;
+update_linked_inputs([BlockName | RemainingLinks], FromBlockName, ValueName, NewValue) ->
+    block_server:update(BlockName, FromBlockName, ValueName, NewValue),
+    update_linked_inputs(RemainingLinks, FromBlockName, ValueName, NewValue).
 
          
 %%    
-%% Send an execute message to each block connected to the 'execute_out' output of this block
+%% Send an execute_out message to each block connected to the 'execute_out' output of this block
 %% This will implement control flow execution, versus data flow done in the update_blocks function. 
 %%
+-spec update_execute(list()) -> ok.
 
-update_execute(Outputs) ->
-	
+update_execute(Outputs) ->	
     {execute_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, execute_out),
-    block_server:execute_out_execute(BlockNames).
+    execute_out(BlockNames).
+
+%% Execute each block in the list of block names, assigned to this block's 'execute_out' output   
+execute_out([]) ->
+    ok;
+execute_out([BlockName | RemainingBlockNames]) ->
+    block_server:execute_out_execute(BlockName),
+    execute_out(RemainingBlockNames).
+    
 
 
 
@@ -288,7 +302,7 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 -spec delete(BlockValues :: block_state()) -> ok.
 
 delete(BlockValues) ->
-    {_BlockName, BlockModule, _Config, _Inputs, _Outputs, Private} = BlockValues,
+    {BlockName, BlockModule, _Config, Inputs, _Outputs, Private} = BlockValues,
 
     % Cancel execution timer if it exists
     case block_utils:get_value(Private, timer_ref) of
@@ -296,7 +310,13 @@ delete(BlockValues) ->
         TimerRef ->  timer:cancel(TimerRef)
     end,
     
-    % Perform block type specific delete
+    % Scan this blocks inputs, and unlink from other block outputs
+    block_links:unlink_blocks(BlockName, Inputs),
+    
+    % Scan all blocks and delete any references to this block
+    block_links:delete_references(BlockName),
+    
+    % Perform block type specific delete actions
     BlockModule:delete(BlockValues).
 
     
