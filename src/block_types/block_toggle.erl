@@ -1,6 +1,6 @@
 %%% @doc 
-%%% Block Type: Toggle
-%%% Description: Toggle binary output valie    
+%%% Block Type: Toggle Output
+%%% Description: Toggle binary output value each time block is executed  
 %%%               
 %%% @end 
 
@@ -16,7 +16,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name()-> toggle.
+type_name() -> toggle.
 
 version() -> "0.1.0". 
 
@@ -98,7 +98,7 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 	
-    NewOutputs = block_utils:set_value_status(Outputs, not_active, initialized),
+    NewOutputs = block_utils:set_value_status(Outputs, not_active, initialed),
      
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 

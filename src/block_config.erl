@@ -21,79 +21,80 @@
  
  create_demo_config() ->
  
-    PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
+    PbSwitch = block_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
 
-    TimedCount = block_exec_counter:create(timed_count,
+    Counter = block_exec_count:create(counter,
                                  [
-                                     {execute_interval, 1000}
+                                    
                                  ],
                                  [
-                                     {reset, empty, {value, switch_27, null}}
+                                     {reset, empty, {value, switch_27, null}},
+                                     {exec_interval, 1000, ?EMPTY_LINK}
                                  ]),
  
-    DispCount = block_7_segment:create(disp_count,
+    Display = block_seven_seg:create(display,
                                  [],
                                  [
-                                    {input, empty, {value, timed_count, null}}
+                                    {input, empty, {value, counter, null}}
                                  ]),
                                  
-    SegA = block_pi1_gpio_digital_output:create(seg_a, 
+    SegA = block_pi_gpio_do:create(seg_a, 
                                  [{gpio_pin, 17}, {invert_output, true}], 
-                                 [{input, empty, {seg_a, disp_count, null}}]
+                                 [{input, empty, {seg_a, display, null}}]
                                 ),
 
-    SegB = block_pi1_gpio_digital_output:create(seg_b, 
+    SegB = block_pi_gpio_do:create(seg_b, 
                                  [{gpio_pin, 23}, {invert_output, true}], 
-                                 [{input, empty, {seg_b, disp_count, null}}]
+                                 [{input, empty, {seg_b, display, null}}]
                                 ),
 
-    SegC = block_pi1_gpio_digital_output:create(seg_c, 
+    SegC = block_pi_gpio_do:create(seg_c, 
                                  [{gpio_pin, 25}, {invert_output, true}], 
-                                 [{input, empty, {seg_c, disp_count, null}}]
+                                 [{input, empty, {seg_c, display, null}}]
                                 ),
 
-    SegD = block_pi1_gpio_digital_output:create(seg_d, 
+    SegD = block_pi_gpio_do:create(seg_d, 
                                  [{gpio_pin, 16}, {invert_output, true}], 
-                                 [{input, empty, {seg_d, disp_count, null}}]
+                                 [{input, empty, {seg_d, display, null}}]
                                 ),
 
-    SegE = block_pi1_gpio_digital_output:create(seg_e, 
+    SegE = block_pi_gpio_do:create(seg_e, 
                                  [{gpio_pin, 26}, {invert_output, true}], 
-                                 [{input, empty, {seg_e, disp_count, null}}]
+                                 [{input, empty, {seg_e, display, null}}]
                                 ),
         
-    SegF = block_pi1_gpio_digital_output:create(seg_f, 
+    SegF = block_pi_gpio_do:create(seg_f, 
                                  [{gpio_pin, 22}, {invert_output, true}], 
-                                 [{input, empty, {seg_f, disp_count, null}}]
+                                 [{input, empty, {seg_f, display, null}}]
                                 ),
         
-    SegG = block_pi1_gpio_digital_output:create(seg_g, 
+    SegG = block_pi_gpio_do:create(seg_g, 
                                  [{gpio_pin, 24}, {invert_output, true}], 
-                                 [{input, empty, {seg_g, disp_count, null}}]
+                                 [{input, empty, {seg_g, display, null}}]
                                 ),
 
-    [PbSwDigitalInput, TimedCount, DispCount, SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
+    [PbSwitch, Counter, Display, SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
 
 create_demo_config1() ->
   
-    Led17DigitalOutput = block_pi1_gpio_digital_output:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
+    Led17DigitalOutput = block_pi_gpio_do:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
                                 [{input, empty, {value, toggle_led, null}}]),
                                     
-    PbSwDigitalOutput = block_pi1_gpio_digital_output:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
+    PbSwDigitalOutput = block_pi_gpio_do:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
                                 [{input, empty, {value, switch_27, null}}]),
                                 
-    PbSwDigitalInput = block_pi1_gpio_digital_input:create(switch_27, [{gpio_pin, 27}], []),
+    PbSwDigitalInput = block_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
    
-    ToggleBlockValues = block_toggle:create(toggle_led, [{execute_interval, 2000}], []),
+    ToggleBlockValues = block_toggle:create(toggle_led, [], [{exec_interval, 2000, ?EMPTY_LINK}]),
     
-    Led26DigitalOutput = block_pi1_gpio_digital_output:create(led_26, 
+    Led26DigitalOutput = block_pi_gpio_do:create(led_26, 
                                 [
                                     {gpio_pin, 26},
                                     {invert_output, true}
                                 ], 
                                 [
                                     {input, empty, {value, switch_27, null}}, 
-                                    {execute_in, empty, {execute_out, toggle_led, null}}
+                                    {exec_in, empty, {exec_out, toggle_led, null}}
                                 ]),
                                 
     [ToggleBlockValues, Led17DigitalOutput, PbSwDigitalOutput, PbSwDigitalInput, Led26DigitalOutput].

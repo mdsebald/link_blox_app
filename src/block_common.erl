@@ -25,12 +25,8 @@ configs(Name, Type, Version) ->
     [ 
       {block_name, Name},
 	  {block_type, Type},
-	  {version, Version},
-      {execute_interval, 0}   % If > 0, execute block every 'execute_interval' milliseconds.
-                              % Used to execute a block at fixed intervals
-                              % instead of being executed via execute_out/execute_in link
-                              % or executed on change of input value  
-    ].
+	  {version, Version}
+     ].
 
 
 %%
@@ -38,12 +34,16 @@ configs(Name, Type, Version) ->
 %%
 inputs() ->
     [
-      {enable, true, ?EMPTY_LINK},      % Block will execute as long as enable input is true
+      {enable, true, ?EMPTY_LINK},       % Block will execute as long as enable input is true
       
-      {execute_in, empty, ?EMPTY_LINK} % Link to block that will execute this block.
-                                        % May only be linked to the 'execute_out' block output value
-                                        % i.e. implement Control Flow 
-      
+      {exec_in, empty, ?EMPTY_LINK},     % Link to block that will execute this block.
+                                         % May only be linked to the 'exec_out' block output value
+                                         % i.e. implement Control Flow
+                                            
+      {exec_interval, 0, ?EMPTY_LINK}    % If > 0, execute block every 'exec_interval' milliseconds.
+                                         % Used to execute a block at fixed intervals
+                                         % instead of being executed via exec_out/exec_in link
+                                         % or executed on change of input value  
     ].
     
     
@@ -52,9 +52,9 @@ inputs() ->
 %%
 outputs() ->
     [ 
-      {execute_out, false, []}, % Blocks with the 'execute_in' input linked to this output 
+      {exec_out, false, []},    % Blocks with the 'exec_in' input linked to this output 
                                 % will be executed by this block, each time this block is executed
-                                % This output may only be linked to execute_in inputs
+                                % This output may only be linked to exec_in inputs
       {status, created, []},
       {value, not_active, []}
     ].
@@ -77,7 +77,7 @@ private() ->
 %% Common block execute function
 %% TODO: Handle initial execution (if needed)
 %%
--spec execute(BlockValues :: block_state(), ExecMethod :: atom()) -> block_state().
+-spec execute(BlockValues :: block_state(), ExecMethod :: exec_method()) -> block_state().
 
 execute(BlockValues, ExecMethod) ->
 
@@ -104,12 +104,12 @@ execute(BlockValues, ExecMethod) ->
     
     true -> % Invalid Enable input type or value
         error_logger:error_msg("~p Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
-        NewOutputsX = update_all_outputs(Outputs, not_active, input_error),
+        NewOutputsX = update_all_outputs(Outputs, not_active, input_err),
         % Don't udpate execution tracking
         NewPrivateY = Private
     end,
     
-    {Status, NewPrivate} = update_execution_timer(BlockName, Config, NewPrivateY), 
+    {Status, NewPrivate} = update_execution_timer(BlockName, Inputs, NewPrivateY), 
     
     if (Status /= normal) ->  % Some kind error setting execution timer
         NewOutputs = update_all_outputs(NewOutputsX, not_active, Status);
@@ -120,7 +120,7 @@ execute(BlockValues, ExecMethod) ->
     % Update the block inputs linked to the block outputs that have just been updated (Data Flow)
 	update_blocks(BlockName, Outputs, NewOutputs),
     
-    % Execute the blocks connected to the execute_out output value (Control Flow)
+    % Execute the blocks connected to the exec_out output value (Control Flow)
     update_execute(NewOutputs),
     
     % Return the new updated block state
@@ -131,9 +131,9 @@ execute(BlockValues, ExecMethod) ->
 %% Update the block execution timer 
 %% Return status and updated Timer Reference 
 %%
-update_execution_timer(BlockName, Config, Private) ->
+update_execution_timer(BlockName, Inputs, Private) ->
 
-    ExecuteInterval = block_utils:get_value(Config, execute_interval),
+    ExecuteInterval = block_utils:get_value(Inputs, exec_interval),
     TimerRef = block_utils:get_value(Private, timer_ref),
     
     % Cancel block execution timer, if it is set   
@@ -150,15 +150,15 @@ update_execution_timer(BlockName, Config, Private) ->
             if (ExecuteInterval > 0) ->
                 {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval);
             true -> % Execute Interval input value is negative
-                Status = input_error, 
+                Status = input_err, 
                 NewTimerRef = empty,
-                error_logger:error_msg("~p Negative execute_interval value: ~p ~n", [BlockName, ExecuteInterval])
+                error_logger:error_msg("~p Negative exec_interval value: ~p ~n", [BlockName, ExecuteInterval])
             end
         end;
     true ->  % Execute Interval input value is not an integer
-        Status = config_error, 
+        Status = input_err, 
         NewTimerRef = empty,
-        error_logger:error_msg("~p Invalid execute_interval value: ~p ~n", [BlockName, ExecuteInterval])
+        error_logger:error_msg("~p Invalid exec_interval value: ~p ~n", [BlockName, ExecuteInterval])
     end,
     NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
     {Status, NewPrivate}.
@@ -185,7 +185,7 @@ set_timer(BlockName, ExecuteInterval) ->
          
         {error, Reason} -> 
            error_logger:error_msg("~p Error: ~p Setting execution timer ~n", [BlockName, Reason]),
-            {process_error, empty}
+            {error_proc, empty}
     end.   	
 
 %%
@@ -199,7 +199,10 @@ update_execute_track(Private, ExecMethod) ->
     PrivateX = block_utils:set_value(Private, exec_method, ExecMethod),
     
     % Record last executed timestamp
-	PrivateY = block_utils:set_value(PrivateX, last_exec, erlang:monotonic_time(micro_seconds)),
+    TS = {_, _, Micro} = os:timestamp(),
+    {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
+    
+	PrivateY = block_utils:set_value(PrivateX, last_exec, {Hour, Minute, Second, Micro}),
 
 	% Arbitrarily roll over Execution Counter at 999,999,999
 	case block_utils:get_value(PrivateY, exec_count) + 1 of
@@ -245,8 +248,8 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
 
     % For each output value that changed, call update() to send 
     % a new value message to each linked block.
-    % Don't check the 'execute_out' output, that is for control flow execution
-	if (ValueName /= execute_out) andalso (CurrentValue /= NewValue) -> 
+    % Don't check the 'exec_out' output, that is for control flow execution
+	if (ValueName /= exec_out) andalso (CurrentValue /= NewValue) -> 
         update_linked_inputs(Links, FromBlockName, ValueName, NewValue);
         true -> ok % else do nothing
     end,
@@ -263,20 +266,20 @@ update_linked_inputs([BlockName | RemainingLinks], FromBlockName, ValueName, New
 
          
 %%    
-%% Send an execute_out message to each block connected to the 'execute_out' output of this block
+%% Send an exec_out_execute message to each block connected to the 'exec_out' output of this block
 %% This will implement control flow execution, versus data flow done in the update_blocks function. 
 %%
 -spec update_execute(list()) -> ok.
 
 update_execute(Outputs) ->	
-    {execute_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, execute_out),
+    {exec_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, exec_out),
     execute_out(BlockNames).
 
-%% Execute each block in the list of block names, assigned to this block's 'execute_out' output   
+%% Execute each block in the list of block names, assigned to this block's 'exec_out' output   
 execute_out([]) ->
     ok;
 execute_out([BlockName | RemainingBlockNames]) ->
-    block_server:execute_out_execute(BlockName),
+    block_server:exec_out_execute(BlockName),
     execute_out(RemainingBlockNames).
     
 
@@ -290,7 +293,7 @@ execute_out([BlockName | RemainingBlockNames]) ->
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     
     % In case this block is set to execute via timer, initialize the timer
-    {_Status, NewPrivate} = update_execution_timer(BlockName, Config, Private), 
+    {_Status, NewPrivate} = update_execution_timer(BlockName, Inputs, Private), 
     
     % Perform block type specific initialization 
     BlockModule:initialize({BlockName, BlockModule, Config, Inputs, Outputs, NewPrivate}).

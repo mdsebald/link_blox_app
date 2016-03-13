@@ -20,7 +20,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name()-> template.  % INSTRUCTIONS: Atom, specifying the block type, usually the module name minus "block_"
+type_name() -> template.  % INSTRUCTIONS: Atom, specifying the block type, usually the module name minus "block_"
 
 version() -> "0.1.0".   % INSTRUCTIONS: Major.Minor.Patch, Major version change implies a breaking change
 

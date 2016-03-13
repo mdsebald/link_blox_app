@@ -1,15 +1,15 @@
 %%% @doc 
-%%% Block Type:  7 Segment Decoder / Driver
-%%% Description: Decode an input integer input value to activate
+%%% Block Type:  Seven Segment Decoder
+%%% Description: Decode integer input value to activate
 %%%              the segements of a seven segment display  
 %%%               
 %%% @end 
 
--module(block_7_segment).  % INSTRUCTIONS: Modify to match new module name
+-module(block_seven_seg). 
 
 -author("Mark Sebald").
 
--include("../block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
+-include("../block_state.hrl").  
 
 %% ====================================================================
 %% API functions
@@ -17,7 +17,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name()-> '7_segment'. 
+type_name() -> seven_seg. 
 
 version() -> "0.1.0".  
 
@@ -106,7 +106,7 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     
     % Perform block type specific initializations here
-    NewOutputs = block_utils:set_value(Outputs, status, initialized),
+    NewOutputs = block_utils:set_value(Outputs, status, initialed),
 
     % Perform initial block execution
     {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
@@ -165,7 +165,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
             
          Invalid ->
             error_logger:error_msg("~p Invalid Value: ~p~n", [BlockName, Invalid]), 
-            Value = not_active, Status = input_error,
+            Value = not_active, Status = error_in,
             SegA = not_active, SegB = not_active, SegC = not_active, 
             SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active 
       end,  

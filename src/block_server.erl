@@ -18,7 +18,7 @@
 %% ====================================================================
 -export([create/1, delete/1]). 
 -export([get_value/2, set_value/3, override/2, get_values/1]).
--export([execute/1, timer_execute/1, execute_out_execute/1]).
+-export([execute/1, timer_execute/1, exec_out_execute/1]).
 -export([update/4, configure/1, reconfigure/2, link/3, unlink/3, dereference/2]).
 
 %% Create a function block with the given Name, Functionality, and Values
@@ -62,10 +62,10 @@ timer_execute(BlockName) ->
     gen_server:cast(BlockName, timer_execute).
 
     
-%% This block's 'execute_in' is linked to an 'execute_out' output 
+%% This block's 'exec_in' is linked to an 'exec_out' output 
 %% i.e Implement Control Flow
-execute_out_execute(BlockName) ->
-    gen_server:cast(BlockName, execute_out_execute).
+exec_out_execute(BlockName) ->
+    gen_server:cast(BlockName, exec_out_execute).
 
 
 %% Update this block's input value that is linked
@@ -201,7 +201,7 @@ handle_cast(execute, CurrentBlockValues) ->
 handle_cast(timer_execute, CurrentBlockValues) ->
 
 	% Execute the block
-	NewBlockValues = block_common:execute(CurrentBlockValues, timeout),
+	NewBlockValues = block_common:execute(CurrentBlockValues, timer),
 	{noreply, NewBlockValues};
 
 
@@ -209,9 +209,9 @@ handle_cast(timer_execute, CurrentBlockValues) ->
 %% Execute the block using the current set of Block values,
 %% This message is used to execute the block on command from another block,  
 %% ====================================================================
-handle_cast(execute_out_execute, CurrentBlockValues) ->
+handle_cast(exec_out_execute, CurrentBlockValues) ->
 	% Execute the block code
- 	NewBlockValues = block_common:execute(CurrentBlockValues, execute_out),
+ 	NewBlockValues = block_common:execute(CurrentBlockValues, exec_out),
 	{noreply, NewBlockValues};
 
 %% ====================================================================
@@ -227,10 +227,11 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
     % Don't execute block if block is executed via timer or executor execution
     % Just update the input values and leave it at that
     TimerRef = block_utils:get_value(Private, timer_ref),
-    {execute_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, execute_in),
+    {exec_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, exec_in),
     
     if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-      	NewBlockValues = block_common:execute({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}, input_change);
+      	NewBlockValues = block_common:execute({BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}, 
+                                                input_cos);
           
 	true -> % Block will be executed via timer timeout or linked block execution, just return
         NewBlockValues = {BlockName, BlockModule, Config, NewInputs, CurrentOutputs, Private}
@@ -325,7 +326,8 @@ handle_cast({dereference, DeleteBlockName}, BlockValues) ->
     if ReferenceCount > 0 ->
         error_logger:info_msg("~p Removed ~p references to deleted block: ~p", 
                                                [BlockName, ReferenceCount, DeleteBlockName]),
-        {noreply, block_common:execute({BlockName, BlockModule, Config, NewInputs, Outputs, Private}, input_change)};
+        {noreply, block_common:execute({BlockName, BlockModule, Config, NewInputs, Outputs, Private}, 
+                                        input_cos)};
         
     true -> % Reference count is zero, no input links dereferenced, just continue
 	    {noreply, {BlockName, BlockModule, Config, Inputs, Outputs, Private}}
@@ -362,7 +364,7 @@ handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
     % GPIO Interupt message from Erlang ALE library, 
     % Execute the block connected to this interrupt
     % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
-    NewBlockValues = block_common:execute(CurrentBlockValues, hardware_interrupt),
+    NewBlockValues = block_common:execute(CurrentBlockValues, hardware),
 
     {noreply, NewBlockValues};
 

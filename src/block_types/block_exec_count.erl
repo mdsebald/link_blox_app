@@ -8,7 +8,7 @@
 %%%              
 %%% @end 
 
--module(block_exec_counter).
+-module(block_exec_count).
 
 -author("Mark Sebald").
 
@@ -20,7 +20,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name()-> exec_counter.  
+type_name() -> exec_count.  
 
 version() -> "0.1.0".   
 
@@ -112,9 +112,9 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     % We can imediately set the initial block output value, 
     % Otherwise we need to wait for the initial input value to get set, via block execution
     if is_integer(InitialValue) ->
-        NewOutputs = block_utils:set_value_status(Outputs, InitialValue, initialized);
+        NewOutputs = block_utils:set_value_status(Outputs, InitialValue, initialed);
     true ->    
-       NewOutputs = block_utils:set_value_status(Outputs, not_active, initialized)
+       NewOutputs = block_utils:set_value_status(Outputs, not_active, initialed)
     end,
     
     % Perform initial block execution
@@ -136,13 +136,13 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     % Check for errors on input/config values
     if (Reset == error) orelse (InitialValue == error) orelse 
        (FinalValue == error) orelse (Rollover == error) ->
-            Value = not_active, Status = input_error, Carry = not_active; 
+            Value = not_active, Status = error_in, Carry = not_active; 
         
     true -> % input values are normal, continue with block execution
     
         % Initial and Final values must be integers, can't be empty or not_active
         if (not is_integer(InitialValue)) orelse (not is_integer(FinalValue)) ->
-            Value = not_active, Status = input_empty, Carry = not_active; 
+            Value = not_active, Status = empty_in, Carry = not_active; 
  
         true -> 
             CurrentValue = block_utils:get_value(Outputs, value),

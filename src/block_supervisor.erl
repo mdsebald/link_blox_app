@@ -1,8 +1,13 @@
-%% @author Mark Sebald
-%% @doc Supervisor for LinkBlox app.
+%%%
+%%% @doc 
+%%% Supervisor for LinkBlox app.
+%%% @end
+%%%
 
 
 -module(block_supervisor).
+
+-author("Mark Sebald").
 
 -behaviour(supervisor).
 
@@ -11,7 +16,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1, block_names/0, block_status/0]).
+-export([start_link/1, block_processes/0]).
 
 start_link(BlockValuesFile) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
@@ -42,6 +47,9 @@ init(BlockValuesFile) ->
     % Start up the timer server, for blocks executed on a timer
 	timer:start(),
     
+    % Start the UI loop
+    spawn('LinkBlox_ui', ui_loop, []),
+    
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
 			% TODO: Check for good, "ok" return value
@@ -56,59 +64,10 @@ init(BlockValuesFile) ->
 			{ok, {SupFlags, ChildSpecs} }
 		end.
 		
-%	ChildSpecs = [
-%					#{id => BlockName, start => {'BlockPoint_srv', create, [BlockValues]}},
-%
-%				 ],
-
-
 %% 
 %% get the current list of block processes
 %%
 block_processes() -> supervisor:which_children(?MODULE).
-
-%% 
-%% get the  block names of currently running processes
-%%
-block_names() -> 
-    block_names(block_processes(), []).    
-    
-block_names([], BlockNames) -> 
-    BlockNames;
-    
-block_names([BlockProcess | RemainingProcesses], BlockNames) ->
-    % Only return block names of processes that are running
-    case element(2, BlockProcess) of
-        restarting -> NewBlockNames = BlockNames;
-        undefined  -> NewBlockNames = BlockNames;
-        _Pid       ->
-            BlockName = element(1, BlockProcess),
-            NewBlockNames = [BlockName | BlockNames]
-    end,
-    block_names(RemainingProcesses, NewBlockNames).
-
-%%
-%% Print out status off each running block
-%%
-block_status() ->
-    io:fwrite("~n~-16s ~-16s ~-12s ~-12s ~-12s ~-10s~n", 
-                  ["Block Type", "Block Name", "Output Val", "Status", "Exec Method", "Last Exec"]), 
-    block_status(block_names()).
-    
-block_status([]) -> ok;
-
-block_status([BlockName | RemainingBlockNames]) ->
-    BlockType = block_server:get_value(BlockName, block_type),
-    Value = block_server:get_value(BlockName, value),
-    Status = block_server:get_value(BlockName, status),
-    ExecMethod = block_server:get_value(BlockName, exec_method),
-    LastExecuted = block_server:get_value(BlockName, last_exec),
-    
-    io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-10w~n", 
-              [io_lib:write(BlockType), io_lib:write(BlockName), 
-               Value, Status, ExecMethod, LastExecuted]),
-    block_status(RemainingBlockNames).
-
 
 %% ====================================================================
 %% Internal functions
