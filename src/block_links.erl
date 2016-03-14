@@ -193,7 +193,7 @@ delete_link(Outputs, AttributeName, ToBlockName) ->
 -spec delete_references(DeleteBlockName :: atom()) -> ok.
 
 delete_references(DeleteBlockName)->
-    BlockNames = block_supervisor:block_names(),
+    BlockNames = 'LinkBlox_ui':block_names(),
     delete_references(DeleteBlockName, BlockNames).
     
 delete_references(_DeleteBlockName, []) -> 

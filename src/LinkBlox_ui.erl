@@ -19,12 +19,54 @@
 %%  UI input loop
 %%
 ui_loop() ->
-    InputStr = io:get_line("LinkBlox> "),
-    case InputStr of
-        "status"   -> block_status();
-        UnknownCmd -> io:format("Unknown Command: ~p entered ~n", UnknownCmd)
-    end,
-    ui_loop().
+    Raw1 = io:get_line("LinkBlox> "),
+    Raw2 = string:strip(Raw1, right, 10), % Remove new line char
+    Raw3 = string:strip(Raw2), % Remove leading and trailing whitespace
+    
+    % Split up the string into command and parameter words
+    CmdAndParams = string:tokens(Raw3, " "),  
+    
+    if 0 < length(CmdAndParams) ->
+        [Cmd | Params] = CmdAndParams,
+        CmdLcase = string:to_lower(Cmd),
+        
+        case CmdLcase of
+            "status"   -> ui_status(Params);
+            "delete"   -> ui_delete(Params);
+            _Unknown   -> io:format("Error: Unknown command: ~p~n", [Raw3])
+        end,
+        ui_loop();
+    true ->
+        ui_loop()
+    end.
+
+% Process block status command
+ui_status(Params) ->
+    if length(Params) == 0 ->  
+        block_status();
+    true ->
+        io:format("Error: Extraneous parameters in status command~n") 
+    end.
+ 
+ % Process block delete command
+ ui_delete(Params) ->
+    case length(Params) of
+        1 ->
+            [BlockNameStr] = Params,
+            BlockName = list_to_atom(BlockNameStr),
+            % Validate block name is an existing block
+            case lists:member(BlockName, block_names()) of
+                true  -> 
+                    block_server:delete(BlockName);
+                false ->
+                    io:format("Error: Block ~p does not exist~n", [BlockName])
+             end;
+        0 ->
+            io:format("Error: No block name specified to delete~n");
+        _ ->
+            io:format("Error: Extraneous parameters in delete command~n")
+    end.
+
 
 %% 
 %% get the  block names of currently running processes
