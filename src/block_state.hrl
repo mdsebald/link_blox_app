@@ -13,7 +13,7 @@
                          Private :: list() 
                        }.
                        
--type input_link() :: { AttributeName :: atom() | fixed,
+-type input_link() :: { AttributeName :: atom() | null,
                         BlockName :: atom() | null,
                         NodeName :: atom() | null
                       }.
@@ -25,11 +25,11 @@
 %%
 %%  manual:     Manually invoked via UI or external application 
 %%  input_cos:  One or more input values have changed (i.e. Data Flow)
-%%  timer:      Execution timer has timed out
+%%  timer:      Execution interval timer has timed out
 %%  exec_out:   Exec Input is linked to the Exec Output of 
 %%              a block that has been executed.  (i.e. Control Flow)
 %%  hardware:   Block is connected to HW that can trigger execution
-%%              i.e. interrupt
+%%              i.e. GPIO interrupt
 
 -type exec_method() :: { manual | input_cos | timer | exec_out | hardware }.
    
@@ -40,17 +40,18 @@
 %%  created:    Block attributes have been instantiated
 %%  initialed:  Block has been initialized, pre execution prep has been completed
 %%  normal:     Block is has executed normally
-%%  disabled:   Block enable input is false or not_active
+%%  disabled:   Block disable input is true/on. All block outputs are set to not_active 
+%%  frozen:     Block freeze input is true/on.  All block outputs are frozen at last calculated value
 %%  error:      Block has encountered some error when attempting to executed
 %%  input_err:  One or more of the block input values is incompatible with the block's code
 %%  config_err: One or more of the block configuration values is incompatible with the block's code
 %%  proc_err:   There is an error outside of the block code that is preventing the block from executing
 %%   
    
--type block_status() :: { created | initialed | normal |  disabled | error | input_err | config_err | proc_err }.
+-type block_status() :: { created | initialed | normal |  disabled | frozen | error | input_err | config_err | proc_err }.
                        
 %%
 %% specifies an empty input value link
 %% useful for initializing block inputs
 %%
--define( EMPTY_LINK, {fixed, null, null}).             
+-define( EMPTY_LINK, {null, null, null}).             

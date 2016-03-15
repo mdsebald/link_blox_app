@@ -34,7 +34,16 @@ configs(Name, Type, Version) ->
 %%
 inputs() ->
     [
-      {enable, true, ?EMPTY_LINK},       % Block will execute as long as enable input is true
+      {disable, false, ?EMPTY_LINK},    % Block will execute as long as disable input is false/not_active
+                                        % When disable input is true, all block outputs set to not_active,
+                                        % and block status is set to disabled.  Block will not execute, 
+      
+      {freeze, false, ?EMPTY_LINK},     % Block will execute as long as freeze input is false/not_active
+                                        % When freeze input is true, all block outputs remain at last value
+                                        % and block status is set to frozen.  Block will not be executed.
+                                        
+                                        % Disable true/on value takes precedent over Freeze true/on value.
+
       
       {exec_in, empty, ?EMPTY_LINK},     % Link to block that will execute this block.
                                          % May only be linked to the 'exec_out' block output value
@@ -44,6 +53,11 @@ inputs() ->
                                          % Used to execute a block at fixed intervals
                                          % instead of being executed via exec_out/exec_in link
                                          % or executed on change of input value  
+                                         
+                                         % exec_in and exec_interval may both be used to execute the block
+                                         % They are not mutually exclusive.
+                                         % If exec_in is linked to another block or exec_interval > 0,
+                                         % the block will no longer execute on change of input state
     ].
     
     
@@ -65,17 +79,15 @@ outputs() ->
 %%
 private() ->
     [ 
-      {exec_count, 0},
-	  {last_exec, not_active},
-      {timer_ref, empty},
-      {exec_method, empty}
+      {exec_method, empty},
+	  {last_exec, empty},
+      {timer_ref, empty}
     ].
        
 
 
 %%
 %% Common block execute function
-%% TODO: Handle initial execution (if needed)
 %%
 -spec execute(BlockValues :: block_state(), ExecMethod :: exec_method()) -> block_state().
 
@@ -83,30 +95,37 @@ execute(BlockValues, ExecMethod) ->
 
     {BlockName, BlockModule, Config, Inputs, Outputs, Private} = BlockValues,
     
-    EnableInput = block_utils:get_value(Inputs, enable),
-    
-    if is_boolean(EnableInput) ->
-        if EnableInput -> % Block is enabled
-            {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
-            NewStatus = block_utils:get_value(NewOutputsX, status),
-            if  NewStatus == normal ->
-                NewPrivateY = update_execute_track(NewPrivateX, ExecMethod);
-            true ->  % Block Status is not normal
-                % Assume custom block code has taken care of updating output value(s) appropriately
-                % Don't update execution tracking
-                NewPrivateY = NewPrivateX
+    Disable = block_utils:get_value(Inputs, disable),
+    case check_boolean_input(Disable) of
+        not_active ->
+            Freeze = block_utils:get_value(Inputs, freeze),
+            case check_boolean_input(Freeze) of
+                not_active -> % block is not disabled or frozen, execute it
+                    {_, _, _, _, NewOutputsX, NewPrivateX} = BlockModule:execute(BlockValues),
+                    NewPrivateY = update_execute_track(NewPrivateX, ExecMethod);
+                    
+                active -> % Block is frozen
+                    % Just update the status output, all other outputs are frozen
+                    NewOutputsX = block_utils:set_status(Outputs, frozen),
+                    % Don't udpate execution tracking
+                    NewPrivateY = Private;
+                    
+                error -> % Freeze input value error
+                    error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
+                    NewOutputsX = update_all_outputs(Outputs, not_active, input_err),
+                    % Don't udpate execution tracking
+                    NewPrivateY = Private
             end;
-        true  ->   % Block is disabled
+        active -> % Block is disabled
             NewOutputsX = update_all_outputs(Outputs, not_active, disabled),
             % Don't udpate execution tracking
+            NewPrivateY = Private;
+        
+        error -> % Disable input value error 
+            error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
+            NewOutputsX = update_all_outputs(Outputs, not_active, input_err),
+            % Don't udpate execution tracking
             NewPrivateY = Private
-        end;
-    
-    true -> % Invalid Enable input type or value
-        error_logger:error_msg("~p Invalid enable Input value: ~p ~n", [BlockName, EnableInput]),
-        NewOutputsX = update_all_outputs(Outputs, not_active, input_err),
-        % Don't udpate execution tracking
-        NewPrivateY = Private
     end,
     
     {Status, NewPrivate} = update_execution_timer(BlockName, Inputs, NewPrivateY), 
@@ -126,6 +145,19 @@ execute(BlockValues, ExecMethod) ->
     % Return the new updated block state
     {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
+
+%
+% Check the value of the disable or freeze control value input
+%
+check_boolean_input(Value) ->
+    case Value of
+        true       -> active;
+        false      -> not_active; 
+        not_active -> not_active;
+        empty      -> not_active;
+        _Error     -> error
+    end.
+ 
 
 %%
 %% Update the block execution timer 
@@ -202,13 +234,7 @@ update_execute_track(Private, ExecMethod) ->
     TS = {_, _, Micro} = os:timestamp(),
     {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
     
-	PrivateY = block_utils:set_value(PrivateX, last_exec, {Hour, Minute, Second, Micro}),
-
-	% Arbitrarily roll over Execution Counter at 999,999,999
-	case block_utils:get_value(PrivateY, exec_count) + 1 of
-		1000000000   -> block_utils:set_value(PrivateY, exec_count, 0);
-		NewExecCount -> block_utils:set_value(PrivateY, exec_count, NewExecCount)
-	end.
+	block_utils:set_value(PrivateX, last_exec, {Hour, Minute, Second, Micro}).
     
 %% 
 %% Update all outputs to the New value,

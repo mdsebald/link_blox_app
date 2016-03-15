@@ -13,8 +13,8 @@
 %% API functions
 %% ====================================================================
 -export([get_attribute/2, get_value/2, get_integer/2, get_boolean/2, get_value_any/2]).
--export([set_value/3, set_values/2, set_value_status/3, set_value_normal/2, set_value_any/3]).
--export([set_input_link/3]).
+-export([set_value/3, set_values/2, set_value_status/3, set_value_normal/2, set_status/2]).
+-export([set_value_any/3, set_input_link/3]).
 -export([update_attribute_list/2, merge_attribute_lists/2, replace_attribute/3]).
 -export([sleep/1]). 
 
@@ -144,6 +144,13 @@ set_value_status(Outputs, Value, Status) ->
 set_value_normal(Outputs, Value) ->
     set_values(Outputs, [{value, Value}, {status, normal}]).
 
+%%
+%% Set status output value
+%% 
+-spec set_status(Outputs :: list(), Status :: block_status()) -> list().
+
+set_status(Outputs, Status) ->
+    set_value(Outputs, status, Status).
 
 %%	
 %% Get the value of the attribute ValueName

@@ -32,10 +32,10 @@ unregistered_blocks(BlockInputs)->
 	{_ValueName, _Value, Link} = Input,
 	% get the value name, block name, and node name components of this input value link
 	
-	{LinkValueName, LinkBlockName, _LinkNodeName} = Link,   %TODO: Handle getting values from other nodes
+	{_LinkValueName, LinkBlockName, _LinkNodeName} = Link,   %TODO: Handle getting values from other nodes
 	
 	% if this input is not a fixed value
-	if LinkValueName /= fixed ->
+	if Link /= ?EMPTY_LINK ->
 		% if the block name of this link is not null
 		if LinkBlockName /= null ->
 			case whereis(LinkBlockName) of
@@ -69,7 +69,7 @@ link_blocks(BlockName, BlockInputs, LinksRequested)->
 	{LinkValueName, LinkBlockName, _LinkNodeName} = Link, %TODO: Handle getting values from other nodes
 	
 	% if this input is not a fixed value
-	if LinkValueName /= fixed ->
+	if Link /= ?EMPTY_LINK ->
 		   
 		% if the block name of this link is not null
 		if LinkBlockName /= null ->
@@ -110,7 +110,7 @@ unlink_blocks(BlockName, BlockInputs, LinksRequested)->
 	{LinkValueName, LinkBlockName, _LinkNodeName} = Link, %TODO: Handle getting values from other nodes
 	
 	% if this input is not a fixed value
-	if LinkValueName /= fixed ->
+	if Link /= ?EMPTY_LINK ->
 		   
 		% if the block name of this link is not null
 		if LinkBlockName /= null ->

@@ -39,7 +39,7 @@ default_configs(BlockName) ->
 default_inputs() -> 
      block_utils:merge_attribute_lists(block_common:inputs(),
                             [ 
-                              {input, empty, {fixed, null, null}}
+                              {input, empty, ?EMPTY_LINK}
                             ]). 
 
 
