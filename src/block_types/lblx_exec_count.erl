@@ -1,14 +1,15 @@
 %%% @doc 
 %%% Block Type: Execution Counter
 %%% Description: Increment/decrement count value output every time block is executed.
-%%5              On Reset input or startup, set output value to initial count value
+%%5              On initialize or Reset input is true, set output value to initial count value
 %%%              On block execution, count up/down to final value
 %%%              If Rollover config parameter is true, on next execution,
-%%%              set Carry output value to true, and reset output value to initial count   
+%%%              set Carry output value to true, and reset output value to initial count 
+%%%              Carry output value is false for every other case  
 %%%              
 %%% @end 
 
--module(block_exec_count).
+-module(lblx_exec_count).
 
 -author("Mark Sebald").
 
@@ -17,6 +18,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+-export([type_name/0, version/0]). 
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
@@ -117,7 +119,6 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
        NewOutputs = block_utils:set_value_status(Outputs, not_active, initialed)
     end,
     
-    % Perform initial block execution
 	{BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
 
@@ -136,13 +137,13 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
     % Check for errors on input/config values
     if (Reset == error) orelse (InitialValue == error) orelse 
        (FinalValue == error) orelse (Rollover == error) ->
-            Value = not_active, Status = error_in, Carry = not_active; 
+            Value = not_active, Status = input_err, Carry = not_active; 
         
     true -> % input values are normal, continue with block execution
     
         % Initial and Final values must be integers, can't be empty or not_active
         if (not is_integer(InitialValue)) orelse (not is_integer(FinalValue)) ->
-            Value = not_active, Status = empty_in, Carry = not_active; 
+            Value = not_active, Status = no_input, Carry = not_active; 
  
         true -> 
             CurrentValue = block_utils:get_value(Outputs, value),

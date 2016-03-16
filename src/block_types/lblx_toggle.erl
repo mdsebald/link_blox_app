@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(block_toggle).
+-module(lblx_toggle).
 
 -author("Mark Sebald").
 
@@ -13,6 +13,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+-export([type_name/0, version/0]). 
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 

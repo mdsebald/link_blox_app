@@ -48,7 +48,7 @@ init(BlockValuesFile) ->
 	timer:start(),
     
     % Start the UI loop
-    spawn('LinkBlox_ui', ui_loop, []),
+    spawn(lblx_ui_main, ui_loop, []),
     
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->

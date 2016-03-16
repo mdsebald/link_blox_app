@@ -85,6 +85,19 @@ private() ->
     ].
        
 
+%%
+%% Common block initialization function
+%%
+-spec initialize(BlockValues :: block_state()) -> block_state().
+
+initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
+    
+    % In case this block is set to execute via timer, initialize the timer
+    {_Status, NewPrivate} = update_execution_timer(BlockName, Inputs, Private), 
+    
+    % Perform block type specific initialization 
+    BlockModule:initialize({BlockName, BlockModule, Config, Inputs, Outputs, NewPrivate}).
+    
 
 %%
 %% Common block execute function
@@ -307,22 +320,6 @@ execute_out([]) ->
 execute_out([BlockName | RemainingBlockNames]) ->
     block_server:exec_out_execute(BlockName),
     execute_out(RemainingBlockNames).
-    
-
-
-
-%%
-%% Common block initialization function
-%%
--spec initialize(BlockValues :: block_state()) -> block_state().
-
-initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
-    
-    % In case this block is set to execute via timer, initialize the timer
-    {_Status, NewPrivate} = update_execution_timer(BlockName, Inputs, Private), 
-    
-    % Perform block type specific initialization 
-    BlockModule:initialize({BlockName, BlockModule, Config, Inputs, Outputs, NewPrivate}).
     
 
 %%

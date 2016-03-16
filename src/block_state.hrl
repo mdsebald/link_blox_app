@@ -48,7 +48,8 @@
 %%  proc_err:   There is an error outside of the block code that is preventing the block from executing
 %%   
    
--type block_status() :: { created | initialed | normal |  disabled | frozen | error | input_err | config_err | proc_err }.
+-type block_status() :: { created | initialed | normal |  disabled | frozen | 
+                          error | input_err | config_err | proc_err | no_input }.
                        
 %%
 %% specifies an empty input value link

@@ -8,11 +8,11 @@
 %%%               
 %%% @end 
 
--module(block_template).  % INSTRUCTIONS: Modify to match new module name
+-module(lblx_template).  % INSTRUCTIONS: Modify to match new module name
 
 -author("Your Name").
 
--include("block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
+-include("../block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
 
 %% ====================================================================
 %% API functions
