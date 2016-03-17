@@ -144,7 +144,7 @@ block_status([BlockName | RemainingBlockNames]) ->
     LastExecuted = io_lib:format("~2w:~2..0w:~2..0w.~6..0w", [Hour,Minute,Second,Micro]),
     
     io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-15s~n", 
-              [io_lib:write(BlockType), io_lib:write(BlockName), 
+              [BlockType, io_lib:write(BlockName), 
                Value, Status, ExecMethod, LastExecuted]),
     block_status(RemainingBlockNames).
 
@@ -194,6 +194,28 @@ block_names([BlockProcess | RemainingProcesses], BlockNames) ->
 
 % Get list of the block type names
 block_types() ->
-    erlang:loaded().
+    % Get all of the loaded module names
+    Modules = erlang:loaded(),
+    
+    % Convert the module names into strings
+    ModulesStr = 
+        lists:map( fun(Module) -> atom_to_list(Module) end, 
+                   Modules),
+        
+    % Get a list of the modules that are block types
+    LblxtModulesStr =
+        lists:filter( fun(ModuleStr) -> string:left(ModuleStr, 6) == "lblxt_" end, 
+                      ModulesStr),
+    
+    % Get the type names from the block type modules                  
+    TypeNames =
+        lists:map( fun(LblxtModule) -> list_to_atom(LblxtModule):type_name() end, 
+                    LblxtModulesStr),
+    
+    % Print the list of type names
+    lists:map( fun(TypeName) -> io:format("~s~n", TypeName) end, TypeNames).
+        
+    
+         
 
 

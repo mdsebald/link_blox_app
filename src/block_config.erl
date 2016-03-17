@@ -21,9 +21,9 @@
  
  create_demo_config() ->
  
-    PbSwitch = lblx_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
+    PbSwitch = lblxt_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
 
-    Counter = lblx_exec_count:create(counter,
+    Counter = lblxt_exec_count:create(counter,
                                  [
                                     
                                  ],
@@ -32,43 +32,43 @@
                                      {exec_interval, 1000, ?EMPTY_LINK}
                                  ]),
  
-    Display = lblx_seven_seg:create(display,
+    Display = lblxt_seven_seg:create(display,
                                  [],
                                  [
                                     {input, empty, {value, counter, null}}
                                  ]),
                                  
-    SegA = lblx_pi_gpio_do:create(seg_a, 
+    SegA = lblxt_pi_gpio_do:create(seg_a, 
                                  [{gpio_pin, 17}, {invert_output, true}], 
                                  [{input, empty, {seg_a, display, null}}]
                                 ),
 
-    SegB = lblx_pi_gpio_do:create(seg_b, 
+    SegB = lblxt_pi_gpio_do:create(seg_b, 
                                  [{gpio_pin, 23}, {invert_output, true}], 
                                  [{input, empty, {seg_b, display, null}}]
                                 ),
 
-    SegC = lblx_pi_gpio_do:create(seg_c, 
+    SegC = lblxt_pi_gpio_do:create(seg_c, 
                                  [{gpio_pin, 25}, {invert_output, true}], 
                                  [{input, empty, {seg_c, display, null}}]
                                 ),
 
-    SegD = lblx_pi_gpio_do:create(seg_d, 
+    SegD = lblxt_pi_gpio_do:create(seg_d, 
                                  [{gpio_pin, 16}, {invert_output, true}], 
                                  [{input, empty, {seg_d, display, null}}]
                                 ),
 
-    SegE = lblx_pi_gpio_do:create(seg_e, 
+    SegE = lblxt_pi_gpio_do:create(seg_e, 
                                  [{gpio_pin, 26}, {invert_output, true}], 
                                  [{input, empty, {seg_e, display, null}}]
                                 ),
         
-    SegF = lblx_pi_gpio_do:create(seg_f, 
+    SegF = lblxt_pi_gpio_do:create(seg_f, 
                                  [{gpio_pin, 22}, {invert_output, true}], 
                                  [{input, empty, {seg_f, display, null}}]
                                 ),
         
-    SegG = lblx_pi_gpio_do:create(seg_g, 
+    SegG = lblxt_pi_gpio_do:create(seg_g, 
                                  [{gpio_pin, 24}, {invert_output, true}], 
                                  [{input, empty, {seg_g, display, null}}]
                                 ),
@@ -77,17 +77,17 @@
 
 create_demo_config1() ->
   
-    Led17DigitalOutput = lblx_pi_gpio_do:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
+    Led17DigitalOutput = lblxt_pi_gpio_do:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
                                 [{input, empty, {value, toggle_led, null}}]),
                                     
-    PbSwDigitalOutput = lblx_pi_gpio_do:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
+    PbSwDigitalOutput = lblxt_pi_gpio_do:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
                                 [{input, empty, {value, switch_27, null}}]),
                                 
-    PbSwDigitalInput = lblx_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
+    PbSwDigitalInput = lblxt_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
    
-    ToggleBlockValues = lblx_toggle:create(toggle_led, [], [{exec_interval, 2000, ?EMPTY_LINK}]),
+    ToggleBlockValues = lblxt_toggle:create(toggle_led, [], [{exec_interval, 2000, ?EMPTY_LINK}]),
     
-    Led26DigitalOutput = lblx_pi_gpio_do:create(led_26, 
+    Led26DigitalOutput = lblxt_pi_gpio_do:create(led_26, 
                                 [
                                     {gpio_pin, 26},
                                     {invert_output, true}

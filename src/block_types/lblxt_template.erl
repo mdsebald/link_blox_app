@@ -1,47 +1,53 @@
+% INSTRUCTIONS: Copy this module and modify as appropriate 
+%               for the function this block will perform.
+%               Comments marked "INSTRUCTIONS:" may be deleted 
+
 %%% @doc 
-%%% Block Type: Raspberry Pi GPIO Digital Input 
-%%% Description: Configure a Raspberry Pi 1 GPIO Pin as a Digital Input block  
+%%% Block Type:  
+%%% Description:   
 %%%               
 %%% @end 
 
--module(lblx_pi_gpio_di).
+-module(lblxt_template).  % INSTRUCTIONS: Modify to match new module name
 
--author("Mark Sebald").
+-author("Your Name").
 
--include("../block_state.hrl"). 
+-include("../block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([type_name/0, version/0]). 
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> pi_gpio_di.  
+type_name() -> "template".  % INSTRUCTIONS: String naming the block type, usually the module name minus "block_"
 
-version() -> "0.1.0". 
+version() -> "0.1.0".   % INSTRUCTIONS: Major.Minor.Patch, Major version change implies a breaking change
 
 
 %% Merge the block type specific, Config, Input, Output, and Private attributes
 %% with the common Config, Input, Output, and Private attributes, that all block types have
-
+ 
 -spec default_configs(BlockName :: atom()) -> list().
 
 default_configs(BlockName) -> 
     block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
-                            [ 
-                              {gpio_pin, 0}, 
-                              {invert_output, false}
+                            [
+                                % INTRUCTIONS: Insert block type specific config attribute tuples here
+                                % Config attribute tuples consist of a value name a value
+                                % Example: {gpio_pin, 0}
                             ]). 
-                            
-                            
--spec default_inputs() -> list().
+
+
+ -spec default_inputs() -> list().
 
 default_inputs() -> 
      block_utils:merge_attribute_lists(block_common:inputs(),
                             [
-                                
-                            ]).
+                                % INTRUCTIONS: Insert block type specific input attribute tuples here
+                                % Input attribute tuples consist of a value name, a value, and a link
+                                % Example: {input, empty, ?EMPTY_LINK}
+                            ]). 
 
 
 -spec default_outputs() -> list().
@@ -49,19 +55,25 @@ default_inputs() ->
 default_outputs() -> 
         block_utils:merge_attribute_lists(block_common:outputs(),
                             [
-                                
-                            ]).
+                                % INTRUCTIONS: Insert block type specific output attribute tuples here
+                                % Output attribute tuples consist of a value name, a value, 
+                                % and a list of block names
+                                % Example: {freeze, not_active, []}
+                            ]). 
 
 
--spec default_private() -> list().
-                            
+ -spec default_private() -> list().
+                           
 default_private() -> 
         block_utils:merge_attribute_lists(block_common:private(),
                             [
-                              {gpio_pin_ref, empty}
-                            ]).
+                                % INTRUCTIONS: Insert block type specific private attribute tuples here
+                                % Private attribute tuples consist of a value name, and a value
+                                % Example {gpio_ref, empty}
+                            ]). 
 
-                            
+
+
 %%  
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
@@ -70,7 +82,7 @@ default_private() ->
 -spec create(BlockName :: atom()) -> block_state().
 
 create(BlockName) -> create(BlockName, [], [], [], []).
-   
+
 -spec create(BlockName :: atom(), list(), list()) -> block_state().
    
 create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitInputs, [],[]).
@@ -78,7 +90,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 -spec create(BlockName :: atom(), list(), list(), list(), list()) -> block_state().
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
-         
+
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
     %%
@@ -101,31 +113,12 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
-	
-    % Get the GPIO pin number used by this block
-    PinNumber = block_utils:get_value(Config, gpio_pin),
-    % TODO: Check Pin Number is an integer in the right range
-
-    % Initialize the GPIO pin as an input
-    case gpio:start_link(PinNumber, input) of
-        {ok, GpioPinRef} ->
-            Status = initialed,
-            Value = not_active,
-	        NewPrivate = block_utils:set_value(Private, gpio_pin_ref, GpioPinRef),
-            gpio:register_int(GpioPinRef),
-            gpio:set_int(GpioPinRef, both);  % TODO: Make interrupt type selectable via config value
-
-        {error, ErrorResult} ->
-            error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", [BlockName, ErrorResult, PinNumber]),
-            Status = process_error,
-            Value = not_active,
-            NewPrivate = Private
-    end,
     
-    NewOutputs = block_utils:set_value_status(Outputs, Value, Status),
+    % Perform block type specific initializations here
+    NewOutputs = Outputs,
+    NewPrivate = Private,
 
     {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
-    
 
 %%
 %%  Execute the block specific functionality
@@ -134,13 +127,13 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
-    % Read the current value of the GPIO pin 
-    GpioPinRef = block_utils:get_value(Private, gpio_pin_ref),
-    Value = read_pin_value_bool(GpioPinRef),
+    % INSTRUCTIONS: Perform block type specific actions here, 
+    % read input value(s) calculate new outut value(s)
+    % set block output status value
+    NewOutputs = Outputs,
+    NewPrivate = Private,
 
-    NewOutputs = block_utils:set_value_status(Outputs, Value, normal),
-        
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 
 %% 
@@ -149,19 +142,12 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 -spec delete(block_state()) -> ok.
 
 delete({_BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private}) -> 
-    % Release the GPIO pin?
+    % INSTRUCTIONS: Perform any block type specific delete functionality here
     ok.
+
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-
-read_pin_value_bool(GpioPin) ->
-    case gpio:read(GpioPin) of
-        1  -> true;
-		0 -> false
-    end.
-
 

@@ -5,7 +5,7 @@
 %%%               
 %%% @end 
 
--module(lblx_seven_seg). 
+-module(lblxt_seven_seg). 
 
 -author("Mark Sebald").
 
@@ -18,7 +18,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> seven_seg. 
+type_name() -> "seven_seg". 
 
 version() -> "0.1.0".  
 
