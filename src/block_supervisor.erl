@@ -16,10 +16,18 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1, block_processes/0]).
+-export([start_link/1, create_block/1, block_processes/0]).
 
 start_link(BlockValuesFile) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
+    
+%%
+%%  Start one block
+%%    
+create_block(BlockValues) ->
+    % Just create one set of child specs
+    [ChildSpec] = create_child_specs([BlockValues]),  
+    supervisor:start_child(?MODULE, ChildSpec).
 
 %% ====================================================================
 %% Behavioural functions

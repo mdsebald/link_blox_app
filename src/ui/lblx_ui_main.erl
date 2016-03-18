@@ -8,6 +8,8 @@
 
 -author("Mark Sebald").
 
+-include("../block_state.hrl"). 
+
 
 %% ====================================================================
 %% API functions
@@ -31,6 +33,7 @@ ui_loop() ->
         CmdLcase = string:to_lower(Cmd),
         
         case CmdLcase of
+            "create"    -> ui_create_block(Params);
             "execute"   -> ui_execute_block(Params);
             "delete"    -> ui_delete_block(Params);
             "disable"   -> ui_disable_block(Params);
@@ -39,7 +42,7 @@ ui_loop() ->
             "thaw"      -> ui_thaw_block(Params);
             "set"       -> ui_set_value(Params);
             "status"    -> ui_status(Params);
-            "types"     -> block_types();
+            "types"     -> ui_block_types();
             
             _Unknown    -> io:format("Error: Unknown command: ~p~n", [Raw3])
         end,
@@ -48,6 +51,12 @@ ui_loop() ->
         ui_loop()
     end.
 
+% Process block create command
+ui_create_block([BlockName]) ->
+    % validate block type name
+    % validate block name, doesn't already exist
+    BlockValues = lblxt_toggle:create(BlockName, [], [{exec_interval, 2000, ?EMPTY_LINK}]),
+    block_supervisor:create_block(BlockValues).
 
 % Process manual block execute command
  ui_execute_block(Params) ->
@@ -144,7 +153,8 @@ block_status([BlockName | RemainingBlockNames]) ->
     LastExecuted = io_lib:format("~2w:~2..0w:~2..0w.~6..0w", [Hour,Minute,Second,Micro]),
     
     io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-15s~n", 
-              [BlockType, io_lib:write(BlockName), 
+              [string:left(BlockType, 16), 
+               string:left(io_lib:write(BlockName), 16), 
                Value, Status, ExecMethod, LastExecuted]),
     block_status(RemainingBlockNames).
 
@@ -172,7 +182,7 @@ is_block_name(Params) ->
 
 
 %% 
-%% get the block names of currently running processes
+%% Get the block names of currently running processes
 %%
 block_names() -> 
     block_names(block_supervisor:block_processes(), []).    
@@ -191,31 +201,40 @@ block_names([BlockProcess | RemainingProcesses], BlockNames) ->
     end,
     block_names(RemainingProcesses, NewBlockNames).
 
-
-% Get list of the block type names
-block_types() ->
-    % Get all of the loaded module names
-    Modules = erlang:loaded(),
-    
-    % Convert the module names into strings
-    ModulesStr = 
-        lists:map( fun(Module) -> atom_to_list(Module) end, 
-                   Modules),
-        
-    % Get a list of the modules that are block types
-    LblxtModulesStr =
-        lists:filter( fun(ModuleStr) -> string:left(ModuleStr, 6) == "lblxt_" end, 
-                      ModulesStr),
-    
-    % Get the type names from the block type modules                  
-    TypeNames =
-        lists:map( fun(LblxtModule) -> list_to_atom(LblxtModule):type_name() end, 
-                    LblxtModulesStr),
-    
-    % Print the list of type names
-    lists:map( fun(TypeName) -> io:format("~s~n", TypeName) end, TypeNames).
+%%
+%% Get list of the block type names and versions
+%%
+ui_block_types() ->
+   BlockTypes = lblx_types:block_types_info(),
+   
+   % Print the list of type names version
+   io:fwrite("~n~-16s ~-8s ~-60s~n", 
+                  ["Block Type", "Version", "Description"]),
+   io:fwrite("~16c ~8c ~60c~n", [$-, $-, $-] ), 
+   
+   lists:map( fun({TypeName, Version, Description}) -> 
+              io:fwrite("~-16s ~-8s ~-60s~n", 
+                         [string:left(TypeName, 16), 
+                          string:left(Version, 8),
+                          string:left(Description, 60)]) end, 
+                      BlockTypes),
+   io:format("~n").
         
     
-         
+    
+%get_module_attribute(Module,Attribute) ->
+%
+%    case beam_lib:chunks(Module, [attributes]) of
+%
+%        { ok, { _, [ {attributes,Attributes} ] } } ->
+%            case lists:keysearch(Attribute, 1, Attributes) of
+%                { value, {Attribute,[Value]} } -> Value;
+%                false                          -> { error, no_such_attribute }
+%            end;
+%
+%        { error, beam_lib, { file_error, _, enoent} } ->
+%            { error, no_such_module }
+%
+%    end.     
 
 

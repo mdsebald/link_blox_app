@@ -9,7 +9,7 @@
 %%%              
 %%% @end 
 
--module(lblxt_exec_count).
+-module(lblx_exec_count).
 
 -author("Mark Sebald").
 
@@ -18,11 +18,13 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([type_name/0, version/0]). 
+-export([type_name/0, description/0, version/0]). 
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "exec_count".  
+type_name() -> "exec_count". 
+
+description() -> "Incr/Decr counter output value on block execution".
 
 version() -> "0.1.0".   
 

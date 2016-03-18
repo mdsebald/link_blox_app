@@ -46,6 +46,7 @@
 %%  input_err:  One or more of the block input values is incompatible with the block's code
 %%  config_err: One or more of the block configuration values is incompatible with the block's code
 %%  proc_err:   There is an error outside of the block code that is preventing the block from executing
+%%  no_input:   One or more input values are missing, so the block cannot calculate an output 
 %%   
    
 -type block_status() :: { created | initialed | normal |  disabled | frozen | 

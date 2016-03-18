@@ -1,11 +1,11 @@
 %%% @doc 
-%%% Block Type:  Seven Segment Decoder
+%%% Block Type:  Seven Segment Display Decoder
 %%% Description: Decode integer input value to activate
 %%%              the segements of a seven segment display  
 %%%               
 %%% @end 
 
--module(lblxt_seven_seg). 
+-module(lblx_seven_seg). 
 
 -author("Mark Sebald").
 
@@ -14,11 +14,13 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([type_name/0, version/0]). 
+-export([type_name/0, description/0, version/0]). 
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
 type_name() -> "seven_seg". 
+
+description() -> "Seven segment LED display decoder".
 
 version() -> "0.1.0".  
 

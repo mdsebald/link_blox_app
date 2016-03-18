@@ -1,53 +1,48 @@
-% INSTRUCTIONS: Copy this module and modify as appropriate 
-%               for the function this block will perform.
-%               Comments marked "INSTRUCTIONS:" may be deleted 
-
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type: Toggle Output
+%%% Description: Toggle binary output value each time block is executed  
 %%%               
 %%% @end 
 
--module(lblxt_template).  % INSTRUCTIONS: Modify to match new module name
+-module(lblx_toggle).
 
--author("Your Name").
+-author("Mark Sebald").
 
--include("../block_state.hrl").  % INSTRUCTIONS: Adjust path to hrl file as needed
+-include("../block_state.hrl").
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
+-export([type_name/0, description/0, version/0]). 
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "template".  % INSTRUCTIONS: String naming the block type, usually the module name minus "block_"
+type_name() -> "toggle".
 
-version() -> "0.1.0".   % INSTRUCTIONS: Major.Minor.Patch, Major version change implies a breaking change
+description() -> "Toggle binary output value on block execution".
+
+version() -> "0.1.0". 
 
 
 %% Merge the block type specific, Config, Input, Output, and Private attributes
 %% with the common Config, Input, Output, and Private attributes, that all block types have
- 
+
 -spec default_configs(BlockName :: atom()) -> list().
 
 default_configs(BlockName) -> 
     block_utils:merge_attribute_lists(block_common:configs(BlockName, type_name(), version()), 
                             [
-                                % INTRUCTIONS: Insert block type specific config attribute tuples here
-                                % Config attribute tuples consist of a value name a value
-                                % Example: {gpio_pin, 0}
-                            ]). 
+                                
+                            ]).  
 
 
- -spec default_inputs() -> list().
-
+-spec default_inputs() -> list().
+ 
 default_inputs() -> 
      block_utils:merge_attribute_lists(block_common:inputs(),
                             [
-                                % INTRUCTIONS: Insert block type specific input attribute tuples here
-                                % Input attribute tuples consist of a value name, a value, and a link
-                                % Example: {input, empty, ?EMPTY_LINK}
-                            ]). 
+                                
+                            ]).
 
 
 -spec default_outputs() -> list().
@@ -55,34 +50,26 @@ default_inputs() ->
 default_outputs() -> 
         block_utils:merge_attribute_lists(block_common:outputs(),
                             [
-                                % INTRUCTIONS: Insert block type specific output attribute tuples here
-                                % Output attribute tuples consist of a value name, a value, 
-                                % and a list of block names
-                                % Example: {freeze, not_active, []}
-                            ]). 
-
-
- -spec default_private() -> list().
-                           
+                                
+                            ]).
+                            
+                            
+-spec default_private() -> list().
+                            
 default_private() -> 
         block_utils:merge_attribute_lists(block_common:private(),
                             [
-                                % INTRUCTIONS: Insert block type specific private attribute tuples here
-                                % Private attribute tuples consist of a value name, and a value
-                                % Example {gpio_ref, empty}
-                            ]). 
+                                
+                            ]).
 
-
-
-%%  
+  
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
 %% and to add attributes to the lists of default attributes
-%%
 -spec create(BlockName :: atom()) -> block_state().
 
 create(BlockName) -> create(BlockName, [], [], [], []).
-
+   
 -spec create(BlockName :: atom(), list(), list()) -> block_state().
    
 create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitInputs, [],[]).
@@ -90,7 +77,7 @@ create(BlockName, InitConfig, InitInputs) -> create(BlockName, InitConfig, InitI
 -spec create(BlockName :: atom(), list(), list(), list(), list()) -> block_state().
 
 create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
-
+    
     %% Update Default Config, Input, Output, and Private attribute values 
     %% with the initial values passed into this function.
     %%
@@ -113,12 +100,11 @@ create(BlockName, InitConfig, InitInputs, InitOutputs, InitPrivate)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
-    
-    % Perform block type specific initializations here
-    NewOutputs = Outputs,
-    NewPrivate = Private,
+	
+    NewOutputs = block_utils:set_value_status(Outputs, not_active, initialed),
+     
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
 
 %%
 %%  Execute the block specific functionality
@@ -127,13 +113,17 @@ initialize({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
 execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 
-    % INSTRUCTIONS: Perform block type specific actions here, 
-    % read input value(s) calculate new outut value(s)
-    % set block output status value
-    NewOutputs = Outputs,
-    NewPrivate = Private,
-
-    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.
+    % Toggle output everytime block is executed
+    case block_utils:get_value(Outputs, value) of
+        true       -> Value = false,      Status = normal;
+        false      -> Value = true,       Status = normal;
+        not_active -> Value = true,       Status = normal;
+        _          -> Value = not_active, Status = error
+    end,
+	
+    NewOutputs = block_utils:set_value_status(Outputs, Value, Status),
+     
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, Private}.
 
 
 %% 
@@ -141,8 +131,7 @@ execute({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(block_state()) -> ok.
 
-delete({_BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private}) -> 
-    % INSTRUCTIONS: Perform any block type specific delete functionality here
+delete({_BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private}) ->
     ok.
 
 
