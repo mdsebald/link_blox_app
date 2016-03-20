@@ -34,7 +34,7 @@ fwup, not in sudo env PATH,  i.e. ./nerves-system-br/buildroot/output/target/usr
 
 Copy source from Vagrant synced folder (Local GitHub Repo) to nerves LinkBlocks build directory (under /home/vagrant)
 
-$ rsync -avC /vagrant/github/LinkBlocks .  
+$ rsync -avC /vagrant/github/LinkBlox  
 
 Error running rebar:  rebar.config references ./relhelper.sh  sript.  Error: could not find ./relhelper.sh  
 
