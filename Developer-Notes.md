@@ -32,10 +32,11 @@ Need to switch Makefile to use fwup app to burn SD memory card instead of using 
 
 fwup, not in sudo env PATH,  i.e. ./nerves-system-br/buildroot/output/target/usr/bin/fwup
 
-Copy source from Vagrant synced folder (Local GitHub Repo) to nerves LinkBlocks build directory (under /home/vagrant)
+Copy source from Vagrant synced folder (Local GitHub Repo) to nerves LinkBlox build directory (under /home/vagrant)
 
-$ rsync -avC /vagrant/github/LinkBlox  
+$ rsync -avC /vagrant/github/LinkBlox .
 
+Don't forget the '.' on the end, that is the destination 
 Use -n flag to preview which files will be synched.
 
 Error running rebar:  rebar.config references ./relhelper.sh  sript.  Error: could not find ./relhelper.sh  
