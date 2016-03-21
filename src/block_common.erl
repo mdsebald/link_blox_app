@@ -34,9 +34,12 @@ configs(Name, Type, Version) ->
 %%
 inputs() ->
     [
-      {disable, false, ?EMPTY_LINK},    % Block will execute as long as disable input is false/not_active
+      {disable, true, ?EMPTY_LINK},    % Block will execute as long as disable input is false/not_active
                                         % When disable input is true, all block outputs set to not_active,
                                         % and block status is set to disabled.  Block will not execute, 
+                                        % Default block to disabled, on create. 
+                                        % Set disable input to false in create function if you want block 
+                                        % to begin executing on create.
       
       {freeze, false, ?EMPTY_LINK},     % Block will execute as long as freeze input is false/not_active
                                         % When freeze input is true, all block outputs remain at last value
@@ -80,7 +83,7 @@ outputs() ->
 private() ->
     [ 
       {exec_method, empty},
-	  {last_exec, empty},
+	  {last_exec, ?EMPTY_LAST_EXEC},
       {timer_ref, empty}
     ].
        

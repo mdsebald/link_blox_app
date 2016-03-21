@@ -21,78 +21,94 @@
  
  create_demo_config() ->
  
-    PbSwitch = lblxt_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
+    PbSwitch = lblx_pi_gpio_di:create(switch_27, 
+                                 [
+                                     {gpio_pin, 27}
+                                 ], 
+                                 [
+                                     {disable, false, ?EMPTY_LINK}
+                                 ]),
 
-    Counter = lblxt_exec_count:create(counter,
+    Counter = lblx_exec_count:create(counter,
                                  [
                                     
                                  ],
                                  [
+                                     {disable, false, ?EMPTY_LINK},
                                      {reset, empty, {value, switch_27, null}},
                                      {exec_interval, 1000, ?EMPTY_LINK}
                                  ]),
  
-    Display = lblxt_seven_seg:create(display,
+    Display = lblx_seven_seg:create(display,
                                  [],
                                  [
-                                    {input, empty, {value, counter, null}}
+                                     {disable, false, ?EMPTY_LINK},
+                                     {input, empty, {value, counter, null}}
                                  ]),
                                  
-    SegA = lblxt_pi_gpio_do:create(seg_a, 
+    SegA = lblx_pi_gpio_do:create(seg_a, 
                                  [{gpio_pin, 17}, {invert_output, true}], 
-                                 [{input, empty, {seg_a, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_a, display, null}}]
                                 ),
 
-    SegB = lblxt_pi_gpio_do:create(seg_b, 
+    SegB = lblx_pi_gpio_do:create(seg_b, 
                                  [{gpio_pin, 23}, {invert_output, true}], 
-                                 [{input, empty, {seg_b, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_b, display, null}}]
                                 ),
 
-    SegC = lblxt_pi_gpio_do:create(seg_c, 
+    SegC = lblx_pi_gpio_do:create(seg_c, 
                                  [{gpio_pin, 25}, {invert_output, true}], 
-                                 [{input, empty, {seg_c, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_c, display, null}}]
                                 ),
 
-    SegD = lblxt_pi_gpio_do:create(seg_d, 
+    SegD = lblx_pi_gpio_do:create(seg_d, 
                                  [{gpio_pin, 16}, {invert_output, true}], 
-                                 [{input, empty, {seg_d, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_d, display, null}}]
                                 ),
 
-    SegE = lblxt_pi_gpio_do:create(seg_e, 
+    SegE = lblx_pi_gpio_do:create(seg_e, 
                                  [{gpio_pin, 26}, {invert_output, true}], 
-                                 [{input, empty, {seg_e, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_e, display, null}}]
                                 ),
         
-    SegF = lblxt_pi_gpio_do:create(seg_f, 
+    SegF = lblx_pi_gpio_do:create(seg_f, 
                                  [{gpio_pin, 22}, {invert_output, true}], 
-                                 [{input, empty, {seg_f, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_f, display, null}}]
                                 ),
         
-    SegG = lblxt_pi_gpio_do:create(seg_g, 
+    SegG = lblx_pi_gpio_do:create(seg_g, 
                                  [{gpio_pin, 24}, {invert_output, true}], 
-                                 [{input, empty, {seg_g, display, null}}]
+                                 [{disable, false, ?EMPTY_LINK},
+                                  {input, empty, {seg_g, display, null}}]
                                 ),
 
     [PbSwitch, Counter, Display, SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
 
 create_demo_config1() ->
   
-    Led17DigitalOutput = lblxt_pi_gpio_do:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
-                                [{input, empty, {value, toggle_led, null}}]),
+    Led17DigitalOutput = lblx_pi_gpio_do:create(led_17, [{gpio_pin, 17}, {invert_output, true}], 
+                                [{disable, false, ?EMPTY_LINK}, {input, empty, {value, toggle_led, null}}]),
                                     
-    PbSwDigitalOutput = lblxt_pi_gpio_do:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
-                                [{input, empty, {value, switch_27, null}}]),
+    PbSwDigitalOutput = lblx_pi_gpio_do:create(led_22, [{gpio_pin, 22}, {invert_output, true}], 
+                                [{disable, false, ?EMPTY_LINK}, {input, empty, {value, switch_27, null}}]),
                                 
-    PbSwDigitalInput = lblxt_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], []),
+    PbSwDigitalInput = lblx_pi_gpio_di:create(switch_27, [{gpio_pin, 27}], [{disable, false, ?EMPTY_LINK}]),
    
-    ToggleBlockValues = lblxt_toggle:create(toggle_led, [], [{exec_interval, 2000, ?EMPTY_LINK}]),
+    ToggleBlockValues = lblx_toggle:create(toggle_led, [], [{disable, false, ?EMPTY_LINK},{exec_interval, 2000, ?EMPTY_LINK}]),
     
-    Led26DigitalOutput = lblxt_pi_gpio_do:create(led_26, 
+    Led26DigitalOutput = lblx_pi_gpio_do:create(led_26, 
                                 [
                                     {gpio_pin, 26},
                                     {invert_output, true}
                                 ], 
                                 [
+                                    {disable, false, ?EMPTY_LINK},
                                     {input, empty, {value, switch_27, null}}, 
                                     {exec_in, empty, {exec_out, toggle_led, null}}
                                 ]),

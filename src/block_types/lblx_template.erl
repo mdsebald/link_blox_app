@@ -23,7 +23,7 @@
 -export([create/1, create/3, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "template".  % INSTRUCTIONS: String naming the block type, usually the module name minus "lblxt_"
+type_name() -> "template".  % INSTRUCTIONS: String naming the block type, usually the module name minus "lblx_"
 
 description() -> "Short description of block function".  % INSTRUCTIONS String describing block function
 

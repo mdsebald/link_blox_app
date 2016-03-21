@@ -16,18 +16,29 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1, create_block/1, block_processes/0]).
+-export([start_link/1, create_block/1, delete_block/1, block_processes/0]).
 
 start_link(BlockValuesFile) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
     
 %%
-%%  Start one block
+%%  Create a block
 %%    
 create_block(BlockValues) ->
-    % Just create one set of child specs
-    [ChildSpec] = create_child_specs([BlockValues]),  
-    supervisor:start_child(?MODULE, ChildSpec).
+   [BlockSpec] = create_block_specs([BlockValues]),                    
+   supervisor:start_child(?MODULE, BlockSpec).
+   
+%%
+%% Delete the block child specification
+%% Call this after calling the block_server to delete the block
+%% This will remove the child spec, so another block with the same name may be created
+%% TODO: Combine with block_server:delete().  
+%%       Make block_server:delete a call message instead of cast, 
+%%       so you can check the response before deleting the child spec here
+%%
+delete_block(BlockName) ->
+    supervisor:delete_child(?MODULE, BlockName).
+    
 
 %% ====================================================================
 %% Behavioural functions
@@ -61,15 +72,21 @@ init(BlockValuesFile) ->
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
 			% TODO: Check for good, "ok" return value
-			ChildSpecs = create_child_specs(BlockValuesList),
+			BlockSpecs = create_block_specs(BlockValuesList),
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-			{ok, {SupFlags, ChildSpecs} };
+			{ok, {SupFlags, BlockSpecs} };
 		{error, Reason} ->
 			error_logger:error_msg("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
             error_logger:error_msg("Loading Demo config... ~n"),
-            ChildSpecs = create_child_specs(block_config:create_demo_config()),
+            
+            BlockSpecs = create_block_specs(block_config:create_demo_config()),
+            
+            % UiSpec = #{id => lblx_ui_main, restart => transient,
+            %       start => {lblx_ui_main, ui_loop, []}},
+                   
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-			{ok, {SupFlags, ChildSpecs} }
+            
+			{ok, {SupFlags, BlockSpecs} }
 		end.
 		
 %% 
@@ -80,12 +97,12 @@ block_processes() -> supervisor:which_children(?MODULE).
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-create_child_specs(BlockValuesList) ->
-	create_child_specs(BlockValuesList, []).
+create_block_specs(BlockValuesList) ->
+	create_block_specs(BlockValuesList, []).
 	
-create_child_specs([], ChildSpecs) -> ChildSpecs;
+create_block_specs([], BlockSpecs) -> BlockSpecs;
 
-create_child_specs(BlockValuesList, ChildSpecs) ->
+create_block_specs(BlockValuesList, BlockSpecs) ->
 	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
 	% TODO: Check for expected term match, before creating child spec 
 	{BlockName, _BlockModule, Config, _Inputs, _Outputs, _Private} = BlockValues,
@@ -94,9 +111,9 @@ create_child_specs(BlockValuesList, ChildSpecs) ->
                            block_utils:get_value(Config, block_type), 
                            block_utils:get_value(Config, version)]),
 
-	ChildSpec = #{id => BlockName, restart => transient,
+	BlockSpec = #{id => BlockName, restart => transient,
                    start => {block_server, create, [BlockValues]}},
-	NewChildSpecs = [ChildSpec | ChildSpecs],
+	NewBlockSpecs = [BlockSpec | BlockSpecs],
 	
-	create_child_specs(RemainingBlockValuesList, NewChildSpecs).
+	create_block_specs(RemainingBlockValuesList, NewBlockSpecs).
 	

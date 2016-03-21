@@ -12,7 +12,9 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([block_type_modules/0, block_types_info/0]).
+-export([block_type_modules/0, block_type_to_module/1]).
+-export([block_types_info/0, block_type_info/1]).
+-export([block_type_names/0, block_type_name/1]).
 
 
 %%
@@ -32,12 +34,31 @@ block_type_modules() ->
         lblx_toggle
     ].  
     
+ block_type_to_module(BlockTypeStr) ->
+    Modules = lists:filter( fun(Module)-> Module:type_name() == BlockTypeStr end, 
+        block_type_modules()),
+    case length(Modules) of
+        0 -> not_found;
+        1 -> lists:nth(1, Modules);
+        _ -> error  % More than one block module has the same type name
+                    % If this happens, there is an error in the source code
+    end.
+    
 
 block_types_info() ->
-    lists:map(fun(ModuleName) -> block_type_info(ModuleName) end,
+    lists:map(fun(Module) -> block_type_info(Module) end,
                block_type_modules()).
      
     
-block_type_info(ModuleName) ->
-    {ModuleName:type_name(), ModuleName:version(), ModuleName:description()}.
+block_type_info(Module) ->
+    {Module:type_name(), Module:version(), Module:description()}.
+    
+
+block_type_names() ->
+    lists:map(fun(Module) -> block_type_name(Module) end,
+               block_type_modules()).
+     
+    
+block_type_name(Module) ->
+    Module:type_name().
     

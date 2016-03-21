@@ -333,6 +333,9 @@ handle_cast({dereference, DeleteBlockName}, BlockValues) ->
 	    {noreply, {BlockName, BlockModule, Config, Inputs, Outputs, Private}}
     end;
     
+%% =====================================================================
+%% Delete Block
+%% =====================================================================    
 handle_cast(stop, BlockValues) ->
 	{BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
     
@@ -342,7 +345,8 @@ handle_cast(stop, BlockValues) ->
 	block_common:delete(BlockValues),
     
     {stop, normal, BlockValues};
-        	
+    
+            	
 handle_cast(Msg, State) ->
 	error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
     {noreply, State}.

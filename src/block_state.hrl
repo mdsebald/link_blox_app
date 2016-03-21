@@ -56,4 +56,10 @@
 %% specifies an empty input value link
 %% useful for initializing block inputs
 %%
--define( EMPTY_LINK, {null, null, null}).             
+-define( EMPTY_LINK, {null, null, null}).    
+
+%%
+%% specifies empty last exec timestamp value
+%% useful for initializing last_exec private value to a valid value
+%%
+-define( EMPTY_LAST_EXEC, {0,0,0,0}).         
