@@ -44,6 +44,8 @@ ui_loop() ->
             "get"       -> ui_get_values(Params);
             "set"       -> ui_set_value(Params);
             "link"      -> ui_link_blocks(Params);
+            "add"       -> ui_add_attrib(Params);
+            "remove"    -> ui_remove_attrib(Params);
             "status"    -> ui_status(Params);
             "types"     -> ui_block_types(Params);
             "load"      -> ui_load_blocks(Params);
@@ -98,10 +100,12 @@ ui_create_block(Params) ->
 
 % Process block delete command
  ui_delete_block(Params) ->
+    % TODO: Add delete * command to delete all blocks at once
     case validate_block_name(Params) of
         error     -> ok;  % Params was not a block name
         BlockName ->
             % TODO: Ask the user if they really want to delete
+            % TODO: Combing call to block_server:delete in block_supervisor delete_block()
             block_server:delete(BlockName),
             block_utils:sleep(1000),
             case block_supervisor:delete_block(BlockName) of
@@ -230,6 +234,14 @@ ui_set_value(Params) ->
 % Process link blocks command
 ui_link_blocks(_Params) ->
     io:format("Not Implemented~n").
+    
+% Process add attribute command
+ui_add_attrib(_Params) ->
+    io:format("Not Implemented~n").
+    
+% Process remove attribute command
+ui_remove_attrib(_Params) ->
+    io:format("Not Implemented~n").
 
 
 % Process the load blocks command
@@ -250,7 +262,7 @@ ui_load_blocks(Params) ->
         _ -> io:format("Error: Too many parameters~n")
 	end.
 
-
+% Create blocks from a list of block values
 create_blocks([]) -> ok;
 
 create_blocks(BlockValuesList) ->
@@ -269,6 +281,7 @@ create_blocks(BlockValuesList) ->
 ui_save_blocks(Params) ->
     %% Write the block values to a configuration file
     % TODO:  Add BlockPoint specific header?
+    % TODO: Need to remove timer reference and GPIO references from private values
     case length(Params) of
         0 -> io:format("Error: Enter file name~n");
         1 ->
@@ -277,8 +290,12 @@ ui_save_blocks(Params) ->
               
             BlockValuesList = block_values(),
             
+            Clean = fun(BlockValues) -> clean_block_values(BlockValues) end,
+            
+            CleanedBlockValuesList = lists:map(Clean, BlockValuesList),
+            
             Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
-            Text = lists:map(Format, BlockValuesList),
+            Text = lists:map(Format, CleanedBlockValuesList),
             
             case file:write_file(FileName, Text) of
                 ok -> 
@@ -289,6 +306,27 @@ ui_save_blocks(Params) ->
             
         _ -> io:format("Error: Too many parameters~n")
     end.
+    
+% Clean block values of Output and Private values
+% To make the block values suitable for saving to a file 
+
+clean_block_values({BlockName, BlockModule, Config, Inputs, Outputs, Private}) ->
+        
+    % Set all output values to 'not_active' and delete any block link references
+    CleanOutput = fun({ValueName, _Value, _LinkedBlocks}) ->
+                      {ValueName, not_active, []} end,
+                    
+    NewOutputs = lists:map(CleanOutput, Outputs),
+      
+    % Set all private values to 'empty'  
+    CleanPrivateVal = fun({ValueName, _Value}) ->
+                          {ValueName, empty} end,
+                                            
+    NewPrivate = lists:map(CleanPrivateVal, Private),
+    
+    % Cleaned block values
+    {BlockName, BlockModule, Config, Inputs, NewOutputs, NewPrivate}.    
+
 
 
 % Process the help command
