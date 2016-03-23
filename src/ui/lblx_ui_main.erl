@@ -41,6 +41,7 @@ ui_loop() ->
             "enable"    -> ui_enable_block(Params);
             "freeze"    -> ui_freeze_block(Params);
             "thaw"      -> ui_thaw_block(Params);
+            "get"       -> ui_get_values(Params);
             "set"       -> ui_set_value(Params);
             "link"      -> ui_link_blocks(Params);
             "status"    -> ui_status(Params);
@@ -163,12 +164,47 @@ ui_status(Params) ->
     end.
  
  
+% Process the get values command
+ui_get_values(Params) ->
+    case length(Params) of  
+        0 -> io:format("Error: Enter block-name [value-name]~n");
+        1 -> 
+            [BlockNameStr] = Params,
+            BlockName = list_to_atom(BlockNameStr),
+            case is_block_name(BlockName) of
+                true -> 
+                    BlockValues = block_server:get_values(BlockName),
+                    io:format("~n~p~n", [BlockValues]);
+                false -> 
+                    io:format("Error: Block ~s does not exist~n", [BlockNameStr])
+            end;
+        2 -> 
+            [BlockNameStr, ValueNameStr] = Params,
+            BlockName = list_to_atom(BlockNameStr),
+            
+            case is_block_name(BlockName) of
+                true -> 
+                    ValueName = list_to_atom(ValueNameStr),
+                    case block_server:get_value(BlockName, ValueName) of
+                        not_found ->
+                            io:format("Error: ~s is not a value of block ~s~n", 
+                                      [ValueNameStr, BlockNameStr]);
+                        CurrentValue ->
+                            io:format("~n~p~n", [CurrentValue])        
+                    end;
+                false -> 
+                    io:format("Error: Block ~s does not exist~n", [BlockNameStr])
+            end;
+        _ -> io:format("Error: Too many parameters~n")
+    end.    
+ 
+ 
 % Process the set value command
 ui_set_value(Params) ->
     case length(Params) of  
-        0 -> io:format("Error: Enter block name, attribute name, and value~n");
-        1 -> io:format("Error: Enter block name, attribute name, and value~n");
-        2 -> io:format("Error: Enter block name, attribute name, and value~n");
+        0 -> io:format("Error: Enter block-name value-name value~n");
+        1 -> io:format("Error: Enter block-name value-name value~n");
+        2 -> io:format("Error: Enter block-name value-name value~n");
         3 -> 
             [BlockNameStr, ValueNameStr, ValueStr] = Params,
             BlockName = list_to_atom(BlockNameStr),
@@ -197,13 +233,62 @@ ui_link_blocks(_Params) ->
 
 
 % Process the load blocks command
-ui_load_blocks(_Params) ->
-    io:format("Not Implemented~n").
+ui_load_blocks(Params) ->
+    %% Read a set of block values from a config file
+    % TODO: Check for existence and validity
+    case length(Params) of
+        0 -> io:format("Error: Enter file name~n");
+        1 ->
+            FileName = Params,
+	        case file:consult(FileName) of
+    	        {ok, BlockValuesList} ->
+			       create_blocks(BlockValuesList);
+		        {error, Reason} ->
+			        io:format("Error: ~p loading blocks file: ~p~n", [Reason, FileName])
+            end;
+                    
+        _ -> io:format("Error: Too many parameters~n")
+	end.
+
+
+create_blocks([]) -> ok;
+
+create_blocks(BlockValuesList) ->
+    [BlockValues | RemainingBlockValuesList] = BlockValuesList,
+    {BlockName, _BlockModule, _Config, _Inputs, _Outputs, _Private} = BlockValues,
+    case block_supervisor:create_block(BlockValues) of
+        {ok, _Pid} -> 
+            io:format("Block ~p Created~n", [BlockName]);
+        {error, Reason} -> 
+            io:format("Error: ~p creating block ~s ~n", [Reason, BlockName])
+    end,
+    create_blocks(RemainingBlockValuesList).    
 
 
 % Process the save blocks command
-ui_save_blocks(_Params) ->
-    io:format("Not Implemented~n").
+ui_save_blocks(Params) ->
+    %% Write the block values to a configuration file
+    % TODO:  Add BlockPoint specific header?
+    case length(Params) of
+        0 -> io:format("Error: Enter file name~n");
+        1 ->
+            FileName = Params,
+            % TODO: Check for existence
+              
+            BlockValuesList = block_values(),
+            
+            Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
+            Text = lists:map(Format, BlockValuesList),
+            
+            case file:write_file(FileName, Text) of
+                ok -> 
+                    io:format("Blocks file: ~s saved~n", [FileName]);
+                {error, Reason} ->
+                    io:format("Error: ~p saving blocks file: ~s~~n", [Reason, FileName])
+            end;
+            
+        _ -> io:format("Error: Too many parameters~n")
+    end.
 
 
 % Process the help command
@@ -274,6 +359,19 @@ is_block_name(BlockName) -> lists:member(BlockName, block_names()).
 is_block_type(BlockTypeStr) -> 
     lists:member(BlockTypeStr, lblx_types:block_type_names()).
 
+
+%%
+%% Get the list of block values for all of the blocks currently running
+%%
+block_values() ->
+    block_values(block_names(), []).
+    
+ block_values([], BlockValuesList) -> BlockValuesList;
+ 
+ block_values(BlockNames, BlockValuesList) ->
+    [BlockName | RemainingBlockNames] = BlockNames,
+    BlockValues = block_server:get_values(BlockName),
+    block_values(RemainingBlockNames, [BlockValues | BlockValuesList]).
 
 %% 
 %% Get the block names of currently running processes
