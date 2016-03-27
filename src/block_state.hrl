@@ -4,18 +4,30 @@
 
 -author("Mark Sebald").
 
+
+% Block definition.  Used for creating or saving a block 
+
+-type block_defn() :: {
+                        Config :: list(),
+                        Inputs :: list(),
+                        Outputs :: list()
+                      }.
+
+
+% Block state. Used for retaining state between block execution
+
 -type block_state() :: { 
-                         BlockName :: atom(), 
-                         BlockModule :: module(), 
                          Config :: list(), 
                          Inputs :: list(), 
                          Outputs :: list(), 
                          Private :: list() 
                        }.
                        
--type input_link() :: { AttributeName :: atom() | null,
+                       
+-type input_link() :: { 
+                        NodeName :: atom() | null,
                         BlockName :: atom() | null,
-                        NodeName :: atom() | null
+                        ValueName :: atom() | null
                       }.
                       
                       
@@ -46,11 +58,12 @@
 %%  input_err:  One or more of the block input values is incompatible with the block's code
 %%  config_err: One or more of the block configuration values is incompatible with the block's code
 %%  proc_err:   There is an error outside of the block code that is preventing the block from executing
-%%  no_input:   One or more input values are missing, so the block cannot calculate an output 
+%%  no_input:   One or more input values are missing, so the block cannot calculate an output
+%%  override:   One or more block output values have been set manually, instead of being calculated 
 %%   
    
 -type block_status() :: { created | initialed | normal |  disabled | frozen | 
-                          error | input_err | config_err | proc_err | no_input }.
+                          error | input_err | config_err | proc_err | no_input | override }.
                        
 %%
 %% specifies an empty input value link

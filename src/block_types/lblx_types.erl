@@ -24,41 +24,66 @@
 %%  by type name string.
 %%  Do not add the "template" block type
 %%
+-spec block_type_modules() -> list().
 
 block_type_modules() ->
-   [
-        lblx_exec_count,
-        lblx_pi_gpio_di,
-        lblx_pi_gpio_do,
-        lblx_seven_seg,
-        lblx_toggle
-    ].  
+  [
+    lblx_exec_count,
+    lblx_pi_gpio_di,
+    lblx_pi_gpio_do,
+    lblx_seven_seg,
+    lblx_toggle
+  ].  
     
- block_type_to_module(BlockTypeStr) ->
-    Modules = lists:filter( fun(Module)-> Module:type_name() == BlockTypeStr end, 
-        block_type_modules()),
-    case length(Modules) of
-        0 -> not_found;
-        1 -> lists:nth(1, Modules);
-        _ -> error  % More than one block module has the same type name
-                    % If this happens, there is an error in the source code
-    end.
     
+%%
+%%  Get the block module for the given block type string
+%% 
+-spec block_type_to_module(string()) -> module().
+
+block_type_to_module(BlockTypeStr) ->
+  Modules = lists:filter(fun(Module)-> Module:type_name() == BlockTypeStr end, 
+                 block_type_modules()),
+  case length(Modules) of
+    0 -> not_found;
+    1 -> lists:nth(1, Modules);
+    _ -> error  % More than one block module has the same type name
+                % If this happens, there is an error in the source code
+  end.
+  
+  
+%%
+%% Get a list of block types and associated info 
+%% for all of the block types in this application
+%%
+-spec block_types_info() -> list().
 
 block_types_info() ->
-    lists:map(fun(Module) -> block_type_info(Module) end,
+  lists:map(fun(Module) -> block_type_info(Module) end,
                block_type_modules()).
-     
+
+%%
+%% Get block module type name, version, and description
+%%     
+-spec block_type_info(module()) -> string().
     
 block_type_info(Module) ->
-    {Module:type_name(), Module:version(), Module:description()}.
-    
+  {Module:type_name(), Module:version(), Module:description()}.
+
+%%
+%% Get a list of block type names for all of the block modules in this app
+%%
+-spec block_type_names() -> list().
 
 block_type_names() ->
-    lists:map(fun(Module) -> block_type_name(Module) end,
+  lists:map(fun(Module) -> block_type_name(Module) end,
                block_type_modules()).
-     
+ 
+%%
+%% Get the block type string for this block modules
+%%
+-spec block_type_name(module()) -> string().
     
 block_type_name(Module) ->
-    Module:type_name().
+  Module:type_name().
     

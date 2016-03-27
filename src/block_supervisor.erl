@@ -105,11 +105,12 @@ create_block_specs([], BlockSpecs) -> BlockSpecs;
 create_block_specs(BlockValuesList, BlockSpecs) ->
 	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
 	% TODO: Check for expected term match, before creating child spec 
-	{BlockName, _BlockModule, Config, _Inputs, _Outputs, _Private} = BlockValues,
-    error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
-                          [BlockName, 
-                           block_utils:get_value(Config, block_type), 
-                           block_utils:get_value(Config, version)]),
+	{Config, _Inputs, _Outputs} = BlockValues,
+  BlockName = block_utils:name(Config),
+  error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
+                        [BlockName, 
+                         block_utils:get_value(Config, block_type), 
+                         block_utils:get_value(Config, version)]),
 
 	BlockSpec = #{id => BlockName, restart => transient,
                    start => {block_server, create, [BlockValues]}},
