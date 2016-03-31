@@ -16,7 +16,8 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1, create_block/1, delete_block/1, block_processes/0]).
+-export([start_link/1, create_block/1, delete_block/1]).
+-export([block_names/0, block_processes/0]).
 
 start_link(BlockValuesFile) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
@@ -29,16 +30,42 @@ create_block(BlockValues) ->
    supervisor:start_child(?MODULE, BlockSpec).
    
 %%
-%% Delete the block child specification
-%% Call this after calling the block_server to delete the block
-%% This will remove the child spec, so another block with the same name may be created
-%% TODO: Combine with block_server:delete().  
-%%       Make block_server:delete a call message instead of cast, 
-%%       so you can check the response before deleting the child spec here
+%% Delete a block
 %%
 delete_block(BlockName) ->
+    % Send a delete message to block an wait for response
+    block_server:delete(BlockName),
+    
+    % Delete the block's child spec, 
+    % so a block using the same name may be created later
     supervisor:delete_child(?MODULE, BlockName).
     
+%% 
+%% Get the block names of currently running processes
+%%
+block_names() -> 
+  block_names(block_processes(), []).    
+    
+block_names([], BlockNames) -> 
+  BlockNames;
+    
+block_names([BlockProcess | RemainingProcesses], BlockNames) ->
+  % Only return block names of processes that are running
+  case element(2, BlockProcess) of
+    restarting -> NewBlockNames = BlockNames;
+    undefined  -> NewBlockNames = BlockNames;
+    _Pid       ->
+      BlockName = element(1, BlockProcess),
+      NewBlockNames = [BlockName | BlockNames]
+  end,
+  block_names(RemainingProcesses, NewBlockNames).
+  
+  
+%% 
+%% get the current list of block processes
+%%
+block_processes() -> 
+  supervisor:which_children(?MODULE).
 
 %% ====================================================================
 %% Behavioural functions
@@ -63,12 +90,12 @@ delete_block(BlockName) ->
 %% ====================================================================
 init(BlockValuesFile) ->
 
-    % Start up the timer server, for blocks executed on a timer
+  % Start up the timer server, for blocks executed on a timer
 	timer:start(),
-    
-    % Start the UI loop
-    spawn(lblx_ui_main, ui_loop, []),
-    
+
+  % Start the UI loop
+  spawn(lblx_ui_main, ui_loop, []),
+
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
 			% TODO: Check for good, "ok" return value
@@ -78,21 +105,18 @@ init(BlockValuesFile) ->
 		{error, Reason} ->
 			error_logger:error_msg("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
             error_logger:error_msg("Loading Demo config... ~n"),
+      
+      BlockSpecs = create_block_specs(block_config:create_demo_config()),
             
-            BlockSpecs = create_block_specs(block_config:create_demo_config()),
-            
-            % UiSpec = #{id => lblx_ui_main, restart => transient,
-            %       start => {lblx_ui_main, ui_loop, []}},
+      % UiSpec = #{id => lblx_ui_main, restart => transient,
+      %       start => {lblx_ui_main, ui_loop, []}},
                    
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
             
-			{ok, {SupFlags, BlockSpecs} }
+			{ok, {SupFlags, BlockSpecs}}
 		end.
 		
-%% 
-%% get the current list of block processes
-%%
-block_processes() -> supervisor:which_children(?MODULE).
+
 
 %% ====================================================================
 %% Internal functions

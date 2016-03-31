@@ -215,8 +215,11 @@ check_boolean_input(Value) ->
 
 %%
 %% Update the block execution timer 
-%% Return status and updated Timer Reference 
 %%
+-spec update_execution_timer(BlockName :: atom(),
+                             Inputs :: list(),
+                             Private :: list()) -> {atom(), list()}.
+                             
 update_execution_timer(BlockName, Inputs, Private) ->
 
   ExecuteInterval = block_utils:get_value(Inputs, exec_interval),
@@ -248,9 +251,14 @@ update_execution_timer(BlockName, Inputs, Private) ->
   end,
   NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
   {Status, NewPrivate}.
-  
-    
-% Cancel block execution timer, if the timer is set   
+
+
+%%
+%% Cancel block execution timer, if the timer is set
+%%
+-spec cancel_timer(BlockName :: atom(),
+                   TimerRev :: term()) -> ok | {error, term()}.
+
 cancel_timer(BlockName, TimerRef) ->
   if (TimerRef /= empty) ->
     case timer:cancel(TimerRef) of 
@@ -265,12 +273,13 @@ cancel_timer(BlockName, TimerRef) ->
   true -> ok
   end.
 
-
-% Set timer to execute the block on expiration
+%%
+%% Set timer to execute the block on expiration
+%%
 -spec set_timer(BlockName :: atom(),
                 ExecuteInterval :: integer()) -> 
                 {normal, term()} | {error_proc, empty}.
-                 
+
 set_timer(BlockName, ExecuteInterval) ->
   case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
     {ok, TimerRef} -> 
@@ -395,7 +404,7 @@ execute_out([BlockName | RemainingBlockNames]) ->
 -spec delete(BlockValues :: block_state()) -> ok.
 
 delete(BlockValues) ->
-  {Config, Inputs, _Outputs, Private} = BlockValues,
+  {Config, Inputs, Outputs, Private} = BlockValues,
   
   {BlockName, BlockModule} = block_utils:name_module(Config),
 
@@ -405,11 +414,20 @@ delete(BlockValues) ->
     TimerRef ->  timer:cancel(TimerRef)
   end,
     
-  % Scan this blocks inputs, and unlink from other block outputs
+  % Scan this block's inputs, and unlink from other block outputs
   block_links:unlink_blocks(BlockName, Inputs),
+  
+  % Set all output values of this block, including status, to 'empty'
+  EmptyOutputs = update_all_outputs(Outputs, empty, empty),
     
-  % Scan all blocks and delete any references to this block
-  block_links:delete_references(BlockName),
+  % Update the block inputs linked to this block's outputs 
+  % This will set the input value of any block 
+  % linked to this deleted block, to 'empty'.
+  update_blocks(BlockName, Outputs, EmptyOutputs),
+    
+  % Execute the blocks connected to the exec_out output value
+  % of this block, one last time.
+  update_execute(EmptyOutputs),
     
   % Perform block type specific delete actions
   BlockModule:delete(BlockValues).

@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([unregistered_blocks/1, link_blocks/2, unlink_blocks/2]).
--export([add_link/3, delete_link/3, delete_references/1, dereference_links/2]).
+-export([add_link/3, delete_link/3]).
 -export([update_linked_input_values/5]).
 
 
@@ -21,6 +21,7 @@
 %% Return the name of the first block connected to this block, that is not registered, 
 %% Return 'ok' if all bocks connected to this block are registered / running
 %%
+%% TODO: Delete?  not needed anymore
 -spec unregistered_blocks(BlockInputs :: list()) -> atom() | ok.
 
 unregistered_blocks([])->
@@ -28,25 +29,24 @@ unregistered_blocks([])->
 unregistered_blocks(BlockInputs)->
   
   [Input | RemainingInputs] = BlockInputs,
-
+  
   {_ValueName, _Value, Link} = Input,
-  % get the value name, block name, and node name components of this input value link
-  
-  {_LinkValueName, LinkBlockName, _LinkNodeName} = Link,   %TODO: Handle getting values from other nodes
-  
-  % if this input is not a fixed value
-  if Link /= ?EMPTY_LINK ->
-    % if the block name of this link is not null
-    if LinkBlockName /= null ->
+  case Link of 
+    ?EMPTY_LINK -> 
+      % Not linked to another block, do nothing
+      unregistered_blocks(RemainingInputs);
+ 
+    %TODO: Handle getting values from other nodes
+    {_LinkNodeName, LinkBlockName, _LinkValueName} ->
+      % get the components of this input value link
       case whereis(LinkBlockName) of
-        undefined  -> {error, LinkBlockName};
-        _Pid  -> unregistered_blocks(RemainingInputs)
-      end;
-    true ->
-      unregistered_blocks(RemainingInputs)
-    end;
-  true -> 
-    unregistered_blocks(RemainingInputs)
+        undefined  ->  
+          % Linked block is not running, return error
+          {error, LinkBlockName};
+        _Pid  ->
+          % Linked block is running, do nothing
+          unregistered_blocks(RemainingInputs)
+      end
   end.
 
 
@@ -67,28 +67,43 @@ link_blocks(BlockName, BlockInputs, LinksRequested)->
   [Input | RemainingBlockInputs] = BlockInputs,
 	
   {ValueName, Value, Link} = Input,
-  { _LinkNodeName, LinkBlockName, LinkValueName} = Link, %TODO: Handle getting values from other nodes
+  case Link of
+    ?EMPTY_LINK ->
+      % Input is not linked to another block, nothing to do
+      link_blocks(BlockName, RemainingBlockInputs, LinksRequested);
+      
+    %TODO: Handle getting values from other nodes
+    {_LinkNodeName, LinkBlockName, LinkValueName} ->
+      case whereis(LinkBlockName) of
+        undefined  ->
+          % If linked block is not running input value better be empty
+          % TODO: Set input value to empty here. 
+          %     Would require returning list of updated inputs
+          %     Belt and suspenders design
+          %     Should not have to do this, if everything is perfect
+          if Value /= empty ->
+            error_logger:error_msg("~p Error: linked input value not empty~n", 
+                                    [BlockName]); 
+          true -> ok
+          end,
 
-  % if this input is not a fixed value
-  if Link /= ?EMPTY_LINK ->
-	   
-    % if the block name of this link is not null
-    if LinkBlockName /= null ->
-	   
-      %if the block input value is still empty, send a link message to the block linked to this input
-      if Value == empty ->
-        error_logger:info_msg("Link Output <~p:~p> To Input <~p:~p>~n", 
-                               [LinkBlockName, LinkValueName, BlockName, ValueName]),
-        block_server:link(LinkBlockName, LinkValueName, BlockName),
-        link_blocks(BlockName, RemainingBlockInputs, LinksRequested + 1);
-      true ->
-        link_blocks(BlockName, RemainingBlockInputs, LinksRequested)
-      end;
-    true ->
-      link_blocks(BlockName, RemainingBlockInputs, LinksRequested)
-	  end;
-  true -> 
-		link_blocks(BlockName, RemainingBlockInputs, LinksRequested)
+          % Linked block is not running, nothing to do
+          link_blocks(BlockName, RemainingBlockInputs, LinksRequested);
+
+        _Pid  ->
+          % Linked block is running,
+          % if the block input value is empty, 
+          if Value == empty ->
+            % send a link message to the linked block
+            block_server:link(LinkBlockName, LinkValueName, BlockName),
+            error_logger:info_msg("Link Output <~p:~p> To Input <~p:~p>~n", 
+                        [LinkBlockName, LinkValueName, BlockName, ValueName]),
+            link_blocks(BlockName, RemainingBlockInputs, LinksRequested + 1);
+          true ->
+            % Value is not empty, link must already be established
+            link_blocks(BlockName, RemainingBlockInputs, LinksRequested)
+          end
+      end
   end.
 
 
@@ -109,28 +124,27 @@ unlink_blocks(BlockName, BlockInputs, LinksRequested)->
   [Input | RemainingBlockInputs] = BlockInputs,
 
   {ValueName, _Value, Link} = Input,
-  {_LinkNodeName, LinkBlockName, LinkValueName} = Link, %TODO: Handle getting values from other nodes
-  
-  % if this input is not a fixed value
-  if Link /= ?EMPTY_LINK ->
-
-    % if the block name of this link is not null
-    if LinkBlockName /= null ->
-      error_logger:info_msg("Unlink Output <~p:~p> From Input <~p:~p>~n", 
+  case Link of
+    ?EMPTY_LINK ->
+      % Input is not linked, do nothing
+       unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested);
+       
+    %TODO: Handle getting values from other nodes
+    {_LinkNodeName, LinkBlockName, LinkValueName} -> 
+      % if the block name of this link is not null
+      if LinkBlockName /= null ->
+        error_logger:info_msg("Unlink Output <~p:~p> From Input <~p:~p>~n", 
                             [LinkBlockName, LinkValueName, BlockName, ValueName]),
-      block_server:unlink(LinkBlockName, LinkValueName, BlockName),
-      unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested + 1);
-    true ->
-      unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested)
-    end;
-  true -> 
-    unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested)
+        block_server:unlink(LinkBlockName, LinkValueName, BlockName),
+        unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested + 1);
+      true ->
+        unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested)
+      end 
   end.
 
 
 %%
 %% Add 'ToBlockName' to the list of linked blocks in the ValueName output attribute
-%% Returns updated Outputs list
 %%
 -spec add_link(Outputs :: list(), 
                ValueName :: atom(), 
@@ -169,9 +183,10 @@ add_link(Outputs, ValueName, ToBlockName) ->
 
 %%
 %% Delete 'ToBlockName' from the list of linked blocks in the ValueName output attribute
-%% Returns updated Outputs list
 %%
--spec delete_link(Outputs :: list(), ValueName :: atom(), ToBlockName :: atom()) -> list().
+-spec delete_link(Outputs :: list(), 
+                  ValueName :: atom(), 
+                  ToBlockName :: atom()) -> list().
 
 delete_link(Outputs, ValueName, ToBlockName) ->
 
@@ -196,59 +211,9 @@ delete_link(Outputs, ValueName, ToBlockName) ->
   end.
 
 
-%% 
-%% Scan all of the blocks and delete any references to the deleted block in all input links
-%%
--spec delete_references(DeleteBlockName :: atom()) -> ok.
-
-delete_references(DeleteBlockName)->
-  BlockNames = lblx_ui_main:block_names(),
-  delete_references(DeleteBlockName, BlockNames).
-  
-delete_references(_DeleteBlockName, []) -> 
-  ok;
-
-delete_references(DeleteBlockName, [BlockName | RemainingBlockNames]) ->
-  block_server:dereference(BlockName, DeleteBlockName),
-  delete_references(DeleteBlockName, RemainingBlockNames).
-
-
-%%
-%% Scan all of the inputs of this block and delete any links that reference DeleteBlockName
-%% Set input value to empty, return updated BlockInput attributes, and  
-%%   
--spec dereference_links(DeleteBlockName :: atom(), 
-                        BlockInputs :: list()) -> {list(), integer()}.
-
-dereference_links(DeleteBlockName, BlockInputs) ->
-  dereference_links(DeleteBlockName, BlockInputs, [],  0).
-
-dereference_links(_DeleteBlockName, [], NewBlockInputs, ReferenceCount) ->
-  {lists:reverse(NewBlockInputs), ReferenceCount};
-
-dereference_links(DeleteBlockName, BlockInputs, NewBlockInputs, ReferenceCount) ->	
-
-  [Input | RemainingBlockInputs] = BlockInputs,
-
-  {ValueName, _Value, Link} = Input,
-  {_LinkNodeName, LinkBlockName, _LinkValueName} = Link, %TODO: Handle getting values from other nodes
-  
-	% if the link on this input matches the DeleteBlockName
-  if LinkBlockName == DeleteBlockName ->
-    % Delete the link and set the input value to empty
-    NewInput = {ValueName, empty, ?EMPTY_LINK},
-    dereference_links(DeleteBlockName, RemainingBlockInputs, 
-                       [NewInput | NewBlockInputs], ReferenceCount + 1);
-
-  true -> % The link on this input, doesn't reference DeleteBlockName, don't modify it,
-    dereference_links(DeleteBlockName, RemainingBlockInputs, [Input | NewBlockInputs], ReferenceCount)
-  end.
-
-
 %%    
 %% Update the value of every input in this block linked to the 
 %% 'NodeName:FromBlockName:ValueName' output value
-%% Return the updated list of Input values
 %%
 -spec update_linked_input_values(Inputs :: list(),
                                  NodeName :: atom(), 

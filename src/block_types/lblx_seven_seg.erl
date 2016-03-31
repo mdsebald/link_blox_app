@@ -171,7 +171,17 @@ execute({Config, Inputs, Outputs, Private}) ->
     9 -> Value = Input, Status = normal,
          SegA = true, SegB = true, SegC = true, 
          SegD = false, SegE = false, SegF = true, SegG = true;
-            
+         
+    not_active ->
+      Value = not_active, Status = normal,
+      SegA = not_active, SegB = not_active, SegC = not_active, 
+      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
+       
+    empty ->
+      Value = not_active, Status = no_input,
+      SegA = not_active, SegB = not_active, SegC = not_active, 
+      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
+      
     Invalid ->
       BlockName = block_utils:name(Config),
       error_logger:error_msg("~p Invalid Value: ~p~n", [BlockName, Invalid]), 

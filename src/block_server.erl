@@ -19,7 +19,8 @@
 -export([create/1, delete/1]). 
 -export([get_value/2, set_value/3, override/2, get_values/1]).
 -export([execute/1, timer_execute/1, exec_out_execute/1]).
--export([update/4, configure/1, reconfigure/2, link/3, unlink/3, dereference/2]).
+-export([update/4, init_configure/1, configure/1, reconfigure/2]).
+-export([link/3, unlink/3]).
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
@@ -29,7 +30,7 @@ create(BlockValues)->
 
 %% Delete the named block
 delete(BlockName)->
-  gen_server:cast(BlockName, stop).
+  gen_server:call(BlockName, stop).
 
 
 %% Get the value of 'ValueName' from this block
@@ -78,10 +79,16 @@ update(BlockName, FromBlockName, ValueName, Value) ->
   gen_server:cast(BlockName, {update, FromBlockName, ValueName, Value}).
 
 
-%% Perform initial configuration of the block.  Block values are already in the state variable
+%% Perform initial configuration of the block.  
+%% Block values are already in the state variable
+init_configure(BlockName)->
+  gen_server:cast(BlockName, init_configure).
+  
+  
+%% Perform configuration of the block.
+%% Review block inputs and configure links as necessary 
 configure(BlockName)->
-	%io:format("Send configure cast message to: ~p~n", [BlockName]),
-  gen_server:cast(BlockName, configure).
+	gen_server:cast(BlockName, configure).
 
 
 %% Reconfigure the block with the given set of block values
@@ -97,11 +104,6 @@ link(BlockName, ValueName, ToBlockName) ->
 %% Unlink the value 'ValueName' of this block from the calling block 
 unlink(BlockName, ValueName, ToBlockName) ->
   gen_server:cast(BlockName, {unlink, ValueName, ToBlockName}).
-
-    
-%% Delete any references to DeleteBlockName in the input value links of this block 
-dereference(BlockName, DeleteBlockName) ->
-  gen_server:cast(BlockName, {dereference, DeleteBlockName}).
 
 
 %% ====================================================================
@@ -126,15 +128,17 @@ init(BlockValues) ->
 
   error_logger:info_msg("Initializing: ~p~n", [BlockName]),
 
-  %TODO: Need to perform a sanity check here, make sure BlockModule type and version, matches BlockValues type and version
+  %TODO: Need to perform a sanity check here, 
+  % make sure BlockModule type and version, matches BlockValues type and version
  	
   % Perform block initialization
   NewBlockValues = block_common:initialize(BlockValues),
 	
-  % Call configure, to send a configure cast message to self
-  % Already have initial block values in State variable, 
-  configure(BlockName),
-
+  % Perform intial configuration
+  % Basically, tell all blocks to check their input links
+  % and link to this block if necessary
+  block_server:init_configure(BlockName),
+  
   {ok, NewBlockValues}.
 
 
@@ -156,17 +160,45 @@ init(BlockValues) ->
 	Reason :: term().
 %% ====================================================================
 
+%% =====================================================================
+%% Get all block values
+%% =====================================================================    
 handle_call(get_values, _From, BlockValues) ->
   {reply, BlockValues, BlockValues};
+
   
+%% =====================================================================
+%% Get a block value
+%% =====================================================================    
 handle_call({get_value, ValueName}, _From, BlockValues) ->
   Value = block_utils:get_value_any(BlockValues, ValueName),
   {reply, Value, BlockValues};
 
+
+%% =====================================================================
+%% Set a block value
+%% ===================================================================== 
 handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
   NewBlockValues = block_utils:set_value_any(BlockValues, ValueName, Value),
   {reply, {ValueName, Value}, NewBlockValues};
+
+  
+%% =====================================================================
+%% Delete block
+%% =====================================================================    
+handle_call(stop, _From, BlockValues) ->
+
+  BlockName = block_utils:name(BlockValues),    
+  error_logger:info_msg("Deleting: ~p~n", [BlockName]),
+    
+  % Perform common block delete actions
+  block_common:delete(BlockValues),
+  
+  {stop, normal, ok, BlockValues};
 	
+%% =====================================================================
+%% Unknown Call message
+%% =====================================================================      
 handle_call(Request, From, BlockValues) ->
   error_logger:warning_msg("Unknown call message: ~p From: ~p~n", 
                             [Request, From]),
@@ -241,35 +273,36 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
 
 	{noreply, NewBlockValues};
 
+%% =====================================================================
+%% Initial block configuration
+%% =====================================================================
+handle_cast(init_configure, BlockValues) ->
+  % Send a configure message to each running block
+  % This will force all blocks to check their input attributes
+  % that have links, and link to this block if needed
+   
+  % Must  separately from the init() function, 
+  % because you can't call block_supervisor:block_names()
+  % (i.e.supervisor:which_child()) from the init() function 
+  % of a child process. 
+  BlockNames = block_supervisor:block_names(),
+  Configure = fun(EachBlock) ->
+                block_server:configure(EachBlock)
+              end,
+  lists:foreach(Configure, BlockNames),
+  {noreply, BlockValues};
+
 
 %% =====================================================================
 %% Configure the block, with the block values passed in State variable
 %% =====================================================================
 handle_cast(configure, BlockValues) ->
-  % Perform configuration in a message handling routine because
-  % it may take several config passes as we wait for other blocks to start up
 
-  % If any of this block's inputs are pointing at another block that is not running / registered yet
-  % Set the block status output, delay, and call configuration again.
+  % Link inputs with links to output values of other blocks
   {Config, Inputs, _Outputs, _Private} = BlockValues,
   BlockName = block_utils:name(Config),
-
-  case block_links:unregistered_blocks(Inputs) of
-    ok ->
-      error_logger:info_msg("~p all linked blocks running~n", [BlockName]),
-      % All blocks referenced by this block's input links are running (registered).
-      % Link this block's inputs to other block's outputs as specified by the input links
-      block_links:link_blocks(BlockName, Inputs);
-
-    {error, MissingBlockName} ->
-      error_logger:info_msg("~p waiting for ~p to start~n", [BlockName, MissingBlockName]),
-      % Not all blocks connected to this block or runnning/registerd yet.
-      % Delay and try configuring again
-      block_utils:sleep(100),  % TODO: Is this the correct delay?, could it be shorter? 
-                                     % TODO: Increase delay, each time block is missing?
-      configure(BlockName)
-  end,
-
+  block_links:link_blocks(BlockName, Inputs),
+  
   {noreply, BlockValues};
 
 
@@ -277,7 +310,8 @@ handle_cast(configure, BlockValues) ->
 %% Reconfigure the block, with the new set of block values, update State
 %% =====================================================================
 handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
-  % TODO: Sanity check make sure new block name, type and version match old block name, type and version/(same major rev)
+  % TODO: Sanity check make sure new block name, type and version 
+  % match old block name, type and version/(same major rev)
   {Config, _Inputs, _Outputs, _Private} = BlockValues,
   BlockName = block_utils:name(Config), 
   error_logger:info_msg("~p: Reconfiguring block~n", [BlockName]),
@@ -321,42 +355,8 @@ handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
 
 
 %% =====================================================================
-%% Delete any references to DeleteBlockName in the input links of this block
-%% =====================================================================
-handle_cast({dereference, DeleteBlockName}, BlockValues) ->
-
-  {Config, Inputs, Outputs, Private} = BlockValues,
-	
-  % delete any input links that reference 'DeleteBlockName' 
-  {NewInputs, ReferenceCount} = block_links:dereference_links(DeleteBlockName, Inputs),
-
-  % if any links were changed, execute the block, 
-  if ReferenceCount > 0 ->
-    BlockName = block_utils:name(Config),
-    error_logger:info_msg("~p Removed ~p references to deleted block: ~p", 
-                          [BlockName, ReferenceCount, DeleteBlockName]),
-    {noreply, block_common:execute({Config, NewInputs, Outputs, Private}, 
-                                        input_cos)};
-        
-  true -> % Reference count is zero, no input links dereferenced, just continue
-    {noreply, {Config, Inputs, Outputs, Private}}
-  end;
-
-
-%% =====================================================================
-%% Delete Block
-%% =====================================================================    
-handle_cast(stop, BlockValues) ->
-
-  BlockName = block_utils:name(BlockValues),    
-  error_logger:info_msg("Deleting: ~p~n", [BlockName]),
-    
-  % Perform common block delete actions
-  block_common:delete(BlockValues),
-  
-  {stop, normal, BlockValues};
-
-
+%% Unknown Cast message
+%% =====================================================================      
 handle_cast(Msg, State) ->
   error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
   {noreply, State}.

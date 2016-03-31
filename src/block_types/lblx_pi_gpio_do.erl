@@ -157,7 +157,7 @@ execute({Config, Inputs, Outputs, Private}) ->
     empty -> 
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
       Value = not_active,
-      Status = normal;
+      Status = no_input;
 					
 	  not_active ->
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 

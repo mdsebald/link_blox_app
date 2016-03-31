@@ -14,7 +14,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([block_names/0, block_status/0, ui_loop/0]).
+-export([block_status/0, ui_loop/0]).
 
 
 %%
@@ -107,9 +107,6 @@ ui_delete_block(Params) ->
     error     -> ok;  % Params was not a block name
     BlockName ->
       % TODO: Ask the user if they really want to delete
-      % TODO: Combing call to block_server:delete in block_supervisor delete_block()
-      block_server:delete(BlockName),
-      block_utils:sleep(1000),
       case block_supervisor:delete_block(BlockName) of
         ok -> 
           io:format("~p Deleted~n", [BlockName]),
@@ -272,7 +269,7 @@ create_blocks([]) -> ok;
 
 create_blocks(BlockValuesList) ->
   [BlockValues | RemainingBlockValuesList] = BlockValuesList,
-  {Config, _Inputs, _Outputs, _Private} = BlockValues,
+  {Config, _Inputs, _Outputs} = BlockValues,
   BlockName = block_utils:name(Config),
   case block_supervisor:create_block(BlockValues) of
     {ok, _Pid} -> 
@@ -286,9 +283,8 @@ create_blocks(BlockValuesList) ->
 % Process the save blocks command
 ui_save_blocks(Params) ->
   %% Write the block values to a configuration file
-  % TODO:  Add BlockPoint specific header?
-  % TODO: Need to remove timer reference and GPIO references from private values
-  case length(Params) of
+  % TODO:  Add BlockPoint specific header to config file
+   case length(Params) of
     0 -> io:format("Error: Enter file name~n");
     1 ->
       FileName = Params,
@@ -318,6 +314,19 @@ ui_save_blocks(Params) ->
 % To make the block values suitable for saving to a file 
 
 clean_block_values({Config, Inputs, Outputs, _Private}) ->
+
+  CleanInput = fun({ValueName, Value, Link}) ->
+                  case Link of
+                    ?EMPTY_LINK -> 
+                      % fixed value, do nothing
+                      {ValueName, Value, ?EMPTY_LINK};
+                    {_NodeName, _BlockName, _ValueName} ->
+                      % Linked to another block, set value to empty, before saving
+                      {ValueName, empty, Link}
+                   end
+                 end,
+                    
+  NewInputs = lists:map(CleanInput, Inputs),
         
   % Set all output values to 'not_active' and delete any block link references
   CleanOutput = fun({ValueName, _Value, _LinkedBlocks}) ->
@@ -325,10 +334,11 @@ clean_block_values({Config, Inputs, Outputs, _Private}) ->
                     
   NewOutputs = lists:map(CleanOutput, Outputs),
   
+  
   % Private attributes are not saved in persistent storage
   % Just remove them
   % Cleaned block values
-  {Config, Inputs, NewOutputs}.    
+  {Config, NewInputs, NewOutputs}.    
 
 
 % Process the help command
@@ -348,7 +358,7 @@ block_status() ->
   io:fwrite("~n~-16s ~-16s ~-12s ~-12s ~-12s ~-15s~n", 
             ["Block Type", "Block Name", "Output", "Status", "Exec Method", "Last Exec"]),
   io:fwrite("~16c ~16c ~12c ~12c ~12c ~15c~n", [$-, $-, $-, $-, $-, $-] ), 
-  block_status(block_names()).
+  block_status(block_supervisor:block_names()).
     
 block_status([]) ->
   io:format("~n"), 
@@ -359,9 +369,16 @@ block_status([BlockName | RemainingBlockNames]) ->
   Value = block_server:get_value(BlockName, value),
   Status = block_server:get_value(BlockName, status),
   ExecMethod = block_server:get_value(BlockName, exec_method),
-  {Hour, Minute, Second, Micro} = block_server:get_value(BlockName, last_exec),
-    
-  LastExecuted = io_lib:format("~2w:~2..0w:~2..0w.~6..0w", [Hour,Minute,Second,Micro]),
+  
+  case block_server:get_value(BlockName, last_exec) of 
+    not_active ->
+      LastExecuted = "not_active";
+    {Hour, Minute, Second, Micro} ->
+      LastExecuted = io_lib:format("~2w:~2..0w:~2..0w.~6..0w", 
+                                    [Hour,Minute,Second,Micro]);
+    _ ->
+      LastExecuted = "undef last_exec val"
+  end,  
     
   io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-15s~n", 
             [string:left(BlockType, 16), 
@@ -393,7 +410,8 @@ validate_block_name(Params) ->
 
 
 % Is block name  an existing block
-is_block_name(BlockName) -> lists:member(BlockName, block_names()).
+is_block_name(BlockName) -> 
+  lists:member(BlockName, block_supervisor:block_names()).
 
 % Is block type an existing block type
 is_block_type(BlockTypeStr) -> 
@@ -404,7 +422,7 @@ is_block_type(BlockTypeStr) ->
 %% Get the list of block values for all of the blocks currently running
 %%
 block_values() ->
-  block_values(block_names(), []).
+  block_values(block_supervisor:block_names(), []).
     
 block_values([], BlockValuesList) -> 
   BlockValuesList;
@@ -413,26 +431,6 @@ block_values(BlockNames, BlockValuesList) ->
   [BlockName | RemainingBlockNames] = BlockNames,
   BlockValues = block_server:get_values(BlockName),
   block_values(RemainingBlockNames, [BlockValues | BlockValuesList]).
-
-%% 
-%% Get the block names of currently running processes
-%%
-block_names() -> 
-  block_names(block_supervisor:block_processes(), []).    
-    
-block_names([], BlockNames) -> 
-  BlockNames;
-    
-block_names([BlockProcess | RemainingProcesses], BlockNames) ->
-  % Only return block names of processes that are running
-  case element(2, BlockProcess) of
-    restarting -> NewBlockNames = BlockNames;
-    undefined  -> NewBlockNames = BlockNames;
-    _Pid       ->
-      BlockName = element(1, BlockProcess),
-      NewBlockNames = [BlockName | BlockNames]
-  end,
-  block_names(RemainingProcesses, NewBlockNames).
 
 
 %%
