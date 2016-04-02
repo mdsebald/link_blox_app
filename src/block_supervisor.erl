@@ -98,6 +98,8 @@ init(BlockValuesFile) ->
 
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
+      error_logger:info_msg("Loading block Values config file: ~p~n", [BlockValuesFile]),
+
 			% TODO: Check for good, "ok" return value
 			BlockSpecs = create_block_specs(BlockValuesList),
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},

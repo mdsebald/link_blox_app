@@ -45,4 +45,7 @@ Cause: relhelper.sh had DOS line endings.  Needed to switch to unix line endings
 
  http://stackoverflow.com/questions/2920416/configure-bin-shm-bad-interpreter
 
+Needed to chmod +x "/home/pi/LinkBlox/deps/erlang_ale/priv/erlang-ale" after rebuilding from scratch erlang_ale
+
+eaccess error when attempting to spawn the application to access gpio pins.  Don't remember having to do this before
 

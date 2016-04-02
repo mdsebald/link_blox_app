@@ -29,6 +29,7 @@
 block_type_modules() ->
   [
     lblx_exec_count,
+    lblx_led_ht16k33,
     lblx_pi_gpio_di,
     lblx_pi_gpio_do,
     lblx_seven_seg,

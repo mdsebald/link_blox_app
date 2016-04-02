@@ -1,20 +1,13 @@
-% INSTRUCTIONS: Copy this module and modify as appropriate 
-%               for the function this block will perform.
-%               Comments marked "INSTRUCTIONS:" may be deleted 
-
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type:  4 Digit 7 Segment LED Display
+%%% Description: LED Display with I2C Interface HTK1633 Driver   
 %%%               
 %%% @end 
 
--module(lblx_template).  % INSTRUCTIONS: Modify to match new module name
-                         % INSTRUCTIONS: Add module name to the list of 
-                         %  block module names in the lblx_types module
+-module(lblx_led_ht16k33).  
 
--author("Your Name").
+-author("Mark Sebald").
 
- % INSTRUCTIONS: Adjust path to hrl file as needed
 -include("../block_state.hrl"). 
 
 %% ====================================================================
@@ -24,18 +17,12 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-% INSTRUCTIONS: String naming the block type. 
-%   Usually the module name minus "lblx_"
-type_name() -> "template".
+type_name() -> "led_ht16k33".
 
-% INSTRUCTIONS: Major.Minor.Patch, 
-%   Major version change implies a breaking change, 
-%   i.e. Block module code is not compatible with a 
-%   block definition created with block code with a different major revison 
 version() -> "0.1.0".
 
 % INSTRUCTIONS String describing block function
-description() -> "Short description of block function".
+description() -> "4 digit 7 segment LED display with I2C interface".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -48,10 +35,8 @@ default_configs(BlockName, Comment) ->
   block_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, Comment, type_name(), version(), description()), 
     [
-      % INTRUCTIONS: Insert block type specific config attribute tuples here
-      % Config attribute tuples consist of a value name and a value
-      % Example: {gpio_pin, 0}
-      % Config values are set once on block creation and never modified.                   
+      {i2c_device, "i2c-1"},
+      {i2c_addr, 16#70}                 
     ]). 
 
 
@@ -61,10 +46,7 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      % INTRUCTIONS: Insert block type specific input attribute tuples here
-      % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, 100, ?EMPTY_LINK}
-      % Inputs may be fixed values, or linked to a block output value 
+      {input, 0, ?EMPTY_LINK} 
     ]). 
 
 
@@ -74,11 +56,7 @@ default_outputs() ->
   block_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      % INTRUCTIONS: Insert block type specific output attribute tuples here
-      % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, not_active, []}
+     
     ]). 
 
 %%  
@@ -129,14 +107,47 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-    
-  % Perform block type specific initializations here
-  % Add and intialize private attributes here
-  NewOutputs = Outputs,
-  NewPrivate = Private,
+
+  PrivateX = block_utils:add_attribute(Private, {i2c_ref, empty}),
+  PrivateY = block_utils:add_attribute(PrivateX, {ht16k33_disp_buff, empty}),
+  
+  % Get the the I2C Address of the display 
+  % TODO: Check for valid I2C Address
+  I2cDevice = block_utils:get_value(Config, i2c_device),
+  I2cAddr = block_utils:get_value(Config, i2c_addr),
+	    
+  case ht16k33_led_driver:init(I2cDevice, I2cAddr) of
+    {ok, I2cRef, DisplayBuffer} ->
+      Status = initialed,
+      Value = 0,
+ 	    
+                          
+      % Test code, blink the colon, and write something to all of the digits
+      ht16k33_led_driver:set_blink_rate(I2cRef, 3),
+      Buffer1 = ht16k33_4digit_led:set_colon(I2cRef, DisplayBuffer, true),
+      Buffer2 = ht16k33_4digit_led:write_digit(I2cRef, Buffer1, 0, 0, true),
+      Buffer3 = ht16k33_4digit_led:write_digit(I2cRef, Buffer2, 1, 1, true),
+      Buffer4 = ht16k33_4digit_led:write_digit(I2cRef, Buffer3, 3, 3, true),
+      Buffer5 = ht16k33_4digit_led:write_digit(I2cRef, Buffer4, 4, 4, true),
+      Buffer6 = ht16k33_4digit_led:write_digit(I2cRef, Buffer5, 5, 5, true),
+      Buffer7 = ht16k33_4digit_led:write_digit(I2cRef, Buffer6, 6, 6, true),
+      Buffer8 = ht16k33_4digit_led:write_digit(I2cRef, Buffer7, 7, 7, true),
+      % end test code
+      
+      PrivateZ = block_utils:set_values(PrivateY, 
+                          [{i2c_ref, I2cRef}, {ht16k33_disp_buff, Buffer8}]);      
+    {error, ErrorResult} ->
+      error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
+                              [ErrorResult, I2cAddr]),
+      Status = proc_error,
+      Value = not_active,
+      PrivateZ = PrivateY
+  end,	
+   
+  OutputsX = block_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, NewOutputs, NewPrivate}.
+  {Config, Inputs, OutputsX, PrivateZ}.
 
 %%
 %%  Execute the block specific functionality
@@ -145,14 +156,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % INSTRUCTIONS: Perform block type specific actions here, 
-  % read input value(s) calculate new outut value(s)
-  % set block output status value
-  NewOutputs = Outputs,
-  NewPrivate = Private,
+    % INSTRUCTIONS: Perform block type specific actions here, 
+    % read input value(s) calculate new outut value(s)
+    % set block output status value
+    NewOutputs = Outputs,
+    NewPrivate = Private,
 
-  % Return updated block state
-  {Config, Inputs, NewOutputs, NewPrivate}.
+    % Return updated block state
+    {Config, Inputs, NewOutputs, NewPrivate}.
 
 
 %% 
@@ -161,8 +172,8 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(block_state()) -> ok.
 
 delete({_Config, _Inputs, _Outputs, _Private}) -> 
-  % INSTRUCTIONS: Perform any block type specific delete functionality here
-  ok.
+    % INSTRUCTIONS: Perform any block type specific delete functionality here
+    ok.
 
 
 

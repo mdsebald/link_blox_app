@@ -2,11 +2,12 @@
  [{description, "An Erlang IoT Application"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, {'LinkBlox_app', ["test"]}},
+  {mod, {'LinkBlox_app', ["test2"]}},
   {applications,
    [kernel,
     stdlib,
-    erlang_ale
+    erlang_ale,
+    erlang_ht16k33
    ]},
   {env,[]},
   {modules, []},
