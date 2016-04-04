@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(lblx_led_ht16k33).  
+-module(lblx_ht16k33_4digit_led).  
 
 -author("Mark Sebald").
 
@@ -17,7 +17,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "led_ht16k33".
+type_name() -> "ht16k33_4digit_led".
 
 version() -> "0.1.0".
 
@@ -46,7 +46,17 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, 0, ?EMPTY_LINK} 
+      {blink_rate, 0, ?EMPTY_LINK},
+      {brightness, 15, ?EMPTY_LINK},
+      {digit_1, 1, ?EMPTY_LINK},
+      {decimal_1, true, ?EMPTY_LINK},
+      {digit_2, 2, ?EMPTY_LINK},
+      {decimal_2, true, ?EMPTY_LINK},
+      {colon, true, ?EMPTY_LINK},
+      {digit_3, 3, ?EMPTY_LINK},
+      {decimal_3, true, ?EMPTY_LINK},
+      {digit_4, 4, ?EMPTY_LINK},
+      {decimal_4, true, ?EMPTY_LINK}
     ]). 
 
 
@@ -119,26 +129,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
   case ht16k33_led_driver:init(I2cDevice, I2cAddr) of
     {ok, I2cRef, DisplayBuffer} ->
       Status = initialed,
-      Value = 0,
- 	    
-                          
-      % Test code, blink the colon, and write something to all of the digits
-      ht16k33_led_driver:set_blink_rate(I2cRef, 3),
-      Buffer1 = ht16k33_4digit_led:set_colon(I2cRef, DisplayBuffer, true),
-      Buffer2 = ht16k33_4digit_led:write_digit(I2cRef, Buffer1, 0, 0, true),
-      Buffer3 = ht16k33_4digit_led:write_digit(I2cRef, Buffer2, 1, 1, true),
-      Buffer4 = ht16k33_4digit_led:write_digit(I2cRef, Buffer3, 3, 3, true),
-      Buffer5 = ht16k33_4digit_led:write_digit(I2cRef, Buffer4, 4, 4, true),
-      Buffer6 = ht16k33_4digit_led:write_digit(I2cRef, Buffer5, 5, 5, true),
-      Buffer7 = ht16k33_4digit_led:write_digit(I2cRef, Buffer6, 6, 6, true),
-      Buffer8 = ht16k33_4digit_led:write_digit(I2cRef, Buffer7, 7, 7, true),
-      % end test code
-      
+      Value = 0, 
       PrivateZ = block_utils:set_values(PrivateY, 
-                          [{i2c_ref, I2cRef}, {ht16k33_disp_buff, Buffer8}]);      
-    {error, ErrorResult} ->
+                          [{i2c_ref, I2cRef}, {ht16k33_disp_buff, DisplayBuffer}]);      
+    {error, Reason} ->
       error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
-                              [ErrorResult, I2cAddr]),
+                              [Reason, I2cAddr]),
       Status = proc_error,
       Value = not_active,
       PrivateZ = PrivateY
@@ -156,14 +152,42 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-    % INSTRUCTIONS: Perform block type specific actions here, 
-    % read input value(s) calculate new outut value(s)
-    % set block output status value
-    NewOutputs = Outputs,
-    NewPrivate = Private,
+  I2cRef = block_utils:get_value(Private, i2c_ref),
+  Buffer = block_utils:get_value(Private, ht16k33_disp_buff),
+  
+  BlinkRate = block_utils:get_value(Inputs, blink_rate),
+  ht16k33_led_driver:set_blink_rate(I2cRef, BlinkRate),
+  
+  Brightness = block_utils:get_value(Inputs, brightness),
+  ht16k33_led_driver:set_blink_rate(I2cRef, Brightness),
 
-    % Return updated block state
-    {Config, Inputs, NewOutputs, NewPrivate}.
+  Digit1 = block_utils:get_value(Inputs, digit_1),
+  Decimal1 = block_utils:get_value(Inputs, decimal_1),
+  Buffer1 = ht16k33_4digit_led:write_digit(I2cRef, Buffer, 0, Digit1, Decimal1, false),
+  
+  Digit2 = block_utils:get_value(Inputs, digit_2),
+  Decimal2 = block_utils:get_value(Inputs, decimal_2),
+  Buffer2 = ht16k33_4digit_led:write_digit(I2cRef, Buffer1, 1, Digit2, Decimal2, false),
+  
+  Colon = block_utils:get_value(Inputs, colon),
+  BufferC = ht16k33_4digit_led:set_colon(I2cRef, Buffer2, Colon, false),
+
+  Digit3 = block_utils:get_value(Inputs, digit_3),
+  Decimal3 = block_utils:get_value(Inputs, decimal_3),
+  Buffer3 = ht16k33_4digit_led:write_digit(I2cRef, BufferC, 3, Digit3, Decimal3, false),
+  
+  Digit4 = block_utils:get_value(Inputs, digit_4),
+  Decimal4 = block_utils:get_value(Inputs, decimal_4),
+  % Update the display after updating the buffer on the last digit
+  Buffer4 = ht16k33_4digit_led:write_digit(I2cRef, Buffer3, 4, Digit4, Decimal4, true),
+  
+  NewPrivate = block_utils:set_value(Private, ht16k33_disp_buff, Buffer4),
+  
+  % Block value output really doesn't have any useful info right now
+  NewOutputs = block_utils:set_value_status(Outputs, 0, normal),
+  
+  % Return updated block state
+  {Config, Inputs, NewOutputs, NewPrivate}.
 
 
 %% 
@@ -171,9 +195,11 @@ execute({Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(block_state()) -> ok.
 
-delete({_Config, _Inputs, _Outputs, _Private}) -> 
-    % INSTRUCTIONS: Perform any block type specific delete functionality here
-    ok.
+delete({_Config, _Inputs, _Outputs, Private}) ->
+  % Close the I2C Channel
+  I2cRef = block_utils:get_value(Private, i2c_ref), 
+  i2c:stop(I2cRef),
+  ok.
 
 
 
