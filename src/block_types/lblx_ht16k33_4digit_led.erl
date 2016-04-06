@@ -46,17 +46,14 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
+      {display_on, true, ?EMPTY_LINK},
       {blink_rate, 0, ?EMPTY_LINK},
-      {brightness, 15, ?EMPTY_LINK},
-      {digit_1, 1, ?EMPTY_LINK},
-      {decimal_1, true, ?EMPTY_LINK},
-      {digit_2, 2, ?EMPTY_LINK},
-      {decimal_2, true, ?EMPTY_LINK},
+      {brightness, 0, ?EMPTY_LINK},
+      {seven_segs_1, 16#FF, ?EMPTY_LINK},
+      {seven_segs_2, 16#FF, ?EMPTY_LINK},
       {colon, true, ?EMPTY_LINK},
-      {digit_3, 3, ?EMPTY_LINK},
-      {decimal_3, true, ?EMPTY_LINK},
-      {digit_4, 4, ?EMPTY_LINK},
-      {decimal_4, true, ?EMPTY_LINK}
+      {seven_segs_3, 16#FF, ?EMPTY_LINK},
+      {seven_segs_4, 16#FF, ?EMPTY_LINK}
     ]). 
 
 
@@ -118,32 +115,31 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  PrivateX = block_utils:add_attribute(Private, {i2c_ref, empty}),
-  PrivateY = block_utils:add_attribute(PrivateX, {ht16k33_disp_buff, empty}),
+  Private1 = block_utils:add_attribute(Private, {i2c_ref, empty}),
   
   % Get the the I2C Address of the display 
   % TODO: Check for valid I2C Address
   I2cDevice = block_utils:get_value(Config, i2c_device),
   I2cAddr = block_utils:get_value(Config, i2c_addr),
 	    
-  case ht16k33_led_driver:init(I2cDevice, I2cAddr) of
-    {ok, I2cRef, DisplayBuffer} ->
+  case init_led_driver(I2cDevice, I2cAddr) of
+    {ok, I2cRef} ->
       Status = initialed,
       Value = 0, 
-      PrivateZ = block_utils:set_values(PrivateY, 
-                          [{i2c_ref, I2cRef}, {ht16k33_disp_buff, DisplayBuffer}]);      
+      Private2 = block_utils:set_value(Private1, i2c_ref, I2cRef);
+      
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
+      error_logger:error_msg("Error: ~p intitializing LED driver, I2C Address: ~p~n", 
                               [Reason, I2cAddr]),
       Status = proc_error,
       Value = not_active,
-      PrivateZ = PrivateY
-  end,	
+      Private2 = Private1
+    end,
    
-  OutputsX = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, OutputsX, PrivateZ}.
+  {Config, Inputs, Outputs1, Private2}.
 
 %%
 %%  Execute the block specific functionality
@@ -153,41 +149,35 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
   I2cRef = block_utils:get_value(Private, i2c_ref),
-  Buffer = block_utils:get_value(Private, ht16k33_disp_buff),
   
+  DisplayState = block_utils:get_value(Inputs, display_on),
+      
   BlinkRate = block_utils:get_value(Inputs, blink_rate),
-  ht16k33_led_driver:set_blink_rate(I2cRef, BlinkRate),
+  set_blink_rate(I2cRef, DisplayState, BlinkRate),
   
   Brightness = block_utils:get_value(Inputs, brightness),
-  ht16k33_led_driver:set_blink_rate(I2cRef, Brightness),
+  set_brightness(I2cRef, Brightness),
 
-  Digit1 = block_utils:get_value(Inputs, digit_1),
-  Decimal1 = block_utils:get_value(Inputs, decimal_1),
-  Buffer1 = ht16k33_4digit_led:write_digit(I2cRef, Buffer, 0, Digit1, Decimal1, false),
+  Segments1 = block_utils:get_value(Inputs, seven_segs_1),
+  write_segments(I2cRef, 1, Segments1),
   
-  Digit2 = block_utils:get_value(Inputs, digit_2),
-  Decimal2 = block_utils:get_value(Inputs, decimal_2),
-  Buffer2 = ht16k33_4digit_led:write_digit(I2cRef, Buffer1, 1, Digit2, Decimal2, false),
+  Segments2 = block_utils:get_value(Inputs, seven_segs_2),
+  write_segments(I2cRef, 2, Segments2),
   
-  Colon = block_utils:get_value(Inputs, colon),
-  BufferC = ht16k33_4digit_led:set_colon(I2cRef, Buffer2, Colon, false),
-
-  Digit3 = block_utils:get_value(Inputs, digit_3),
-  Decimal3 = block_utils:get_value(Inputs, decimal_3),
-  Buffer3 = ht16k33_4digit_led:write_digit(I2cRef, BufferC, 3, Digit3, Decimal3, false),
+  ColonState = block_utils:get_value(Inputs, colon),
+  set_colon(I2cRef, ColonState),
   
-  Digit4 = block_utils:get_value(Inputs, digit_4),
-  Decimal4 = block_utils:get_value(Inputs, decimal_4),
-  % Update the display after updating the buffer on the last digit
-  Buffer4 = ht16k33_4digit_led:write_digit(I2cRef, Buffer3, 4, Digit4, Decimal4, true),
+  Segments3 = block_utils:get_value(Inputs, seven_segs_3),
+  write_segments(I2cRef, 3, Segments3),
   
-  NewPrivate = block_utils:set_value(Private, ht16k33_disp_buff, Buffer4),
+  Segments4 = block_utils:get_value(Inputs, seven_segs_4),
+  write_segments(I2cRef, 4, Segments4),
   
   % Block value output really doesn't have any useful info right now
-  NewOutputs = block_utils:set_value_status(Outputs, 0, normal),
+  Outputs1 = block_utils:set_value_status(Outputs, 0, normal),
   
   % Return updated block state
-  {Config, Inputs, NewOutputs, NewPrivate}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -196,8 +186,12 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(block_state()) -> ok.
 
 delete({_Config, _Inputs, _Outputs, Private}) ->
+ 
+  I2cRef = block_utils:get_value(Private, i2c_ref),
+  % Turn off the display 
+  shutdown_led_driver(I2cRef),  
+  
   % Close the I2C Channel
-  I2cRef = block_utils:get_value(Private, i2c_ref), 
   i2c:stop(I2cRef),
   ok.
 
@@ -207,3 +201,126 @@ delete({_Config, _Inputs, _Outputs, Private}) ->
 %% Internal functions
 %% ====================================================================
 
+% HT16K33 LED Driver Registers
+-define(DISPLAY_OSCILLATOR_OFF, 16#20).
+-define(DISPLAY_OSCILLATOR_ON, 16#21).
+
+-define(DISPLAY_BLANK, 16#80).
+-define(DISPLAY_ON, 16#81).
+
+-define(BRIGHTNESS_REGISTER, 16#E0).
+
+%  Blink rates
+-define(BLINK_RATE_OFF, 16#00).
+-define(BLINK_RATE_2HZ, 16#01).
+-define(BLINK_RATE_1HZ, 16#02).
+-define(BLINK_RATE_HALFHZ, 16#03).
+
+-define(MAX_BRIGHTNESS, 15).
+-define(MIN_BRIGHTNESS, 0).
+
+-define(COLON_ADDRESS, 16#04).
+-define(COLON_SEGMENT_ON, 16#02).
+-define(COLON_SEGMENT_OFF, 16#00).
+
+
+%%
+%% Initialize the LED driver 
+%%
+-spec init_led_driver(I2cDevice :: string(),
+                      I2cAddr :: integer()) -> {ok, pid()} | {error, atom()}.
+                      
+init_led_driver(I2cDevice, I2cAddr) ->
+   case i2c:start_link(I2cDevice, (I2cAddr)) of
+    {ok, I2cRef} ->
+      i2c:write(I2cRef, <<?DISPLAY_OSCILLATOR_ON>>),
+      i2c:write(I2cRef, <<?DISPLAY_BLANK>>),
+      i2c:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
+      
+      % Clear the display buffer (clears the screen)
+      clear(I2cRef),
+      {ok, I2cRef};
+      
+    {error, Reason} ->
+      {error, Reason}
+  end.
+ 
+%%
+%% Shutdown the LED driver
+%% 
+-spec shutdown_led_driver(I2cRef :: pid()) -> term().
+
+shutdown_led_driver(I2cRef) ->
+  clear(I2cRef),
+  i2c:write(I2cRef, <<?DISPLAY_BLANK>>),
+  i2c:write(I2cRef, <<?DISPLAY_OSCILLATOR_OFF>>).
+      
+  
+%%
+%% Clear the display and buffer
+%%
+-spec clear(I2cRef :: pid()) -> term().
+
+clear(I2cRef) ->
+  % 2 digits, colon, and 2 digits, requrires 10 bytes of buffer storage
+  % Only first byte (even bytes, index: 0, 2, 4, 6, and 8) are significant
+  % Clear out all 16 bytes of the display buffer, regardless
+  Buffer = <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>,
+  
+  % clear the display buffer, starting at register 0
+  i2c:write(I2cRef, <<16#00, Buffer/binary>>).
+
+
+%%
+%% Set the blink rate
+%%
+-spec set_blink_rate(I2cRef :: pid(),
+                     DisplayState :: boolean(), 
+                     BlinkRate :: integer()) -> term().
+
+set_blink_rate(I2cRef, DisplayState, BlinkRate) ->
+  case DisplayState of
+    true  -> DisplaySetup = (?DISPLAY_ON    bor (BlinkRate*2));
+    false -> DisplaySetup = (?DISPLAY_BLANK bor (BlinkRate*2))
+  end,
+  i2c:write(I2cRef, <<DisplaySetup>>).
+   
+
+%%
+%% Set the brightness level
+%%
+-spec set_brightness(I2cRef :: pid(),
+                     Brightness :: integer()) -> term().
+
+set_brightness(I2cRef, Brightness) ->
+  i2c:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor Brightness)>>).
+  
+%%
+%% Set the brightness level
+%%
+-spec set_colon(I2cRef :: pid(),
+                ColonState :: boolean()) -> term().
+
+set_colon(I2cRef, ColonState) ->
+  case ColonState of
+    true  -> ColonSegment = ?COLON_SEGMENT_ON;
+    false -> ColonSegment = ?COLON_SEGMENT_OFF
+  end,
+  i2c:write(I2cRef, <<?COLON_ADDRESS, ColonSegment>>). 
+
+
+%%
+%% Turn on the designated segments for the given digit  
+%% -------------------------------------------------------
+%% LED Segment ON:  a  |  b |  c | d  |  e |  f |  g | dp  
+%% Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
+%% --------------------------------------------------------
+%%
+-spec write_segments(I2cRef :: pid(),
+                     Digit :: integer(),
+                     Segments :: byte()) -> term().
+
+write_segments(I2cRef, Digit, Segments) ->
+  BufferAddress = lists:nth(Digit, [16#00, 16#02, 16#06, 16#08]),
+  i2c:write(I2cRef, <<BufferAddress, Segments>>).
+  
