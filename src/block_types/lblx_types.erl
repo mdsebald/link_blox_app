@@ -31,9 +31,10 @@ block_type_modules() ->
     lblx_exec_count,
     lblx_ht16k33_4digit_led,
     lblx_mcp9808_temp,
+    lblx_one_digit_7seg,
     lblx_pi_gpio_di,
     lblx_pi_gpio_do,
-    lblx_seven_seg,
+    lblx_seven_seg_decoder,
     lblx_toggle
   ].  
     

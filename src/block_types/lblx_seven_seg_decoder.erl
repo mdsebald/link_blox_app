@@ -1,20 +1,15 @@
-% INSTRUCTIONS: Copy this module and modify as appropriate 
-%               for the function this block will perform.
-%               Comments marked "INSTRUCTIONS:" may be deleted 
-
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type: Number to Seven Segment Decoder
+%%% Description: Convert an input number to a set of bytes.
+%%%              one per digit, indicating which segments of a 
+%%%              seven segment display digit should be turned on.    
 %%%               
 %%% @end 
 
--module(lblx_template).  % INSTRUCTIONS: Modify to match new module name
-                         % INSTRUCTIONS: Add module name to the list of 
-                         %  block module names in the lblx_types module
+-module(lblx_seven_seg_decoder). 
 
--author("Your Name").
+-author("Mark Sebald").
 
- % INSTRUCTIONS: Adjust path to hrl file as needed
 -include("../block_state.hrl"). 
 
 %% ====================================================================
@@ -24,18 +19,11 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-% INSTRUCTIONS: String naming the block type. 
-%   Usually the module name minus "lblx_"
-type_name() -> "template".
+type_name() -> "seven_seg_decoder".
 
-% INSTRUCTIONS: Major.Minor.Patch, 
-%   Major version change implies a breaking change, 
-%   i.e. Block module code is not compatible with a 
-%   block definition created with block code with a different major revison 
 version() -> "0.1.0".
 
-% INSTRUCTIONS String describing block function
-description() -> "Short description of block function".
+description() -> "Convert numerical input to 7 segment digits representation".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -48,10 +36,7 @@ default_configs(BlockName, Comment) ->
   block_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, Comment, type_name(), version(), description()), 
     [
-      % INTRUCTIONS: Insert block type specific config attribute tuples here
-      % Config attribute tuples consist of a value name and a value
-      % Example: {gpio_pin, 0}
-      % Config values are set once on block creation and never modified.                   
+     
     ]). 
 
 
@@ -61,10 +46,7 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      % INTRUCTIONS: Insert block type specific input attribute tuples here
-      % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, 100, ?EMPTY_LINK}
-      % Inputs may be fixed values, or linked to a block output value 
+      {input, empty, ?EMPTY_LINK}
     ]). 
 
 
@@ -74,12 +56,12 @@ default_outputs() ->
   block_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      % INTRUCTIONS: Insert block type specific output attribute tuples here
-      % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, not_active, []}
+      {digit_1, not_active, []},
+      {digit_2, not_active, []},
+      {digit_3, not_active, []},
+      {digit_4, not_active, []}
     ]). 
+
 
 %%  
 %% Create a set of block attributes for this block type.  
@@ -122,6 +104,7 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
   % This is the block definition, 
   {Config, Inputs, Outputs}.
 
+
 %%
 %% Initialize block values
 %% Perform any setup here as needed before starting execution
@@ -132,11 +115,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
     
   % Perform block type specific initializations here
   % Add and intialize private attributes here
-  Outputs1 = Outputs,
+  Outputs1 = Outputs, 
   Private1 = Private,
 
   % This is the block state
   {Config, Inputs, Outputs1, Private1}.
+
 
 %%
 %%  Execute the block specific functionality
@@ -145,14 +129,23 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % INSTRUCTIONS: Perform block type specific actions here, 
-  % read input value(s) calculate new outut value(s)
-  % set block output status value
-  Outputs1 = Outputs,
-  Private1 = Private,
+  Number = block_utils:get_value(Inputs, input),
+  NumberStr =   io_lib:format("~.2f", [Number]),
+  
+  Digit1 = char_to_segments(lists:nth(1, NumberStr), false),
+  Digit2 = char_to_segments(lists:nth(2, NumberStr), true),
+  Digit3 = char_to_segments(lists:nth(3, NumberStr), false),
+  Digit4 = char_to_segments(lists:nth(4, NumberStr), false),
+  
+  Outputs1 = block_utils:set_values(Outputs, 
+  [
+    {value, NumberStr}, {status, normal},  
+    {digit_1, Digit1}, {digit_2, Digit2}, {digit_3, Digit3}, {digit_4, Digit4}
+  ]),
+
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -161,12 +154,43 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(block_state()) -> ok.
 
 delete({_Config, _Inputs, _Outputs, _Private}) -> 
-  % INSTRUCTIONS: Perform any block type specific delete functionality here
   ok.
-
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
+%%
+%% Convert a character to a byte indicating which segments
+%% of a 7 segment display should be turned on.
+%% Set the 0x80 bit of the segments byte, 
+%% if the decimal point should be turned on. 
+%%
+-spec char_to_segments(Char:: char(), 
+                       DecPnt :: boolean()) -> byte().
+
+char_to_segments(Char, DecPnt) ->
+
+  % -------------------------------------------------------
+  % LED Segment ON:  a  |  b |  c | d  |  e |  f |  g | dp  
+  % Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
+  % --------------------------------------------------------
+  
+  CharToSegs = 
+   [{$0,16#3F}, {$1,16#06}, {$2,16#5B}, {$3,16#4F}, {$4,16#66}, {$5,16#6D}, 
+    {$6,16#7D}, {$7,16#07}, {$8,16#7F}, {$9,16#6F}, 
+    {$A,16#77}, {$b,16#7C}, {$C,16#39}, {$d,16#5E}, {$E,16#79}, {$F,16#71},
+    {32,16#00}, {$-,16#40}],
+  
+  case DecPnt of
+    true -> DecPntSeg = 16#80;
+    false -> DecPntSeg = 16#00
+  end,
+  
+  case lists:keyfind(Char, 1, CharToSegs) of
+    false -> % No character match found, just return the decimal point segment
+      DecPntSeg; 
+    {Char, Segments} -> % Combine the 7 segments with the decimal point segment
+      (Segments bor DecPntSeg)
+  end.

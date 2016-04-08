@@ -196,7 +196,6 @@ delete({_Config, _Inputs, _Outputs, Private}) ->
   ok.
 
 
-
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
@@ -244,6 +243,7 @@ init_led_driver(I2cDevice, I2cAddr) ->
     {error, Reason} ->
       {error, Reason}
   end.
+
  
 %%
 %% Shutdown the LED driver

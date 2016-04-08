@@ -1,11 +1,16 @@
 %%% @doc 
-%%% Block Type:  Seven Segment Display Decoder
-%%% Description: Decode integer input value to activate
-%%%              the segements of a seven segment display  
+%%% Block Type:  Single Digig Seven Segment Display Driver
+%%% Description: Unpack byte input to drive a 7 segment plus 
+%%%              decimal point single digit LED display
+%%%
+%%% -------------------------------------------------------
+%%% LED Segment ON:  a  |  b |  c | d  |  e |  f |  g | dp  
+%%% Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
+%%% --------------------------------------------------------
 %%%               
 %%% @end 
 
--module(lblx_seven_seg). 
+-module(lblx_one_digit_7seg). 
 
 -author("Mark Sebald").
 
@@ -18,9 +23,9 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "seven_seg". 
+type_name() -> "one_digit_7seg". 
 
-description() -> "Seven segment LED display decoder".
+description() -> "Single digit 7 segment LED driver".
 
 version() -> "0.1.0".  
 
@@ -44,7 +49,8 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, empty, ?EMPTY_LINK}
+      {display_on, true, ?EMPTY_LINK},
+      {segments, empty, ?EMPTY_LINK}
     ]). 
 
 
@@ -60,7 +66,8 @@ default_outputs() ->
       {seg_d, not_active, []},
       {seg_e, not_active, []},
       {seg_f, not_active, []},
-      {seg_g, not_active, []}
+      {seg_g, not_active, []},
+      {seg_dp, not_active, []}
     ]). 
 
 
@@ -114,8 +121,13 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % Perform block type specific initializations here
-  NewOutputs = block_utils:set_value(Outputs, status, initialed),
+  % Turn off all segments, set output value to "  ", and status to initialed
+  NewOutputs = block_utils:set_values(Outputs, 
+    [
+      {value, "  "}, {status, initialed},  
+      {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false},
+      {seg_e, false}, {seg_f, false}, {seg_g, false}, {seg_dp, false}
+    ]),
 
   {Config, Inputs, NewOutputs, Private}.
 
@@ -127,75 +139,60 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  Input = block_utils:get_value(Inputs, input),
+  _DisplayState = block_utils:get_boolean(Inputs, display_on),
+  Segments = block_utils:get_integer(Inputs, segments) ,
+  
     
-  % Decode input integer value into 7 segment outputs 
-  % If the input value is not an integer from 0-9, just set output error
-  case Input of
-    0 -> Value = Input, Status = normal,
-         SegA = true,  SegB = true,  SegC = true, 
-         SegD = true,  SegE = true,  SegF = true,  SegG = false;
-
-    1 -> Value = Input, Status = normal,
-         SegA = false, SegB = true,  SegC = true, 
-         SegD = false, SegE = false, SegF = false, SegG = false;
-   
-    2 -> Value = Input, Status = normal,
-         SegA = true,  SegB = true,  SegC = false, 
-         SegD = true,  SegE = true,  SegF = false, SegG = true;
-
-    3 -> Value = Input, Status = normal,
-         SegA = true, SegB = true, SegC = true, 
-         SegD = true, SegE = false, SegF = false, SegG = true;
-
-    4 -> Value = Input, Status = normal,
-         SegA = false, SegB = true,  SegC = true, 
-         SegD = false, SegE = false, SegF = true,  SegG = true;
-
-    5 -> Value = Input, Status = normal,
-         SegA = true,  SegB = false, SegC = true, 
-         SegD = true,  SegE = false, SegF = true,  SegG = true;
-
-    6 -> Value = Input, Status = normal,
-         SegA = true,  SegB = false, SegC = true, 
-         SegD = true,  SegE = true,  SegF = true,  SegG = true;
-
-    7 -> Value = Input, Status = normal,
-         SegA = true,  SegB = true,  SegC = true, 
-         SegD = false, SegE = false, SegF = false, SegG = false;
-
-    8 -> Value = Input, Status = normal,
-         SegA = true, SegB = true, SegC = true, 
-         SegD = true, SegE = true, SegF = true, SegG = true;
- 
-    9 -> Value = Input, Status = normal,
-         SegA = true, SegB = true, SegC = true, 
-         SegD = false, SegE = false, SegF = true, SegG = true;
+  % Each bit of the Segments input byte controls one of the segment outputs
+  
+  if (Segments band 16#01) == 16#01 -> SegA = true;
+    true -> SegA = false end,
+  
+  if (Segments band 16#02) == 16#02 -> SegB = true;
+    true -> SegB = false end,
+    
+  if (Segments band 16#04) == 16#04 -> SegC = true;
+    true -> SegC = false end,
+  
+  if (Segments band 16#08) == 16#08 -> SegD = true;
+    true -> SegD = false end,
+    
+  if (Segments band 16#10) == 16#10 -> SegE = true;
+    true -> SegE = false end,
+  
+  if (Segments band 16#20) == 16#20 -> SegF = true;
+    true -> SegF = false end,
+    
+  if (Segments band 16#40) == 16#40 -> SegG = true;
+    true -> SegG = false end,
+  
+  if (Segments band 16#80) == 16#80 -> SegDp = true;
+    true -> SegDp = false end,
          
-    not_active ->
-      Value = not_active, Status = normal,
-      SegA = not_active, SegB = not_active, SegC = not_active, 
-      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
-       
-    empty ->
-      Value = not_active, Status = no_input,
-      SegA = not_active, SegB = not_active, SegC = not_active, 
-      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
-      
-    Invalid ->
-      BlockName = block_utils:name(Config),
-      error_logger:error_msg("~p Invalid Value: ~p~n", [BlockName, Invalid]), 
-      Value = not_active, Status = error_in,
-      SegA = not_active, SegB = not_active, SegC = not_active, 
-      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active 
-  end,  
+%    not_active ->
+%      Value = not_active, Status = normal,
+%      SegA = not_active, SegB = not_active, SegC = not_active, 
+%      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
+%       
+%    empty ->
+%      Value = not_active, Status = no_input,
+%      SegA = not_active, SegB = not_active, SegC = not_active, 
+%      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
+%      
+%    Invalid ->
+%      BlockName = block_utils:name(Config),
+%      error_logger:error_msg("~p Invalid Value: ~p~n", [BlockName, Invalid]), 
+%      Value = not_active, Status = error_in,
+%      SegA = not_active, SegB = not_active, SegC = not_active, 
+%      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active 
+%  end,  
  
   % update the outputs
   NewOutputs = block_utils:set_values(Outputs, 
     [
-      {value, Value}, {status, Status},
-      {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, 
-      {seg_d, SegD}, {seg_e, SegE}, {seg_f, SegF}, {seg_g, SegG}
+      {value, 0}, {status, normal},  
+      {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, {seg_d, SegD},
+      {seg_e, SegE}, {seg_f, SegF}, {seg_g, SegG}, {seg_dp, SegDp}
     ]),
  
   {Config, Inputs, NewOutputs, Private}.
