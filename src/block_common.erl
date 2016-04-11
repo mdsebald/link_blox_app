@@ -131,10 +131,10 @@ initialize({Config, Inputs, Outputs}) ->
   Private = [ {timer_ref, empty} ],
 
   % In case this block is set to execute via timer, initialize the timer
-  {_Status, NewPrivate} = update_execution_timer(BlockName, Inputs, Private), 
+  {_Status, Private1} = update_execution_timer(BlockName, Inputs, Private), 
 
   % Perform block type specific initialization 
-  BlockModule:initialize({Config, Inputs, Outputs, NewPrivate}).
+  BlockModule:initialize({Config, Inputs, Outputs, Private1}).
 
 
 %%

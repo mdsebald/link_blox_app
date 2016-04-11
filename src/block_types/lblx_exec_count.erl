@@ -118,12 +118,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % We can imediately set the initial block output value, 
   % Otherwise we need to wait for the initial input value to get set, via block execution
   if is_integer(InitialValue) ->
-    NewOutputs = block_utils:set_value_status(Outputs, InitialValue, initialed);
+    Outputs1 = block_utils:set_value_status(Outputs, InitialValue, initialed);
   true ->    
-     NewOutputs = block_utils:set_value_status(Outputs, not_active, initialed)
+     Outputs1 = block_utils:set_value_status(Outputs, not_active, initialed)
   end,
     
-  {Config, Inputs, NewOutputs, Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %%
@@ -190,10 +190,10 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,
 
   % Update outputs        
-  NewOutputs = block_utils:set_values(Outputs,
+  Outputs1 = block_utils:set_values(Outputs,
                   [{value, Value}, {status, Status}, {carry, Carry}]),
     
-  {Config, Inputs, NewOutputs,Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 

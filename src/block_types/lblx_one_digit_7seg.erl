@@ -139,63 +139,79 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  _DisplayState = block_utils:get_boolean(Inputs, display_on),
-  Segments = block_utils:get_integer(Inputs, segments) ,
-  
+  case lblx_input:get_boolean(Inputs, display_on) of
+    {error, Reason} ->
+      BlockName = block_utils:name(Config),
+      Value = not_active, Status = error_in,
+      SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
+      SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
+      error_logger:error_msg("~p Invalid 'display_on' input value: ~p~n", 
+                                 [BlockName, Reason]);
+    {ok, DisplayState} ->
+      case DisplayState of
+        false ->  % Display is off or blank
+          Value = 0, Status = normal,
+          SegA = false, SegB = false, SegC = false, SegD = false,
+          SegE = false, SegF = false, SegG = false, SegDp = false;
+            
+        true -> % Display is on  
+          case lblx_input:get_integer(Inputs, segments) of
+            {error, Reason} ->
+              BlockName = block_utils:name(Config),
+              Value = not_active, Status = error_in,
+              SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
+              SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
+              error_logger:error_msg("~p Invalid 'segments' input value: ~p~n", 
+                                 [BlockName, Reason]);
+
+            {ok, Segments} ->
+              case Segments of 
+                not_active ->
+                  Value = not_active, Status = normal,
+                  SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
+                  SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active;
+                  
+                Segments ->
+                  Value = Segments, Status = normal,
+
+                  % Each bit of the Segments input byte controls one of the segment outputs
+                  if (Segments band 16#01) == 16#01 -> SegA = true;
+                    true -> SegA = false end,
+
+                  if (Segments band 16#02) == 16#02 -> SegB = true;
+                      true -> SegB = false end,
+
+                  if (Segments band 16#04) == 16#04 -> SegC = true;
+                    true -> SegC = false end,
+
+                  if (Segments band 16#08) == 16#08 -> SegD = true;
+                    true -> SegD = false end,
+
+                  if (Segments band 16#10) == 16#10 -> SegE = true;
+                    true -> SegE = false end,
+
+                  if (Segments band 16#20) == 16#20 -> SegF = true;
+                    true -> SegF = false end,
     
-  % Each bit of the Segments input byte controls one of the segment outputs
-  
-  if (Segments band 16#01) == 16#01 -> SegA = true;
-    true -> SegA = false end,
-  
-  if (Segments band 16#02) == 16#02 -> SegB = true;
-    true -> SegB = false end,
-    
-  if (Segments band 16#04) == 16#04 -> SegC = true;
-    true -> SegC = false end,
-  
-  if (Segments band 16#08) == 16#08 -> SegD = true;
-    true -> SegD = false end,
-    
-  if (Segments band 16#10) == 16#10 -> SegE = true;
-    true -> SegE = false end,
-  
-  if (Segments band 16#20) == 16#20 -> SegF = true;
-    true -> SegF = false end,
-    
-  if (Segments band 16#40) == 16#40 -> SegG = true;
-    true -> SegG = false end,
-  
-  if (Segments band 16#80) == 16#80 -> SegDp = true;
-    true -> SegDp = false end,
-         
-%    not_active ->
-%      Value = not_active, Status = normal,
-%      SegA = not_active, SegB = not_active, SegC = not_active, 
-%      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
-%       
-%    empty ->
-%      Value = not_active, Status = no_input,
-%      SegA = not_active, SegB = not_active, SegC = not_active, 
-%      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active;
-%      
-%    Invalid ->
-%      BlockName = block_utils:name(Config),
-%      error_logger:error_msg("~p Invalid Value: ~p~n", [BlockName, Invalid]), 
-%      Value = not_active, Status = error_in,
-%      SegA = not_active, SegB = not_active, SegC = not_active, 
-%      SegD = not_active, SegE = not_active, SegF = not_active, SegG = not_active 
-%  end,  
- 
+                  if (Segments band 16#40) == 16#40 -> SegG = true;
+                    true -> SegG = false end,
+
+                  if (Segments band 16#80) == 16#80 -> SegDp = true;
+                    true -> SegDp = false end
+              end
+          end
+      end
+  end,         
+
   % update the outputs
-  NewOutputs = block_utils:set_values(Outputs, 
+  Outputs1 = block_utils:set_values(Outputs, 
     [
-      {value, 0}, {status, normal},  
+      {value, Value}, {status, Status},  
       {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, {seg_d, SegD},
       {seg_e, SegE}, {seg_f, SegF}, {seg_g, SegG}, {seg_dp, SegDp}
     ]),
  
-  {Config, Inputs, NewOutputs, Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 

@@ -109,7 +109,7 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  PrivateX = block_utils:add_attribute(Private, {gpio_pin_ref, empty}),
+  Private1 = block_utils:add_attribute(Private, {gpio_pin_ref, empty}),
   
   % Get the GPIO Pin number used for digital outputs 
   PinNumber = block_utils:get_value(Config, gpio_pin),
@@ -122,7 +122,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, GpioPinRef} ->
       Status = initialed,
       Value = DefaultValue,
- 	    PrivateY = block_utils:set_value(PrivateX, gpio_pin_ref, GpioPinRef),
+ 	    Private2 = block_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
       set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
     {error, ErrorResult} ->
@@ -130,12 +130,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
                               [ErrorResult, PinNumber]),
       Status = proc_error,
       Value = not_active,
-      PrivateY = PrivateX
+      Private2 = Private1
     end,	
   
-    OutputsX = block_utils:set_value_status(Outputs, Value, Status),
+    Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
     
-    {Config, Inputs, OutputsX, PrivateY}.
+    {Config, Inputs, Outputs1, Private2}.
 
 
 %%
@@ -184,9 +184,9 @@ execute({Config, Inputs, Outputs, Private}) ->
 	end,
   set_pin_value_bool(GpioPin, PinValue, InvertOutput),
  
-  NewOutputs = block_utils:set_value_status(Outputs, Value, Status),     
+  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),     
  
-  {Config, Inputs, NewOutputs, Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 

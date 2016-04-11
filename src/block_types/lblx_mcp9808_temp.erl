@@ -110,7 +110,7 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  PrivateX = block_utils:add_attribute(Private, {i2c_ref, empty}),
+  Private1 = block_utils:add_attribute(Private, {i2c_ref, empty}),
   
   % Get the the I2C Address of the sensor 
   % TODO: Check for valid I2C Address
@@ -119,7 +119,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	    
   case i2c:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
-      PrivateZ = block_utils:set_value(PrivateX, i2c_ref, I2cRef),
+      Private2 = block_utils:set_value(Private1, i2c_ref, I2cRef),
       
       
       DegF = block_utils:get_value(Config, deg_f),
@@ -142,13 +142,13 @@ initialize({Config, Inputs, Outputs, Private}) ->
                               [Reason, I2cAddr]),
       Status = proc_error,
       Value = not_active,
-      PrivateZ = PrivateX
+      Private2 = Private1
   end,	
    
-  OutputsX = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, OutputsX, PrivateZ}.
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%
@@ -181,11 +181,10 @@ execute({Config, Inputs, Outputs, Private}) ->
       Status = normal
   end,
    
-  NewOutputs = block_utils:set_value_status(Outputs, Value, Status),
-  NewPrivate = Private,
+  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
-  {Config, Inputs, NewOutputs, NewPrivate}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 

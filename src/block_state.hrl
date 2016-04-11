@@ -30,6 +30,13 @@
                         ValueName :: atom() | null
                       }.
                       
+%%
+%% specifies an empty input value link
+%% useful for initializing block inputs and testing for non-empty links
+%%
+-define(EMPTY_LINK, {}).
+
+    
                       
 %%
 %% Execute method defines the possible reasons for a block to be executed
@@ -43,7 +50,7 @@
 %%  hardware:   Block is connected to HW that can trigger execution
 %%              i.e. GPIO interrupt
 
--type exec_method() :: { manual | input_cos | timer | exec_out | hardware }.
+-type exec_method() :: manual | input_cos | timer | exec_out | hardware.
    
    
 %%
@@ -62,11 +69,22 @@
 %%  override:   One or more block output values have been set manually, instead of being calculated 
 %%   
    
--type block_status() :: { created | initialed | normal |  disabled | frozen | 
-                          error | input_err | config_err | proc_err | no_input | override }.
+-type block_status() :: created | initialed | normal |  disabled | frozen | 
+                        error | input_err | config_err | proc_err | no_input | override.
                        
+
 %%
-%% specifies an empty input value link
-%% useful for initializing block inputs
+%% Define block input value types
 %%
--define( EMPTY_LINK, {}).    
+
+-type input_errors() :: {error, not_found} | {error, bad_link} | 
+                        {error, bad_type} | {error, not_input}.
+                          
+-type generic_input_value() :: {ok, term()} | {ok, not_active} | input_errors().
+
+-type integer_input_value() :: {ok, integer()} | {ok, not_active} | input_errors().
+
+-type float_input_value() :: {ok, float()} | {ok, not_active} | input_errors().
+
+-type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
+

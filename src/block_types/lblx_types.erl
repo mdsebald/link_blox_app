@@ -24,7 +24,7 @@
 %%  by type name string.
 %%  Do not add the "template" block type
 %%
--spec block_type_modules() -> list().
+-spec block_type_modules() -> [module(),...].
 
 block_type_modules() ->
   [
@@ -42,7 +42,7 @@ block_type_modules() ->
 %%
 %%  Get the block module for the given block type string
 %% 
--spec block_type_to_module(string()) -> module().
+-spec block_type_to_module(string()) -> module() | not_found | error.
 
 block_type_to_module(BlockTypeStr) ->
   Modules = lists:filter(fun(Module)-> Module:type_name() == BlockTypeStr end, 
@@ -59,7 +59,7 @@ block_type_to_module(BlockTypeStr) ->
 %% Get a list of block types and associated info 
 %% for all of the block types in this application
 %%
--spec block_types_info() -> list().
+-spec block_types_info() -> [{string(), string(), string()},...].
 
 block_types_info() ->
   lists:map(fun(Module) -> block_type_info(Module) end,
@@ -68,7 +68,7 @@ block_types_info() ->
 %%
 %% Get block module type name, version, and description
 %%     
--spec block_type_info(module()) -> string().
+-spec block_type_info(module()) -> {string(), string(), string()}.
     
 block_type_info(Module) ->
   {Module:type_name(), Module:version(), Module:description()}.
@@ -76,7 +76,7 @@ block_type_info(Module) ->
 %%
 %% Get a list of block type names for all of the block modules in this app
 %%
--spec block_type_names() -> list().
+-spec block_type_names() -> [string(),...].
 
 block_type_names() ->
   lists:map(fun(Module) -> block_type_name(Module) end,

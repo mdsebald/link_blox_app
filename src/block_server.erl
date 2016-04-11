@@ -205,36 +205,31 @@ handle_call(Request, From, BlockValues) ->
   {reply, ok, BlockValues}.
 
 
+%%
 %% handle_cast/2
-%% ====================================================================
-%% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:handle_cast-2">gen_server:handle_cast/2</a>
--spec handle_cast(Request :: term(), State :: term()) -> Result when
-	Result :: {noreply, NewState}
-			| {noreply, NewState, Timeout}
-			| {noreply, NewState, hibernate}
-			| {stop, Reason :: term(), NewState},
-	NewState :: term(),
-	Timeout :: non_neg_integer() | infinity.
-%% ====================================================================
+%%
+-spec handle_cast(Request :: term(), 
+                  BlockValues :: block_state()) -> {noreply, block_state()}.
+
 
 %% ====================================================================
 %% Execute the block using the current set of Block values,
 %% This message is used to directly execute the block evaluate function, 
 %% ====================================================================
-handle_cast(execute, CurrentBlockValues) ->
+handle_cast(execute, BlockValues) ->
 
   % Execute the block
-  NewBlockValues = block_common:execute(CurrentBlockValues, manual),
+  NewBlockValues = block_common:execute(BlockValues, manual),
   {noreply, NewBlockValues};
     
 %% ====================================================================
 %% Execute the block using the current set of Block values,
 %% This message is used to execute the block on a timer timeout, 
 %% ====================================================================
-handle_cast(timer_execute, CurrentBlockValues) ->
+handle_cast(timer_execute, BlockValues) ->
 
   % Execute the block
-  NewBlockValues = block_common:execute(CurrentBlockValues, timer),
+  NewBlockValues = block_common:execute(BlockValues, timer),
   {noreply, NewBlockValues};
 
 
@@ -242,18 +237,18 @@ handle_cast(timer_execute, CurrentBlockValues) ->
 %% Execute the block using the current set of Block values,
 %% This message is used to execute the block on command from another block,  
 %% ====================================================================
-handle_cast(exec_out_execute, CurrentBlockValues) ->
+handle_cast(exec_out_execute, BlockValues) ->
   % Execute the block code
-  NewBlockValues = block_common:execute(CurrentBlockValues, exec_out),
+  NewBlockValues = block_common:execute(BlockValues, exec_out),
   {noreply, NewBlockValues};
 
 
 %% ====================================================================
 %% Update this block's input value(s) with the block value received in this message
 %% ====================================================================
-handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
+handle_cast({update, FromBlockName, ValueName, Value}, BlockValues) ->
 	
-  {Config, Inputs, CurrentOutputs, Private} = CurrentBlockValues,
+  {Config, Inputs, Outputs, Private} = BlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
 	NewInputs = block_links:update_linked_input_values(Inputs, null, FromBlockName, ValueName, Value),
@@ -264,11 +259,11 @@ handle_cast({update, FromBlockName, ValueName, Value}, CurrentBlockValues) ->
   {exec_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, exec_in),
     
   if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-    NewBlockValues = block_common:execute({Config, NewInputs, CurrentOutputs, Private}, 
+    NewBlockValues = block_common:execute({Config, NewInputs, Outputs, Private}, 
                                                 input_cos);
 
   true -> % Block will be executed via timer timeout or linked block execution, just return
-    NewBlockValues = {Config, NewInputs, CurrentOutputs, Private}
+    NewBlockValues = {Config, NewInputs, Outputs, Private}
   end,
 
 	{noreply, NewBlockValues};
@@ -357,9 +352,9 @@ handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
 %% =====================================================================
 %% Unknown Cast message
 %% =====================================================================      
-handle_cast(Msg, State) ->
+handle_cast(Msg, BlockValues) ->
   error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
-  {noreply, State}.
+  {noreply, BlockValues}.
 
 
 %% handle_info/2

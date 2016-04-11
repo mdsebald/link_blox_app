@@ -129,17 +129,38 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  Number = block_utils:get_value(Inputs, input),
-  NumberStr =   io_lib:format("~.2f", [Number]),
-  
-  Digit1 = char_to_segments(lists:nth(1, NumberStr), false),
-  Digit2 = char_to_segments(lists:nth(2, NumberStr), true),
-  Digit3 = char_to_segments(lists:nth(3, NumberStr), false),
-  Digit4 = char_to_segments(lists:nth(4, NumberStr), false),
+  case lblx_inputs:get_float(Inputs, input) of
+    {error, Reason} ->
+      lblx_inputs:log_error(Config, input, Reason),
+      Value = not_active, Status = input_err,
+      Digit1 = not_active,
+      Digit2 = not_active,
+      Digit3 = not_active,
+      Digit4 = not_active;
+
+    {ok, not_active} ->
+      Value = not_active, Status = normal,
+      Digit1 = not_active,
+      Digit2 = not_active,
+      Digit3 = not_active,
+      Digit4 = not_active;
+   
+    {ok, Value} ->  
+      NumberStr = io_lib:format("~.2f", [Value]),
+      Status = normal,
+      
+      % Convert formatted number string into list of bytes
+      FlatNumberStr = lists:flatten(NumberStr),
+      
+      Digit1 = char_to_segments(lists:nth(1, FlatNumberStr), false),
+      Digit2 = char_to_segments(lists:nth(2, FlatNumberStr), true),
+      Digit3 = char_to_segments(lists:nth(4, FlatNumberStr), false),
+      Digit4 = char_to_segments(lists:nth(5, FlatNumberStr), false)
+  end,
   
   Outputs1 = block_utils:set_values(Outputs, 
   [
-    {value, NumberStr}, {status, normal},  
+    {value, Value}, {status, Status},  
     {digit_1, Digit1}, {digit_2, Digit2}, {digit_3, Digit3}, {digit_4, Digit4}
   ]),
 
@@ -160,6 +181,7 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
 
 %%
 %% Convert a character to a byte indicating which segments

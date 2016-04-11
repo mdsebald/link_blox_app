@@ -6,8 +6,7 @@
   {applications,
    [kernel,
     stdlib,
-    erlang_ale,
-    erlang_ht16k33
+    erlang_ale
    ]},
   {env,[]},
   {modules, []},

@@ -150,31 +150,99 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   I2cRef = block_utils:get_value(Private, i2c_ref),
   
-  DisplayState = block_utils:get_value(Inputs, display_on),
-      
-  BlinkRate = block_utils:get_value(Inputs, blink_rate),
-  set_blink_rate(I2cRef, DisplayState, BlinkRate),
-  
-  Brightness = block_utils:get_value(Inputs, brightness),
-  set_brightness(I2cRef, Brightness),
+  case lblx_inputs:get_boolean(Inputs, display_on) of
+    {error, Reason} ->
+      {Value, Status} = lblx_inputs:log_error(Config, display_on, Reason);
+ 
+    {ok, DisplayState} ->
+      case lblx_inputs:get_integer(Inputs, blink_rate) of
+        {error, Reason} ->
+          lblx_inputs:log_error(Config, blink_rate, Reason),
+          Value = not_active, Status = input_err;
+        {ok, not_active} -> 
+          Value = not_active, Status = normal;
+        
+        {ok, BlinkRate} ->
+          % Display State and Blink Rate are write to the same byte 
+          set_blink_rate(I2cRef, DisplayState, BlinkRate),
+          
+          case lblx_inputs:get_integer(Inputs, brightness) of
+            {error, Reason} ->
+              lblx_inputs:log_error(Config, brightness, Reason),
+              Value = not_active, Status = input_err;
+              
+            {ok, not_active} -> 
+              Value = not_active, Status = normal;
+                                
+            {ok, Brightness} ->
+              set_brightness(I2cRef, Brightness),
+              
+              case lblx_inputs:get_integer(Inputs, seven_segs_1) of
+                {error, Reason} ->
+                  lblx_inputs:log_error(Config, seven_segs_1, Reason),
+                  Value = not_active, Status = input_err;
+                  
+                {ok, not_active} -> 
+                  Value = not_active, Status = normal;
+                     
+                {ok, Segments1} ->
+                  write_segments(I2cRef, 1, Segments1),
+                  
+                  case lblx_inputs:get_integer(Inputs, seven_segs_2) of
+                    {error, Reason} ->
+                      lblx_inputs:log_error(Config, seven_segs_2, Reason),
+                      Value = not_active, Status = input_err;
+                      
+                    {ok, not_active} -> 
+                      Value = not_active, Status = normal;
+                      
+                    {ok, Segments2} ->
+                      write_segments(I2cRef, 2, Segments2),
+                      
+                      case lblx_inputs:get_boolean(Inputs, colon) of
+                        {error, Reason} ->
+                          lblx_inputs:log_error(Config, colon, Reason),
+                          Value = not_active, Status = input_err;
+                          
+                        {ok, not_active} -> 
+                          Value = not_active, Status = normal;
+                   
+                        {ok, ColonState} ->
+                          set_colon(I2cRef, ColonState),
+                           
+                          case lblx_inputs:get_integer(Inputs, seven_segs_3) of
+                            {error, Reason} ->
+                              lblx_inputs:log_error(Config, seven_segs_3, Reason),
+                              Value = not_active, Status = input_err;
+                              
+                            {ok, not_active} -> 
+                              Value = not_active, Status = normal;
 
-  Segments1 = block_utils:get_value(Inputs, seven_segs_1),
-  write_segments(I2cRef, 1, Segments1),
-  
-  Segments2 = block_utils:get_value(Inputs, seven_segs_2),
-  write_segments(I2cRef, 2, Segments2),
-  
-  ColonState = block_utils:get_value(Inputs, colon),
-  set_colon(I2cRef, ColonState),
-  
-  Segments3 = block_utils:get_value(Inputs, seven_segs_3),
-  write_segments(I2cRef, 3, Segments3),
-  
-  Segments4 = block_utils:get_value(Inputs, seven_segs_4),
-  write_segments(I2cRef, 4, Segments4),
+                            {ok, Segments3} ->
+                              write_segments(I2cRef, 3, Segments3),
+                              
+                              case lblx_inputs:get_integer(Inputs, seven_segs_4) of
+                                {error, Reason} ->
+                                  lblx_inputs:log_error(Config, seven_segs_4, Reason),
+                                  Value = not_active, Status = input_err;
+                                  
+                                {ok, not_active} -> 
+                                  Value = not_active, Status = normal;
+
+                                {ok, Segments4} ->
+                                  write_segments(I2cRef, 4, Segments4),
+                                  Value = 0, Status = normal
+                              end
+                          end
+                      end
+                  end
+              end
+          end
+      end
+  end,
   
   % Block value output really doesn't have any useful info right now
-  Outputs1 = block_utils:set_value_status(Outputs, 0, normal),
+  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
   
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.
@@ -199,6 +267,7 @@ delete({_Config, _Inputs, _Outputs, Private}) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
 
 % HT16K33 LED Driver Registers
 -define(DISPLAY_OSCILLATOR_OFF, 16#20).
