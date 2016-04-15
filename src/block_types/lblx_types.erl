@@ -34,6 +34,7 @@ block_type_modules() ->
     lblx_one_digit_7seg,
     lblx_pi_gpio_di,
     lblx_pi_gpio_do,
+    lblx_rotary_encoder,
     lblx_seven_seg_decoder,
     lblx_toggle
   ].  

@@ -200,7 +200,9 @@ set_values(Attributes, [{AttributeName, NewValue} | RemainingValues]) ->
 %% Block output value and status attributes are often set at the same time.
 %% This is a shortcut to do that.
 %% 
--spec set_value_status(Outputs :: list(), Value :: term(), Status :: block_status()) -> list().
+-spec set_value_status(Outputs :: list(), 
+                       Value :: term(), 
+                       Status :: block_status()) -> list().
 
 set_value_status(Outputs, Value, Status) ->
   set_values(Outputs, [{value, Value}, {status, Status}]).

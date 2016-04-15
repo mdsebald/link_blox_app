@@ -102,7 +102,7 @@ get_value(Inputs, ValueName, CheckType) ->
 %% Log input value error
 %%
 -spec log_error(Config :: list(),
-               ValueName :: atom(),
+                ValueName :: atom(),
                 Reason :: atom()) -> ok.
                   
 log_error(Config, ValueName, Reason) ->

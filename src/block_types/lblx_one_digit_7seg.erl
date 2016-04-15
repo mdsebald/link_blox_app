@@ -139,14 +139,13 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  case lblx_input:get_boolean(Inputs, display_on) of
+  case lblx_inputs:get_boolean(Inputs, display_on) of
     {error, Reason} ->
-      BlockName = block_utils:name(Config),
-      Value = not_active, Status = error_in,
+      Value = not_active, Status = input_err,
       SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
       SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
-      error_logger:error_msg("~p Invalid 'display_on' input value: ~p~n", 
-                                 [BlockName, Reason]);
+      lblx_inputs:log_error(Config, display_on, Reason);
+      
     {ok, DisplayState} ->
       case DisplayState of
         false ->  % Display is off or blank
@@ -155,14 +154,12 @@ execute({Config, Inputs, Outputs, Private}) ->
           SegE = false, SegF = false, SegG = false, SegDp = false;
             
         true -> % Display is on  
-          case lblx_input:get_integer(Inputs, segments) of
+          case lblx_inputs:get_integer(Inputs, segments) of
             {error, Reason} ->
-              BlockName = block_utils:name(Config),
-              Value = not_active, Status = error_in,
+              Value = not_active, Status = input_err,
               SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
               SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
-              error_logger:error_msg("~p Invalid 'segments' input value: ~p~n", 
-                                 [BlockName, Reason]);
+               lblx_inputs:log_error(Config, segments, Reason);
 
             {ok, Segments} ->
               case Segments of 

@@ -54,23 +54,23 @@ unregistered_blocks(BlockInputs)->
 %% Send a link message to each block linked to the inputs of this block
 %%
 -spec link_blocks(BlockName :: atom(),
-                  BlockInputs :: list()) -> {ok, integer()}.
+                  Inputs :: list()) -> list().
 
-link_blocks(BlockName, BlockInputs)->
-  link_blocks(BlockName, BlockInputs, 0).
+link_blocks(BlockName, Inputs)->
+  link_blocks(BlockName, Inputs, Inputs).
 
-link_blocks(_BlockName, [], LinksRequested)->
-  {ok, LinksRequested};
+link_blocks(_BlockName, [], UpdatedInputs)->
+  UpdatedInputs;
 
-link_blocks(BlockName, BlockInputs, LinksRequested)->
+link_blocks(BlockName, Inputs, UpdatedInputs)->
 
-  [Input | RemainingBlockInputs] = BlockInputs,
+  [Input | RemainingInputs] = Inputs,
 	
   {ValueName, Value, Link} = Input,
   case Link of
     ?EMPTY_LINK ->
       % Input is not linked to another block, nothing to do
-      link_blocks(BlockName, RemainingBlockInputs, LinksRequested);
+      link_blocks(BlockName, RemainingInputs, UpdatedInputs);
       
     %TODO: Handle getting values from other nodes
     {_LinkNodeName, LinkBlockName, LinkValueName} ->
@@ -88,20 +88,24 @@ link_blocks(BlockName, BlockInputs, LinksRequested)->
           end,
 
           % Linked block is not running, nothing to do
-          link_blocks(BlockName, RemainingBlockInputs, LinksRequested);
+          link_blocks(BlockName, RemainingInputs, UpdatedInputs);
 
         _Pid  ->
           % Linked block is running,
           % if the block input value is empty, 
           if Value == empty ->
-            % send a link message to the linked block
-            block_server:link(LinkBlockName, LinkValueName, BlockName),
+            % send a link message to the linked block, get current linked value back
+            UpdatedValue = block_server:link(LinkBlockName, LinkValueName, BlockName),
+            
+            NewUpdatedInputs = block_utils:set_value(UpdatedInputs, ValueName, UpdatedValue),
+            
             error_logger:info_msg("Link Output <~p:~p> To Input <~p:~p>~n", 
                         [LinkBlockName, LinkValueName, BlockName, ValueName]),
-            link_blocks(BlockName, RemainingBlockInputs, LinksRequested + 1);
+                        
+            link_blocks(BlockName, RemainingInputs, NewUpdatedInputs);
           true ->
             % Value is not empty, link must already be established
-            link_blocks(BlockName, RemainingBlockInputs, LinksRequested)
+            link_blocks(BlockName, RemainingInputs, UpdatedInputs)
           end
       end
   end.

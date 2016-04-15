@@ -53,6 +53,10 @@ get_values(BlockName) ->
   gen_server:call(BlockName, get_values).
 
 
+%% Link the value 'ValueName' of this block to 'ToBlockName' 
+link(BlockName, ValueName, ToBlockName) ->
+  gen_server:call(BlockName, {link, ValueName, ToBlockName}).
+  
 %% Execute the block 
 execute(BlockName) ->
   gen_server:cast(BlockName, execute).
@@ -94,11 +98,6 @@ configure(BlockName)->
 %% Reconfigure the block with the given set of block values
 reconfigure(BlockName, BlockValues)->
   gen_server:cast(BlockName, {reconfigure, BlockValues}).
-
-
-%% Link the value 'ValueName' of this block to 'ToBlockName' 
-link(BlockName, ValueName, ToBlockName) ->
-  gen_server:cast(BlockName, {link, ValueName, ToBlockName}).
 
 
 %% Unlink the value 'ValueName' of this block from the calling block 
@@ -181,7 +180,23 @@ handle_call({get_value, ValueName}, _From, BlockValues) ->
 handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
   NewBlockValues = block_utils:set_value_any(BlockValues, ValueName, Value),
   {reply, {ValueName, Value}, NewBlockValues};
+  
+  
+%% =====================================================================
+%% Link the value 'ValueName' of this block to the block 'ToBlockName'
+%% =====================================================================
+handle_call({link, ValueName, ToBlockName}, _From, BlockValues) ->
 
+  {Config, Inputs, Outputs, Private} = BlockValues,
+	
+  %% Add the block 'ToBlockName' to the output 'ValueName's list of linked blocks
+  NewOutputs = block_links:add_link(Outputs, ValueName, ToBlockName),
+
+  % Send the current value of this output to the block 'ToBlockName'
+  Value = block_utils:get_value(NewOutputs, ValueName),
+ 
+  {reply, Value, {Config, Inputs, NewOutputs, Private}};
+  
   
 %% =====================================================================
 %% Delete block
@@ -195,7 +210,8 @@ handle_call(stop, _From, BlockValues) ->
   block_common:delete(BlockValues),
   
   {stop, normal, ok, BlockValues};
-	
+    
+  
 %% =====================================================================
 %% Unknown Call message
 %% =====================================================================      
@@ -253,19 +269,9 @@ handle_cast({update, FromBlockName, ValueName, Value}, BlockValues) ->
 	% Update the block input(s), that are linked this value, with the new Value
 	NewInputs = block_links:update_linked_input_values(Inputs, null, FromBlockName, ValueName, Value),
 	
-  % Don't execute block if block is executed via timer or executor execution
-  % Just update the input values and leave it at that
-  TimerRef = block_utils:get_value(Private, timer_ref),
-  {exec_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, exec_in),
-    
-  if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-    NewBlockValues = block_common:execute({Config, NewInputs, Outputs, Private}, 
-                                                input_cos);
-
-  true -> % Block will be executed via timer timeout or linked block execution, just return
-    NewBlockValues = {Config, NewInputs, Outputs, Private}
-  end,
-
+  % Execute the block because input values have changed
+  NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
+ 
 	{noreply, NewBlockValues};
 
 %% =====================================================================
@@ -294,11 +300,14 @@ handle_cast(init_configure, BlockValues) ->
 handle_cast(configure, BlockValues) ->
 
   % Link inputs with links to output values of other blocks
-  {Config, Inputs, _Outputs, _Private} = BlockValues,
+  {Config, Inputs, Outputs, Private} = BlockValues,
   BlockName = block_utils:name(Config),
-  block_links:link_blocks(BlockName, Inputs),
+  NewInputs = block_links:link_blocks(BlockName, Inputs),
   
-  {noreply, BlockValues};
+  % Execute the block because input value(s) may have changed
+  NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
+ 
+  {noreply, NewBlockValues};
 
 
 %% =====================================================================
@@ -317,24 +326,6 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
   configure(BlockName),
   {noreply, NewBlockValues};
 
-
-%% =====================================================================
-%% Link the value 'ValueName' of this block to the block 'ToBlockName'
-%% =====================================================================
-handle_cast({link, ValueName, ToBlockName}, BlockValues) ->
-
-  {Config, Inputs, Outputs, Private} = BlockValues,
-  BlockName = block_utils:name(Config),
-	
-  %% Add the block 'ToBlockName' to the output 'ValueName's list of linked blocks
-  NewOutputs = block_links:add_link(Outputs, ValueName, ToBlockName),
-
-  % Send the current value of this output to the block 'ToBlockName'
-  Value = block_utils:get_value(NewOutputs, ValueName),
-  
-  update(ToBlockName, BlockName, ValueName, Value),
-			
-  {noreply, {Config, Inputs, NewOutputs, Private}};
 
 %% =====================================================================
 %% Unlink the value 'ValueName' of this block to the block 'ToBlockName'
@@ -417,3 +408,27 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%%
+%% Execute block on changed input values, 
+%% This could happen on block configure after inputs are initially linked
+%% or from an update message from a linked block that has executed 
+%%
+-spec update_block(block_state()) -> block_state().
+
+update_block({Config, NewInputs, Outputs, Private}) ->
+  
+  % Don't execute block if block is executed via timer or executor execution
+  % Just update the input values and leave it at that
+  TimerRef = block_utils:get_value(Private, timer_ref),
+  {exec_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, exec_in),
+    
+  if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
+    NewBlockValues = block_common:execute({Config, NewInputs, Outputs, Private}, 
+                                                input_cos);
+
+  true -> % Block will be executed via timer timeout or linked block execution, just return
+    NewBlockValues = {Config, NewInputs, Outputs, Private}
+  end,
+  
+  NewBlockValues.
