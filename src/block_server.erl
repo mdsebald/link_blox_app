@@ -18,7 +18,7 @@
 %% ====================================================================
 -export([create/1, delete/1]). 
 -export([get_value/2, set_value/3, override/2, get_values/1]).
--export([execute/1, timer_execute/1, exec_out_execute/1]).
+-export([execute/1, exec_out_execute/1]).
 -export([update/4, init_configure/1, configure/1, reconfigure/2]).
 -export([link/3, unlink/3]).
 
@@ -61,12 +61,7 @@ link(BlockName, ValueName, ToBlockName) ->
 execute(BlockName) ->
   gen_server:cast(BlockName, execute).
 
-    
-%% Execute the block on timer timeout
-timer_execute(BlockName) ->
-  gen_server:cast(BlockName, timer_execute).
 
-    
 %% This block's 'exec_in' is linked to an 'exec_out' output 
 %% i.e Implement Control Flow
 exec_out_execute(BlockName) ->
@@ -237,16 +232,6 @@ handle_cast(execute, BlockValues) ->
   % Execute the block
   NewBlockValues = block_common:execute(BlockValues, manual),
   {noreply, NewBlockValues};
-    
-%% ====================================================================
-%% Execute the block using the current set of Block values,
-%% This message is used to execute the block on a timer timeout, 
-%% ====================================================================
-handle_cast(timer_execute, BlockValues) ->
-
-  % Execute the block
-  NewBlockValues = block_common:execute(BlockValues, timer),
-  {noreply, NewBlockValues};
 
 
 %% ====================================================================
@@ -359,16 +344,31 @@ handle_cast(Msg, BlockValues) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
-handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
 
-  % GPIO Interupt message from Erlang ALE library, 
-  % Execute the block connected to this interrupt
+
+%% ====================================================================
+%% GPIO Interupt message from Erlang ALE library, 
+%% Execute the block connected to this interrupt
+%% =====================================================================
+
+handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
   % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
   NewBlockValues = block_common:execute(CurrentBlockValues, hardware),
-
   {noreply, NewBlockValues};
 
 
+%% =====================================================================
+%% Timer timeout from erlang:send_after() function
+%% Execute block with timer as the reason
+%% =====================================================================  
+handle_info(timer_execute, CurrentBlockValues) ->
+  NewBlockValues = block_common:execute(CurrentBlockValues, timer),
+  {noreply, NewBlockValues};
+  
+
+%% =====================================================================
+%% Unknown Info message
+%% =====================================================================
 handle_info(Info, State) ->
   error_logger:warning_msg("Unknown info message: ~p~n", [Info]),
   {noreply, State}.
@@ -432,3 +432,4 @@ update_block({Config, NewInputs, Outputs, Private}) ->
   end,
   
   NewBlockValues.
+  

@@ -90,9 +90,6 @@ block_processes() ->
 %% ====================================================================
 init(BlockValuesFile) ->
 
-  % Start up the timer server, for blocks executed on a timer
-	timer:start(),
-
   % Start the UI loop
   spawn(lblx_ui_main, ui_loop, []),
 

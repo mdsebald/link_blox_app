@@ -62,8 +62,7 @@ default_outputs() ->
   block_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {switch, not_active, []},
-      {count, not_active, []}
+      {switch, not_active, []}
     ]). 
 
 %%  

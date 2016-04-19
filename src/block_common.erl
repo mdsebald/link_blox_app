@@ -261,7 +261,7 @@ update_execution_timer(BlockName, Inputs, Private) ->
 
 cancel_timer(BlockName, TimerRef) ->
   if (TimerRef /= empty) ->
-    case timer:cancel(TimerRef) of 
+    case erlang:cancel_timer(TimerRef) of 
       {ok, cancel} -> 
         ok;
 
@@ -281,7 +281,7 @@ cancel_timer(BlockName, TimerRef) ->
                 {normal, term()} | {error_proc, empty}.
 
 set_timer(BlockName, ExecuteInterval) ->
-  case timer:apply_after(ExecuteInterval, block_server, timer_execute, [BlockName]) of
+  case erlang:send_after(ExecuteInterval, BlockName, timer_execute) of
     {ok, TimerRef} -> 
       {normal, TimerRef};
          
@@ -411,7 +411,7 @@ delete(BlockValues) ->
   % Cancel execution timer if it exists
   case block_utils:get_value(Private, timer_ref) of
     empty    -> empty;
-    TimerRef ->  timer:cancel(TimerRef)
+    TimerRef ->  erlang:cancel_timer(TimerRef)
   end,
     
   % Scan this block's inputs, and unlink from other block outputs
