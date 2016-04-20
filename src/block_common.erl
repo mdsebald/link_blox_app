@@ -226,7 +226,7 @@ update_execution_timer(BlockName, Inputs, Private) ->
   TimerRef = block_utils:get_value(Private, timer_ref),
 
   % Cancel block execution timer, if it is set   
-  cancel_timer(BlockName, TimerRef), 
+  cancel_timer(TimerRef), 
     
   % Check validity of ExecuteInterval input value
   if is_integer(ExecuteInterval) ->
@@ -236,7 +236,8 @@ update_execution_timer(BlockName, Inputs, Private) ->
       NewTimerRef = empty;
     true ->
       if (ExecuteInterval > 0) ->
-        {Status, NewTimerRef} = set_timer(BlockName, ExecuteInterval);
+        NewTimerRef = set_timer(BlockName, ExecuteInterval),
+        Status = normal; 
       true -> % Execute Interval input value is negative
         Status = input_err, 
         NewTimerRef = empty,
@@ -256,21 +257,11 @@ update_execution_timer(BlockName, Inputs, Private) ->
 %%
 %% Cancel block execution timer, if the timer is set
 %%
--spec cancel_timer(BlockName :: atom(),
-                   TimerRev :: term()) -> ok | {error, term()}.
+-spec cancel_timer(TimerRef :: reference()) -> integer() | false.
 
-cancel_timer(BlockName, TimerRef) ->
-  if (TimerRef /= empty) ->
-    case erlang:cancel_timer(TimerRef) of 
-      {ok, cancel} -> 
-        ok;
-
-      {error, Reason} ->
-        error_logger:error_msg("~p Error: ~p Canceling execution timer ~p ~n", 
-                                [BlockName, Reason, TimerRef]),
-        error
-    end;
-  true -> ok
+cancel_timer(TimerRef) ->
+  if (TimerRef /= empty) -> erlang:cancel_timer(TimerRef);
+  true -> false
   end.
 
 %%
@@ -278,18 +269,10 @@ cancel_timer(BlockName, TimerRef) ->
 %%
 -spec set_timer(BlockName :: atom(),
                 ExecuteInterval :: integer()) -> 
-                {normal, term()} | {error_proc, empty}.
+                reference().
 
 set_timer(BlockName, ExecuteInterval) ->
-  case erlang:send_after(ExecuteInterval, BlockName, timer_execute) of
-    {ok, TimerRef} -> 
-      {normal, TimerRef};
-         
-    {error, Reason} -> 
-      error_logger:error_msg("~p Error: ~p Setting execution timer ~n",
-                             [BlockName, Reason]),
-      {error_proc, empty}
-  end.
+  erlang:send_after(ExecuteInterval, BlockName, timer_execute).
 
 
 %%

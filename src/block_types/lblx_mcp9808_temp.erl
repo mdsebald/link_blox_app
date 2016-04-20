@@ -21,7 +21,6 @@ type_name() -> "mcp9808_temp".
 
 version() -> "0.1.0".
 
-% INSTRUCTIONS String describing block function
 description() -> "MCP9808 precision temp sensor with I2C interface".
 
 

@@ -203,7 +203,7 @@ execute({Config, Inputs, Outputs, Private}) ->
     Count -> Count  
   end,
  
-  if (not PhaseA) andalso (LastA_Value) ->
+  if (LastA_Value) andalso (not PhaseA) ->
     % A has gone from high to low 
     if PhaseB ->
       % B is high so clockwise (increase count)
