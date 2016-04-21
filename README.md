@@ -1,6 +1,5 @@
 # LinkBlox
 
-# Nerves System BR
 [![Build Status](https://travis-ci.org/mdsebald/LinkBlox.png?branch=master)](https://travis-ci.org/mdsebald/LinkBlox)
 
 #### An application to assist in the programming of inexpensive 
