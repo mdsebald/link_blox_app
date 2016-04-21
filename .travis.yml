@@ -9,7 +9,7 @@ branches:
  - master
 
 before_script:
- - chmod +x relhelper.sh
+- chmod +x relhelper.sh
 
  addons:
   apt:
