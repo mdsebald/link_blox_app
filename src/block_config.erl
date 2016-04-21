@@ -73,7 +73,7 @@
                                  [],
                                  [
                                      {disable, false, ?EMPTY_LINK},
-                                     {input, empty, {null, rotary_encode, value}}
+                                     {segments, empty, {null, rotary_encode, value}}
                                  ]),
                                  
     SegA = lblx_pi_gpio_do:create(seg_a, "LED Segment A",

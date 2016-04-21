@@ -14,7 +14,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([configs/6, inputs/0, outputs/0]).
+-export([configs/4, inputs/0, outputs/0]).
 -export([execute/2, initialize/1, delete/1]).
 
 
@@ -24,30 +24,26 @@
 %%
 -spec configs(Name :: atom(),
               Module :: module(),
-              Comment :: string(),
-              Type :: string(),
               Version :: string(),
               Description :: string()) -> list().
 
-configs(Name, Module, Comment, Type, Version, Description) ->
+configs(Name, Module, Version, Description) ->
   [
     % Block Name, must be unique for all blocks on this node
     {block_name, Name},
 
     % Block module, the block code 
     {block_module, Module},
-
-    % User defined description of this block
-    {comment, Comment},
-
-    % Block type string 
-	  {block_type, Type},
-
-    % Block Version string
+    
+     % Block Version string
 	  {version, Version},
 
-    % Description of this block type
+    % User defined description of this block
     {description, Description}
+
+   
+
+    
   ].
 
 

@@ -32,11 +32,11 @@ description() -> "Rotary encoder with optional switch".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: atom(),
-                      Comment :: string()) -> list().
+                      Description :: string()) -> list().
 
-default_configs(BlockName, Comment) -> 
+default_configs(BlockName, Description) -> 
   block_utils:merge_attribute_lists(
-    block_common:configs(BlockName, ?MODULE, Comment, type_name(), version(), description()), 
+    block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {gpio_pin_phase_A, 21},   % TODO: Final block set to zero
       {gpio_pin_phase_B, 20},
@@ -71,28 +71,28 @@ default_outputs() ->
 %% and to add attributes to the lists of default attributes
 %%
 -spec create(BlockName :: atom(),
-             Comment :: string()) -> block_defn().
+             Description :: string()) -> block_defn().
 
-create(BlockName, Comment) -> 
-  create(BlockName, Comment, [], [], []).
+create(BlockName, Description) -> 
+  create(BlockName, Description, [], [], []).
 
 -spec create(BlockName :: atom(),
-             Comment :: string(),  
+             Description :: string(),  
              InitConfig :: list(), 
              InitInputs :: list()) -> block_defn().
    
-create(BlockName, Comment, InitConfig, InitInputs) -> 
-  create(BlockName, Comment, InitConfig, InitInputs, []).
+create(BlockName, Description, InitConfig, InitInputs) -> 
+  create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: atom(),
-             Comment :: string(), 
+             Description :: string(), 
              InitConfig :: list(), 
              InitInputs :: list(), 
              InitOutputs :: list()) -> block_defn().
 
-create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
+create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Comment), InitConfig),
+  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
   Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
   Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 

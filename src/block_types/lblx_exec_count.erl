@@ -33,11 +33,11 @@ version() -> "0.1.0".
 %% with the common Config, Input, Output, and Private attributes, that all block types have
  
 -spec default_configs(BlockName :: atom(),
-                      Comment :: string()) -> list().
+                      Description :: string()) -> list().
 
-default_configs(BlockName, Comment) -> 
+default_configs(BlockName, Description) -> 
   block_utils:merge_attribute_lists(
-    block_common:configs(BlockName, ?MODULE, Comment, type_name(), version(), description()), 
+    block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {rollover, true} 
     ]).
@@ -69,26 +69,26 @@ default_outputs() ->
 %% and to add attributes to the lists of default attributes
 %%
 -spec create(BlockName :: atom(),
-             Comment :: string()) -> block_defn().
+             Description :: string()) -> block_defn().
 
-create(BlockName, Comment) -> 
-  create(BlockName, Comment, [], [], []).
+create(BlockName, Description) -> 
+  create(BlockName, Description, [], [], []).
 
 -spec create(BlockName :: atom(),
-             Comment :: string(),  
+             Description :: string(),  
              InitConfig :: list(), 
              InitInputs :: list()) -> block_defn().
    
-create(BlockName, Comment, InitConfig, InitInputs) -> 
-  create(BlockName, Comment, InitConfig, InitInputs, []).
+create(BlockName, Description, InitConfig, InitInputs) -> 
+  create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: atom(),
-             Comment :: string(), 
+             Description :: string(), 
              InitConfig :: list(), 
              InitInputs :: list(), 
              InitOutputs :: list()) -> block_defn().
 
-create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
+create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
   %% Update Default Config, Input, Output, and Private attribute values 
   %% with the initial values passed into this function.
@@ -97,7 +97,7 @@ create(BlockName, Comment, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Comment), InitConfig),
+  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
   Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
   Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
