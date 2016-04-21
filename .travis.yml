@@ -11,7 +11,3 @@ branches:
 before_script:
 - chmod +x relhelper.sh
 
-before_install:
-- wget https://s3.amazonaws.com/rebar3/rebar3
-- chmod +x rebar3
-
