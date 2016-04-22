@@ -172,7 +172,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Private4 = Private1
   end,
   
-  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
   
   % This is the block state
   {Config, Inputs, Outputs1, Private4}.
@@ -249,7 +249,7 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
                      PinNumber :: integer()) -> {not_active, proc_error}.
 
 log_gpio_error(Config, Reason, PinNumber) ->
-  BlockName = block_utils:name(Config),
+  BlockName = lblx_configs:name(Config),
   error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", 
                               [BlockName, Reason, PinNumber]),
   

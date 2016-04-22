@@ -37,8 +37,9 @@ default_configs(BlockName, Description) ->
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {num_of_digits, 1},
-      {base, 10},
-      {lead_zeros, false}
+      {number_base, 10},
+      {leading_zeros, false},
+      {unsigned, true}
     ]). 
 
 
@@ -95,8 +96,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %%
   %% If any of the intial attributes do not already exist in the 
   %% default attribute lists, merge_attribute_lists() will create them.
-  %% (This is useful for block types where the number of attributes is not fixed)
-    
+     
   Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
   Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
   Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
@@ -113,15 +113,23 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
  
-  _NumOfDigits = block_utils:get_value(Config, num_of_digits),
-    
-  % Perform block type specific initializations here
-  % Add and intialize private attributes here
-  Outputs1 = Outputs, 
-  Private1 = Private,
+  case lblx_configs:get_integer_range(Config, num_of_digits, 1, 99) of
+    {error, Reason} ->
+      {Value, Status} = lblx_configs:log_error(Config, num_of_digits, Reason)m
+      Outputs2 = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
+
+      
+    {ok, NumOfDigits} ->
+      DecPntInputs = lblx_inputs:create_input_array([], NumOfDigits, dec_pnt, false),
+      Inputs1 = block_utils:merge_attribute_lists(Inputs, DecPntInputs),
+      
+      DigitOutputs = lblx_outputs:create_output_array([], NumOfDigits, digit, not_active),
+      Outputs1 = block_utils:merge_attribute_lists(Outputs, DigitOutputs),
+      Outputs2 = block_utils:set_values(Outputs1, [{value, 0}, {status, normal}])
+  end
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs2, Private}.
 
 
 %%

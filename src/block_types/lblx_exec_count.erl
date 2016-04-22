@@ -118,9 +118,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % We can imediately set the initial block output value, 
   % Otherwise we need to wait for the initial input value to get set, via block execution
   if is_integer(InitialValue) ->
-    Outputs1 = block_utils:set_value_status(Outputs, InitialValue, initialed);
+    Outputs1 = lblx_outputs:set_value_status(Outputs, InitialValue, initialed);
   true ->    
-     Outputs1 = block_utils:set_value_status(Outputs, not_active, initialed)
+     Outputs1 = lblx_outputs:set_value_status(Outputs, not_active, initialed)
   end,
     
   {Config, Inputs, Outputs1, Private}.
@@ -133,62 +133,77 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  Reset = block_utils:get_boolean(Inputs, reset),
-  InitialValue = block_utils:get_integer(Inputs, initial_value),
-  FinalValue = block_utils:get_integer(Inputs, final_value),
-  Rollover = block_utils:get_boolean(Config, rollover),
-    
-  % Check for errors on input/config values
-  if (Reset == error) orelse (InitialValue == error) orelse 
-     (FinalValue == error) orelse (Rollover == error) ->
-    Value = not_active, Status = input_err, Carry = not_active; 
+  case lblx_inputs:get_boolean(Inputs, reset) of
+    {ok, Reset} ->
+      
+      case  lblx_inputs:get_integer(Inputs, initial_value) of
+        {ok, InitialValue} ->
         
-  true -> % input values are normal, continue with block execution
-    
-    % Initial and Final values must be integers, can't be empty or not_active
-    if (not is_integer(InitialValue)) orelse (not is_integer(FinalValue)) ->
-      Value = not_active, Status = no_input, Carry = not_active; 
- 
-    true -> 
-      CurrentValue = block_utils:get_value(Outputs, value),
-      % if Current output value has not been set to a normal integer value yet
-      % set it to the initial value, because we have good initial and final input values at this point    
-      if not is_integer(CurrentValue) ->
-        Value = InitialValue, Status = normal, Carry = false;
+          case lblx_inputs:get_integer(Inputs, final_value) of
+            {ok, FinalValue} ->
+               
+              case lblx_configs:get_boolean(Config, rollover) of
+                {ok, Rollover} ->
+                  % Initial and Final values must be integers, can't be empty or not_active
+                  if (not is_integer(InitialValue)) orelse (not is_integer(FinalValue)) ->
+                    Value = not_active, Status = no_input, Carry = not_active;
+                  true ->
+                    % Input and Config values are good
+                    CurrentValue = block_utils:get_value(Outputs, value),
+                    % if Current output value has not been set 
+                    % to a normal integer value yet,set it to the initial value, 
+                    % because we have good initial and final input values at this point    
+                    if not is_integer(CurrentValue) ->
+                      Value = InitialValue, Status = normal, Carry = false;
+                    true ->
+                      if is_boolean(Reset) andalso Reset ->  
+                        % Reset input is true, set output value to initial value,
+                        Value = InitialValue, Status = normal, Carry = false;
+                      true -> % Reset input is false or missing, 
+                              % increment/decrement counter value output                
+                        if (CurrentValue == FinalValue) ->
+                          if is_boolean(Rollover) andalso Rollover -> 
+                            Value = InitialValue, Status = normal, Carry = true;
 
-      true ->
-        if is_boolean(Reset) andalso Reset ->  
-          % Reset input is true, set output value to initial value,
-          Value = InitialValue, Status = normal, Carry = false;
+                          true -> % Reset input is off and rollover config is off
+                                  % Hold count value output at final value
+                            Value = CurrentValue, Status = normal, Carry = false 
+                          end;
 
-        true -> % Reset input is false or missing, increment/decrement counter value output                
-          if (CurrentValue == FinalValue) ->
-            if is_boolean(Rollover) andalso Rollover -> 
-              Value = InitialValue, Status = normal, Carry = true;
-
-            true -> % Reset input is off and rollover config is off
-              % Hold count value output at final value
-              Value = CurrentValue, Status = normal, Carry = false 
-            end;
-
-          true -> % Count has not reached final value, 
-            % Determine if count should be incremented or decremented
-            if (InitialValue < FinalValue) -> % Count up
-              Value = CurrentValue + 1, Status = normal, Carry = false;
-            true ->
-              if (FinalValue < InitialValue) -> % Count down
-                Value = CurrentValue - 1, Status = normal, Carry = false;
-              true -> % Inital value and final value are equal
-                % Hold count at current value
-                Value = CurrentValue, Status = normal, Carry = false
-              end
-            end
-          end
-        end
-      end
-    end
+                        true -> % Count has not reached final value, 
+                          % Determine if count should be incremented or decremented
+                          if (InitialValue < FinalValue) -> % Count up
+                            Value = CurrentValue + 1, Status = normal, Carry = false;
+                          true ->
+                            if (FinalValue < InitialValue) -> % Count down
+                              Value = CurrentValue - 1, Status = normal, Carry = false;
+                            true -> % Inital value and final value are equal
+                              % Hold count at current value
+                              Value = CurrentValue, Status = normal, Carry = false
+                            end
+                          end
+                        end
+                      end
+                    end    
+                  end; 
+                    
+                {error, Reason} ->
+                  {Value, Status} = lblx_configs:log_error(Config, rollover, Reason),
+                  Carry = not_active
+              end;
+            {error, Reason} ->
+              {Value, Status} = lblx_inputs:log_error(Config, final_value, Reason),
+              Carry = not_active
+          end;
+        {error, Reason} -> 
+          {Value, Status} = lblx_inputs:log_error(Config, initial_value, Reason),
+          Carry = not_active
+      end;
+    {error, Reason} ->
+      {Value, Status} = lblx_inputs:log_error(Config, reset, Reason),
+      Carry = not_active
   end,
-
+  
   % Update outputs        
   Outputs1 = block_utils:set_values(Outputs,
                   [{value, Value}, {status, Status}, {carry, Carry}]),

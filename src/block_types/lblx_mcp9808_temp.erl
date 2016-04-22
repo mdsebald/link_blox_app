@@ -144,7 +144,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Private2 = Private1
   end,	
    
-  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
 
   % This is the block state
   {Config, Inputs, Outputs1, Private2}.
@@ -180,7 +180,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Status = normal
   end,
    
-  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.

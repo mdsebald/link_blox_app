@@ -106,7 +106,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Outputs1 = block_utils:set_value_status(Outputs, not_active, initialed),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, not_active, initialed),
  
   {Config, Inputs, Outputs1, Private}.
 
@@ -126,7 +126,7 @@ execute({Config, Inputs, Outputs, Private}) ->
     _          -> Value = not_active, Status = error
   end,
 	
-  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
      
   {Config, Inputs, Outputs1, Private}.
 

@@ -126,7 +126,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       gpio:set_int(GpioPinRef, both);
 
     {error, ErrorResult} ->
-      BlockName = block_utils:name(Config),
+      BlockName = lblx_configs:name(Config),
       error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", 
                               [BlockName, ErrorResult, PinNumber]),
       Status = process_error,
@@ -134,7 +134,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Private2 = Private1
   end,
     
-  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
 
   {Config, Inputs, Outputs1, Private2}.
   
@@ -150,7 +150,7 @@ execute({Config, Inputs, Outputs, Private}) ->
   GpioPinRef = block_utils:get_value(Private, gpio_pin_ref),
   Value = read_pin_value_bool(GpioPinRef),
 
-  Outputs1 = block_utils:set_value_status(Outputs, Value, normal),
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, normal),
         
   {Config, Inputs, Outputs1, Private}.
 

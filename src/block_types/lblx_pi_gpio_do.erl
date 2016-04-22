@@ -133,7 +133,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Private2 = Private1
     end,	
   
-    Outputs1 = block_utils:set_value_status(Outputs, Value, Status),
+    Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
     
     {Config, Inputs, Outputs1, Private2}.
 
@@ -175,7 +175,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Status = normal;
 
 		Other ->
-      BlockName = block_utils:name(Config),
+      BlockName = lblx_configs:name(Config),
       error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
                              [BlockName, Other]),
 			PinValue = DefaultValue, % TODO: Set pin to default value or input? 
@@ -184,7 +184,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 	end,
   set_pin_value_bool(GpioPin, PinValue, InvertOutput),
  
-  Outputs1 = block_utils:set_value_status(Outputs, Value, Status),     
+  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),     
  
   {Config, Inputs, Outputs1, Private}.
 

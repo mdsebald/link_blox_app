@@ -270,7 +270,7 @@ create_blocks([]) -> ok;
 create_blocks(BlockValuesList) ->
   [BlockValues | RemainingBlockValuesList] = BlockValuesList,
   {Config, _Inputs, _Outputs} = BlockValues,
-  BlockName = block_utils:name(Config),
+  BlockName = lblx_configs:name(Config),
   case block_supervisor:create_block(BlockValues) of
     {ok, _Pid} -> 
       io:format("Block ~p Created~n", [BlockName]);

@@ -129,7 +129,7 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
 	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
 	% TODO: Check for expected term match, before creating child spec 
 	{Config, _Inputs, _Outputs} = BlockValues,
-  BlockName = block_utils:name(Config),
+  BlockName = lblx_configs:name(Config),
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
                         [BlockName, 
                          block_utils:get_value(Config, block_type), 

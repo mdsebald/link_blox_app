@@ -12,104 +12,162 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([get_any_type/2, get_integer/2, get_float/2, get_boolean/2]).
+-export([name/1, module/1, name_module/1]).
+-export([get_any_type/2, get_integer/2, get_integer_range/4]). 
+-export([get_float/2, get_boolean/2]).
 -export([get_value/3]).
 -export([log_error/3]).
 
+%%
+%%  Get block name from Config attribute values
+%%
+-spec name(Config :: list() |
+           block_defn() | 
+           block_state()) -> atom().
+
+name({Config, _Inputs, _Outputs, _Private}) ->
+  block_utils:get_value(Config, block_name);
+  
+name({Config, _Inputs, _Outputs}) ->  
+  block_utils:get_value(Config, block_name);
+  
+name(Config) ->
+  block_utils:get_value(Config, block_name).
+
+  
+%%
+%% Get block module from Config attribute values 
+%%
+-spec module(Config :: list() | 
+             block_defn() | 
+             block_state()) -> module().
+
+module({Config, _Inputs, _Outputs, _Private}) ->
+  block_utils:get_value(Config, block_module);
+  
+module({Config, _Inputs, _Outputs}) ->
+  block_utils:get_value(Config, block_module);
+
+module(Config) ->
+  block_utils:get_value(Config, block_module).
+
 
 %%
-%% Get input value of any type and check for errors.
+%%  Get block name and module from Config attribute values
 %%
--spec get_any_type(Inputs :: list(),
-                   ValueName :: atom()) -> generic_input_value().
+-spec name_module(Config :: list() |
+                  block_defn() | 
+                  block_state()) -> {atom(), module()}.
 
-get_any_type(Inputs, ValueName) ->
+name_module({Config, _Inputs, _Outputs, _Private}) ->
+  {block_utils:get_value(Config, block_name),
+   block_utils:get_value(Config, block_module)};
+  
+name_module({Config, _Inputs, _Outputs}) ->  
+  {block_utils:get_value(Config, block_name),
+   block_utils:get_value(Config, block_module)};
+                     
+name_module(Config) ->
+  {block_utils:get_value(Config, block_name),
+   block_utils:get_value(Config, block_module)}.
+
+
+%%
+%% Get configuration value of any type and check for errors.
+%%
+-spec get_any_type(Config :: list(),
+                   ValueName :: atom()) -> generic_config_value().
+
+get_any_type(Config, ValueName) ->
   % Return true for every value
   CheckType = fun(_Value) -> true end,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Config, ValueName, CheckType).
 
 %%
-%% Get an integer input value and check for errors.
+%% Get an integer configuration value and check for errors.
 %%
--spec get_integer(Inputs :: list(), 
-                  ValueName :: atom()) -> integer_input_value().
+-spec get_integer_range(Config :: list(), 
+                        ValueName :: atom(),
+                        Min :: integer(),
+                        Max :: integer()) -> integer_config_value().
 
-get_integer(Inputs, ValueName) ->
+get_integer_range(Config, ValueName, Min, Max) ->
   CheckType = fun is_integer/1,
-  get_value(Inputs, ValueName, CheckType).
+  case get_value(Config, ValueName, CheckType) of
+    {error, Reason} -> 
+      {error, Reason};
+    {ok, Value} ->
+      if (Value < Min ) orelse (Max < Value) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
+       
+
+-spec get_integer(Config :: list(), 
+                  ValueName :: atom()) -> integer_config_value().
+
+get_integer(Config, ValueName) ->
+  CheckType = fun is_integer/1,
+  get_value(Config, ValueName, CheckType).
 
 
 %%
-%% Get a floating point input value and check for errors.
+%% Get a floating point configuration value and check for errors.
 %%
--spec get_float(Inputs :: list(), 
-                ValueName :: atom()) -> float_input_value().
+-spec get_float(Config :: list(), 
+                ValueName :: atom()) -> float_config_value().
 
-get_float(Inputs, ValueName) ->
+get_float(Config, ValueName) ->
   CheckType = fun is_float/1,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Config, ValueName, CheckType).
   
   
 %%
-%% Get a boolean input value and check for errors
+%% Get a boolean configuration value and check for errors
 %%
--spec get_boolean(Inputs :: list(), 
-                  ValueName :: atom()) -> boolean_input_value().
+-spec get_boolean(Config :: list(), 
+                  ValueName :: atom()) -> boolean_config_value().
 
-get_boolean(Inputs, ValueName) ->
+get_boolean(Config, ValueName) ->
   CheckType = fun is_boolean/1,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Config, ValueName, CheckType).
 
 
 %%
-%% Generic get input value, check for errors.
+%% Generic get configuration value, check for errors.
 %%
--spec get_value(Inputs :: list(),
+-spec get_value(Config :: list(),
                 ValueName :: atom(),
                 CheckType :: fun()) -> term().
                 
-get_value(Inputs, ValueName, CheckType) ->
-  case block_utils:get_attribute(Inputs, ValueName) of
+get_value(Config, ValueName, CheckType) ->
+  case block_utils:get_attribute(Config, ValueName) of
     not_found  -> {error, not_found};
     
-    {ValueName, Value, Link} ->
-      case Value of
-        % not_active is a valid value
-        not_active -> {ok, not_active};
-        
-        empty ->   
-          case Link of
-            % if the input value is empty and the link is empty
-            % treat this like a not_active value
-            ?EMPTY_LINK -> {ok, not_active};
-            % input is linked to another block but value is empty,
-            % this is an error
-            _ -> {error, bad_link}
-          end;
-        
-        Value ->
-          case CheckType(Value) of
-            true  -> {ok, Value};
-            false -> {error, bad_type}
-          end   
+    {ValueName, Value} ->
+      case CheckType(Value) of
+        true  -> {ok, Value};
+        false -> {error, bad_type}   
       end;
-    % Attribute value was not an input value  
-    _ -> {error, not_input}    
+    % Attribute value was not a config value  
+    _ -> {error, not_config}
   end.
 
 
 %%
-%% Log input value error
+%% Log config value error
 %%
 -spec log_error(Config :: list(),
                 ValueName :: atom(),
-                Reason :: atom()) -> ok.
+                Reason :: atom()) -> {not_active, config_err}.
                   
 log_error(Config, ValueName, Reason) ->
-  BlockName = block_utils:name(Config),
-  error_logger:error_msg("~p Invalid '~p' input value: ~p~n", 
+  BlockName = lblx_configs:name(Config),
+  error_logger:error_msg("~p Invalid '~p' config value: ~p~n", 
                             [BlockName, ValueName, Reason]),
-  ok.
+  {not_active, config_err}.
   
   
 %% ====================================================================
@@ -125,18 +183,18 @@ log_error(Config, ValueName, Reason) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Test input value list
-test_inputs() ->
-  [ {float_good, 123.45, {null, block1, value}},
-    {float_bad, xyz, ?EMPTY_LINK}
-    {integer_good, 12345, {null, block2, value}},
-    {integer_bad, "bad", ?EMPTY_LINK},
-    {boolean_good, true, ?EMPTY_LINK},
-    {boolean_bad, 0.0, ?EMPTY_LINK},
-    {not_active_good, not_active, ?EMPTY_LINK},
-    {empty_good, empty, ?EMPTY_LINK},
+% Test configuration value list
+test_configs() ->
+  [ {float_good, 123.45},
+    {float_bad, xyz}
+    {integer_good, 12345},
+    {integer_bad, "bad"},
+    {boolean_good, true},
+    {boolean_bad, 0.0},
+    {not_active_good, not_active},
+    {empty_good, empty},
     {empty_bad, empty, {knot, empty, link}},
-    {not_input, 123, [test1,test2]}
+    {not_config, 123, [test1,test2]}
   ].
   
   

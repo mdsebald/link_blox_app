@@ -77,7 +77,7 @@
 %% Define block input value types
 %%
 
--type input_errors() :: {error, not_found} | {error, bad_link} | 
+-type input_errors() :: {error, not_found} | {error, bad_link} | {error, range} |
                         {error, bad_type} | {error, not_input}.
                           
 -type generic_input_value() :: {ok, term()} | {ok, not_active} | input_errors().
@@ -87,4 +87,21 @@
 -type float_input_value() :: {ok, float()} | {ok, not_active} | input_errors().
 
 -type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
+
+
+
+%%
+%% Define block configuration value types
+%%
+       
+-type config_errors() :: {error, not_found} | {error, range} |
+                         {error, bad_type} | {error, not_config}.
+                                           
+-type generic_config_value() :: {ok, term()} | {ok, not_active} | config_errors().
+
+-type integer_config_value() :: {ok, integer()} | {ok, not_active} | config_errors().
+
+-type float_config_value() :: {ok, float()} | {ok, not_active} | config_errors().
+
+-type boolean_config_value() :: {ok, boolean()} | {ok, not_active} | config_errors().
 
