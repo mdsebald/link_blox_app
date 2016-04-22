@@ -115,7 +115,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
  
   case lblx_configs:get_integer_range(Config, num_of_digits, 1, 99) of
     {error, Reason} ->
-      {Value, Status} = lblx_configs:log_error(Config, num_of_digits, Reason)m
+      Inputs1 = Inputs,
+      {Value, Status} = lblx_configs:log_error(Config, num_of_digits, Reason),
       Outputs2 = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
 
       
@@ -126,10 +127,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
       DigitOutputs = lblx_outputs:create_output_array([], NumOfDigits, digit, not_active),
       Outputs1 = block_utils:merge_attribute_lists(Outputs, DigitOutputs),
       Outputs2 = block_utils:set_values(Outputs1, [{value, 0}, {status, normal}])
-  end
+  end,
 
   % This is the block state
-  {Config, Inputs, Outputs2, Private}.
+  {Config, Inputs1, Outputs2, Private}.
 
 
 %%
