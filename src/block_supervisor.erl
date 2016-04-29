@@ -91,7 +91,7 @@ block_processes() ->
 init(BlockValuesFile) ->
 
   % Start the UI loop
-  spawn(lblx_ui_main, ui_loop, []),
+  spawn(ui_main, ui_loop, []),
 
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
@@ -107,8 +107,8 @@ init(BlockValuesFile) ->
       
       BlockSpecs = create_block_specs(block_config:create_demo_config()),
             
-      % UiSpec = #{id => lblx_ui_main, restart => transient,
-      %       start => {lblx_ui_main, ui_loop, []}},
+      % UiSpec = #{id => ui_main, restart => transient,
+      %       start => {ui_main, ui_loop, []}},
                    
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
             
@@ -129,7 +129,7 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
 	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
 	% TODO: Check for expected term match, before creating child spec 
 	{Config, _Inputs, _Outputs} = BlockValues,
-  BlockName = lblx_configs:name(Config),
+  BlockName = config_utils:name(Config),
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
                         [BlockName, 
                          block_utils:get_value(Config, block_type), 

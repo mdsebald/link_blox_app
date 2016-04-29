@@ -9,7 +9,7 @@
 %%%              
 %%% @end 
 
--module(lblx_exec_count).
+-module(type_exec_count).
 
 -author("Mark Sebald").
 
@@ -118,9 +118,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % We can imediately set the initial block output value, 
   % Otherwise we need to wait for the initial input value to get set, via block execution
   if is_integer(InitialValue) ->
-    Outputs1 = lblx_outputs:set_value_status(Outputs, InitialValue, initialed);
+    Outputs1 = output_utils:set_value_status(Outputs, InitialValue, initialed);
   true ->    
-     Outputs1 = lblx_outputs:set_value_status(Outputs, not_active, initialed)
+     Outputs1 = output_utils:set_value_status(Outputs, not_active, initialed)
   end,
     
   {Config, Inputs, Outputs1, Private}.
@@ -133,16 +133,16 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  case lblx_inputs:get_boolean(Inputs, reset) of
+  case input_utils:get_boolean(Inputs, reset) of
     {ok, Reset} ->
       
-      case  lblx_inputs:get_integer(Inputs, initial_value) of
+      case  input_utils:get_integer(Inputs, initial_value) of
         {ok, InitialValue} ->
         
-          case lblx_inputs:get_integer(Inputs, final_value) of
+          case input_utils:get_integer(Inputs, final_value) of
             {ok, FinalValue} ->
                
-              case lblx_configs:get_boolean(Config, rollover) of
+              case config_utils:get_boolean(Config, rollover) of
                 {ok, Rollover} ->
                   % Initial and Final values must be integers, can't be empty or not_active
                   if (not is_integer(InitialValue)) orelse (not is_integer(FinalValue)) ->
@@ -188,19 +188,19 @@ execute({Config, Inputs, Outputs, Private}) ->
                   end; 
                     
                 {error, Reason} ->
-                  {Value, Status} = lblx_configs:log_error(Config, rollover, Reason),
+                  {Value, Status} = config_utils:log_error(Config, rollover, Reason),
                   Carry = not_active
               end;
             {error, Reason} ->
-              {Value, Status} = lblx_inputs:log_error(Config, final_value, Reason),
+              {Value, Status} = input_utils:log_error(Config, final_value, Reason),
               Carry = not_active
           end;
         {error, Reason} -> 
-          {Value, Status} = lblx_inputs:log_error(Config, initial_value, Reason),
+          {Value, Status} = input_utils:log_error(Config, initial_value, Reason),
           Carry = not_active
       end;
     {error, Reason} ->
-      {Value, Status} = lblx_inputs:log_error(Config, reset, Reason),
+      {Value, Status} = input_utils:log_error(Config, reset, Reason),
       Carry = not_active
   end,
   

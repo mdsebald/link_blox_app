@@ -120,7 +120,7 @@ outputs() ->
 
 initialize({Config, Inputs, Outputs}) ->
 
-  {BlockName, BlockModule} = lblx_configs:name_module(Config),
+  {BlockName, BlockModule} = config_utils:name_module(Config),
  
   % Initialize the private attributes values list here.
   % Timer reference attribute is common to all block types
@@ -143,7 +143,7 @@ execute(BlockValues, ExecMethod) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
   
-  {BlockName, BlockModule} = lblx_configs:name_module(Config),
+  {BlockName, BlockModule} = config_utils:name_module(Config),
     
   Disable = block_utils:get_value(Inputs, disable),
   case check_boolean_input(Disable) of
@@ -156,7 +156,7 @@ execute(BlockValues, ExecMethod) ->
                     
         active -> % Block is frozen
           % Just update the status output, all other outputs are frozen
-          OutputsY = lblx_outputs:set_status(Outputs, frozen),
+          OutputsY = output_utils:set_status(Outputs, frozen),
           % Nothing to update in private values
           PrivateX = Private;
                     
@@ -385,7 +385,7 @@ execute_out([BlockName | RemainingBlockNames]) ->
 delete(BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
   
-  {BlockName, BlockModule} = lblx_configs:name_module(Config),
+  {BlockName, BlockModule} = config_utils:name_module(Config),
 
   % Cancel execution timer if it exists
   case block_utils:get_value(Private, timer_ref) of
@@ -394,7 +394,7 @@ delete(BlockValues) ->
   end,
     
   % Scan this block's inputs, and unlink from other block outputs
-  block_links:unlink_blocks(BlockName, Inputs),
+  link_utils:unlink_blocks(BlockName, Inputs),
   
   % Set all output values of this block, including status, to 'empty'
   EmptyOutputs = update_all_outputs(Outputs, empty, empty),

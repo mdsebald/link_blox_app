@@ -10,7 +10,7 @@
 %%%               
 %%% @end 
 
--module(lblx_one_digit_7seg). 
+-module(type_one_digit_7seg). 
 
 -author("Mark Sebald").
 
@@ -139,12 +139,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  case lblx_inputs:get_boolean(Inputs, display_on) of
+  case input_utils:get_boolean(Inputs, display_on) of
     {error, Reason} ->
       Value = not_active, Status = input_err,
       SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
       SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
-      lblx_inputs:log_error(Config, display_on, Reason);
+      input_utils:log_error(Config, display_on, Reason);
       
     {ok, DisplayState} ->
       case DisplayState of
@@ -154,12 +154,12 @@ execute({Config, Inputs, Outputs, Private}) ->
           SegE = false, SegF = false, SegG = false, SegDp = false;
             
         true -> % Display is on  
-          case lblx_inputs:get_integer(Inputs, segments) of
+          case input_utils:get_integer(Inputs, segments) of
             {error, Reason} ->
               Value = not_active, Status = input_err,
               SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
               SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
-               lblx_inputs:log_error(Config, segments, Reason);
+               input_utils:log_error(Config, segments, Reason);
 
             {ok, Segments} ->
               case Segments of 

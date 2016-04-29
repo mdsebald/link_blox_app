@@ -3,7 +3,7 @@
 %%%               
 %%% @end 
 
--module(lblx_configs).
+-module(config_utils).
 
 -author("Mark Sebald").
 
@@ -164,7 +164,7 @@ get_value(Config, ValueName, CheckType) ->
                 Reason :: atom()) -> {not_active, config_err}.
                   
 log_error(Config, ValueName, Reason) ->
-  BlockName = lblx_configs:name(Config),
+  BlockName = name(Config),
   error_logger:error_msg("~p Invalid '~p' config value: ~p~n", 
                             [BlockName, ValueName, Reason]),
   {not_active, config_err}.

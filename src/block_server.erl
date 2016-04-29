@@ -24,7 +24,7 @@
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
-  BlockName = lblx_configs:name(BlockValues),
+  BlockName = config_utils:name(BlockValues),
   gen_server:start_link({local, BlockName}, ?MODULE, BlockValues, []).
 
 
@@ -118,7 +118,7 @@ unlink(BlockName, ValueName, ToBlockName) ->
 	Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(BlockValues) ->
-  BlockName = lblx_configs:name(BlockValues),
+  BlockName = config_utils:name(BlockValues),
 
   error_logger:info_msg("Initializing: ~p~n", [BlockName]),
 
@@ -185,7 +185,7 @@ handle_call({link, ValueName, ToBlockName}, _From, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
   %% Add the block 'ToBlockName' to the output 'ValueName's list of linked blocks
-  NewOutputs = block_links:add_link(Outputs, ValueName, ToBlockName),
+  NewOutputs = link_utils:add_link(Outputs, ValueName, ToBlockName),
 
   % Send the current value of this output to the block 'ToBlockName'
   Value = block_utils:get_value(NewOutputs, ValueName),
@@ -198,7 +198,7 @@ handle_call({link, ValueName, ToBlockName}, _From, BlockValues) ->
 %% =====================================================================    
 handle_call(stop, _From, BlockValues) ->
 
-  BlockName = lblx_configs:name(BlockValues),    
+  BlockName = config_utils:name(BlockValues),    
   error_logger:info_msg("Deleting: ~p~n", [BlockName]),
     
   % Perform common block delete actions
@@ -252,7 +252,7 @@ handle_cast({update, FromBlockName, ValueName, Value}, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
-	NewInputs = block_links:update_linked_input_values(Inputs, null, FromBlockName, ValueName, Value),
+	NewInputs = link_utils:update_linked_input_values(Inputs, null, FromBlockName, ValueName, Value),
 	
   % Execute the block because input values have changed
   NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
@@ -286,8 +286,8 @@ handle_cast(configure, BlockValues) ->
 
   % Link inputs with links to output values of other blocks
   {Config, Inputs, Outputs, Private} = BlockValues,
-  BlockName = lblx_configs:name(Config),
-  NewInputs = block_links:link_blocks(BlockName, Inputs),
+  BlockName = config_utils:name(Config),
+  NewInputs = link_utils:link_blocks(BlockName, Inputs),
   
   % Execute the block because input value(s) may have changed
   NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
@@ -302,7 +302,7 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
   % TODO: Sanity check make sure new block name, type and version 
   % match old block name, type and version/(same major rev)
   {Config, _Inputs, _Outputs, _Private} = BlockValues,
-  BlockName = lblx_configs:name(Config), 
+  BlockName = config_utils:name(Config), 
   error_logger:info_msg("~p: Reconfiguring block~n", [BlockName]),
 
   % Replace current state Block values with new values and configure block again
@@ -320,7 +320,7 @@ handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
   %% remove the block 'ToBlockName' from the output 'ValueName's list of linked blocks
-  NewOutputs = block_links:delete_link(Outputs, ValueName, ToBlockName),
+  NewOutputs = link_utils:delete_link(Outputs, ValueName, ToBlockName),
 
   {noreply, {Config, Inputs, NewOutputs, Private}};
 
@@ -387,7 +387,7 @@ terminate(normal, _BlockValues) ->
   ok;
     
 terminate(Reason, BlockValues) ->
-  BlockName = lblx_configs:name(BlockValues),
+  BlockName = config_utils:name(BlockValues),
 
   error_logger:error_msg("Abnormal Termination: ~p  Reason: ~p~n", [BlockName, Reason]),
   ok.

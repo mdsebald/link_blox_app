@@ -6,7 +6,7 @@
 %%%               
 %%% @end 
 
--module(lblx_int_to_7seg). 
+-module(type_int_to_7seg). 
 
 -author("Mark Sebald").
 
@@ -50,7 +50,7 @@ default_inputs() ->
     block_common:inputs(),
     [
       {input, empty, ?EMPTY_LINK},
-      {dp_01, false, ?EMPTY_LINK}
+      {dec_pnt, [{false, ?EMPTY_LINK}]}  % Array attribute
     ]). 
 
 
@@ -60,8 +60,8 @@ default_outputs() ->
   block_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digit_01, not_active, []}
-    ]). 
+      {digit, [{not_active, []}]}  % Array attribute 
+    ]).
 
 
 %%  
@@ -113,24 +113,27 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
  
-  case lblx_configs:get_integer_range(Config, num_of_digits, 1, 99) of
+  case config_utils:get_integer_range(Config, num_of_digits, 1, 99) of
     {error, Reason} ->
       Inputs1 = Inputs,
-      {Value, Status} = lblx_configs:log_error(Config, num_of_digits, Reason),
-      Outputs2 = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
-
+      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason),
+      Outputs2 = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
+      Private1 = Private;
       
     {ok, NumOfDigits} ->
-      DecPntInputs = lblx_inputs:create_input_array([], NumOfDigits, dec_pnt, false),
+      {DecPntInputs, DecPntNames} = 
+        block_utils:create_attribute_array(NumOfDigits, {dec_pnt, false, ?EMPTY_LINK}),
       Inputs1 = block_utils:merge_attribute_lists(Inputs, DecPntInputs),
+      Private1 = block_utils:add_attribute(Private, {dec_pnt, DecPntNames}),
       
-      DigitOutputs = lblx_outputs:create_output_array([], NumOfDigits, digit, not_active),
+      DigitOutputs = 
+        block_utils:create_attribute_array(NumOfDigits, {digit, not_active, []}),
       Outputs1 = block_utils:merge_attribute_lists(Outputs, DigitOutputs),
       Outputs2 = block_utils:set_values(Outputs1, [{value, 0}, {status, normal}])
   end,
 
   % This is the block state
-  {Config, Inputs1, Outputs2, Private}.
+  {Config, Inputs1, Outputs2, Private1}.
 
 
 %%
@@ -140,10 +143,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  case lblx_inputs:get_float(Inputs, input) of
+  case input_utils:get_integer(Inputs, input) of
     {error, Reason} ->
-      lblx_inputs:log_error(Config, input, Reason),
-      Value = not_active, Status = input_err,
+      {Value, Status} = input_utils:log_error(Config, input, Reason),
+      
       Digit1 = not_active,
       Digit2 = not_active,
       Digit3 = not_active,

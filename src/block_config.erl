@@ -20,20 +20,20 @@
  
  
  create_demo_config() ->
-    RotEncoder = lblx_rotary_encoder:create(rotary_encode, "Rotary Encoder with Switch",
+    RotEncoder = type_rotary_encoder:create(rotary_encode, "Rotary Encoder with Switch",
                                 [],
                                  [
                                      {disable, false, ?EMPTY_LINK}
                                  ]),
                                  
-    SegDecoder = lblx_seven_seg_decoder:create(seg_decode, "Decode Temp to 4 Digits / 7 Segments",
+    SegDecoder = type_seven_seg_decoder:create(seg_decode, "Decode Temp to 4 Digits / 7 Segments",
                                  [],
                                  [
                                      {disable, false, ?EMPTY_LINK},
                                      {input, empty, {null, room_temp, value}}
                                  ]),
                                  
-    LedDisp = lblx_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
+    LedDisp = type_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
                                  [],
                                  [
                                      {disable, false, ?EMPTY_LINK},
@@ -44,14 +44,14 @@
                                      {colon, false, ?EMPTY_LINK}
                                  ]),
                                  
-    RmTemp = lblx_mcp9808_temp:create(room_temp, "Room Temp Sensor",
+    RmTemp = type_mcp9808_temp:create(room_temp, "Room Temp Sensor",
                                  [],
                                  [
                                      {disable, false, ?EMPTY_LINK},
                                      {exec_interval, 1000, ?EMPTY_LINK}
                                  ]),
                                  
-    PbSwitch = lblx_pi_gpio_di:create(switch_27, "Reset Counter",
+    PbSwitch = type_pi_gpio_di:create(switch_27, "Reset Counter",
                                  [
                                      {gpio_pin, 27}
                                  ], 
@@ -59,7 +59,7 @@
                                      {disable, false, ?EMPTY_LINK}
                                  ]),
 
-    Counter = lblx_exec_count:create(counter, "Count to 9 and rollover",
+    Counter = type_exec_count:create(counter, "Count to 9 and rollover",
                                  [
                                     
                                  ],
@@ -69,50 +69,50 @@
                                      {exec_interval, 1000, ?EMPTY_LINK}
                                  ]),
  
-    Display = lblx_one_digit_7seg:create(display, "Decode count to seven-segments",
+    Display = type_one_digit_7seg:create(display, "Decode count to seven-segments",
                                  [],
                                  [
                                      {disable, false, ?EMPTY_LINK},
                                      {segments, empty, {null, rotary_encode, value}}
                                  ]),
                                  
-    SegA = lblx_pi_gpio_do:create(seg_a, "LED Segment A",
+    SegA = type_pi_gpio_do:create(seg_a, "LED Segment A",
                                  [{gpio_pin, 23}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_a}}]
                                 ),
 
-    SegB = lblx_pi_gpio_do:create(seg_b, "LED Segment B",
+    SegB = type_pi_gpio_do:create(seg_b, "LED Segment B",
                                  [{gpio_pin, 24}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_b}}]
                                 ),
 
-    SegC = lblx_pi_gpio_do:create(seg_c, "LED Segment C",
+    SegC = type_pi_gpio_do:create(seg_c, "LED Segment C",
                                  [{gpio_pin, 25}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_c}}]
                                 ),
 
-    SegD = lblx_pi_gpio_do:create(seg_d, "LED Segment D",
+    SegD = type_pi_gpio_do:create(seg_d, "LED Segment D",
                                  [{gpio_pin, 26}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_d}}]
                                 ),
 
-    SegE = lblx_pi_gpio_do:create(seg_e, "LED Segment E",
+    SegE = type_pi_gpio_do:create(seg_e, "LED Segment E",
                                  [{gpio_pin, 16}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_e}}]
                                 ),
         
-    SegF = lblx_pi_gpio_do:create(seg_f, "LED Segment F",
+    SegF = type_pi_gpio_do:create(seg_f, "LED Segment F",
                                  [{gpio_pin, 22}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_f}}]
                                 ),
         
-    SegG = lblx_pi_gpio_do:create(seg_g, "LED Segment G",
+    SegG = type_pi_gpio_do:create(seg_g, "LED Segment G",
                                  [{gpio_pin, 17}, {invert_output, false}], 
                                  [{disable, false, ?EMPTY_LINK},
                                   {input, empty, {null, display, seg_g}}]

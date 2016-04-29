@@ -1,14 +1,21 @@
+% INSTRUCTIONS: Copy this module and modify as appropriate 
+%               for the function this block will perform.
+%               Comments marked "INSTRUCTIONS:" may be deleted 
+
 %%% @doc 
-%%% Block Type: Toggle Output
-%%% Description: Toggle binary output value each time block is executed  
+%%% Block Type:  
+%%% Description:   
 %%%               
 %%% @end 
 
--module(lblx_toggle).
+-module(type_template).  % INSTRUCTIONS: Modify to match new module name
+                         % INSTRUCTIONS: Add module name to the list of 
+                         %  block module names in the block_types module
 
--author("Mark Sebald").
+-author("Your Name").
 
--include("../block_state.hrl").
+ % INSTRUCTIONS: Adjust path to hrl file as needed
+-include("../block_state.hrl"). 
 
 %% ====================================================================
 %% API functions
@@ -17,11 +24,18 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "toggle".
+% INSTRUCTIONS: String naming the block type. 
+%   Usually the module name minus "type_"
+type_name() -> "template".
 
-description() -> "Toggle binary output value on block execution".
+% INSTRUCTIONS: Major.Minor.Patch, 
+%   Major version change implies a breaking change, 
+%   i.e. Block module code is not compatible with a 
+%   block definition created with block code with a different major revison 
+version() -> "0.1.0".
 
-version() -> "0.1.0". 
+% INSTRUCTIONS String describing block function
+description() -> "Short description of block function".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -34,7 +48,10 @@ default_configs(BlockName, Description) ->
   block_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-
+      % INTRUCTIONS: Insert block type specific config attribute tuples here
+      % Config attribute tuples consist of a value name and a value
+      % Example: {gpio_pin, 0}
+      % Config values are set once on block creation and never modified.                   
     ]). 
 
 
@@ -44,7 +61,10 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-
+      % INTRUCTIONS: Insert block type specific input attribute tuples here
+      % Input attribute tuples consist of a value name, a value, and a link
+      % Example: {hi_limit, 100, ?EMPTY_LINK}
+      % Inputs may be fixed values, or linked to a block output value 
     ]). 
 
 
@@ -54,7 +74,11 @@ default_outputs() ->
   block_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
+      % INTRUCTIONS: Insert block type specific output attribute tuples here
+      % Output attribute tuples consist of a value name, a calculated value, 
+      % and a list of blocks that reference (have links to) this output value
+      % Output values are always set to 'not_actve' and empty reference list on creation
+      % Example: {dwell, not_active, []}
     ]). 
 
 %%  
@@ -99,17 +123,20 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   {Config, Inputs, Outputs}.
 
 %%
-%% Initialize block values before starting execution
+%% Initialize block values
 %% Perform any setup here as needed before starting execution
 %%
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
+    
+  % Perform block type specific initializations here
+  % Add and intialize private attributes here
+  Outputs1 = Outputs,
+  Private1 = Private,
 
-  Outputs1 = lblx_outputs:set_value_status(Outputs, not_active, initialed),
- 
-  {Config, Inputs, Outputs1, Private}.
-
+  % This is the block state
+  {Config, Inputs, Outputs1, Private1}.
 
 %%
 %%  Execute the block specific functionality
@@ -118,17 +145,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % Toggle output everytime block is executed
-  case block_utils:get_value(Outputs, value) of
-    true       -> Value = false,      Status = normal;
-    false      -> Value = true,       Status = normal;
-    not_active -> Value = true,       Status = normal;
-    _          -> Value = not_active, Status = error
-  end,
-	
-  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
-     
-  {Config, Inputs, Outputs1, Private}.
+  % INSTRUCTIONS: Perform block type specific actions here, 
+  % read input value(s) calculate new outut value(s)
+  % set block output status value
+  Outputs1 = Outputs,
+  Private1 = Private,
+
+  % Return updated block state
+  {Config, Inputs, Outputs1, Private1}.
 
 
 %% 
@@ -136,10 +160,13 @@ execute({Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(block_state()) -> ok.
 
-delete({_Config, _Inputs, _Outputs, _Private}) ->
-    ok.
+delete({_Config, _Inputs, _Outputs, _Private}) -> 
+  % INSTRUCTIONS: Perform any block type specific delete functionality here
+  ok.
+
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+

@@ -4,7 +4,7 @@
 %%% @end
 %%%
 
--module(lblx_ui_main).
+-module(ui_main).
 
 -author("Mark Sebald").
 
@@ -70,7 +70,7 @@ ui_create_block(Params) ->
       BlockName = list_to_atom(BlockNameStr),
       case is_block_type(BlockTypeStr) of
         true ->
-          BlockModule = lblx_types:block_type_to_module(BlockTypeStr), 
+          BlockModule = block_types:block_type_to_module(BlockTypeStr), 
           case is_block_name(BlockName) of
             false ->
               % TODO: Add a parameter for the block comment
@@ -270,7 +270,7 @@ create_blocks([]) -> ok;
 create_blocks(BlockValuesList) ->
   [BlockValues | RemainingBlockValuesList] = BlockValuesList,
   {Config, _Inputs, _Outputs} = BlockValues,
-  BlockName = lblx_configs:name(Config),
+  BlockName = config_utils:name(Config),
   case block_supervisor:create_block(BlockValues) of
     {ok, _Pid} -> 
       io:format("Block ~p Created~n", [BlockName]);
@@ -365,7 +365,8 @@ block_status([]) ->
   ok;
 
 block_status([BlockName | RemainingBlockNames]) ->
-  BlockType = block_server:get_value(BlockName, block_type),
+  BlockModule = block_server:get_value(BlockName, block_module),
+  BlockType = BlockModule:type_name(),  % TODO: Get via message to block server?
   Value = block_server:get_value(BlockName, value),
   Status = block_server:get_value(BlockName, status),
   ExecMethod = block_server:get_value(BlockName, exec_method),
@@ -415,7 +416,7 @@ is_block_name(BlockName) ->
 
 % Is block type an existing block type
 is_block_type(BlockTypeStr) -> 
-  lists:member(BlockTypeStr, lblx_types:block_type_names()).
+  lists:member(BlockTypeStr, block_types:block_type_names()).
 
 
 %%
@@ -437,7 +438,7 @@ block_values(BlockNames, BlockValuesList) ->
 %% Get list of the block type names and versions
 %%
 ui_block_types(_Params) ->
-  BlockTypes = lblx_types:block_types_info(),
+  BlockTypes = block_types:block_types_info(),
    
   % Print the list of type names version
   io:fwrite("~n~-16s ~-8s ~-60s~n", 

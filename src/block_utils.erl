@@ -16,7 +16,8 @@
 -export([set_value/3, set_values/2]). 
 -export([set_value_any/3, set_input_link/3]).
 -export([update_attribute_list/2, merge_attribute_lists/2]).
--export([replace_attribute/3, add_attribute/2]).
+-export([replace_attribute/3, add_attribute/2, create_attribute_array/2]).
+-export([resize_attribute_array_value/4]).
 -export([sleep/1]). 
 
 
@@ -143,7 +144,7 @@ set_value_any(BlockValues, ValueName, NewValue)->
         not_found ->					
           case get_attribute(Private, ValueName) of
             not_found ->
-              BlockName = lblx_configs:name(Config),
+              BlockName = config_utils:name(Config),
               error_logger:error_msg("~p set_value() Error. ~p not found in the BlockValues list~n", 
                               [BlockName, ValueName]),
               BlockValues;  % Return Block values unchanged
@@ -178,7 +179,7 @@ set_input_link(BlockValues, ValueName, NewLink) ->
 
   case get_attribute(Inputs, ValueName) of
     not_found ->
-      BlockName = lblx_configs:name(Config),
+      BlockName = config_utils:name(Config),
       error_logger:error_msg("~p set_input_link() Error.  ~p not found in Input values.~n", 
                              [BlockName, ValueName]),
       % Input value not found, just return the BlockValues unchanged
@@ -249,6 +250,118 @@ replace_attribute(Attributes, ValueName, NewAttribute) ->
 add_attribute(Attributes, Newattribute) ->
   Attributes ++ [Newattribute].
 
+
+%%
+%% Resize the ValueArrayName array of attribute values in the Attributes list. 
+%% If there are fewer values in the array than the target quantity,
+%% add values to the array using the DefaultValue
+%% If there are more values in the array than the target Quantity,
+%% delete the excess values, deleting references to these if needed
+%% The Attributes list may be Config, Inputs, Outputs, or Private type
+%% Returns updated attribute list, or error
+%%
+-spec resize_attribute_value_array(Attributes :: list(),
+                                   TargQuant :: integer(),
+                                   ValueArrayName :: atom(),
+                                   DefaultValue :: term()) -> 
+                                   {ok, list()} | {error, atom()}.
+                             
+resize_attribute_value_array(Attributes, TargQuant, ValueArrayName, DefaultValue)->
+  case get_attribute(Attributes, ValueArrayName) of
+    not_found ->
+      {error, not_found};
+      
+    {ValueArrayName, ValuesArray} ->
+      NewValuesArray = 
+          resize_array_value(ValuesArray, TargQuant, DefaultValue),
+      NewAttributes = 
+          replace_attribute(Attributes, ValueArrayName, 
+                            {ValueArrayName, NewValuesArray}),
+      {ok, NewAttributes}
+  end.
+
+
+%%
+%% Resize the array of values to match the target quantity.
+%% Always add to or delete from the end of the array.
+%% There will always be at least one value in the array. 
+%%  
+-spec resize_array_value(ValuesArray :: list(),
+                         TargQuant :: integer(),
+                         DefaultValue :: term()) -> list().
+                                     
+resize_value_array(ValuesArray, TargQuant, DefaultValue)->
+  ValuesQuant = length(ValuesArray),
+  if ValuesQuant =:= TargQuant ->
+    % quantity of Values in array matches target, nothing to do 
+    ValuesArray;
+  true ->
+    if ValuesQuant < TargQuant ->
+      % not enough values, add the required number of default values
+      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
+      ValuesArray ++ AddedValues;
+    true ->
+      %  too many values, need to delete some
+      {KeepValues, DeleteValues} = lists:split(TargQuant, ValuesArray),
+      delete_array_values(DeleteValues),
+      KeepValues
+    end
+  end.
+
+
+%%
+%% If we are deleting input values
+%% Need to remove any links to other blocks
+%%
+
+delete_array_values(_DeleteValues) ->
+  % TODO:  Need to split link_utils:unlink_blocks() to handle individual inputs
+  %    Instead of all of the inputs of one block at a time.
+  %    Same thing with output link references
+  % ArrayValue [{}]
+
+  ok.
+  
+
+  
+
+       
+      
+
+%%
+%% Create an array of attributes, 
+%% Add an index number to the BaseValueName of the BaseAttribute
+%% to make a unique Attribute.   
+%% Create an associated list of value names, to assist accessing the array.
+%% This works for all attribute types (Config, Inputs, Outputs, and Private)
+%% Attribute type is specified by the BaseAttribute that is passed in.
+%%
+-spec create_attribute_array(Quant :: integer(),
+                             BaseAttribute :: tuple()) -> {list(), list()}.
+                             
+create_attribute_array(Quant, BaseAttribute)->
+  create_attribute_array([], [], Quant, BaseAttribute).
+  
+                               
+-spec create_attribute_array(Attributes :: list(),
+                             ValueNames :: list(),
+                             Quant :: integer(),
+                             BaseAttribute :: tuple()) -> {list(), list()}.
+                              
+create_attribute_array(Attributes, ValueNames, 0, _BaseAttribute) ->
+  {lists:reverse(Attributes), lists:reverse(ValueNames)};
+  
+create_attribute_array(Attributes, ValueNames, Quant, BaseAttribute) ->
+  % First element of an attribute is always the ValueName
+  BaseValueName = element(1, BaseAttribute),
+  % Add _xx to the end of the base ValueName
+  ValueNameStr = iolib:format("~s_~2..0d", BaseValueName, Quant),
+  ValueName = list_to_atom(ValueNameStr),
+  % Replace the BaseAttribute BaseValueName, with the indexed ValueName
+  Attribute = setelement(1, BaseAttribute, ValueName),
+  create_attribute_array([Attribute | Attributes], [ValueName | ValueNames], 
+                         Quant - 1, BaseAttribute).
+  
     
 %% common delay function
 sleep(T) ->

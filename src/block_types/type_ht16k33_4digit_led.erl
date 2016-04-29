@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(lblx_ht16k33_4digit_led).  
+-module(type_ht16k33_4digit_led).  
 
 -author("Mark Sebald").
 
@@ -136,7 +136,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Private2 = Private1
     end,
    
-  Outputs1 = lblx_outputs:set_value_status(Outputs, Value, Status),
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
   {Config, Inputs, Outputs1, Private2}.
@@ -242,7 +242,7 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,
   
   % Block value output really doesn't have any useful info right now
-  Outputs1 = blocklblx_outputs_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
   
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.

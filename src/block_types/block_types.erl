@@ -3,7 +3,7 @@
 %%%               
 %%% @end 
 
--module(lblx_types). 
+-module(block_types). 
 
 -author("Mark Sebald").
 
@@ -28,16 +28,16 @@
 
 block_type_modules() ->
   [
-    lblx_exec_count,
-    lblx_ht16k33_4digit_led,
-    lblx_int_to_7seg,
-    lblx_mcp9808_temp,
-    lblx_one_digit_7seg,
-    lblx_pi_gpio_di,
-    lblx_pi_gpio_do,
-    lblx_rotary_encoder,
-    lblx_seven_seg_decoder,
-    lblx_toggle
+    type_exec_count,
+    type_ht16k33_4digit_led,
+    type_int_to_7seg,
+    type_mcp9808_temp,
+    type_one_digit_7seg,
+    type_pi_gpio_di,
+    type_pi_gpio_do,
+    type_rotary_encoder,
+    type_seven_seg_decoder,
+    type_toggle
   ].  
     
     

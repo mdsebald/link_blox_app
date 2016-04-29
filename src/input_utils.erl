@@ -3,7 +3,7 @@
 %%%               
 %%% @end 
 
--module(lblx_inputs).
+-module(input_utils).
 
 -author("Mark Sebald").
 
@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([get_any_type/2, get_integer/2, get_float/2, get_boolean/2]).
--export([get_value/3, create_input_array/4]).
+-export([get_value/3, create_input_array/3]).
 -export([log_error/3]).
 
 
@@ -101,20 +101,31 @@ get_value(Inputs, ValueName, CheckType) ->
 %%
 %% Create an array of inputs, with a common base ValueName plus index number
 %% Set value to DefaultValue with an EMPTY LINK
+%% Create an associated list of value names, to assist accessing the input values
 %%
+-spec create_input_array(Quant :: integer(),
+                         BaseValueName :: atom(),
+                         DefaultValue :: term()) -> {list(), list()}.
+                         
+create_input_array(Quant, BaseValueName, DefaultValue)->
+  create_input_array([], [], Quant, BaseValueName, DefaultValue).                         
+
+                         
 -spec create_input_array(Inputs :: list(),
+                         ValueNames :: list(),
                          Quant :: integer(),
                          BaseValueName :: atom(),
                          DefaultValue :: term()) -> list().
                               
-create_input_array(Inputs, 0, _BaseValueName, _DefaultValue) ->
-  lists:reverse(Inputs);
+create_input_array(Inputs, ValueNames, 0, _BaseValueName, _DefaultValue) ->
+  {lists:reverse(Inputs), lists:reverse(ValueNames)};
   
-create_input_array(Inputs, Quant, BaseValueName, DefaultValue) ->
+create_input_array(Inputs, ValueNames, Quant, BaseValueName, DefaultValue) ->
   ValueNameStr = iolib:format("~s_~2..0d", BaseValueName, Quant),
   ValueName = list_to_atom(ValueNameStr),
   Input = {ValueName, DefaultValue, ?EMPTY_LINK},
-  create_input_array([Input | Inputs], Quant - 1, BaseValueName, DefaultValue).
+  create_input_array([Input | Inputs], [ValueName | ValueNames], Quant - 1, 
+                      BaseValueName, DefaultValue).
   
   
 %%
@@ -125,7 +136,7 @@ create_input_array(Inputs, Quant, BaseValueName, DefaultValue) ->
                 Reason :: atom()) -> {not_active, input_err}.
                   
 log_error(Config, ValueName, Reason) ->
-  BlockName = lblx_configs:name(Config),
+  BlockName = config_utils:name(Config),
   error_logger:error_msg("~p Invalid '~p' input value: ~p~n", 
                             [BlockName, ValueName, Reason]),
   {not_active, input_err}.

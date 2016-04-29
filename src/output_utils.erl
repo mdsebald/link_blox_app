@@ -3,7 +3,7 @@
 %%%               
 %%% @end 
 
--module(lblx_outputs).
+-module(output_utils).
 
 -author("Mark Sebald").
 
@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([set_value_status/3, set_value_normal/2, set_status/2]).
--export([create_output_array/4]).
+-export([create_output_array/2]).
 -export([log_error/3]).
 
 
@@ -51,24 +51,33 @@ set_status(Outputs, Status) ->
   
 
 %%
-%% Create an array of inputs, with a common base ValueName plus index number
-%% Set value to DefaultValue with an EMPTY LINK
+%% Create an array of outputs, with a common base ValueName plus index number
+%% Default output value is always not_active
+%% Create an associated list of value names, to assist in accessing the output array
 %%
--spec create_output_array(Outputs :: list(),
-                         Quant :: integer(),
-                         BaseValueName :: atom(),
-                         DefaultValue :: term()) -> list().
+-spec create_output_array(Quant :: integer(),
+                          BaseValueName :: atom()) -> {list(), list()}.
                               
-create_output_array(Outputs, 0, _BaseValueName, _DefaultValue) ->
-  lists:reverse(Outputs);
+create_output_array(Quant, BaseValueName) ->
+  create_output_array([], [], Quant, BaseValueName).
+
   
-create_output_array(Outputs, Quant, BaseValueName, DefaultValue) ->
+-spec create_output_array(Outputs :: list(),
+                          ValueNames :: list(),
+                          Quant :: integer(),
+                          BaseValueName :: atom()) -> {list(), list()}.
+                              
+create_output_array(Outputs, ValueNames, 0, _BaseValueName) ->
+  {lists:reverse(Outputs), lists:reverse(ValueNames)};
+
+create_output_array(Outputs, ValueNames, Quant, BaseValueName) ->
   ValueNameStr = iolib:format("~s_~2..0w", BaseValueName, Quant),
   ValueName = list_to_atom(ValueNameStr),
-  Output = {ValueName, DefaultValue, []},
-  create_output_array([Output | Outputs], Quant - 1, BaseValueName, DefaultValue).
-  
-  
+  Output = {ValueName, not_active, []},
+  create_output_array([Output | Outputs], [ValueName | ValueNames], Quant - 1, 
+                      BaseValueName).
+
+
 %%
 %% Log output value error
 %%
@@ -77,7 +86,7 @@ create_output_array(Outputs, Quant, BaseValueName, DefaultValue) ->
                 Reason :: atom()) -> ok.
                   
 log_error(Config, ValueName, Reason) ->
-  BlockName = lblx_configs:name(Config),
+  BlockName = config_utils:name(Config),
   error_logger:error_msg("~p Invalid '~p' input value: ~p~n", 
                             [BlockName, ValueName, Reason]),
   ok.

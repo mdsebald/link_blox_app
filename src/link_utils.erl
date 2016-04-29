@@ -3,7 +3,7 @@
 %%%               
 %%% @end 
 
--module(block_links).
+-module(link_utils).
 
 -author("Mark Sebald").
 
@@ -168,6 +168,13 @@ add_link(Outputs, ValueName, ToBlockName) ->
 		{ValueName, Value, Links} ->  
 			case lists:member(ToBlockName, Links) of
 			  true ->
+          % TODO: Are we sure we want to do this?
+          %    If a block has an array of inputs, and more than one of the inputs in the array
+          %    is linked to this output value, and the block is reconfigured, reducing the number of inputs,
+          %    When the input is deleted, the link to this output should be deleted, but 
+          %    another input in that block could still be linked to this output
+          %    May want to allow multiple refs to the same block, filter dupes in update_block()
+          %    More than one reference to this will serve as a reference counter.
 				  % This output is already linked to block 'ToBlockName' 
 				  % Just return the original Outputs list
 				  Outputs;
