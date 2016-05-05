@@ -119,8 +119,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
   
   % Get the the I2C Address of the display 
   % TODO: Check for valid I2C Address
-  I2cDevice = block_utils:get_value(Config, i2c_device),
-  I2cAddr = block_utils:get_value(Config, i2c_addr),
+  {ok, I2cDevice} = block_utils:get_value(Config, i2c_device),
+  {ok, I2cAddr} = block_utils:get_value(Config, i2c_addr),
 	    
   case init_led_driver(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
@@ -148,7 +148,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  I2cRef = block_utils:get_value(Private, i2c_ref),
+  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref),
   
   case lblx_inputs:get_boolean(Inputs, display_on) of
     {error, Reason} ->
@@ -255,7 +255,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 delete({_Config, _Inputs, _Outputs, Private}) ->
  
-  I2cRef = block_utils:get_value(Private, i2c_ref),
+  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref),
   % Turn off the display 
   shutdown_led_driver(I2cRef),  
   

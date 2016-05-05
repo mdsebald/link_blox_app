@@ -118,11 +118,11 @@ initialize({Config, Inputs, Outputs, Private}) ->
                              {last_sw_value, empty}]),
     
   % Get the GPIO pin numbers and interrupt edge directions used by this block
-  PhaseA_Pin = block_utils:get_value(Config, gpio_pin_phase_A),
-  PhaseB_Pin = block_utils:get_value(Config, gpio_pin_phase_B),
-  PhaseIntEdge = block_utils:get_value(Config, phase_int_edge),
-  SwitchPin = block_utils:get_value(Config, gpio_pin_switch),
-  SwitchIntEdge = block_utils:get_value(Config, switch_int_edge),
+  {ok, PhaseA_Pin} = block_utils:get_value(Config, gpio_pin_phase_A),
+  {ok, PhaseB_Pin} = block_utils:get_value(Config, gpio_pin_phase_B),
+  {ok, PhaseIntEdge} = block_utils:get_value(Config, phase_int_edge),
+  {ok, SwitchPin} = block_utils:get_value(Config, gpio_pin_switch),
+  {ok, SwitchIntEdge} = block_utils:get_value(Config, switch_int_edge),
   
   % TODO: Check Pin Numbers are an integer in the right range
 
@@ -185,22 +185,21 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
  % Read the current values of the GPIO pins 
-  GpioPinA_Ref = block_utils:get_value(Private, gpio_pin_A_ref),
+  {ok, GpioPinA_Ref} = block_utils:get_value(Private, gpio_pin_A_ref),
   PhaseA = read_pin_value_bool(GpioPinA_Ref),
-  LastA_Value = block_utils:get_value(Private, last_A_value),
+  {ok, LastA_Value} = block_utils:get_value(Private, last_A_value),
   
-  GpioPinB_Ref = block_utils:get_value(Private, gpio_pin_B_ref),
+  {ok, GpioPinB_Ref} = block_utils:get_value(Private, gpio_pin_B_ref),
   PhaseB = read_pin_value_bool(GpioPinB_Ref),
-  _LastB_Value = block_utils:get_value(Private, last_B_value),
+  {ok, _LastB_Value} = block_utils:get_value(Private, last_B_value),
 
-  GpioPinSwRef = block_utils:get_value(Private, gpio_pin_sw_ref),
+  {ok, GpioPinSwRef} = block_utils:get_value(Private, gpio_pin_sw_ref),
   SwValue = read_pin_value_bool(GpioPinSwRef),
-  _LastSwValue = block_utils:get_value(Private, last_sw_value),
+  {ok, _LastSwValue} = block_utils:get_value(Private, last_sw_value),
   
   case block_utils:get_value(Outputs, value) of
-    not_active -> 
-      Count = 0;
-    Count -> Count  
+    {ok, not_active} -> Count = 0;
+    {ok, Count}      -> Count
   end,
  
   if (LastA_Value) andalso (not PhaseA) ->

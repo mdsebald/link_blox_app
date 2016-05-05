@@ -120,10 +120,10 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   % Toggle output everytime block is executed
   case block_utils:get_value(Outputs, value) of
-    true       -> Value = false,      Status = normal;
-    false      -> Value = true,       Status = normal;
-    not_active -> Value = true,       Status = normal;
-    _          -> Value = not_active, Status = error
+    {ok, true}       -> Value = false,      Status = normal;
+    {ok, false}      -> Value = true,       Status = normal;
+    {ok, not_active} -> Value = true,       Status = normal;
+    _                -> Value = not_active, Status = error
   end,
 	
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),

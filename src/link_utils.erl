@@ -12,9 +12,9 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([unregistered_blocks/1, link_blocks/2, unlink_blocks/2]).
+-export([unregistered_blocks/1, link_blocks/2, unlink_blocks/2, unlink/2]).
 -export([add_link/3, delete_link/3]).
--export([update_linked_input_values/5]).
+-export([update_linked_input_values/5, set_input_link/3]).
 
 
 %%
@@ -146,6 +146,34 @@ unlink_blocks(BlockName, BlockInputs, LinksRequested)->
       end 
   end.
 
+  
+%%
+%% Unlink one input value link
+%% TODO: Make unlink_blocks call this function
+%%
+-spec unlink(BlockName :: atom(),
+             Input :: tuple()) -> ok.  
+  
+unlink(BlockName, Input) ->
+  {ValueName, _Value, Link} = Input,
+  case Link of
+    % Input is not linked, do nothing
+    ?EMPTY_LINK -> ok;
+       
+    %TODO: Handle getting values from other nodes
+    {_LinkNodeName, LinkBlockName, LinkValueName} -> 
+      % if the block name of this link is not null
+      if LinkBlockName /= null ->
+        error_logger:info_msg("Unlink Output <~p:~p> From Input <~p:~p>~n", 
+                            [LinkBlockName, LinkValueName, BlockName, ValueName]),
+        block_server:unlink(LinkBlockName, LinkValueName, BlockName),
+        ok;
+      true ->
+        ok
+      end 
+  end.
+
+
 
 %%
 %% Add 'ToBlockName' to the list of linked blocks in the ValueName output attribute
@@ -158,14 +186,14 @@ add_link(Outputs, ValueName, ToBlockName) ->
 
   case block_utils:get_attribute(Outputs, ValueName) of
 
-    not_found ->
+    {error, not_found} ->
       % This block doesn't have an output called 'ValueName'
       % Just return the original Outputs list
 			error_logger:error_msg("add_link() Error. ~p Doesn't exist for this block~n", 
                              [ValueName]),
 			Outputs;
 		
-		{ValueName, Value, Links} ->  
+		{ok, {ValueName, {Value, Links}}} ->  
 			case lists:member(ToBlockName, Links) of
 			  true ->
           % TODO: Are we sure we want to do this?
@@ -203,14 +231,14 @@ delete_link(Outputs, ValueName, ToBlockName) ->
 
   case block_utils:get_attribute(Outputs, ValueName) of
 
-    not_found ->
+    {error, not_found} ->
       % This block doesn't have an output called 'ValueName'
       % Just return the original Outputs list
       error_logger:error_msg("delete_link() Error. ~p Doesn't exist for this block~n", 
                               [ValueName]),
       Outputs;
 		
-    {ValueName, Value, Links} ->  
+    {ok, {ValueName, {Value, Links}}} ->  
       % Delete the 'ToBlockName' from the list of linked blocks, if it exists
       NewLinks = lists:delete(ToBlockName, Links),
 		  NewOutput = {ValueName, Value, NewLinks},
@@ -247,4 +275,31 @@ update_linked_input_values(Inputs, NodeName, FromBlockName, NewValueName, NewVal
       end
 		end, 
     Inputs).
+
+
+%%
+%% Update the input Link for the input value 'ValueName'
+%% TODO: Do we need this? not used right now
+%%
+-spec set_input_link(BlockValues :: block_state(),
+                     ValueName :: atom(),
+                     NewLink :: tuple()) -> block_state().
+                     
+set_input_link(BlockValues, ValueName, NewLink) ->
+	
+  {Config, Inputs, Outputs, Private} = BlockValues,
+
+  case block_utils:get_attribute(Inputs, ValueName) of
+    {error, not_found} ->
+      BlockName = config_utils:name(Config),
+      error_logger:error_msg("~p set_input_link() Error.  ~p not found in Input values.~n", 
+                             [BlockName, ValueName]),
+      % Input value not found, just return the BlockValues unchanged
+      BlockValues;
+      
+    {ok, {ValueName, {Value, _Link}}} ->
+      NewInput = {ValueName, {Value, NewLink}},
+      NewInputs = block_utils:replace_attribute(Inputs, ValueName, NewInput),
+      {Config, NewInputs, Outputs, Private}
+  end.
  

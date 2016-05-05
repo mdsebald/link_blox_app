@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([get_any_type/2, get_integer/2, get_float/2, get_boolean/2]).
--export([get_value/3, create_input_array/3]).
+-export([get_value/3, resize_attribute_array_value/4]).
 -export([log_error/3]).
 
 
@@ -70,9 +70,9 @@ get_boolean(Inputs, ValueName) ->
                 
 get_value(Inputs, ValueName, CheckType) ->
   case block_utils:get_attribute(Inputs, ValueName) of
-    not_found  -> {error, not_found};
+    {error, not_found}  -> {error, not_found};
     
-    {ValueName, Value, Link} ->
+    {ok, {ValueName, {Value, Link}}} ->
       case Value of
         % not_active is a valid value
         not_active -> {ok, not_active};
@@ -99,34 +99,62 @@ get_value(Inputs, ValueName, CheckType) ->
   
 
 %%
-%% Create an array of inputs, with a common base ValueName plus index number
-%% Set value to DefaultValue with an EMPTY LINK
-%% Create an associated list of value names, to assist accessing the input values
+%% Resize an array value in the Inputs attribute list
+%% If there are fewer values in the array than the target quantity,
+%% add values to the array using the DefaultValue
+%% If there are more values in the array than the target Quantity,
+%% and delete the excess values
+%% Returns updated Inputs attribute list
 %%
--spec create_input_array(Quant :: integer(),
-                         BaseValueName :: atom(),
-                         DefaultValue :: term()) -> {list(), list()}.
-                         
-create_input_array(Quant, BaseValueName, DefaultValue)->
-  create_input_array([], [], Quant, BaseValueName, DefaultValue).                         
+-spec resize_attribute_array_value(BlockName :: atom(),
+                                   Inputs :: list(),
+                                   TargQuant :: integer(),
+                                   ArrayValueName :: atom(),
+                                   DefaultValue :: term()) -> list().
+                             
+resize_attribute_array_value(BlockName, Configs, TargQuant, ArrayValueName, DefaultValue)->
+  case block_utils:get_attribute(Configs, ArrayValueName) of
+    % If attribute not found, just return Configs attribute list unchanged
+    {error, not_found} -> Configs;
+      
+    {ok, {ArrayValueName, ArrayValues}} ->
+      NewValuesArray = 
+          resize_array_value(BlockName, ArrayValueName, ArrayValues, 
+                             TargQuant, DefaultValue),
+      block_utils:replace_attribute(Configs, ArrayValueName, 
+                        {ArrayValueName, NewValuesArray})
+  end.
 
-                         
--spec create_input_array(Inputs :: list(),
-                         ValueNames :: list(),
-                         Quant :: integer(),
-                         BaseValueName :: atom(),
+
+%%
+%% Resize the array of values to match the target quantity.
+%% Always add to or delete from the end of the array.
+%% There will always be at least one value in the array. 
+%%  
+-spec resize_array_value(BlockName :: atom(),
+                         ArrayValueName :: atom(), 
+                         ValuesArray :: list(),
+                         TargQuant :: integer(),
                          DefaultValue :: term()) -> list().
-                              
-create_input_array(Inputs, ValueNames, 0, _BaseValueName, _DefaultValue) ->
-  {lists:reverse(Inputs), lists:reverse(ValueNames)};
-  
-create_input_array(Inputs, ValueNames, Quant, BaseValueName, DefaultValue) ->
-  ValueNameStr = iolib:format("~s_~2..0d", BaseValueName, Quant),
-  ValueName = list_to_atom(ValueNameStr),
-  Input = {ValueName, DefaultValue, ?EMPTY_LINK},
-  create_input_array([Input | Inputs], [ValueName | ValueNames], Quant - 1, 
-                      BaseValueName, DefaultValue).
-  
+                                     
+resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultValue)->
+  ValuesQuant = length(ValuesArray),
+  if ValuesQuant =:= TargQuant ->
+    % quantity of Values in array matches target, nothing to do 
+    ValuesArray;
+  true ->
+    if ValuesQuant < TargQuant ->
+      % not enough values, add the required number of default values
+      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
+      ValuesArray ++ AddedValues;
+    true ->
+      %  too many values, split the list and ignore the deleted ones on the end
+      {KeepValues, DeleteValues} = lists:split(TargQuant, ValuesArray),
+      fun(DeleteInput) -> link_utils:unlink(BlockName, {DeleteInput})
+      KeepValues
+    end
+  end.
+
   
 %%
 %% Log input value error

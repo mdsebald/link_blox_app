@@ -12,12 +12,11 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([get_attribute/2, get_value/2, get_value_any/2]).
--export([set_value/3, set_values/2]). 
--export([set_value_any/3, set_input_link/3]).
+-export([get_attribute/2]).
+-export([get_value/2, get_value/3, get_value_any/3]).
+-export([set_value/3, set_value/4, set_values/2, set_value_any/3]).
 -export([update_attribute_list/2, merge_attribute_lists/2]).
--export([replace_attribute/3, add_attribute/2, create_attribute_array/2]).
--export([resize_attribute_array_value/4]).
+-export([replace_attribute/3, add_attribute/2]).
 -export([sleep/1]). 
 
 
@@ -25,58 +24,185 @@
 %% Get the attribute for the given ValueName in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private type
 %%
--spec get_attribute(Attributes :: list(), 
-                    ValueName :: atom()) -> tuple() | not_found.
+-spec get_attribute(Attributes :: list(attribute()), 
+                    ValueName :: atom()) -> {ok, attribute()} | {error, not_found}.
 
 get_attribute(Attributes, ValueName) ->
   % ValueName is always the first element in the tuple, regardless of the Attribute type
   case lists:keyfind(ValueName, 1, Attributes) of 
-    false     -> not_found;
-    Attribute -> Attribute
+    false     -> {error, not_found};
+    Attribute -> {ok, Attribute}
  	end.
+
+
+%%	
+%% Simple get value function for non-array attribute values
+%% List of attributes may be Config, Inputs, Outputs, or Private
+%%
+-spec get_value(Attributes :: list(attribute()), 
+                ValueName :: atom()) -> attrib_value().
+
+get_value(Attributes, ValueName) ->
+  get_value(Attributes, ValueName, 0).
+  
 
 %%	
 %% Get the value of the ValueName attribute in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec get_value(Attributes :: list(), 
-                ValueName :: atom()) -> term() | not_found.
+-spec get_value(Attributes :: list(attribute()), 
+                ValueName :: atom(),
+                ArrayIndex :: integer()) -> attrib_value().
 
-get_value(Attributes, ValueName) ->
+% Assumes the attriute is a single value
+get_value(Attributes, ValueName, ArrayIndex) when ArrayIndex == 0 ->
   case get_attribute(Attributes, ValueName) of
-	  not_found ->
-		  error_logger:error_msg("get_value() Error: ~p not found in attributes list~n", 
-                              [ValueName]),
-			not_found;
-      
-    {ValueName, Value}     -> Value; % Config or Private Value
-    {ValueName, Value, _ } -> Value  % Input or Output value
+	  {error, not_found}                      -> {error, not_found};
+    % Config or Private value
+    {ok, {ValueName, {Value}}}              -> {ok, Value};
+     % Input or Output value
+    {ok, {ValueName, {Value, _LinkOrRefs}}} -> {ok, Value};
+    % Unrecognized value
+    {ok, {ValueName, _InvalidValue}}        -> {error, invalid_value}
+  end;
+
+% Assumes the attribute is an array value.
+get_value(Attributes, ValueName, ArrayIndex) when ArrayIndex > 0 ->
+  case get_attribute(Attributes, ValueName) of
+	  {error, not_found}            -> {error, not_found};
+    {ok, {ValueName, ArrayValue}} ->
+      if length(ArrayValue) >= ArrayIndex ->
+        case lists:nth(ArrayValue) of
+          % Config or Private array value
+          {Value}              -> {ok, Value};
+          % Input or Output array value
+          {Value, _LinkOrRefs} -> {ok, Value}; 
+          % Unrecognized value
+          _InvalidValue        -> {error, invalid_value}
+        end;
+      true ->  {error, invalid_index}
+      end
+  end;
+  
+% Negative array indexes, not allowed 
+get_value(_Attributes, _ValueName, ArrayIndex) when ArrayIndex < 0 ->
+  {error, negative_index}.
+
+
+%%	
+%% Get the value of the attribute ValueName
+%% Check attribute types: Config, Inputs, and Outputs
+%%
+-spec get_value_any(BlockValues :: block_state(), 
+                    ValueName :: atom(),
+                    ArrayIndex :: integer()) -> attrib_value().
+	
+get_value_any(BlockValues, ValueName, ArrayIndex) ->
+
+  {Config, Inputs, Outputs, _Private} = BlockValues,
+
+  case get_value(Config, ValueName, ArrayIndex) of
+    {error, not_found} ->
+
+      case get_value(Inputs, ValueName, ArrayIndex) of
+        {error, not_found} ->
+
+          case get_value(Outputs, ValueName, ArrayIndex) of
+            {error, Reason} -> {error, Reason};
+            % Output value
+            {ok, Value} -> {ok, Value}
+          end;
+
+        % Input value get failed for reason other than not found  
+        {error, Reason} -> {error, Reason};  
+        % Input value
+        {ok, Value} -> {ok, Value}	
+      end;
+    
+    % Config value get failed for reason other than not found  
+    {error, Reason} -> {error, Reason};  
+    % Config value  
+    {ok, Value} -> {ok, Value}  
   end.
 
+
+%%	
+%% Simple set value function for non-array attribute values
+%% List of attributes may be Config, Inputs, Outputs, or Private
+%%
+-spec set_value(Attributes :: list(attribute()), 
+                ValueName :: atom(), 
+                NewValue :: value()) -> {ok, list(attribute())} | attrib_errors().
+                
+set_value(Attributes, ValueName, NewValue) ->
+  set_value(Attributes, ValueName, NewValue, 0).
 
 %%	
 %% Set the value of the attribute ValueName
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec set_value(Attributes :: list(), 
+-spec set_value(Attributes :: list(attribute()), 
                 ValueName :: atom(), 
-                NewValue :: term()) -> list().
-
-set_value(Attributes, ValueName, NewValue) ->
+                NewValue :: value(), 
+                ArrayIndex :: integer()) -> {ok, list(attribute())} | attrib_errors().
+                
+% Assumes the attriute is a single value
+set_value(Attributes, ValueName, NewValue, ArrayIndex) when ArrayIndex == 0 ->
   case get_attribute(Attributes, ValueName) of
-    not_found ->
-      error_logger:error_msg("set_value() Error: ~p not found in attributes list~n", 
-                             [ValueName]),
-      Attributes;
+    {error, not_found} -> {error, not_found};
 
-    {ValueName, _OldValue} -> % Config or Private value
-      NewAttribute = {ValueName, NewValue},
-      replace_attribute(Attributes, ValueName, NewAttribute);
+    % Config or Private value
+    {ok, {ValueName, {_OldValue}}} -> 
+      NewAttribute = {ValueName, {NewValue}},
+      {ok, replace_attribute(Attributes, ValueName, NewAttribute)};
+    
+    % Input or Output value
+    {ok, {ValueName, {_OldValue, LinkOrRefs}}} ->  
+      NewAttribute = {ValueName, {NewValue, LinkOrRefs}},
+      {ok, replace_attribute(Attributes, ValueName, NewAttribute)};
+    
+    % Unrecognized value  
+    {ok, {ValueName, _InvalidValue}} -> {error, invalid_value}
+  end;
 
-    {ValueName, _OldValue, LinkOrConnections} ->  % Input or Output value
-      NewAttribute = {ValueName, NewValue, LinkOrConnections},
-      replace_attribute(Attributes, ValueName, NewAttribute)
+% Assumes the attribute is an array value.
+set_value(Attributes, ValueName, NewValue, ArrayIndex) when ArrayIndex > 0 ->
+  case get_attribute(Attributes, ValueName) of
+    {error, not_found} -> {error, not_found};
+      
+    {ok, {ValueName, ArrayValue}} ->
+      if length(ArrayValue) >= ArrayIndex ->
+        case lists:nth(ArrayValue) of
+          % Config or Private value
+          {_OldValue} ->
+            NewArrayValue = 
+              insert_array_value({NewValue}, ArrayIndex, ArrayValue),
+            {ok, replace_attribute(Attributes, ValueName, NewArrayValue)};
+            
+          % Input or Output value
+          {_OldValue, LinkOrRefs} ->  
+            NewArrayValue = 
+              insert_array_value({NewValue, LinkOrRefs}, ArrayIndex, ArrayValue),
+            {ok, replace_attribute(Attributes, ValueName, NewArrayValue)};
+            
+         % Unrecognized value
+          _InvalidValue -> {error, invalid_value}
+        end;
+      true ->
+        {error, invalid_index}
+      end
   end.
+
+
+%% insert a new value into the array of values
+-spec insert_array_value(NewValue :: term(), 
+                         ArrayIndex :: integer(),
+                         ArrayValue :: list()) -> list().
+                         
+insert_array_value(NewValue, ArrayIndex, ArrayValue) ->
+  lists:sublist(ArrayValue, ArrayIndex-1) ++ 
+                               [NewValue] ++ 
+                lists:nthtail(ArrayIndex, ArrayValue).
 
 
 %%	
@@ -85,44 +211,16 @@ set_value(Attributes, ValueName, NewValue) ->
 %% All values must belong to the same attribute list
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec set_values(Attributes :: list(), Values :: list()) -> list().
+-spec set_values(Attributes :: list(attribute()), 
+                 Values :: list()) -> list(attribute()) | attrib_errors().
  
 set_values(Attributes, []) -> Attributes;
 
 set_values(Attributes, [{AttributeName, NewValue} | RemainingValues]) ->
-  NewAttributes = set_value(Attributes, AttributeName, NewValue),
-  set_values(NewAttributes, RemainingValues).
-
-
-%%	
-%% Get the value of the attribute ValueName
-%% Check all of the attribute types: Config, Inputs, Outputs, or Private
-%%
--spec get_value_any(BlockValues :: block_state(), 
-                    ValueName :: atom()) -> term() | not_found.
-	
-get_value_any(BlockValues, ValueName) ->
-
-  {Configs, Inputs, Outputs, Private} = BlockValues,
-
-  case get_attribute(Configs, ValueName) of
-    not_found ->
-      case get_attribute(Inputs, ValueName) of
-        not_found ->
-          case get_attribute(Outputs, ValueName) of
-            not_found ->
-              case get_attribute(Private, ValueName) of
-                not_found ->
-                  error_logger:error_msg("get_value_any() Error: ~p not found in Block values~n", 
-                                         [ValueName]),
-                  not_found;
-                {ValueName, Value} -> Value	% Internal value
-              end;
-            {ValueName, Value, _Connections} -> Value	% Output value
-          end;
-        {ValueName, Value, _Link} -> Value	% Input value
-      end; 
-    {ValueName, Value} -> Value   % Config value
+  case set_value(Attributes, AttributeName, NewValue) of
+    % Return immediately on error
+    {error, Reason}     -> {error, Reason};
+    {ok, NewAttributes} -> set_values(NewAttributes, RemainingValues)
   end.
 
 
@@ -166,40 +264,13 @@ set_value_any(BlockValues, ValueName, NewValue)->
 
 
 %%
-%% Update the input Link for the input value 'ValueName'
-%% TODO: Do we need this? not used right now
-%%
--spec set_input_link(BlockValues :: block_state(),
-                     ValueName :: atom(),
-                     NewLink :: tuple()) -> block_state().
-                     
-set_input_link(BlockValues, ValueName, NewLink) ->
-	
-  {Config, Inputs, Outputs, Private} = BlockValues,
-
-  case get_attribute(Inputs, ValueName) of
-    not_found ->
-      BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p set_input_link() Error.  ~p not found in Input values.~n", 
-                             [BlockName, ValueName]),
-      % Input value not found, just return the BlockValues unchanged
-      BlockValues;
-      
-    {ValueName, Value, _Link} ->
-      NewInput = {ValueName, Value, NewLink},
-      NewInputs = replace_attribute(Inputs, ValueName, NewInput),
-      {Config, NewInputs, Outputs, Private}
-  end.
-
-
-%%
 %% Update attributes in the Attribute List with the New Attributes list 
 %% Add any new attributes if they are not already in the Attribute list
 %% Both lists of Attributes must be the same type
 %% Attributes may be Config, Inputs, Outputs, or Private type
 %%
--spec merge_attribute_lists(Attributes :: list(), 
-                            NewAttributes :: list()) -> list().
+-spec merge_attribute_lists(Attributes :: list(attribute()), 
+                            NewAttributes :: list(attribute())) -> list(attribute()).
 
 merge_attribute_lists(Attributes, []) -> Attributes;
 
@@ -213,8 +284,8 @@ merge_attribute_lists(Attributes, NewAttributes) ->
 %% Update the Attribute list with a new attribute
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
--spec update_attribute_list(Attributes :: list(), 
-                            NewAttribute :: tuple()) -> list().
+-spec update_attribute_list(Attributes :: list(attribute()), 
+                            NewAttribute :: tuple()) -> list(attribute()).
 
 update_attribute_list(Attributes, NewAttribute) ->
   % First element of any attribute value tuple is always the name 
@@ -231,9 +302,9 @@ update_attribute_list(Attributes, NewAttribute) ->
 %% Return the updated Attribute List
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
--spec replace_attribute(Attributes :: list(), 
+-spec replace_attribute(Attributes :: list(attribute()), 
                         ValueName :: atom(), 
-                        NewAttribute :: tuple()) -> list().
+                        NewAttribute :: attribute()) -> list(attribute()).
 
 replace_attribute(Attributes, ValueName, NewAttribute) ->
   % ValueName is always the first element in the tuple, regardless of the attributeValue type
@@ -244,125 +315,13 @@ replace_attribute(Attributes, ValueName, NewAttribute) ->
 %% Add a new attribute to the end of the Attribute list 
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
--spec add_attribute(Attributes :: list(), 
-                    NewAttribute :: tuple()) -> list().
+-spec add_attribute(Attributes :: list(attribute()), 
+                    NewAttribute :: attribute()) -> list(attribute()).
 
 add_attribute(Attributes, Newattribute) ->
   Attributes ++ [Newattribute].
-
-
-%%
-%% Resize the ValueArrayName array of attribute values in the Attributes list. 
-%% If there are fewer values in the array than the target quantity,
-%% add values to the array using the DefaultValue
-%% If there are more values in the array than the target Quantity,
-%% delete the excess values, deleting references to these if needed
-%% The Attributes list may be Config, Inputs, Outputs, or Private type
-%% Returns updated attribute list, or error
-%%
--spec resize_attribute_value_array(Attributes :: list(),
-                                   TargQuant :: integer(),
-                                   ValueArrayName :: atom(),
-                                   DefaultValue :: term()) -> 
-                                   {ok, list()} | {error, atom()}.
-                             
-resize_attribute_value_array(Attributes, TargQuant, ValueArrayName, DefaultValue)->
-  case get_attribute(Attributes, ValueArrayName) of
-    not_found ->
-      {error, not_found};
-      
-    {ValueArrayName, ValuesArray} ->
-      NewValuesArray = 
-          resize_array_value(ValuesArray, TargQuant, DefaultValue),
-      NewAttributes = 
-          replace_attribute(Attributes, ValueArrayName, 
-                            {ValueArrayName, NewValuesArray}),
-      {ok, NewAttributes}
-  end.
-
-
-%%
-%% Resize the array of values to match the target quantity.
-%% Always add to or delete from the end of the array.
-%% There will always be at least one value in the array. 
-%%  
--spec resize_array_value(ValuesArray :: list(),
-                         TargQuant :: integer(),
-                         DefaultValue :: term()) -> list().
-                                     
-resize_value_array(ValuesArray, TargQuant, DefaultValue)->
-  ValuesQuant = length(ValuesArray),
-  if ValuesQuant =:= TargQuant ->
-    % quantity of Values in array matches target, nothing to do 
-    ValuesArray;
-  true ->
-    if ValuesQuant < TargQuant ->
-      % not enough values, add the required number of default values
-      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
-      ValuesArray ++ AddedValues;
-    true ->
-      %  too many values, need to delete some
-      {KeepValues, DeleteValues} = lists:split(TargQuant, ValuesArray),
-      delete_array_values(DeleteValues),
-      KeepValues
-    end
-  end.
-
-
-%%
-%% If we are deleting input values
-%% Need to remove any links to other blocks
-%%
-
-delete_array_values(_DeleteValues) ->
-  % TODO:  Need to split link_utils:unlink_blocks() to handle individual inputs
-  %    Instead of all of the inputs of one block at a time.
-  %    Same thing with output link references
-  % ArrayValue [{}]
-
-  ok.
   
 
-  
-
-       
-      
-
-%%
-%% Create an array of attributes, 
-%% Add an index number to the BaseValueName of the BaseAttribute
-%% to make a unique Attribute.   
-%% Create an associated list of value names, to assist accessing the array.
-%% This works for all attribute types (Config, Inputs, Outputs, and Private)
-%% Attribute type is specified by the BaseAttribute that is passed in.
-%%
--spec create_attribute_array(Quant :: integer(),
-                             BaseAttribute :: tuple()) -> {list(), list()}.
-                             
-create_attribute_array(Quant, BaseAttribute)->
-  create_attribute_array([], [], Quant, BaseAttribute).
-  
-                               
--spec create_attribute_array(Attributes :: list(),
-                             ValueNames :: list(),
-                             Quant :: integer(),
-                             BaseAttribute :: tuple()) -> {list(), list()}.
-                              
-create_attribute_array(Attributes, ValueNames, 0, _BaseAttribute) ->
-  {lists:reverse(Attributes), lists:reverse(ValueNames)};
-  
-create_attribute_array(Attributes, ValueNames, Quant, BaseAttribute) ->
-  % First element of an attribute is always the ValueName
-  BaseValueName = element(1, BaseAttribute),
-  % Add _xx to the end of the base ValueName
-  ValueNameStr = iolib:format("~s_~2..0d", BaseValueName, Quant),
-  ValueName = list_to_atom(ValueNameStr),
-  % Replace the BaseAttribute BaseValueName, with the indexed ValueName
-  Attribute = setelement(1, BaseAttribute, ValueName),
-  create_attribute_array([Attribute | Attributes], [ValueName | ValueNames], 
-                         Quant - 1, BaseAttribute).
-  
-    
 %% common delay function
 sleep(T) ->
   receive

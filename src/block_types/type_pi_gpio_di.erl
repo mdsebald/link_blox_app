@@ -112,7 +112,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Private1 = block_utils:add_attribute(Private, {gpio_pin_ref, empty}),
     
   % Get the GPIO pin number used by this block
-  PinNumber = block_utils:get_value(Config, gpio_pin),
+  {ok, PinNumber} = block_utils:get_value(Config, gpio_pin),
   % TODO: Check Pin Number is an integer in the right range
 
   % Initialize the GPIO pin as an input
@@ -147,7 +147,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
   % Read the current value of the GPIO pin 
-  GpioPinRef = block_utils:get_value(Private, gpio_pin_ref),
+  {ok, GpioPinRef} = block_utils:get_value(Private, gpio_pin_ref),
   Value = read_pin_value_bool(GpioPinRef),
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, normal),

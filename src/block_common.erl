@@ -30,20 +30,16 @@
 configs(Name, Module, Version, Description) ->
   [
     % Block Name, must be unique for all blocks on this node
-    {block_name, Name},
+    {block_name, {Name}},
 
     % Block module, the block code 
-    {block_module, Module},
+    {block_module, {Module}},
     
      % Block Version string
-	  {version, Version},
+	  {version, {Version}},
 
     % User defined description of this block
-    {description, Description}
-
-   
-
-    
+    {description, {Description}}    
   ].
 
 
@@ -59,26 +55,26 @@ inputs() ->
     % Default block to disabled, on create. 
     % Set disable input to false in create function if you want block 
     % to begin executing on create.
-    {disable, true, ?EMPTY_LINK},
+    {disable, {true, ?EMPTY_LINK}},
  
    
     % Block will execute as long as freeze input is false/not_active
     % When freeze input is true, all block outputs remain at last value
     % and block status is set to frozen.  Block will not be executed.
-    {freeze, false, ?EMPTY_LINK},
+    {freeze, {false, ?EMPTY_LINK}},
 
     % Disable true/on value takes precedent over Freeze true/on value.
 
     % Link exec_in to block that will execute this block.
     % May only be linked to the 'exec_out' block output value
     % i.e. implement Control Flow
-    {exec_in, empty, ?EMPTY_LINK},  
+    {exec_in, {empty, ?EMPTY_LINK}},  
 
     % If > 0, execute block every 'exec_interval' milliseconds.
     % Used to execute a block at fixed intervals
     % instead of being executed via exec_out/exec_in link
     % or executed on change of input values
-    {exec_interval, 0, ?EMPTY_LINK}
+    {exec_interval, {0, ?EMPTY_LINK}}
 
     % exec_in and exec_interval may both be used to execute the block.
     % They are not mutually exclusive.
@@ -96,20 +92,20 @@ outputs() ->
     % Blocks with the 'exec_in' input linked to this output
     % will be executed by this block, each time this block is executed
     % This output may only be linked to exec_in inputs
-    {exec_out, false, []},
+    {exec_out, {false, []}},
 
     % Current block status                            
-    {status, created, []},        
+    {status, {created, []}},     
 
     % Reason block was executed
-    {exec_method, empty, []},
+    {exec_method, {empty, []}},
 
     % Time stamp of last time block was executed
     % Hours, Minutes, Seconds, Microseconds
-    {last_exec, empty, []},
+    {last_exec, {empty, []}},
 
     % Main block output value
-    {value, not_active, []}
+    {value, {not_active, []}}
   ].
 
 
@@ -124,7 +120,7 @@ initialize({Config, Inputs, Outputs}) ->
  
   % Initialize the private attributes values list here.
   % Timer reference attribute is common to all block types
-  Private = [ {timer_ref, empty} ],
+  Private = [ {timer_ref, {empty}} ],
 
   % In case this block is set to execute via timer, initialize the timer
   {_Status, Private1} = update_execution_timer(BlockName, Inputs, Private), 
@@ -145,10 +141,10 @@ execute(BlockValues, ExecMethod) ->
   
   {BlockName, BlockModule} = config_utils:name_module(Config),
     
-  Disable = block_utils:get_value(Inputs, disable),
+  {ok, Disable} = block_utils:get_value(Inputs, disable),
   case check_boolean_input(Disable) of
     not_active ->
-      Freeze = block_utils:get_value(Inputs, freeze),
+      {ok, Freeze} = block_utils:get_value(Inputs, freeze),
       case check_boolean_input(Freeze) of
         not_active -> % block is not disabled or frozen, execute it
           {Config, Inputs, OutputsX, PrivateX} = BlockModule:execute(BlockValues),
@@ -218,8 +214,8 @@ check_boolean_input(Value) ->
                              
 update_execution_timer(BlockName, Inputs, Private) ->
 
-  ExecuteInterval = block_utils:get_value(Inputs, exec_interval),
-  TimerRef = block_utils:get_value(Private, timer_ref),
+  {ok, ExecuteInterval} = block_utils:get_value(Inputs, exec_interval),
+  {ok, TimerRef} = block_utils:get_value(Private, timer_ref),
 
   % Cancel block execution timer, if it is set   
   cancel_timer(TimerRef), 
@@ -246,8 +242,8 @@ update_execution_timer(BlockName, Inputs, Private) ->
     error_logger:error_msg("~p Invalid exec_interval value: ~p ~n",
                            [BlockName, ExecuteInterval])
   end,
-  NewPrivate = block_utils:set_value(Private, timer_ref, NewTimerRef),
-  {Status, NewPrivate}.
+  {ok, Private1} = block_utils:set_value(Private, timer_ref, NewTimerRef),
+  {Status, Private1}.
 
 
 %%
@@ -274,19 +270,19 @@ set_timer(BlockName, ExecuteInterval) ->
 %%
 %% Track execute method, time and count
 %%
--spec update_execute_track(Outputs :: list(), 
-                           ExecMethod :: atom()) -> list().
+-spec update_execute_track(Outputs :: list(attribute()), 
+                           ExecMethod :: atom()) -> list(attribute()).
 
 update_execute_track(Outputs, ExecMethod) ->
 
   % Record method of execution
-  OutputsX = block_utils:set_value(Outputs, exec_method, ExecMethod),
+  {ok, Outputs1} = block_utils:set_value(Outputs, exec_method, ExecMethod),
 
   % Record last executed timestamp
   TS = {_, _, Micro} = os:timestamp(),
   {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
 
-	block_utils:set_value(OutputsX, last_exec, {Hour, Minute, Second, Micro}).
+	block_utils:set_value(Outputs1, last_exec, {Hour, Minute, Second, Micro}).
 
 
 %% 
@@ -362,7 +358,7 @@ update_linked_inputs([BlockName | RemainingLinks], FromBlockName, ValueName, New
 -spec update_execute(list()) -> ok.
 
 update_execute(Outputs) ->	
-  {exec_out,  _Value, BlockNames} = block_utils:get_attribute(Outputs, exec_out),
+  {ok, {exec_out,  {_Value, BlockNames}}} = block_utils:get_attribute(Outputs, exec_out),
   execute_out(BlockNames).
 
 %%
@@ -389,8 +385,8 @@ delete(BlockValues) ->
 
   % Cancel execution timer if it exists
   case block_utils:get_value(Private, timer_ref) of
-    empty    -> empty;
-    TimerRef ->  erlang:cancel_timer(TimerRef)
+    {ok, empty}    -> empty;
+    {ok, TimerRef} ->  erlang:cancel_timer(TimerRef)
   end,
     
   % Scan this block's inputs, and unlink from other block outputs

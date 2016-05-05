@@ -128,12 +128,11 @@ create_block_specs([], BlockSpecs) -> BlockSpecs;
 create_block_specs(BlockValuesList, BlockSpecs) ->
 	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
 	% TODO: Check for expected term match, before creating child spec 
-	{Config, _Inputs, _Outputs} = BlockValues,
-  BlockName = config_utils:name(Config),
+	
+  {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
+  
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
-                        [BlockName, 
-                         block_utils:get_value(Config, block_type), 
-                         block_utils:get_value(Config, version)]),
+                        [BlockName, BlockModule, Version],
 
 	BlockSpec = #{id => BlockName, restart => transient,
                    start => {block_server, create, [BlockValues]}},

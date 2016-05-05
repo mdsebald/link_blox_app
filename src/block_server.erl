@@ -165,7 +165,7 @@ handle_call(get_values, _From, BlockValues) ->
 %% Get a block value
 %% =====================================================================    
 handle_call({get_value, ValueName}, _From, BlockValues) ->
-  Value = block_utils:get_value_any(BlockValues, ValueName),
+  {ok, Value} = block_utils:get_value_any(BlockValues, ValueName),
   {reply, Value, BlockValues};
 
 
@@ -188,7 +188,7 @@ handle_call({link, ValueName, ToBlockName}, _From, BlockValues) ->
   NewOutputs = link_utils:add_link(Outputs, ValueName, ToBlockName),
 
   % Send the current value of this output to the block 'ToBlockName'
-  Value = block_utils:get_value(NewOutputs, ValueName),
+  {ok, Value} = block_utils:get_value(NewOutputs, ValueName),
  
   {reply, Value, {Config, Inputs, NewOutputs, Private}};
   
@@ -420,8 +420,8 @@ update_block({Config, NewInputs, Outputs, Private}) ->
   
   % Don't execute block if block is executed via timer or executor execution
   % Just update the input values and leave it at that
-  TimerRef = block_utils:get_value(Private, timer_ref),
-  {exec_in, _Value, ExecuteLink} = block_utils:get_attribute(NewInputs, exec_in),
+  {ok, TimerRef} = block_utils:get_value(Private, timer_ref),
+  {ok, {exec_in, {_Value, ExecuteLink}}} = block_utils:get_attribute(NewInputs, exec_in),
     
   if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
     NewBlockValues = block_common:execute({Config, NewInputs, Outputs, Private}, 

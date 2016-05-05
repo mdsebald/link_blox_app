@@ -8,27 +8,96 @@
 % Block definition.  Used for creating or saving a block 
 
 -type block_defn() :: {
-                        Config :: list(),
-                        Inputs :: list(),
-                        Outputs :: list()
+                        Config :: list(config_attr),
+                        Inputs :: list(input_attr),
+                        Outputs :: list(output_attr)
                       }.
 
 
 % Block state. Used for retaining state between block execution
 
 -type block_state() :: { 
-                         Config :: list(), 
-                         Inputs :: list(), 
-                         Outputs :: list(), 
-                         Private :: list() 
+                         Config :: list(config_attr),
+                         Inputs :: list(input_attr),
+                         Outputs :: list(output_attr),
+                         Private :: list(any())
                        }.
-                       
-                       
+
+
+-type attribute() :: config_attr() | input_attr() | output_attr() | private_attr().
+
+
+-type config_attr() :: { 
+                          ValueName :: atom(),
+                          ConfigValue :: {value()} | [{value()},...]
+                       }.
+
+
+ -type input_attr() :: { 
+                          ValueName :: atom(),
+                          InputValue :: {value(), input_link()} | [{value(), input_link()},...]
+                       }.
+
+
+ -type output_attr() :: { 
+                          ValueName :: atom(),
+                          OutputValue :: {value(), link_refs()} | [{value(), link_refs()},...]
+                       }.                      
+
+
+-type private_attr() :: {
+                          ValueName :: atom(),
+                          PrivateValue :: {any()} | [{any()},...]
+                        }.
+
+
 -type input_link() :: { 
                         NodeName :: atom() | null,
                         BlockName :: atom() | null,
-                        ValueName :: atom() | null
+                        ValueName :: atom() | null,
+                        Index :: integer()
                       }.
+ 
+ 
+-type link_refs() :: [pid(), ...].
+
+
+-type value() :: empty | not_active | integer() | float() | boolean() | 
+                 string() | tuple() | list().
+
+-type attrib_errors() :: {error, not_found | invalid_value | invalid_index | negative_index}.
+                          
+-type attrib_value() :: {ok, value()} | attrib_errors().
+
+
+%%
+%% Define block input value types
+%%
+
+-type input_errors() :: {error, not_found | bad_link | range | bad_type | not_input}.
+                          
+-type generic_input_value() :: {ok, term()} | {ok, not_active} | input_errors().
+
+-type integer_input_value() :: {ok, integer()} | {ok, not_active} | input_errors().
+
+-type float_input_value() :: {ok, float()} | {ok, not_active} | input_errors().
+
+-type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
+
+
+%%
+%% Define block configuration value types
+%%
+       
+-type config_errors() :: {error, not_found | range | bad_type | not_config}.
+                                           
+-type generic_config_value() :: {ok, term()} | config_errors().
+
+-type integer_config_value() :: {ok, integer()} |  config_errors().
+
+-type float_config_value() :: {ok, float()} | config_errors().
+
+-type boolean_config_value() :: {ok, boolean()} | config_errors().
                       
 %%
 %% specifies an empty input value link
@@ -71,37 +140,3 @@
    
 -type block_status() :: created | initialed | normal |  disabled | frozen | 
                         error | input_err | config_err | proc_err | no_input | override.
-                       
-
-%%
-%% Define block input value types
-%%
-
--type input_errors() :: {error, not_found} | {error, bad_link} | {error, range} |
-                        {error, bad_type} | {error, not_input}.
-                          
--type generic_input_value() :: {ok, term()} | {ok, not_active} | input_errors().
-
--type integer_input_value() :: {ok, integer()} | {ok, not_active} | input_errors().
-
--type float_input_value() :: {ok, float()} | {ok, not_active} | input_errors().
-
--type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
-
-
-
-%%
-%% Define block configuration value types
-%%
-       
--type config_errors() :: {error, not_found} | {error, range} |
-                         {error, bad_type} | {error, not_config}.
-                                           
--type generic_config_value() :: {ok, term()} | config_errors().
-
--type integer_config_value() :: {ok, integer()} |  config_errors().
-
--type float_config_value() :: {ok, float()} | config_errors().
-
--type boolean_config_value() :: {ok, boolean()} | config_errors().
-

@@ -112,11 +112,11 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Private1 = block_utils:add_attribute(Private, {gpio_pin_ref, empty}),
   
   % Get the GPIO Pin number used for digital outputs 
-  PinNumber = block_utils:get_value(Config, gpio_pin),
+  {ok, PinNumber} = block_utils:get_value(Config, gpio_pin),
   % TODO: Check if Pin Number is an integer, and range
     
-  DefaultValue = block_utils:get_value(Config, default_value),
-  InvertOutput = block_utils:get_value(Config, invert_output),
+  {ok, DefaultValue} = block_utils:get_value(Config, default_value),
+  {ok, InvertOutput} = block_utils:get_value(Config, invert_output),
 	    
   case gpio:start_link(PinNumber, output) of
     {ok, GpioPinRef} ->
@@ -146,11 +146,11 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
   
-  GpioPin = block_utils:get_value(Private, gpio_pin_ref),
-  DefaultValue = block_utils:get_value(Config, default_value),
-  InvertOutput = block_utils:get_value(Config, invert_output),
+  {ok, GpioPin} = block_utils:get_value(Private, gpio_pin_ref),
+  {ok, DefaultValue} = block_utils:get_value(Config, default_value),
+  {ok, InvertOutput} = block_utils:get_value(Config, invert_output),
      
-  Input = block_utils:get_value(Inputs, input),
+  {ok, Input} = block_utils:get_value(Inputs, input),
  	
   % Set Output Val to input and set the actual GPIO pin value too
   case Input of

@@ -12,10 +12,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([name/1, module/1, name_module/1]).
+-export([name/1, module/1, name_module/1, name_module_version/1]).
 -export([get_any_type/2, get_integer/2, get_integer_range/4]). 
 -export([get_float/2, get_boolean/2]).
--export([get_value/3]).
+-export([get_value/3, resize_attribute_array_value/4]).
 -export([log_error/3]).
 
 %%
@@ -26,13 +26,16 @@
            block_state()) -> atom().
 
 name({Config, _Inputs, _Outputs, _Private}) ->
-  block_utils:get_value(Config, block_name);
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  BlockName;
   
 name({Config, _Inputs, _Outputs}) ->  
-  block_utils:get_value(Config, block_name);
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  BlockName;
   
 name(Config) ->
-  block_utils:get_value(Config, block_name).
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  BlockName.
 
   
 %%
@@ -43,13 +46,16 @@ name(Config) ->
              block_state()) -> module().
 
 module({Config, _Inputs, _Outputs, _Private}) ->
-  block_utils:get_value(Config, block_module);
+  {ok, BlockModule} = block_utils:get_value(Config, block_module),
+  BlockModule;
   
 module({Config, _Inputs, _Outputs}) ->
-  block_utils:get_value(Config, block_module);
+  {ok, BlockModule} = block_utils:get_value(Config, block_module),
+  BlockModule;
 
 module(Config) ->
-  block_utils:get_value(Config, block_module).
+  {ok, BlockModule} = block_utils:get_value(Config, block_module),
+  BlockModule.
 
 
 %%
@@ -60,17 +66,33 @@ module(Config) ->
                   block_state()) -> {atom(), module()}.
 
 name_module({Config, _Inputs, _Outputs, _Private}) ->
-  {block_utils:get_value(Config, block_name),
-   block_utils:get_value(Config, block_module)};
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  {ok, BlockModule} = block_utils:get_value(Config, block_module),
+  {BlockName, BlockModule};
   
 name_module({Config, _Inputs, _Outputs}) ->  
-  {block_utils:get_value(Config, block_name),
-   block_utils:get_value(Config, block_module)};
-                     
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  {ok, BlockModule} =  block_utils:get_value(Config, block_module),
+  {BlockName, BlockModule};
+                       
 name_module(Config) ->
-  {block_utils:get_value(Config, block_name),
-   block_utils:get_value(Config, block_module)}.
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  {ok, BlockModule} =  block_utils:get_value(Config, block_module),
+  {BlockName, BlockModule}.
+  
+  
+%%
+%%  Get block name and module from Config attribute values
+%%
+-spec name_module_version(Config :: list() |
+                          block_defn() | 
+                          block_state()) -> {atom(), module(), string()}.
 
+name_module_version({Config, _Inputs, _Outputs, _Private}) ->
+  {ok, BlockName} = block_utils:get_value(Config, block_name),
+  {ok, BlockModule} = block_utils:get_value(Config, block_module),
+  {ok, Version} = block_utils:get_value(Config, version),
+  {BlockName, BlockModule, Version}.
 
 %%
 %% Get configuration value of any type and check for errors.
@@ -144,15 +166,68 @@ get_boolean(Config, ValueName) ->
                 
 get_value(Config, ValueName, CheckType) ->
   case block_utils:get_attribute(Config, ValueName) of
-    not_found  -> {error, not_found};
+    {error, not_found}  -> {error, not_found};
     
-    {ValueName, Value} ->
+    {ok, {ValueName, {Value}}} ->
       case CheckType(Value) of
         true  -> {ok, Value};
         false -> {error, bad_type}   
       end;
     % Attribute value was not a config value  
     _ -> {error, not_config}
+  end.
+
+
+%%
+%% Resize an array value in the Configs attribute list
+%% If there are fewer values in the array than the target quantity,
+%% add values to the array using the DefaultValue
+%% If there are more values in the array than the target Quantity,
+%% and delete the excess values
+%% Returns updated Config attribute list
+%%
+-spec resize_attribute_array_value(Config :: list(config_attr()),
+                                   TargQuant :: integer(),
+                                   ArrayValueName :: atom(),
+                                   DefaultValue :: term()) -> list(config_attr()).
+                             
+resize_attribute_array_value(Config, TargQuant, ArrayValueName, DefaultValue)->
+  case block_utils:get_attribute(Config, ArrayValueName) of
+    % If attribute not found, just return Config attribute list unchanged
+    {error, not_found} -> Config;
+      
+    {ok, {ArrayValueName, ArrayValues}} ->
+      NewValuesArray = 
+          resize_array_value(ArrayValues, TargQuant, DefaultValue),
+      block_utils:replace_attribute(Config, ArrayValueName, 
+                        {ArrayValueName, NewValuesArray})
+  end.
+
+
+%%
+%% Resize the array of values to match the target quantity.
+%% Always add to or delete from the end of the array.
+%% There will always be at least one value in the array. 
+%%  
+-spec resize_array_value(ValuesArray :: list(),
+                         TargQuant :: integer(),
+                         DefaultValue :: term()) -> list().
+                                     
+resize_array_value(ValuesArray, TargQuant, DefaultValue)->
+  ValuesQuant = length(ValuesArray),
+  if ValuesQuant == TargQuant ->
+    % quantity of Values in array matches target, nothing to do 
+    ValuesArray;
+  true ->
+    if ValuesQuant < TargQuant ->
+      % not enough values, add the required number of default values
+      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
+      ValuesArray ++ AddedValues;
+    true ->
+      %  too many values, split the list and ignore the deleted ones on the end
+      {KeepValues, _DeleteValues} = lists:split(TargQuant, ValuesArray),
+      KeepValues
+    end
   end.
 
 

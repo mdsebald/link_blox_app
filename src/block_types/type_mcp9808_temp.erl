@@ -113,16 +113,16 @@ initialize({Config, Inputs, Outputs, Private}) ->
   
   % Get the the I2C Address of the sensor 
   % TODO: Check for valid I2C Address
-  I2cDevice = block_utils:get_value(Config, i2c_device),
-  I2cAddr = block_utils:get_value(Config, i2c_addr),
+  {ok, I2cDevice} = block_utils:get_value(Config, i2c_device),
+  {ok, I2cAddr} = block_utils:get_value(Config, i2c_addr),
 	    
   case i2c:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       Private2 = block_utils:set_value(Private1, i2c_ref, I2cRef),
       
       
-      DegF = block_utils:get_value(Config, deg_f),
-      Offset = block_utils:get_value(Config, offset),
+      {ok, DegF} = block_utils:get_value(Config, deg_f),
+      {ok, Offset} = block_utils:get_value(Config, offset),
   
       % Read the ambient temperature
       case read_ambient(I2cRef, DegF, Offset) of
@@ -164,9 +164,9 @@ execute({Config, Inputs, Outputs, Private}) ->
   % if ((UpperByte & 0x40) == 0x40){ //TA > TUPPER }
   % if ((UpperByte & 0x20) == 0x20){ //TA < TLOWER }
   
-  I2cRef = block_utils:get_value(Private, i2c_ref),
-  DegF = block_utils:get_value(Config, deg_f),
-  Offset = block_utils:get_value(Config, offset),
+  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref),
+  {ok, DegF} = block_utils:get_value(Config, deg_f),
+  {ok, Offset} = block_utils:get_value(Config, offset),
   
   % Read the ambient temperature
   case read_ambient(I2cRef, DegF, Offset) of
@@ -193,7 +193,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 delete({_Config, _Inputs, _Outputs, Private}) -> 
   % Close the I2C Channel
-  I2cRef = block_utils:get_value(Private, i2c_ref), 
+  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref), 
   i2c:stop(I2cRef),
   ok.
 

@@ -112,7 +112,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  InitialValue = block_utils:get_value(Inputs, initial_value),
+  {ok, InitialValue} = block_utils:get_value(Inputs, initial_value),
     
   % If the Initial input value is a fixed value integer, 
   % We can imediately set the initial block output value, 
@@ -149,7 +149,7 @@ execute({Config, Inputs, Outputs, Private}) ->
                     Value = not_active, Status = no_input, Carry = not_active;
                   true ->
                     % Input and Config values are good
-                    CurrentValue = block_utils:get_value(Outputs, value),
+                    {ok, CurrentValue} = block_utils:get_value(Outputs, value),
                     % if Current output value has not been set 
                     % to a normal integer value yet,set it to the initial value, 
                     % because we have good initial and final input values at this point    
