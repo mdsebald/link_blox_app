@@ -132,7 +132,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	    gpio:register_int(GpioPinA_Ref),
       gpio:set_int(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = read_pin_value_bool(GpioPinA_Ref),
-      Private2 = block_utils:set_values(Private1, 
+      {ok, Private2} = block_utils:set_values(Private1, 
                                         [{gpio_pin_A_ref, GpioPinA_Ref},
                                          {last_A_value, LastA_Value}]),
 
@@ -141,7 +141,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	        gpio:register_int(GpioPinB_Ref),
           gpio:set_int(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = read_pin_value_bool(GpioPinB_Ref),
-          Private3 = block_utils:set_values(Private2, 
+          {ok, Private3} = block_utils:set_values(Private2, 
                                         [{gpio_pin_B_ref, GpioPinB_Ref},
                                          {last_B_value, LastB_Value}]),
       
@@ -150,7 +150,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	            gpio:register_int(GpioPinSwRef),
               gpio:set_int(GpioPinSwRef, SwitchIntEdge),
               LastSwValue = read_pin_value_bool(GpioPinSwRef),
-              Private4 = block_utils:set_values(Private3, 
+              {ok, Private4} = block_utils:set_values(Private3, 
                                         [{gpio_pin_sw_ref, GpioPinSwRef},
                                          {last_sw_value, LastSwValue}]),
 
@@ -216,11 +216,11 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,   
 
   
-  Outputs1 = block_utils:set_values(Outputs, [{value, NewCount},
+  {ok, Outputs1} = block_utils:set_values(Outputs, [{value, NewCount},
                                               {switch, SwValue},
                                               {status, normal}]),
                                               
-  Private1 = block_utils:set_values(Private, [{last_A_value, PhaseA},
+  {ok, Private1} = block_utils:set_values(Private, [{last_A_value, PhaseA},
                                               {last_B_value, PhaseB},
                                               {last_sw_value, SwValue}]),
 

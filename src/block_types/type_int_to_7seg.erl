@@ -36,10 +36,10 @@ default_configs(BlockName, Description) ->
   block_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_digits, 1},
-      {number_base, 10},
-      {leading_zeros, false},
-      {unsigned, true}
+      {num_of_digits, {1}},
+      {number_base, {10}},
+      {leading_zeros, {false}},
+      {unsigned, {true}}
     ]). 
 
 
@@ -49,7 +49,7 @@ default_inputs() ->
   block_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, empty, ?EMPTY_LINK},
+      {input, {empty, ?EMPTY_LINK}},
       {dec_pnt, [{false, ?EMPTY_LINK}]}  % Array attribute
     ]). 
 
@@ -117,23 +117,22 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       Inputs1 = Inputs,
       {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason),
-      Outputs2 = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]),
-      Private1 = Private;
+      {ok, Outputs1} = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
       
     {ok, NumOfDigits} ->
-      {DecPntInputs, DecPntNames} = 
-        block_utils:create_attribute_array(NumOfDigits, {dec_pnt, false, ?EMPTY_LINK}),
-      Inputs1 = block_utils:merge_attribute_lists(Inputs, DecPntInputs),
-      Private1 = block_utils:add_attribute(Private, {dec_pnt, DecPntNames}),
-      
-      DigitOutputs = 
-        block_utils:create_attribute_array(NumOfDigits, {digit, not_active, []}),
-      Outputs1 = block_utils:merge_attribute_lists(Outputs, DigitOutputs),
-      Outputs2 = block_utils:set_values(Outputs1, [{value, 0}, {status, normal}])
+      BlockName = config_utils:name(Config),
+      % Create a decimal point input for each digit
+      Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
+                                  NumOfDigits, dec_pnt, {false, ?EMPTY_LINK}),
+
+      % Create a digit output for each digit
+      Outputs1 = 
+        output_utils:resize_attribute_array_value(BlockName, Outputs, 
+                                NumOfDigits, digit, {not_active, []}),
   end,
 
   % This is the block state
-  {Config, Inputs1, Outputs2, Private1}.
+  {Config, Inputs1, Outputs2, Private}.
 
 
 %%
@@ -172,7 +171,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Digit4 = char_to_segments(lists:nth(5, FlatNumberStr), false)
   end,
   
-  Outputs1 = block_utils:set_values(Outputs, 
+  {ok, Outputs1} = block_utils:set_values(Outputs, 
   [
     {value, Value}, {status, Status},  
     {digit_1, Digit1}, {digit_2, Digit2}, {digit_3, Digit3}, {digit_4, Digit4}

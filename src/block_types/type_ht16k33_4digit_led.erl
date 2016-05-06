@@ -126,7 +126,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, I2cRef} ->
       Status = initialed,
       Value = 0, 
-      Private2 = block_utils:set_value(Private1, i2c_ref, I2cRef);
+      {ok, Private2} = block_utils:set_value(Private1, i2c_ref, I2cRef);
       
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitializing LED driver, I2C Address: ~p~n", 

@@ -122,7 +122,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 initialize({Config, Inputs, Outputs, Private}) ->
 
   % Turn off all segments, set output value to "  ", and status to initialed
-  NewOutputs = block_utils:set_values(Outputs, 
+  {ok, NewOutputs} = block_utils:set_values(Outputs, 
     [
       {value, "  "}, {status, initialed},  
       {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false},
@@ -201,7 +201,7 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,         
 
   % update the outputs
-  Outputs1 = block_utils:set_values(Outputs, 
+  {ok, Outputs1} = block_utils:set_values(Outputs, 
     [
       {value, Value}, {status, Status},  
       {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, {seg_d, SegD},

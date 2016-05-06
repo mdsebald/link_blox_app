@@ -122,7 +122,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, GpioPinRef} ->
       Status = initialed,
       Value = DefaultValue,
- 	    Private2 = block_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+ 	    {ok, Private2} = block_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
       set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
     {error, ErrorResult} ->

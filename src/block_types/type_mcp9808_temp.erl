@@ -118,7 +118,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	    
   case i2c:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
-      Private2 = block_utils:set_value(Private1, i2c_ref, I2cRef),
+      {ok, Private2} = block_utils:set_value(Private1, i2c_ref, I2cRef),
       
       
       {ok, DegF} = block_utils:get_value(Config, deg_f),

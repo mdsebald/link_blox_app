@@ -205,7 +205,7 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,
   
   % Update outputs        
-  Outputs1 = block_utils:set_values(Outputs,
+  {ok, Outputs1} = block_utils:set_values(Outputs,
                   [{value, Value}, {status, Status}, {carry, Carry}]),
     
   {Config, Inputs, Outputs1, Private}.

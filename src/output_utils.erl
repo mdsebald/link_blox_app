@@ -27,7 +27,9 @@
                        Status :: block_status()) -> list().
 
 set_value_status(Outputs, Value, Status) ->
-  block_utils:set_values(Outputs, [{value, Value}, {status, Status}]).
+  {ok, Outputs1} = block_utils:set_values(Outputs, 
+                       [{value, Value}, {status, Status}]),
+  Outputs1.
   
 %%
 %% Set block output value and set status to normal
@@ -38,16 +40,19 @@ set_value_status(Outputs, Value, Status) ->
                        Value :: term()) -> list().
 
 set_value_normal(Outputs, Value) ->
-  block_utils:set_values(Outputs, [{value, Value}, {status, normal}]).
+  {ok, Outputs1} = block_utils:set_values(Outputs, 
+                                 [{value, Value}, {status, normal}]),
+  Outputs1.
 
 %%
 %% Set status output value
 %% 
--spec set_status(Outputs :: list(), 
-                 Status :: block_status()) -> list().
+-spec set_status(Outputs :: list(attribute()), 
+                 Status :: block_status()) -> list(attribute()).
 
 set_status(Outputs, Status) ->
-  block_utils:set_value(Outputs, status, Status).
+  {ok, Outputs1} = block_utils:set_value(Outputs, status, Status),
+  Outputs1.
   
 
 %%

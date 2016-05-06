@@ -120,7 +120,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, GpioPinRef} ->
       Status = initialed,
       Value = not_active,
-	    Private2 = block_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+	    {ok, Private2} = block_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
       gpio:register_int(GpioPinRef),
       % TODO: Make interrupt type selectable via config value
       gpio:set_int(GpioPinRef, both);

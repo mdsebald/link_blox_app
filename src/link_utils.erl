@@ -97,7 +97,8 @@ link_blocks(BlockName, Inputs, UpdatedInputs)->
             % send a link message to the linked block, get current linked value back
             UpdatedValue = block_server:link(LinkBlockName, LinkValueName, BlockName),
             
-            NewUpdatedInputs = block_utils:set_value(UpdatedInputs, ValueName, UpdatedValue),
+            {ok, NewUpdatedInputs} = 
+                      block_utils:set_value(UpdatedInputs, ValueName, UpdatedValue),
             
             error_logger:info_msg("Link Output <~p:~p> To Input <~p:~p>~n", 
                         [LinkBlockName, LinkValueName, BlockName, ValueName]),

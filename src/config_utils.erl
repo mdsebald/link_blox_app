@@ -21,7 +21,7 @@
 %%
 %%  Get block name from Config attribute values
 %%
--spec name(Config :: list() |
+-spec name(Config :: list(config_attr()) |
            block_defn() | 
            block_state()) -> atom().
 
@@ -41,7 +41,7 @@ name(Config) ->
 %%
 %% Get block module from Config attribute values 
 %%
--spec module(Config :: list() | 
+-spec module(Config :: list(config_attr()) | 
              block_defn() | 
              block_state()) -> module().
 
@@ -61,7 +61,7 @@ module(Config) ->
 %%
 %%  Get block name and module from Config attribute values
 %%
--spec name_module(Config :: list() |
+-spec name_module(Config :: list(config_attr()) |
                   block_defn() | 
                   block_state()) -> {atom(), module()}.
 
@@ -84,7 +84,7 @@ name_module(Config) ->
 %%
 %%  Get block name and module from Config attribute values
 %%
--spec name_module_version(Config :: list() |
+-spec name_module_version(Config :: list(config_attr()) |
                           block_defn() | 
                           block_state()) -> {atom(), module(), string()}.
 
@@ -97,7 +97,7 @@ name_module_version({Config, _Inputs, _Outputs, _Private}) ->
 %%
 %% Get configuration value of any type and check for errors.
 %%
--spec get_any_type(Config :: list(),
+-spec get_any_type(Config :: list(config_attr()),
                    ValueName :: atom()) -> generic_config_value().
 
 get_any_type(Config, ValueName) ->
@@ -108,7 +108,7 @@ get_any_type(Config, ValueName) ->
 %%
 %% Get an integer configuration value and check for errors.
 %%
--spec get_integer_range(Config :: list(), 
+-spec get_integer_range(Config :: list(config_attr()), 
                         ValueName :: atom(),
                         Min :: integer(),
                         Max :: integer()) -> integer_config_value().
@@ -127,7 +127,7 @@ get_integer_range(Config, ValueName, Min, Max) ->
   end.
        
 
--spec get_integer(Config :: list(), 
+-spec get_integer(Config :: list(config_attr()), 
                   ValueName :: atom()) -> integer_config_value().
 
 get_integer(Config, ValueName) ->
@@ -138,7 +138,7 @@ get_integer(Config, ValueName) ->
 %%
 %% Get a floating point configuration value and check for errors.
 %%
--spec get_float(Config :: list(), 
+-spec get_float(Config :: list(config_attr()), 
                 ValueName :: atom()) -> float_config_value().
 
 get_float(Config, ValueName) ->
@@ -149,7 +149,7 @@ get_float(Config, ValueName) ->
 %%
 %% Get a boolean configuration value and check for errors
 %%
--spec get_boolean(Config :: list(), 
+-spec get_boolean(Config :: list(config_attr()), 
                   ValueName :: atom()) -> boolean_config_value().
 
 get_boolean(Config, ValueName) ->
@@ -160,7 +160,7 @@ get_boolean(Config, ValueName) ->
 %%
 %% Generic get configuration value, check for errors.
 %%
--spec get_value(Config :: list(),
+-spec get_value(Config :: list(config_attr()),
                 ValueName :: atom(),
                 CheckType :: fun()) -> term().
                 
@@ -183,7 +183,7 @@ get_value(Config, ValueName, CheckType) ->
 %% If there are fewer values in the array than the target quantity,
 %% add values to the array using the DefaultValue
 %% If there are more values in the array than the target Quantity,
-%% and delete the excess values
+%% then delete the excess values
 %% Returns updated Config attribute list
 %%
 -spec resize_attribute_array_value(Config :: list(config_attr()),

@@ -282,7 +282,9 @@ update_execute_track(Outputs, ExecMethod) ->
   TS = {_, _, Micro} = os:timestamp(),
   {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
 
-	block_utils:set_value(Outputs1, last_exec, {Hour, Minute, Second, Micro}).
+	{ok, Outputs2} = block_utils:set_value(Outputs1, last_exec, 
+                               {Hour, Minute, Second, Micro}),
+  Outputs2.
 
 
 %% 

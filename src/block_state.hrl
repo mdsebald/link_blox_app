@@ -8,19 +8,19 @@
 % Block definition.  Used for creating or saving a block 
 
 -type block_defn() :: {
-                        Config :: list(config_attr),
-                        Inputs :: list(input_attr),
-                        Outputs :: list(output_attr)
+                        Config :: list(config_attr()),
+                        Inputs :: list(input_attr()),
+                        Outputs :: list(output_attr())
                       }.
 
 
 % Block state. Used for retaining state between block execution
 
 -type block_state() :: { 
-                         Config :: list(config_attr),
-                         Inputs :: list(input_attr),
-                         Outputs :: list(output_attr),
-                         Private :: list(any())
+                         Config :: list(config_attr()),
+                         Inputs :: list(input_attr()),
+                         Outputs :: list(output_attr()),
+                         Private :: list(private_attr())
                        }.
 
 

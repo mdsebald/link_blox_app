@@ -158,7 +158,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Digit4 = char_to_segments(lists:nth(5, FlatNumberStr), false)
   end,
   
-  Outputs1 = block_utils:set_values(Outputs, 
+  {ok, Outputs1} = block_utils:set_values(Outputs, 
   [
     {value, Value}, {status, Status},  
     {digit_1, Digit1}, {digit_2, Digit2}, {digit_3, Digit3}, {digit_4, Digit4}

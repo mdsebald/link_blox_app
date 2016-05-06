@@ -13,14 +13,14 @@
 %% API functions
 %% ====================================================================
 -export([get_any_type/2, get_integer/2, get_float/2, get_boolean/2]).
--export([get_value/3, resize_attribute_array_value/4]).
+-export([get_value/3, resize_attribute_array_value/5]).
 -export([log_error/3]).
 
 
 %%
 %% Get input value of any type and check for errors.
 %%
--spec get_any_type(Inputs :: list(),
+-spec get_any_type(Inputs :: list(input_attr()),
                    ValueName :: atom()) -> generic_input_value().
 
 get_any_type(Inputs, ValueName) ->
@@ -31,7 +31,7 @@ get_any_type(Inputs, ValueName) ->
 %%
 %% Get an integer input value and check for errors.
 %%
--spec get_integer(Inputs :: list(), 
+-spec get_integer(Inputs :: list(input_attr()), 
                   ValueName :: atom()) -> integer_input_value().
 
 get_integer(Inputs, ValueName) ->
@@ -42,7 +42,7 @@ get_integer(Inputs, ValueName) ->
 %%
 %% Get a floating point input value and check for errors.
 %%
--spec get_float(Inputs :: list(), 
+-spec get_float(Inputs :: list(input_attr()), 
                 ValueName :: atom()) -> float_input_value().
 
 get_float(Inputs, ValueName) ->
@@ -53,7 +53,7 @@ get_float(Inputs, ValueName) ->
 %%
 %% Get a boolean input value and check for errors
 %%
--spec get_boolean(Inputs :: list(), 
+-spec get_boolean(Inputs :: list(input_attr()), 
                   ValueName :: atom()) -> boolean_input_value().
 
 get_boolean(Inputs, ValueName) ->
@@ -64,7 +64,7 @@ get_boolean(Inputs, ValueName) ->
 %%
 %% Generic get input value, check for errors.
 %%
--spec get_value(Inputs :: list(),
+-spec get_value(Inputs :: list(input_attr()),
                 ValueName :: atom(),
                 CheckType :: fun()) -> term().
                 
@@ -103,25 +103,25 @@ get_value(Inputs, ValueName, CheckType) ->
 %% If there are fewer values in the array than the target quantity,
 %% add values to the array using the DefaultValue
 %% If there are more values in the array than the target Quantity,
-%% and delete the excess values
+%% then delete the excess values
 %% Returns updated Inputs attribute list
 %%
 -spec resize_attribute_array_value(BlockName :: atom(),
-                                   Inputs :: list(),
+                                   Inputs :: list(input_attr()),
                                    TargQuant :: integer(),
                                    ArrayValueName :: atom(),
-                                   DefaultValue :: term()) -> list().
+                                   DefaultValue :: term()) -> list(input_attr()).
                              
-resize_attribute_array_value(BlockName, Configs, TargQuant, ArrayValueName, DefaultValue)->
+resize_attribute_array_value(BlockName, Inputs, TargQuant, ArrayValueName, DefaultValue)->
   case block_utils:get_attribute(Configs, ArrayValueName) of
-    % If attribute not found, just return Configs attribute list unchanged
-    {error, not_found} -> Configs;
+    % If attribute not found, just return Input attribute list unchanged
+    {error, not_found} -> Inputs;
       
     {ok, {ArrayValueName, ArrayValues}} ->
       NewValuesArray = 
           resize_array_value(BlockName, ArrayValueName, ArrayValues, 
                              TargQuant, DefaultValue),
-      block_utils:replace_attribute(Configs, ArrayValueName, 
+      block_utils:replace_attribute(Inputs, ArrayValueName, 
                         {ArrayValueName, NewValuesArray})
   end.
 
@@ -139,7 +139,7 @@ resize_attribute_array_value(BlockName, Configs, TargQuant, ArrayValueName, Defa
                                      
 resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultValue)->
   ValuesQuant = length(ValuesArray),
-  if ValuesQuant =:= TargQuant ->
+  if ValuesQuant == TargQuant ->
     % quantity of Values in array matches target, nothing to do 
     ValuesArray;
   true ->
@@ -148,7 +148,8 @@ resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultVal
       AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
       ValuesArray ++ AddedValues;
     true ->
-      %  too many values, split the list and ignore the deleted ones on the end
+      % Too many values, split the list ignore the deleted ones on the end
+      % Unlink the deleted array values if they are linked to an output value
       {KeepValues, DeleteValues} = lists:split(TargQuant, ValuesArray),
       fun(DeleteInput) -> link_utils:unlink(BlockName, {DeleteInput})
       KeepValues
@@ -159,7 +160,7 @@ resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultVal
 %%
 %% Log input value error
 %%
--spec log_error(Config :: list(),
+-spec log_error(Config :: list(config_attr()),
                 ValueName :: atom(),
                 Reason :: atom()) -> {not_active, input_err}.
                   
