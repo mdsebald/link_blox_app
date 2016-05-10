@@ -165,7 +165,7 @@ handle_call(get_values, _From, BlockValues) ->
 %% Get a block value
 %% =====================================================================    
 handle_call({get_value, ValueName}, _From, BlockValues) ->
-  {ok, Value} = block_utils:get_value_any(BlockValues, ValueName),
+  {ok, Value} = attrib_utils:get_value_any(BlockValues, ValueName),
   {reply, Value, BlockValues};
 
 
@@ -173,7 +173,7 @@ handle_call({get_value, ValueName}, _From, BlockValues) ->
 %% Set a block value
 %% ===================================================================== 
 handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
-  NewBlockValues = block_utils:set_value_any(BlockValues, ValueName, Value),
+  NewBlockValues = attrib_utils:set_value_any(BlockValues, ValueName, Value),
   {reply, {ValueName, Value}, NewBlockValues};
   
   
@@ -184,11 +184,11 @@ handle_call({link, ValueName, ToBlockName}, _From, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
-  %% Add the block 'ToBlockName' to the output 'ValueName's list of linked blocks
-  NewOutputs = link_utils:add_link(Outputs, ValueName, ToBlockName),
+  %% Add the block 'ToBlockName' to the output 'ValueName's list of block references
+  NewOutputs = link_utils:add_ref(Outputs, ValueName, ToBlockName),
 
   % Send the current value of this output to the block 'ToBlockName'
-  {ok, Value} = block_utils:get_value(NewOutputs, ValueName),
+  {ok, Value} = attrib_utils:get_value(NewOutputs, ValueName),
  
   {reply, Value, {Config, Inputs, NewOutputs, Private}};
   
@@ -252,7 +252,7 @@ handle_cast({update, FromBlockName, ValueName, Value}, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
-	NewInputs = link_utils:update_linked_input_values(Inputs, null, FromBlockName, ValueName, Value),
+	NewInputs = link_utils:update_linked_input_values(Inputs, {FromBlockName, ValueName}, Value),
 	
   % Execute the block because input values have changed
   NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
@@ -320,7 +320,7 @@ handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
   %% remove the block 'ToBlockName' from the output 'ValueName's list of linked blocks
-  NewOutputs = link_utils:delete_link(Outputs, ValueName, ToBlockName),
+  NewOutputs = link_utils:delete_ref(Outputs, ValueName, ToBlockName),
 
   {noreply, {Config, Inputs, NewOutputs, Private}};
 
@@ -420,8 +420,8 @@ update_block({Config, NewInputs, Outputs, Private}) ->
   
   % Don't execute block if block is executed via timer or executor execution
   % Just update the input values and leave it at that
-  {ok, TimerRef} = block_utils:get_value(Private, timer_ref),
-  {ok, {exec_in, {_Value, ExecuteLink}}} = block_utils:get_attribute(NewInputs, exec_in),
+  {ok, TimerRef} = attrib_utils:get_value(Private, timer_ref),
+  {ok, {exec_in, {_Value, ExecuteLink}}} = attrib_utils:get_attribute(NewInputs, exec_in),
     
   if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
     NewBlockValues = block_common:execute({Config, NewInputs, Outputs, Private}, 

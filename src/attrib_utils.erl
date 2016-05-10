@@ -1,9 +1,9 @@
 %%% @doc 
-%%% Common block utility functions     
+%%% Common Attribute value utility functions     
 %%%               
 %%% @end 
 
--module(block_utils).
+-module(attrib_utils).
 
 -author("Mark Sebald").
 

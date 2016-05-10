@@ -31,7 +31,7 @@ version() -> "0.1.0".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {gpio_pin, 0}, 
@@ -42,7 +42,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
 
@@ -52,7 +52,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
 
@@ -93,9 +93,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -109,10 +109,10 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = block_utils:add_attribute(Private, {gpio_pin_ref, empty}),
+  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, empty}),
     
   % Get the GPIO pin number used by this block
-  {ok, PinNumber} = block_utils:get_value(Config, gpio_pin),
+  {ok, PinNumber} = attrib_utils:get_value(Config, gpio_pin),
   % TODO: Check Pin Number is an integer in the right range
 
   % Initialize the GPIO pin as an input
@@ -120,7 +120,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, GpioPinRef} ->
       Status = initialed,
       Value = not_active,
-	    {ok, Private2} = block_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+	    {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
       gpio:register_int(GpioPinRef),
       % TODO: Make interrupt type selectable via config value
       gpio:set_int(GpioPinRef, both);
@@ -147,7 +147,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
   % Read the current value of the GPIO pin 
-  {ok, GpioPinRef} = block_utils:get_value(Private, gpio_pin_ref),
+  {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
   Value = read_pin_value_bool(GpioPinRef),
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, normal),

@@ -30,17 +30,17 @@
                                  [],
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
-                                     {input, {empty, {null, room_temp, value}}}
+                                     {input, {empty, {room_temp, value}}}
                                  ]),
                                  
     LedDisp = type_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
                                  [],
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
-                                     {seven_segs_1, {empty, {null, seg_decode, digit_1}}},
-                                     {seven_segs_2, {empty, {null, seg_decode, digit_2}}},
-                                     {seven_segs_3, {empty, {null, seg_decode, digit_3}}},
-                                     {seven_segs_4, {empty, {null, seg_decode, digit_4}}},
+                                     {seven_segs_1, {empty, {seg_decode, digit_1}}},
+                                     {seven_segs_2, {empty, {seg_decode, digit_2}}},
+                                     {seven_segs_3, {empty, {seg_decode, digit_3}}},
+                                     {seven_segs_4, {empty, {seg_decode, digit_4}}},
                                      {colon, {false, ?EMPTY_LINK}}
                                  ]),
                                  
@@ -65,7 +65,7 @@
                                  ],
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
-                                     {reset, {empty, {null, switch_27, value}}},
+                                     {reset, {empty, {switch_27, value}}},
                                      {exec_interval, {1000, ?EMPTY_LINK}}
                                  ]),
  
@@ -73,49 +73,49 @@
                                  [],
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
-                                     {segments, {empty, {null, rotary_encode, value}}}
+                                     {segments, {empty, {rotary_encode, value}}}
                                  ]),
                                  
     SegA = type_pi_gpio_do:create(seg_a, "LED Segment A",
                                  [{gpio_pin, {23}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_a}}}]
+                                  {input, {empty, {display, seg_a}}}]
                                 ),
 
     SegB = type_pi_gpio_do:create(seg_b, "LED Segment B",
                                  [{gpio_pin, {24}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_b}}}]
+                                  {input, {empty, {display, seg_b}}}]
                                 ),
 
     SegC = type_pi_gpio_do:create(seg_c, "LED Segment C",
                                  [{gpio_pin, {25}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_c}}}]
+                                  {input, {empty, {display, seg_c}}}]
                                 ),
 
     SegD = type_pi_gpio_do:create(seg_d, "LED Segment D",
                                  [{gpio_pin, {26}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_d}}}]
+                                  {input, {empty, {display, seg_d}}}]
                                 ),
 
     SegE = type_pi_gpio_do:create(seg_e, "LED Segment E",
                                  [{gpio_pin, {16}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_e}}}]
+                                  {input, {empty, {display, seg_e}}}]
                                 ),
         
     SegF = type_pi_gpio_do:create(seg_f, "LED Segment F",
                                  [{gpio_pin, {22}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_f}}}]
+                                  {input, {empty, {display, seg_f}}}]
                                 ),
         
     SegG = type_pi_gpio_do:create(seg_g, "LED Segment G",
                                  [{gpio_pin, {17}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
-                                  {input, {empty, {null, display, seg_g}}}]
+                                  {input, {empty, {display, seg_g}}}]
                                 ),
 
     [RotEncoder, SegDecoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 

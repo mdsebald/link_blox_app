@@ -33,7 +33,7 @@ description() -> "Convert integer input to multiple 7 segment digits".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {num_of_digits, {1}},
@@ -46,7 +46,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       {input, {empty, ?EMPTY_LINK}},
@@ -57,7 +57,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
       {digit, [{not_active, []}]}  % Array attribute 
@@ -97,9 +97,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% If any of the intial attributes do not already exist in the 
   %% default attribute lists, merge_attribute_lists() will create them.
      
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -117,7 +117,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       Inputs1 = Inputs,
       {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason),
-      {ok, Outputs1} = block_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
+      {ok, Outputs1} = attrib_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
       
     {ok, NumOfDigits} ->
       BlockName = config_utils:name(Config),
@@ -171,7 +171,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Digit4 = char_to_segments(lists:nth(5, FlatNumberStr), false)
   end,
   
-  {ok, Outputs1} = block_utils:set_values(Outputs, 
+  {ok, Outputs1} = attrib_utils:set_values(Outputs, 
   [
     {value, Value}, {status, Status},  
     {digit_1, Digit1}, {digit_2, Digit2}, {digit_3, Digit3}, {digit_4, Digit4}

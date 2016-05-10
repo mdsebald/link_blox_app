@@ -45,7 +45,7 @@ description() -> "Short description of block function".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       % INTRUCTIONS: Insert block type specific config attribute tuples here
@@ -58,7 +58,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       % INTRUCTIONS: Insert block type specific input attribute tuples here
@@ -71,7 +71,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
       % INTRUCTIONS: Insert block type specific output attribute tuples here
@@ -115,9 +115,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.

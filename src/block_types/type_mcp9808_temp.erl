@@ -31,7 +31,7 @@ description() -> "MCP9808 precision temp sensor with I2C interface".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {i2c_device, "i2c-1"},
@@ -44,7 +44,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       {input, 0, ?EMPTY_LINK} 
@@ -54,7 +54,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
      
@@ -94,9 +94,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -109,20 +109,20 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = block_utils:add_attribute(Private, {i2c_ref, empty}),
+  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, empty}),
   
   % Get the the I2C Address of the sensor 
   % TODO: Check for valid I2C Address
-  {ok, I2cDevice} = block_utils:get_value(Config, i2c_device),
-  {ok, I2cAddr} = block_utils:get_value(Config, i2c_addr),
+  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
+  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
 	    
   case i2c:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
-      {ok, Private2} = block_utils:set_value(Private1, i2c_ref, I2cRef),
+      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
       
       
-      {ok, DegF} = block_utils:get_value(Config, deg_f),
-      {ok, Offset} = block_utils:get_value(Config, offset),
+      {ok, DegF} = attrib_utils:get_value(Config, deg_f),
+      {ok, Offset} = attrib_utils:get_value(Config, offset),
   
       % Read the ambient temperature
       case read_ambient(I2cRef, DegF, Offset) of
@@ -164,9 +164,9 @@ execute({Config, Inputs, Outputs, Private}) ->
   % if ((UpperByte & 0x40) == 0x40){ //TA > TUPPER }
   % if ((UpperByte & 0x20) == 0x20){ //TA < TLOWER }
   
-  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref),
-  {ok, DegF} = block_utils:get_value(Config, deg_f),
-  {ok, Offset} = block_utils:get_value(Config, offset),
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
+  {ok, DegF} = attrib_utils:get_value(Config, deg_f),
+  {ok, Offset} = attrib_utils:get_value(Config, offset),
   
   % Read the ambient temperature
   case read_ambient(I2cRef, DegF, Offset) of
@@ -193,7 +193,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 delete({_Config, _Inputs, _Outputs, Private}) -> 
   % Close the I2C Channel
-  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref), 
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref), 
   i2c:stop(I2cRef),
   ok.
 

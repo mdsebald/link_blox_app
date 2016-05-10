@@ -36,7 +36,7 @@ version() -> "0.1.0".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
                                 
@@ -46,7 +46,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       {display_on, true, ?EMPTY_LINK},
@@ -57,7 +57,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
       {seg_a, not_active, []},
@@ -105,9 +105,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -122,7 +122,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 initialize({Config, Inputs, Outputs, Private}) ->
 
   % Turn off all segments, set output value to "  ", and status to initialed
-  {ok, NewOutputs} = block_utils:set_values(Outputs, 
+  {ok, NewOutputs} = attrib_utils:set_values(Outputs, 
     [
       {value, "  "}, {status, initialed},  
       {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false},
@@ -201,7 +201,7 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,         
 
   % update the outputs
-  {ok, Outputs1} = block_utils:set_values(Outputs, 
+  {ok, Outputs1} = attrib_utils:set_values(Outputs, 
     [
       {value, Value}, {status, Status},  
       {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, {seg_d, SegD},

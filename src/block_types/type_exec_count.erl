@@ -36,7 +36,7 @@ version() -> "0.1.0".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {rollover, true} 
@@ -46,7 +46,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       {reset, false, ?EMPTY_LINK},
@@ -56,7 +56,7 @@ default_inputs() ->
                             
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
       {carry, not_active, []}
@@ -97,9 +97,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -112,7 +112,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  {ok, InitialValue} = block_utils:get_value(Inputs, initial_value),
+  {ok, InitialValue} = attrib_utils:get_value(Inputs, initial_value),
     
   % If the Initial input value is a fixed value integer, 
   % We can imediately set the initial block output value, 
@@ -149,7 +149,7 @@ execute({Config, Inputs, Outputs, Private}) ->
                     Value = not_active, Status = no_input, Carry = not_active;
                   true ->
                     % Input and Config values are good
-                    {ok, CurrentValue} = block_utils:get_value(Outputs, value),
+                    {ok, CurrentValue} = attrib_utils:get_value(Outputs, value),
                     % if Current output value has not been set 
                     % to a normal integer value yet,set it to the initial value, 
                     % because we have good initial and final input values at this point    
@@ -205,7 +205,7 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,
   
   % Update outputs        
-  {ok, Outputs1} = block_utils:set_values(Outputs,
+  {ok, Outputs1} = attrib_utils:set_values(Outputs,
                   [{value, Value}, {status, Status}, {carry, Carry}]),
     
   {Config, Inputs, Outputs1, Private}.

@@ -141,10 +141,10 @@ execute(BlockValues, ExecMethod) ->
   
   {BlockName, BlockModule} = config_utils:name_module(Config),
     
-  {ok, Disable} = block_utils:get_value(Inputs, disable),
+  {ok, Disable} = attrib_utils:get_value(Inputs, disable),
   case check_boolean_input(Disable) of
     not_active ->
-      {ok, Freeze} = block_utils:get_value(Inputs, freeze),
+      {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
       case check_boolean_input(Freeze) of
         not_active -> % block is not disabled or frozen, execute it
           {Config, Inputs, OutputsX, PrivateX} = BlockModule:execute(BlockValues),
@@ -214,8 +214,8 @@ check_boolean_input(Value) ->
                              
 update_execution_timer(BlockName, Inputs, Private) ->
 
-  {ok, ExecuteInterval} = block_utils:get_value(Inputs, exec_interval),
-  {ok, TimerRef} = block_utils:get_value(Private, timer_ref),
+  {ok, ExecuteInterval} = attrib_utils:get_value(Inputs, exec_interval),
+  {ok, TimerRef} = attrib_utils:get_value(Private, timer_ref),
 
   % Cancel block execution timer, if it is set   
   cancel_timer(TimerRef), 
@@ -242,7 +242,7 @@ update_execution_timer(BlockName, Inputs, Private) ->
     error_logger:error_msg("~p Invalid exec_interval value: ~p ~n",
                            [BlockName, ExecuteInterval])
   end,
-  {ok, Private1} = block_utils:set_value(Private, timer_ref, NewTimerRef),
+  {ok, Private1} = attrib_utils:set_value(Private, timer_ref, NewTimerRef),
   {Status, Private1}.
 
 
@@ -276,13 +276,13 @@ set_timer(BlockName, ExecuteInterval) ->
 update_execute_track(Outputs, ExecMethod) ->
 
   % Record method of execution
-  {ok, Outputs1} = block_utils:set_value(Outputs, exec_method, ExecMethod),
+  {ok, Outputs1} = attrib_utils:set_value(Outputs, exec_method, ExecMethod),
 
   % Record last executed timestamp
   TS = {_, _, Micro} = os:timestamp(),
   {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
 
-	{ok, Outputs2} = block_utils:set_value(Outputs1, last_exec, 
+	{ok, Outputs2} = attrib_utils:set_value(Outputs1, last_exec, 
                                {Hour, Minute, Second, Micro}),
   Outputs2.
 
@@ -360,7 +360,7 @@ update_linked_inputs([BlockName | RemainingLinks], FromBlockName, ValueName, New
 -spec update_execute(list()) -> ok.
 
 update_execute(Outputs) ->	
-  {ok, {exec_out,  {_Value, BlockNames}}} = block_utils:get_attribute(Outputs, exec_out),
+  {ok, {exec_out,  {_Value, BlockNames}}} = attrib_utils:get_attribute(Outputs, exec_out),
   execute_out(BlockNames).
 
 %%
@@ -386,7 +386,7 @@ delete(BlockValues) ->
   {BlockName, BlockModule} = config_utils:name_module(Config),
 
   % Cancel execution timer if it exists
-  case block_utils:get_value(Private, timer_ref) of
+  case attrib_utils:get_value(Private, timer_ref) of
     {ok, empty}    -> empty;
     {ok, TimerRef} ->  erlang:cancel_timer(TimerRef)
   end,

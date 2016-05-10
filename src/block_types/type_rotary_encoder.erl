@@ -35,7 +35,7 @@ description() -> "Rotary encoder with optional switch".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {gpio_pin_phase_A, 21},   % TODO: Final block set to zero
@@ -49,7 +49,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
      
@@ -59,7 +59,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
       {switch, not_active, []}
@@ -92,9 +92,9 @@ create(BlockName, Description, InitConfig, InitInputs) ->
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -109,7 +109,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 initialize({Config, Inputs, Outputs, Private}) ->
   
   % Set up the private values needed  
-  Private1 = block_utils:merge_attribute_lists(Private, 
+  Private1 = attrib_utils:merge_attribute_lists(Private, 
                             [{gpio_pin_A_ref, empty},
                              {last_A_value, empty},
                              {gpio_pin_B_ref, empty},
@@ -118,11 +118,11 @@ initialize({Config, Inputs, Outputs, Private}) ->
                              {last_sw_value, empty}]),
     
   % Get the GPIO pin numbers and interrupt edge directions used by this block
-  {ok, PhaseA_Pin} = block_utils:get_value(Config, gpio_pin_phase_A),
-  {ok, PhaseB_Pin} = block_utils:get_value(Config, gpio_pin_phase_B),
-  {ok, PhaseIntEdge} = block_utils:get_value(Config, phase_int_edge),
-  {ok, SwitchPin} = block_utils:get_value(Config, gpio_pin_switch),
-  {ok, SwitchIntEdge} = block_utils:get_value(Config, switch_int_edge),
+  {ok, PhaseA_Pin} = attrib_utils:get_value(Config, gpio_pin_phase_A),
+  {ok, PhaseB_Pin} = attrib_utils:get_value(Config, gpio_pin_phase_B),
+  {ok, PhaseIntEdge} = attrib_utils:get_value(Config, phase_int_edge),
+  {ok, SwitchPin} = attrib_utils:get_value(Config, gpio_pin_switch),
+  {ok, SwitchIntEdge} = attrib_utils:get_value(Config, switch_int_edge),
   
   % TODO: Check Pin Numbers are an integer in the right range
 
@@ -132,7 +132,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	    gpio:register_int(GpioPinA_Ref),
       gpio:set_int(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = read_pin_value_bool(GpioPinA_Ref),
-      {ok, Private2} = block_utils:set_values(Private1, 
+      {ok, Private2} = attrib_utils:set_values(Private1, 
                                         [{gpio_pin_A_ref, GpioPinA_Ref},
                                          {last_A_value, LastA_Value}]),
 
@@ -141,7 +141,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	        gpio:register_int(GpioPinB_Ref),
           gpio:set_int(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = read_pin_value_bool(GpioPinB_Ref),
-          {ok, Private3} = block_utils:set_values(Private2, 
+          {ok, Private3} = attrib_utils:set_values(Private2, 
                                         [{gpio_pin_B_ref, GpioPinB_Ref},
                                          {last_B_value, LastB_Value}]),
       
@@ -150,7 +150,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	            gpio:register_int(GpioPinSwRef),
               gpio:set_int(GpioPinSwRef, SwitchIntEdge),
               LastSwValue = read_pin_value_bool(GpioPinSwRef),
-              {ok, Private4} = block_utils:set_values(Private3, 
+              {ok, Private4} = attrib_utils:set_values(Private3, 
                                         [{gpio_pin_sw_ref, GpioPinSwRef},
                                          {last_sw_value, LastSwValue}]),
 
@@ -185,19 +185,19 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
  % Read the current values of the GPIO pins 
-  {ok, GpioPinA_Ref} = block_utils:get_value(Private, gpio_pin_A_ref),
+  {ok, GpioPinA_Ref} = attrib_utils:get_value(Private, gpio_pin_A_ref),
   PhaseA = read_pin_value_bool(GpioPinA_Ref),
-  {ok, LastA_Value} = block_utils:get_value(Private, last_A_value),
+  {ok, LastA_Value} = attrib_utils:get_value(Private, last_A_value),
   
-  {ok, GpioPinB_Ref} = block_utils:get_value(Private, gpio_pin_B_ref),
+  {ok, GpioPinB_Ref} = attrib_utils:get_value(Private, gpio_pin_B_ref),
   PhaseB = read_pin_value_bool(GpioPinB_Ref),
-  {ok, _LastB_Value} = block_utils:get_value(Private, last_B_value),
+  {ok, _LastB_Value} = attrib_utils:get_value(Private, last_B_value),
 
-  {ok, GpioPinSwRef} = block_utils:get_value(Private, gpio_pin_sw_ref),
+  {ok, GpioPinSwRef} = attrib_utils:get_value(Private, gpio_pin_sw_ref),
   SwValue = read_pin_value_bool(GpioPinSwRef),
-  {ok, _LastSwValue} = block_utils:get_value(Private, last_sw_value),
+  {ok, _LastSwValue} = attrib_utils:get_value(Private, last_sw_value),
   
-  case block_utils:get_value(Outputs, value) of
+  case attrib_utils:get_value(Outputs, value) of
     {ok, not_active} -> Count = 0;
     {ok, Count}      -> Count
   end,
@@ -216,11 +216,11 @@ execute({Config, Inputs, Outputs, Private}) ->
   end,   
 
   
-  {ok, Outputs1} = block_utils:set_values(Outputs, [{value, NewCount},
+  {ok, Outputs1} = attrib_utils:set_values(Outputs, [{value, NewCount},
                                               {switch, SwValue},
                                               {status, normal}]),
                                               
-  {ok, Private1} = block_utils:set_values(Private, [{last_A_value, PhaseA},
+  {ok, Private1} = attrib_utils:set_values(Private, [{last_A_value, PhaseA},
                                               {last_B_value, PhaseB},
                                               {last_sw_value, SwValue}]),
 

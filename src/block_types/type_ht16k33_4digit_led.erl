@@ -32,7 +32,7 @@ description() -> "4 digit 7 segment LED display with I2C interface".
                       Description :: string()) -> list().
 
 default_configs(BlockName, Description) -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {i2c_device, "i2c-1"},
@@ -43,7 +43,7 @@ default_configs(BlockName, Description) ->
 -spec default_inputs() -> list().
 
 default_inputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       {display_on, true, ?EMPTY_LINK},
@@ -60,7 +60,7 @@ default_inputs() ->
 -spec default_outputs() -> list().
                             
 default_outputs() -> 
-  block_utils:merge_attribute_lists(
+  attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
      
@@ -100,9 +100,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
   %% default attribute lists, merge_attribute_lists() will create them.
   %% (This is useful for block types where the number of attributes is not fixed)
     
-  Config = block_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
-  Inputs = block_utils:merge_attribute_lists(default_inputs(), InitInputs), 
-  Outputs = block_utils:merge_attribute_lists(default_outputs(), InitOutputs),
+  Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
+  Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
+  Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
@@ -115,18 +115,18 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = block_utils:add_attribute(Private, {i2c_ref, empty}),
+  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, empty}),
   
   % Get the the I2C Address of the display 
   % TODO: Check for valid I2C Address
-  {ok, I2cDevice} = block_utils:get_value(Config, i2c_device),
-  {ok, I2cAddr} = block_utils:get_value(Config, i2c_addr),
+  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
+  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
 	    
   case init_led_driver(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       Status = initialed,
       Value = 0, 
-      {ok, Private2} = block_utils:set_value(Private1, i2c_ref, I2cRef);
+      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef);
       
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitializing LED driver, I2C Address: ~p~n", 
@@ -148,7 +148,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref),
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
   
   case lblx_inputs:get_boolean(Inputs, display_on) of
     {error, Reason} ->
@@ -255,7 +255,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 delete({_Config, _Inputs, _Outputs, Private}) ->
  
-  {ok, I2cRef} = block_utils:get_value(Private, i2c_ref),
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
   % Turn off the display 
   shutdown_led_driver(I2cRef),  
   

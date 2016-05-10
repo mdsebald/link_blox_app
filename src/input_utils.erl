@@ -69,7 +69,7 @@ get_boolean(Inputs, ValueName) ->
                 CheckType :: fun()) -> term().
                 
 get_value(Inputs, ValueName, CheckType) ->
-  case block_utils:get_attribute(Inputs, ValueName) of
+  case attrib_utils:get_attribute(Inputs, ValueName) of
     {error, not_found}  -> {error, not_found};
     
     {ok, {ValueName, {Value, Link}}} ->
@@ -100,20 +100,17 @@ get_value(Inputs, ValueName, CheckType) ->
 
 %%
 %% Resize an array value in the Inputs attribute list
-%% If there are fewer values in the array than the target quantity,
-%% add values to the array using the DefaultValue
-%% If there are more values in the array than the target Quantity,
-%% then delete the excess values
+%% to match the target quantity
 %% Returns updated Inputs attribute list
 %%
 -spec resize_attribute_array_value(BlockName :: atom(),
                                    Inputs :: list(input_attr()),
+                                   ArrayValueName :: value_name(),
                                    TargQuant :: integer(),
-                                   ArrayValueName :: atom(),
-                                   DefaultValue :: term()) -> list(input_attr()).
+                                   DefaultValue :: input_value()) -> list(input_attr()).
                              
-resize_attribute_array_value(BlockName, Inputs, TargQuant, ArrayValueName, DefaultValue)->
-  case block_utils:get_attribute(Configs, ArrayValueName) of
+resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, DefaultValue)->
+  case attrib_utils:get_attribute(Inputs, ArrayValueName) of
     % If attribute not found, just return Input attribute list unchanged
     {error, not_found} -> Inputs;
       
@@ -121,7 +118,7 @@ resize_attribute_array_value(BlockName, Inputs, TargQuant, ArrayValueName, Defau
       NewValuesArray = 
           resize_array_value(BlockName, ArrayValueName, ArrayValues, 
                              TargQuant, DefaultValue),
-      block_utils:replace_attribute(Inputs, ArrayValueName, 
+      attrib_utils:replace_attribute(Inputs, ArrayValueName, 
                         {ArrayValueName, NewValuesArray})
   end.
 
@@ -131,11 +128,11 @@ resize_attribute_array_value(BlockName, Inputs, TargQuant, ArrayValueName, Defau
 %% Always add to or delete from the end of the array.
 %% There will always be at least one value in the array. 
 %%  
--spec resize_array_value(BlockName :: atom(),
-                         ArrayValueName :: atom(), 
-                         ValuesArray :: list(),
+-spec resize_array_value(BlockName :: block_name(),
+                         ArrayValueName :: value_name(), 
+                         ValuesArray :: list(input_value()),
                          TargQuant :: integer(),
-                         DefaultValue :: term()) -> list().
+                         DefaultValue :: input_value()) -> list(input_value()).
                                      
 resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultValue)->
   ValuesQuant = length(ValuesArray),
@@ -145,14 +142,23 @@ resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultVal
   true ->
     if ValuesQuant < TargQuant ->
       % not enough values, add the required number of default values
+      % to match the target quantity
       AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
       ValuesArray ++ AddedValues;
     true ->
       % Too many values, split the list ignore the deleted ones on the end
-      % Unlink the deleted array values if they are linked to an output value
       {KeepValues, DeleteValues} = lists:split(TargQuant, ValuesArray),
-      fun(DeleteInput) -> link_utils:unlink(BlockName, {DeleteInput})
-      KeepValues
+      
+      % Unlink the deleted array values if they are linked to an output value
+      lists:map(
+        fun(DeleteValue) -> 
+          DeleteAttr = {ArrayValueName, DeleteValue},
+          link_utils:unlink(BlockName, DeleteAttr)
+		      end, 
+          DeleteValues),
+       
+       % Return the keeper array values
+       KeepValues
     end
   end.
 

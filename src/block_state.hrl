@@ -23,44 +23,55 @@
                          Private :: list(private_attr())
                        }.
 
+% Types used for storing block values
 
 -type attribute() :: config_attr() | input_attr() | output_attr() | private_attr().
 
+-type config_attr() :: {value_name(), config_value() | config_value_array()}.
+                        
+ -type input_attr() :: {value_name(), input_value() | input_value_array()}.
 
--type config_attr() :: { 
-                          ValueName :: atom(),
-                          ConfigValue :: {value()} | [{value()},...]
-                       }.
+ -type output_attr() :: {value_name(), output_value() | output_value_array()}.                 
 
-
- -type input_attr() :: { 
-                          ValueName :: atom(),
-                          InputValue :: {value(), input_link()} | [{value(), input_link()},...]
-                       }.
+-type private_attr() :: {value_name(), private_value() | private_value_array()}.
 
 
- -type output_attr() :: { 
-                          ValueName :: atom(),
-                          OutputValue :: {value(), link_refs()} | [{value(), link_refs()},...]
-                       }.                      
+-type value_name() :: atom().
+-type block_name() :: atom().
 
 
--type private_attr() :: {
-                          ValueName :: atom(),
-                          PrivateValue :: {any()} | [{any()},...]
-                        }.
+-type config_value_array() :: list(config_value()).
+-type config_value() :: {value()}.
+
+-type input_value_array() :: list(input_value()).
+-type input_value() ::  {value(), input_link()}.
+
+-type output_value_array() :: list(output_value()).
+-type output_value() :: {value(), link_refs()}.
+
+-type private_value_array() :: list(private_value()).
+-type private_value() :: {any()}.
 
 
--type input_link() :: { 
-                        NodeName :: atom() | null,
-                        BlockName :: atom() | null,
-                        ValueName :: atom() | null,
-                        Index :: integer()
-                      }.
+-type input_link() :: empty_link() | self_link() | local_link() | global_link(). 
+                      
+-type empty_link() :: {}.
+-define (EMPTY_LINK, {}).
  
- 
--type link_refs() :: [pid(), ...].
+-type self_link() :: {ValueName :: value_name(), 
+                      ArrayInex :: integer()}.
+                       
+-type local_link() :: {BlockName :: block_name(),
+                       ValueName :: value_name(), 
+                       ArrayInex :: integer()}.
+                        
+-type global_link() :: {NodeName :: node(),
+                        BlockName :: block_name(),
+                        ValueName :: value_name(), 
+                        ArrayInex :: integer()}.
+                        
 
+-type link_refs() :: list(pid()).
 
 -type value() :: empty | not_active | integer() | float() | boolean() | 
                  string() | tuple() | list().
@@ -70,13 +81,11 @@
 -type attrib_value() :: {ok, value()} | attrib_errors().
 
 
-%%
-%% Define block input value types
-%%
+% Used to read block input values
 
 -type input_errors() :: {error, not_found | bad_link | range | bad_type | not_input}.
                           
--type generic_input_value() :: {ok, term()} | {ok, not_active} | input_errors().
+-type generic_input_value() :: {ok, value()} | {ok, not_active} | input_errors().
 
 -type integer_input_value() :: {ok, integer()} | {ok, not_active} | input_errors().
 
@@ -85,13 +94,11 @@
 -type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
 
 
-%%
-%% Define block configuration value types
-%%
+% Used to read block configuration values
        
 -type config_errors() :: {error, not_found | range | bad_type | not_config}.
                                            
--type generic_config_value() :: {ok, term()} | config_errors().
+-type generic_config_value() :: {ok, value()} | config_errors().
 
 -type integer_config_value() :: {ok, integer()} |  config_errors().
 
@@ -99,13 +106,7 @@
 
 -type boolean_config_value() :: {ok, boolean()} | config_errors().
                       
-%%
-%% specifies an empty input value link
-%% useful for initializing block inputs and testing for non-empty links
-%%
--define(EMPTY_LINK, {}).
 
-    
                       
 %%
 %% Execute method defines the possible reasons for a block to be executed
