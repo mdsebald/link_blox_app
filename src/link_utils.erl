@@ -239,8 +239,8 @@ add_ref(Outputs, ValueName, ToBlockName) ->
 %% in the ValueName output attribute
 %%
 -spec delete_ref(Outputs :: list(output_attr()), 
-                  ValueName :: value_name(), 
-                  ToBlockName :: block_name()) -> list(output_attr()).
+                 ValueName :: value_name(), 
+                 ToBlockName :: block_name()) -> list(output_attr()).
 
 delete_ref(Outputs, ValueName, ToBlockName) ->
 

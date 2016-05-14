@@ -267,7 +267,7 @@ handle_cast(init_configure, BlockValues) ->
   % This will force all blocks to check their input attributes
   % that have links, and link to this block if needed
    
-  % Must  separately from the init() function, 
+  % Must be called separately from the init() function, 
   % because you can't call block_supervisor:block_names()
   % (i.e.supervisor:which_child()) from the init() function 
   % of a child process. 

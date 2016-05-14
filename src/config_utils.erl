@@ -185,47 +185,11 @@ get_value(Config, ValueName, CheckType) ->
 %%
 -spec resize_attribute_array_value(Config :: list(config_attr()),
                                    ArrayValueName :: value_name(),
-                                   TargQuant :: integer(),
+                                   TargQuant :: pos_integer(),
                                    DefaultValue :: config_value()) -> list(config_attr()).
                              
 resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
-  case attrib_utils:get_attribute(Config, ArrayValueName) of
-    % If attribute not found, just return Config attribute list unchanged
-    {error, not_found} -> Config;
-      
-    {ok, {ArrayValueName, ArrayValues}} ->
-      NewValuesArray = 
-          resize_array_value(ArrayValues, TargQuant, DefaultValue),
-      attrib_utils:replace_attribute(Config, ArrayValueName, 
-                        {ArrayValueName, NewValuesArray})
-  end.
-
-
-%%
-%% Resize the array of values to match the target quantity.
-%% Always add to or delete from the end of the array.
-%% There will always be at least one value in the array. 
-%%  
--spec resize_array_value(ValuesArray :: list(config_value()),
-                         TargQuant :: integer(),
-                         DefaultValue :: config_value()) -> list(config_value()).
-                                     
-resize_array_value(ValuesArray, TargQuant, DefaultValue)->
-  ValuesQuant = length(ValuesArray),
-  if ValuesQuant == TargQuant ->
-    % quantity of Values in array matches target, nothing to do 
-    ValuesArray;
-  true ->
-    if ValuesQuant < TargQuant ->
-      % not enough values, add the required number of default values
-      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
-      ValuesArray ++ AddedValues;
-    true ->
-      %  too many values, split the list and ignore the deleted ones on the end
-      {KeepValues, _DeleteValues} = lists:split(TargQuant, ValuesArray),
-      KeepValues
-    end
-  end.
+  attrib_utils:resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue).
 
 
 %%

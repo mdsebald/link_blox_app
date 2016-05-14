@@ -17,7 +17,7 @@
 -export([set_value/3, set_value/4, set_values/2, set_value_any/3]).
 -export([update_attribute_list/2, merge_attribute_lists/2]).
 -export([replace_attribute/3, add_attribute/2]).
--export([sleep/1]). 
+-export([resize_attribute_array_value/4, resize_attribute_array_value/5]).
 
 
 %%	
@@ -28,7 +28,7 @@
                     ValueName :: atom()) -> {ok, attribute()} | {error, not_found}.
 
 get_attribute(Attributes, ValueName) ->
-  % ValueName is always the first element in the tuple, regardless of the Attribute type
+  % ValueName is always the first element in the tuple, regardless of the attribute type
   case lists:keyfind(ValueName, 1, Attributes) of 
     false     -> {error, not_found};
     Attribute -> {ok, Attribute}
@@ -322,14 +322,76 @@ add_attribute(Attributes, Newattribute) ->
   Attributes ++ [Newattribute].
   
 
-%% common delay function
-sleep(T) ->
-  receive
-  after T -> ok
+%%
+%% Resize an array value in an attribute list
+%% to match the target quantity, which is alway > zero
+%% Returns updated attribute list
+%% Works for Config, Input, Output, and Private array attributes
+%%
+
+%% Specialized resize function for the case when the excess values don't need 
+%% any extra processing. Just pass in a DeleteExcess function that does nothing. 
+-spec resize_attribute_array_value(Attributes :: list(attribute()),
+                                   ArrayValueName :: value_name(),
+                                   TargQuant :: pos_integer(),
+                                   DefaultValue :: attr_value()) -> list(attribute()).
+                             
+resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue)->
+  DeleteExcess = fun(_DeleteArrayValues) -> ok end, 
+  resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue, DeleteExcess).
+
+
+-spec resize_attribute_array_value(Attributes :: list(attribute()),
+                                   ArrayValueName :: value_name(),
+                                   TargQuant :: pos_integer(),
+                                   DefaultValue :: attr_value(),
+                                   DeleteExcess :: fun()) -> list(attribute()).
+                             
+resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue, DeleteExcess)->
+  case get_attribute(Attributes, ArrayValueName) of
+    % If attribute not found, just return attribute list unchanged
+    {error, not_found} -> Attributes;
+      
+    {ok, {ArrayValueName, ArrayValues}} ->
+      {NewArrayValues, DeleteArrayValues} = 
+          resize_array_value(ArrayValues, TargQuant, DefaultValue),
+      
+      % Handle the deletion of the excess array values
+      % i.e. deleted values could be block input values containing links to other blocks
+      DeleteExcess(DeleteArrayValues),
+      
+      % Update the attribute list with the resized array value
+      replace_attribute(Attributes, ArrayValueName, {ArrayValueName, NewArrayValues})
   end.
 
 
-      
+%%
+%% Resize the array of values to match the target quantity.
+%% Always add to or delete from the end of the array.
+%% There will always be at least one value in the array. 
+%%  
+-spec resize_array_value(ValuesArray :: attr_value_array(),
+                         TargQuant :: pos_integer(),
+                         DefaultValue :: attr_value()) -> {attr_value_array(), attr_value_array}.
+                                     
+resize_array_value(ValuesArray, TargQuant, DefaultValue)->
+  ValuesQuant = length(ValuesArray),
+  if ValuesQuant == TargQuant ->
+    % Quantity of Values in array matches target, nothing to do 
+    % No values to delete
+    {ValuesArray, []};
+  true ->
+    if ValuesQuant < TargQuant ->
+      % Not enough values, add the required number of default values to match the target quantity
+      % No values to delete
+      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
+      {ValuesArray ++ AddedValues, []};
+    true ->
+      %  Too many values, split the array of values into an array to keep and an array to delete 
+      %  The deleted values are always taken from the end of the list
+      lists:split(TargQuant, ValuesArray)
+    end
+  end.      
 
 %% ====================================================================
 %% Internal functions

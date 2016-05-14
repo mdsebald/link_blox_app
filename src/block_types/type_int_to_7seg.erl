@@ -38,8 +38,7 @@ default_configs(BlockName, Description) ->
     [
       {num_of_digits, {1}},
       {number_base, {10}},
-      {leading_zeros, {false}},
-      {unsigned, {true}}
+      {leading_zeros, {false}}
     ]). 
 
 
@@ -112,25 +111,49 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
- 
+  % Check the config values
   case config_utils:get_integer_range(Config, num_of_digits, 1, 99) of
     {error, Reason} ->
       Inputs1 = Inputs,
-      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason),
-      {ok, Outputs1} = attrib_utils:set_values(Outputs, [{value, Value}, {status, Status}]);
-      
+      Outputs1 = Outputs,
+      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason);
+       
     {ok, NumOfDigits} ->
-      BlockName = config_utils:name(Config),
-      % Create a decimal point input for each digit
-      Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
+    
+      case config_utils:get_integer_range(Config, number_base, 2, 16) of
+        {error, Reason} ->
+          Inputs1 = Inputs,
+          Outputs1 = Outputs,
+          {Value, Status} = config_utils:log_error(Config, number_base, Reason);
+             
+        {ok, _NumberBase} ->
+        
+          case config_utils:get_boolean(Config, leading_zeros) of
+            {error, Reason} ->
+              Inputs1 = Inputs,
+              Outputs1 = Outputs,
+              {Value, Status} = config_utils:log_error(Config, number_base, Reason);
+
+            {ok, _LeadingZeros} ->
+      
+              % All config values are OK
+              
+              % Create a decimal point input for each digit
+              BlockName = config_utils:name(Config),
+              Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
                                   NumOfDigits, dec_pnt, {false, ?EMPTY_LINK}),
 
-      % Create a digit output for each digit
-      Outputs1 = 
-        output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                NumOfDigits, digit, {not_active, []}),
+              % Create a digit output for each digit
+              Outputs1 = 
+                output_utils:resize_attribute_array_value(BlockName, Outputs, 
+                                      NumOfDigits, digit, {not_active, []}),
+              Value = not_active,
+              Status = initialed
+          end                    
+      end
   end,
-
+  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
+  
   % This is the block state
   {Config, Inputs1, Outputs2, Private}.
 
@@ -141,45 +164,55 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}) ->
-
+  
+  % Config values are validated in initialize function, just read them here   
+  {ok, NumOfDigits} = attrib_utils:get_value(Config, num_of_digits),
+  {ok, NumberBase} = attrib_utils:get_value(Config, number_base),
+  {ok, LeadingZeros} = attrib_utils:get_value(Config, leading_zeros),
+      
   case input_utils:get_integer(Inputs, input) of
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, input, Reason),
-      
-      Digit1 = not_active,
-      Digit2 = not_active,
-      Digit3 = not_active,
-      Digit4 = not_active;
+      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
 
     {ok, not_active} ->
       Value = not_active, Status = normal,
-      Digit1 = not_active,
-      Digit2 = not_active,
-      Digit3 = not_active,
-      Digit4 = not_active;
+      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
    
-    {ok, Value} ->  
-      NumberStr = io_lib:format("~.2f", [Value]),
-      Status = normal,
+    {ok, InValue} ->  
+      InValueStr = integer_to_list(InValue, NumberBase),
       
-      % Convert formatted number string into list of bytes
-      FlatNumberStr = lists:flatten(NumberStr),
-      
-      Digit1 = char_to_segments(lists:nth(1, FlatNumberStr), false),
-      Digit2 = char_to_segments(lists:nth(2, FlatNumberStr), true),
-      Digit3 = char_to_segments(lists:nth(4, FlatNumberStr), false),
-      Digit4 = char_to_segments(lists:nth(5, FlatNumberStr), false)
+      % Set the main output value to the formated input value
+      % This should be the same as the 7 segment display is showing
+      Value = InValueStr, Status = normal, 
+      LenInValueStr = length(InValueStr),
+          
+      if LenInValueStr > NumOfDigits ->
+        % The magnitude of the input value exceeds the number of digits
+        % Set the digits outputs to display "---" 
+        Digits = lists:duplicate(NumOfDigits, $-);
+            
+      true ->  % Input value will fit into the digits
+        % Determine if leading digits should be zero or blank
+        NumBlankDigits = NumOfDigits - LenInValueStr,
+        if LeadingZeros ->
+            LeadDigits = lists:duplicate(NumBlankDigits, $0);
+        true ->
+            LeadDigits = lists:duplicate(NumBlankDigits, 32)
+        end,
+        Digits = LeadDigits ++ InValueStr  
+      end,
+     
+      % Convert the digits to 7 segment representations
+      % TODO: Read decimal point inputs, and set decimal points also
+      Digits7Seg = lists:map(fun(Digit) -> char_to_segments(Digit, false) end, Digits)
   end,
   
-  {ok, Outputs1} = attrib_utils:set_values(Outputs, 
-  [
-    {value, Value}, {status, Status},  
-    {digit_1, Digit1}, {digit_2, Digit2}, {digit_3, Digit3}, {digit_4, Digit4}
-  ]),
-
+  Outputs1 = output_utils:set_array_value(Outputs, digits, Digits7Seg),
+  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private}.
+  {Config, Inputs, Outputs2, Private}.
 
 
 %% 
@@ -194,7 +227,6 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
 
 %%
 %% Convert a character to a byte indicating which segments

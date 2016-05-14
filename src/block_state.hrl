@@ -39,6 +39,8 @@
 -type value_name() :: atom().
 -type block_name() :: atom().
 
+-type attr_value() :: config_value() | input_value() | output_value().
+-type attr_value_array() ::  config_value_array() | input_value_array() | output_value_array().
 
 -type config_value_array() :: list(config_value()).
 -type config_value() :: {value()}.
@@ -128,7 +130,7 @@
 %%
 %%  created:    Block attributes have been instantiated
 %%  initialed:  Block has been initialized, pre execution prep has been completed
-%%  normal:     Block is has executed normally
+%%  normal:     Block has executed normally
 %%  disabled:   Block disable input is true/on. All block outputs are set to not_active 
 %%  frozen:     Block freeze input is true/on.  All block outputs are frozen at last calculated value
 %%  error:      Block has encountered some error when attempting to executed

@@ -29,12 +29,12 @@
 block_type_modules() ->
   [
     type_exec_count,
+    type_gpio_di,
+    type_gpio_do,
     type_ht16k33_4digit_led,
     type_int_to_7seg,
     type_mcp9808_temp,
     type_one_digit_7seg,
-    type_pi_gpio_di,
-    type_pi_gpio_do,
     type_rotary_encoder,
     type_seven_seg_decoder,
     type_toggle

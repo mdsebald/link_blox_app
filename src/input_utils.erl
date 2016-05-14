@@ -106,61 +106,21 @@ get_value(Inputs, ValueName, CheckType) ->
 -spec resize_attribute_array_value(BlockName :: atom(),
                                    Inputs :: list(input_attr()),
                                    ArrayValueName :: value_name(),
-                                   TargQuant :: integer(),
+                                   TargQuant :: pos_integer(),
                                    DefaultValue :: input_value()) -> list(input_attr()).
                              
 resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, DefaultValue)->
-  case attrib_utils:get_attribute(Inputs, ArrayValueName) of
-    % If attribute not found, just return Input attribute list unchanged
-    {error, not_found} -> Inputs;
-      
-    {ok, {ArrayValueName, ArrayValues}} ->
-      NewValuesArray = 
-          resize_array_value(BlockName, ArrayValueName, ArrayValues, 
-                             TargQuant, DefaultValue),
-      attrib_utils:replace_attribute(Inputs, ArrayValueName, 
-                        {ArrayValueName, NewValuesArray})
-  end.
-
-
-%%
-%% Resize the array of values to match the target quantity.
-%% Always add to or delete from the end of the array.
-%% There will always be at least one value in the array. 
-%%  
--spec resize_array_value(BlockName :: block_name(),
-                         ArrayValueName :: value_name(), 
-                         ValuesArray :: list(input_value()),
-                         TargQuant :: integer(),
-                         DefaultValue :: input_value()) -> list(input_value()).
-                                     
-resize_array_value(BlockName, ArrayValueName, ValuesArray, TargQuant, DefaultValue)->
-  ValuesQuant = length(ValuesArray),
-  if ValuesQuant == TargQuant ->
-    % quantity of Values in array matches target, nothing to do 
-    ValuesArray;
-  true ->
-    if ValuesQuant < TargQuant ->
-      % not enough values, add the required number of default values
-      % to match the target quantity
-      AddedValues = lists:duplicate((TargQuant-ValuesQuant), DefaultValue),
-      ValuesArray ++ AddedValues;
-    true ->
-      % Too many values, split the list ignore the deleted ones on the end
-      {KeepValues, DeleteValues} = lists:split(TargQuant, ValuesArray),
-      
-      % Unlink the deleted array values if they are linked to an output value
+  % Function to unlink the deleted array values if they are linked to an output value
+  DeleteExcess = fun (DeleteArrayValues) ->
       lists:map(
         fun(DeleteValue) -> 
           DeleteAttr = {ArrayValueName, DeleteValue},
           link_utils:unlink(BlockName, DeleteAttr)
 		      end, 
-          DeleteValues),
-       
-       % Return the keeper array values
-       KeepValues
-    end
-  end.
+          DeleteArrayValues) end,
+          
+  attrib_utils:resize_attribute_array_value(Inputs, ArrayValueName, TargQuant, 
+                                              DefaultValue, DeleteExcess).
 
   
 %%

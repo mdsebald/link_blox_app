@@ -13,7 +13,8 @@
 %% API functions
 %% ====================================================================
 -export([set_value_status/3, set_value_normal/2, set_status/2]).
--export([create_output_array/2]).
+-export([set_array_value/3]).
+-export([resize_attribute_array_value/5]).
 -export([log_error/3]).
 
 
@@ -22,9 +23,9 @@
 %% Block output value and status attributes are often set at the same time.
 %% This is a shortcut to do that.
 %% 
--spec set_value_status(Outputs :: list(), 
-                       Value :: term(), 
-                       Status :: block_status()) -> list().
+-spec set_value_status(Outputs :: list(output_attr()), 
+                       Value :: value(), 
+                       Status :: block_status()) -> list(output_attr()).
 
 set_value_status(Outputs, Value, Status) ->
   {ok, Outputs1} = attrib_utils:set_values(Outputs, 
@@ -36,8 +37,8 @@ set_value_status(Outputs, Value, Status) ->
 %% When setting the output value block status is usually normal.
 %% This is a shortcut to do that.
 %% 
--spec set_value_normal(Outputs :: list(), 
-                       Value :: term()) -> list().
+-spec set_value_normal(Outputs :: list(output_attr()), 
+                       Value :: value()) -> list(output_attr()).
 
 set_value_normal(Outputs, Value) ->
   {ok, Outputs1} = attrib_utils:set_values(Outputs, 
@@ -47,40 +48,53 @@ set_value_normal(Outputs, Value) ->
 %%
 %% Set status output value
 %% 
--spec set_status(Outputs :: list(attribute()), 
-                 Status :: block_status()) -> list(attribute()).
+-spec set_status(Outputs :: list(output_attr()), 
+                 Status :: block_status()) -> list(output_attr()).
 
 set_status(Outputs, Status) ->
   {ok, Outputs1} = attrib_utils:set_value(Outputs, status, Status),
   Outputs1.
   
-
 %%
-%% Create an array of outputs, with a common base ValueName plus index number
-%% Default output value is always not_active
-%% Create an associated list of value names, to assist in accessing the output array
-%%
--spec create_output_array(Quant :: integer(),
-                          BaseValueName :: atom()) -> {list(), list()}.
-                              
-create_output_array(Quant, BaseValueName) ->
-  create_output_array([], [], Quant, BaseValueName).
+%% Set status array value output values
+%% 
+-spec set_array_value(Outputs :: list(output_attr()), 
+                      ArrayValueName :: value_name(),
+                      ArrayValues :: list(value())) -> list(output_attr()).
 
+set_array_value(Outputs, ArrayValueName, ArrayValue) ->
+  set_array_value(Outputs, ArrayValueName, ArrayValue, 1).
   
--spec create_output_array(Outputs :: list(),
-                          ValueNames :: list(),
-                          Quant :: integer(),
-                          BaseValueName :: atom()) -> {list(), list()}.
-                              
-create_output_array(Outputs, ValueNames, 0, _BaseValueName) ->
-  {lists:reverse(Outputs), lists:reverse(ValueNames)};
+set_array_value(Outputs, _ArrayValueName, [], _Index) ->
+  Outputs;
 
-create_output_array(Outputs, ValueNames, Quant, BaseValueName) ->
-  ValueNameStr = iolib:format("~s_~2..0w", BaseValueName, Quant),
-  ValueName = list_to_atom(ValueNameStr),
-  Output = {ValueName, not_active, []},
-  create_output_array([Output | Outputs], [ValueName | ValueNames], Quant - 1, 
-                      BaseValueName).
+set_array_value(Outputs, ArrayValueName, [Value | ArrayValue], Index) ->
+  {ok, NewOutputs} = attrib_utils:set_value(Outputs, ArrayValueName, Value, Index),
+  set_array_value(NewOutputs, ArrayValueName, ArrayValue, (Index + 1)).
+
+
+%%
+%% Resize an array value in the Inputs attribute list
+%% to match the target quantity
+%% Returns updated Inputs attribute list
+%%
+-spec resize_attribute_array_value(BlockName :: block_name(),
+                                   Outputs :: list(output_attr()),
+                                   ArrayValueName :: value_name(),
+                                   TargQuant :: pos_integer(),
+                                   DefaultValue :: output_value()) -> list(output_attr()).
+                             
+resize_attribute_array_value(BlockName, Outputs, ArrayValueName, TargQuant, DefaultValue)->
+   % Function to dereference the delete array values' references to input block values
+   DeleteExcess = fun(DeleteArrayValues) -> 
+      lists:map(
+        fun(DeleteValue) -> 
+          DeleteAttr = {ArrayValueName, DeleteValue},
+          link_utils:deref(BlockName, DeleteAttr)
+		      end, 
+          DeleteArrayValues) end,
+       
+  resize_attribute_array_value(Outputs, ArrayValueName, TargQuant, DefaultValue, DeleteExcess).
 
 
 %%

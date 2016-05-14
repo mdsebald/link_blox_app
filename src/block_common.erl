@@ -131,6 +131,7 @@ initialize({Config, Inputs, Outputs}) ->
 
 %%
 %% Common block execute function
+%% TODO: Don't execute block when status = config_err
 %%
 -spec execute(BlockValues :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
@@ -147,53 +148,54 @@ execute(BlockValues, ExecMethod) ->
       {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
       case check_boolean_input(Freeze) of
         not_active -> % block is not disabled or frozen, execute it
-          {Config, Inputs, OutputsX, PrivateX} = BlockModule:execute(BlockValues),
-          OutputsY = update_execute_track(OutputsX, ExecMethod);
+          {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
+          Outputs2 = update_execute_track(Outputs1, ExecMethod);
                     
         active -> % Block is frozen
           % Just update the status output, all other outputs are frozen
-          OutputsY = output_utils:set_status(Outputs, frozen),
+          Outputs2 = output_utils:set_status(Outputs, frozen),
           % Nothing to update in private values
-          PrivateX = Private;
+          Private1 = Private;
                     
         error -> % Freeze input value error
           error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
-          OutputsY = update_all_outputs(Outputs, not_active, input_err),
+          Outputs2 = update_all_outputs(Outputs, not_active, input_err),
           % Nothing to update in private values
-          PrivateX = Private
+          Private1 = Private
       end;
     active -> % Block is disabled
-      OutputsY = update_all_outputs(Outputs, not_active, disabled),
+      Outputs2 = update_all_outputs(Outputs, not_active, disabled),
       % Nothing to update in private values
-      PrivateX = Private;
+      Private1 = Private;
         
     error -> % Disable input value error 
       error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
-      OutputsY = update_all_outputs(Outputs, not_active, input_err),
+      Outputs2 = update_all_outputs(Outputs, not_active, input_err),
       % Nothing to update in private values
-      PrivateX = Private
+      Private1 = Private
   end,
     
-  {Status, PrivateY} = update_execution_timer(BlockName, Inputs, PrivateX), 
+  {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
     
   if (Status /= normal) ->  % Some kind error setting execution timer
-    OutputsZ = update_all_outputs(OutputsY, not_active, Status);
+    Outputs3 = update_all_outputs(Outputs2, not_active, Status);
   true -> % Execution timer status is normal
-    OutputsZ = OutputsY
+    Outputs3 = Outputs2
   end,
 
   % Update the block inputs linked to the block outputs that have just been updated (Data Flow)
-  update_blocks(BlockName, Outputs, OutputsZ),
+  update_blocks(BlockName, Outputs, Outputs3),
     
   % Execute the blocks connected to the exec_out output value (Control Flow)
-  update_execute(OutputsZ),
+  update_execute(Outputs3),
     
   % Return the updated block state
-  {Config, Inputs, OutputsZ, PrivateY}.
+  {Config, Inputs, Outputs3, Private2}.
 
 
 %
 % Check the value of the disable or freeze control value input
+% TODO: Move this function to input_utils module
 %
 check_boolean_input(Value) ->
   case Value of
@@ -291,6 +293,7 @@ update_execute_track(Outputs, ExecMethod) ->
 %% Update all outputs to the New value,
 %% except update status output to the New Staus value
 %% Used to mass update block outputs in disabled or error conditions
+%% TODO: Move this function to output_utils module, and update array values also
 %% 
 -spec update_all_outputs(Outputs :: list(), 
                          NewValue :: term(), 
