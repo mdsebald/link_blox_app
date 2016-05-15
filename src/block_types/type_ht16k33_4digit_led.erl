@@ -35,8 +35,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, "i2c-1"},
-      {i2c_addr, 16#70}                 
+      {i2c_device, {"i2c-1"}},
+      {i2c_addr, {16#70}}                 
     ]). 
 
 
@@ -46,14 +46,14 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display_on, true, ?EMPTY_LINK},
-      {blink_rate, 0, ?EMPTY_LINK},
-      {brightness, 0, ?EMPTY_LINK},
-      {seven_segs_1, 16#FF, ?EMPTY_LINK},
-      {seven_segs_2, 16#FF, ?EMPTY_LINK},
-      {colon, true, ?EMPTY_LINK},
-      {seven_segs_3, 16#FF, ?EMPTY_LINK},
-      {seven_segs_4, 16#FF, ?EMPTY_LINK}
+      {display_on, {true, ?EMPTY_LINK}},
+      {blink_rate, {0, ?EMPTY_LINK}},
+      {brightness, {0, ?EMPTY_LINK}},
+      {seven_segs_1, {16#FF, ?EMPTY_LINK}},
+      {seven_segs_2, {16#FF, ?EMPTY_LINK}},
+      {colon, {true, ?EMPTY_LINK}},
+      {seven_segs_3, {16#FF, ?EMPTY_LINK}},
+      {seven_segs_4, {16#FF, ?EMPTY_LINK}}
     ]). 
 
 
@@ -115,7 +115,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, empty}),
+  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
   
   % Get the the I2C Address of the display 
   % TODO: Check for valid I2C Address
@@ -150,14 +150,14 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
   
-  case lblx_inputs:get_boolean(Inputs, display_on) of
+  case input_utils:get_boolean(Inputs, display_on) of
     {error, Reason} ->
-      {Value, Status} = lblx_inputs:log_error(Config, display_on, Reason);
+      {Value, Status} = input_utils:log_error(Config, display_on, Reason);
  
     {ok, DisplayState} ->
-      case lblx_inputs:get_integer(Inputs, blink_rate) of
+      case input_utils:get_integer(Inputs, blink_rate) of
         {error, Reason} ->
-          lblx_inputs:log_error(Config, blink_rate, Reason),
+          input_utils:log_error(Config, blink_rate, Reason),
           Value = not_active, Status = input_err;
         {ok, not_active} -> 
           Value = not_active, Status = normal;
@@ -166,9 +166,9 @@ execute({Config, Inputs, Outputs, Private}) ->
           % Display State and Blink Rate are write to the same byte 
           set_blink_rate(I2cRef, DisplayState, BlinkRate),
           
-          case lblx_inputs:get_integer(Inputs, brightness) of
+          case input_utils:get_integer(Inputs, brightness) of
             {error, Reason} ->
-              lblx_inputs:log_error(Config, brightness, Reason),
+              input_utils:log_error(Config, brightness, Reason),
               Value = not_active, Status = input_err;
               
             {ok, not_active} -> 
@@ -177,9 +177,9 @@ execute({Config, Inputs, Outputs, Private}) ->
             {ok, Brightness} ->
               set_brightness(I2cRef, Brightness),
               
-              case lblx_inputs:get_integer(Inputs, seven_segs_1) of
+              case input_utils:get_integer(Inputs, seven_segs_1) of
                 {error, Reason} ->
-                  lblx_inputs:log_error(Config, seven_segs_1, Reason),
+                  input_utils:log_error(Config, seven_segs_1, Reason),
                   Value = not_active, Status = input_err;
                   
                 {ok, not_active} -> 
@@ -188,9 +188,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                 {ok, Segments1} ->
                   write_segments(I2cRef, 1, Segments1),
                   
-                  case lblx_inputs:get_integer(Inputs, seven_segs_2) of
+                  case input_utils:get_integer(Inputs, seven_segs_2) of
                     {error, Reason} ->
-                      lblx_inputs:log_error(Config, seven_segs_2, Reason),
+                      input_utils:log_error(Config, seven_segs_2, Reason),
                       Value = not_active, Status = input_err;
                       
                     {ok, not_active} -> 
@@ -199,9 +199,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                     {ok, Segments2} ->
                       write_segments(I2cRef, 2, Segments2),
                       
-                      case lblx_inputs:get_boolean(Inputs, colon) of
+                      case input_utils:get_boolean(Inputs, colon) of
                         {error, Reason} ->
-                          lblx_inputs:log_error(Config, colon, Reason),
+                          input_utils:log_error(Config, colon, Reason),
                           Value = not_active, Status = input_err;
                           
                         {ok, not_active} -> 
@@ -210,9 +210,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                         {ok, ColonState} ->
                           set_colon(I2cRef, ColonState),
                            
-                          case lblx_inputs:get_integer(Inputs, seven_segs_3) of
+                          case input_utils:get_integer(Inputs, seven_segs_3) of
                             {error, Reason} ->
-                              lblx_inputs:log_error(Config, seven_segs_3, Reason),
+                              input_utils:log_error(Config, seven_segs_3, Reason),
                               Value = not_active, Status = input_err;
                               
                             {ok, not_active} -> 
@@ -221,9 +221,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                             {ok, Segments3} ->
                               write_segments(I2cRef, 3, Segments3),
                               
-                              case lblx_inputs:get_integer(Inputs, seven_segs_4) of
+                              case input_utils:get_integer(Inputs, seven_segs_4) of
                                 {error, Reason} ->
-                                  lblx_inputs:log_error(Config, seven_segs_4, Reason),
+                                  input_utils:log_error(Config, seven_segs_4, Reason),
                                   Value = not_active, Status = input_err;
                                   
                                 {ok, not_active} -> 

@@ -28,6 +28,7 @@
                     ValueName :: atom()) -> {ok, attribute()} | {error, not_found}.
 
 get_attribute(Attributes, ValueName) ->
+  % io:format("~p~n", [Attributes]),
   % ValueName is always the first element in the tuple, regardless of the attribute type
   case lists:keyfind(ValueName, 1, Attributes) of 
     false     -> {error, not_found};
@@ -212,9 +213,9 @@ insert_array_value(NewValue, ArrayIndex, ArrayValue) ->
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
 -spec set_values(Attributes :: list(attribute()), 
-                 Values :: list()) -> list(attribute()) | attrib_errors().
+                 Values :: list()) -> {ok, list(attribute())} | attrib_errors().
  
-set_values(Attributes, []) -> Attributes;
+set_values(Attributes, []) ->{ok, Attributes};
 
 set_values(Attributes, [{AttributeName, NewValue} | RemainingValues]) ->
   case set_value(Attributes, AttributeName, NewValue) of
@@ -237,27 +238,27 @@ set_value_any(BlockValues, ValueName, NewValue)->
 	% Can't modify Configs, don't bother checking those
 
   case get_attribute(Inputs, ValueName) of
-    not_found ->
+    {error, not_found} ->
       case get_attribute(Outputs, ValueName) of
-        not_found ->					
+        {error, not_found} ->					
           case get_attribute(Private, ValueName) of
-            not_found ->
+            {error, not_found} ->
               BlockName = config_utils:name(Config),
               error_logger:error_msg("~p set_value() Error. ~p not found in the BlockValues list~n", 
                               [BlockName, ValueName]),
               BlockValues;  % Return Block values unchanged
-            {ValueName, _OldValue1} ->
+            {ok, {ValueName, _OldValue1}} ->
               NewPrivateValue = {ValueName, NewValue},
               NewPrivate = replace_attribute(Private, ValueName, NewPrivateValue),
               {Config, Inputs, Outputs, NewPrivate}
           end;
-        {ValueName, _OldValue2, Connections} -> 
-          NewOutput = {ValueName, NewValue, Connections},
+        {ok, {ValueName, {_OldValue2, Refs}}} -> 
+          NewOutput = {ValueName, {NewValue, Refs}},
           NewOutputs = replace_attribute(Outputs, ValueName, NewOutput),
           {Config, Inputs, NewOutputs, Private}
       end; 
-    {ValueName, _OldValue3, Link} -> 
-      NewInput = {ValueName, NewValue, Link},
+    {ok, {ValueName, {_OldValue3, Link}}} -> 
+      NewInput = {ValueName, {NewValue, Link}},
       NewInputs = replace_attribute(Inputs, ValueName, NewInput),
       {Config, NewInputs, Outputs, Private}
   end.
@@ -274,10 +275,9 @@ set_value_any(BlockValues, ValueName, NewValue)->
 
 merge_attribute_lists(Attributes, []) -> Attributes;
 
-merge_attribute_lists(Attributes, NewAttributes) ->
-  [NewAttribute | RemainingNewAttributes] = NewAttributes,
+merge_attribute_lists(Attributes, [NewAttribute | NewAttributes]) ->
   UpdatedAttributes = update_attribute_list(Attributes, NewAttribute),
-  merge_attribute_lists(UpdatedAttributes, RemainingNewAttributes).
+  merge_attribute_lists(UpdatedAttributes, NewAttributes).
 
 
 %%
@@ -292,8 +292,8 @@ update_attribute_list(Attributes, NewAttribute) ->
   AttributeName = element(1, NewAttribute),
 
   case get_attribute(Attributes, AttributeName) of
-    not_found       -> add_attribute(Attributes, NewAttribute);
-    _attributeValue -> replace_attribute(Attributes, AttributeName, NewAttribute)
+    {error, not_found} -> add_attribute(Attributes, NewAttribute);
+    {ok, _Value}-> replace_attribute(Attributes, AttributeName, NewAttribute)
   end.
 
 

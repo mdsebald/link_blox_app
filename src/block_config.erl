@@ -47,11 +47,11 @@
     RmTemp = type_mcp9808_temp:create(room_temp, "Room Temp Sensor",
                                  [],
                                  [
-                                     {disable, {false, ?EMPTY_LINK}},
+                                     {disable, {true, ?EMPTY_LINK}},
                                      {exec_interval, {1000, ?EMPTY_LINK}}
                                  ]),
                                  
-    PbSwitch = type_pi_gpio_di:create(switch_27, "Reset Counter",
+    PbSwitch = type_gpio_di:create(switch_27, "Reset Counter",
                                  [
                                      {gpio_pin, {27}}
                                  ], 
@@ -76,43 +76,43 @@
                                      {segments, {empty, {rotary_encode, value}}}
                                  ]),
                                  
-    SegA = type_pi_gpio_do:create(seg_a, "LED Segment A",
+    SegA = type_gpio_do:create(seg_a, "LED Segment A",
                                  [{gpio_pin, {23}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_a}}}]
                                 ),
 
-    SegB = type_pi_gpio_do:create(seg_b, "LED Segment B",
+    SegB = type_gpio_do:create(seg_b, "LED Segment B",
                                  [{gpio_pin, {24}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_b}}}]
                                 ),
 
-    SegC = type_pi_gpio_do:create(seg_c, "LED Segment C",
+    SegC = type_gpio_do:create(seg_c, "LED Segment C",
                                  [{gpio_pin, {25}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_c}}}]
                                 ),
 
-    SegD = type_pi_gpio_do:create(seg_d, "LED Segment D",
+    SegD = type_gpio_do:create(seg_d, "LED Segment D",
                                  [{gpio_pin, {26}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_d}}}]
                                 ),
 
-    SegE = type_pi_gpio_do:create(seg_e, "LED Segment E",
+    SegE = type_gpio_do:create(seg_e, "LED Segment E",
                                  [{gpio_pin, {16}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_e}}}]
                                 ),
         
-    SegF = type_pi_gpio_do:create(seg_f, "LED Segment F",
+    SegF = type_gpio_do:create(seg_f, "LED Segment F",
                                  [{gpio_pin, {22}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_f}}}]
                                 ),
         
-    SegG = type_pi_gpio_do:create(seg_g, "LED Segment G",
+    SegG = type_gpio_do:create(seg_g, "LED Segment G",
                                  [{gpio_pin, {17}}, {invert_output, {false}}], 
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {display, seg_g}}}]

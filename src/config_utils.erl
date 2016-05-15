@@ -63,7 +63,7 @@ module(Config) ->
 %%
 -spec name_module(Config :: list(config_attr()) |
                   block_defn() | 
-                  block_state()) -> {atom(), module()}.
+                  block_state()) -> {block_name(), module()}.
 
 name_module({Config, _Inputs, _Outputs, _Private}) ->
   {ok, BlockName} = attrib_utils:get_value(Config, block_name),
@@ -86,11 +86,23 @@ name_module(Config) ->
 %%
 -spec name_module_version(Config :: list(config_attr()) |
                           block_defn() | 
-                          block_state()) -> {atom(), module(), string()}.
+                          block_state()) -> {block_name(), module(), string()}.
 
 name_module_version({Config, _Inputs, _Outputs, _Private}) ->
   {ok, BlockName} = attrib_utils:get_value(Config, block_name),
   {ok, BlockModule} = attrib_utils:get_value(Config, block_module),
+  {ok, Version} = attrib_utils:get_value(Config, version),
+  {BlockName, BlockModule, Version};
+  
+name_module_version({Config, _Inputs, _Outputs}) ->  
+  {ok, BlockName} = attrib_utils:get_value(Config, block_name),
+  {ok, BlockModule} =  attrib_utils:get_value(Config, block_module),
+  {ok, Version} = attrib_utils:get_value(Config, version),
+  {BlockName, BlockModule, Version};
+                       
+name_module_version(Config) ->
+  {ok, BlockName} = attrib_utils:get_value(Config, block_name),
+  {ok, BlockModule} =  attrib_utils:get_value(Config, block_module),
   {ok, Version} = attrib_utils:get_value(Config, version),
   {BlockName, BlockModule, Version}.
 

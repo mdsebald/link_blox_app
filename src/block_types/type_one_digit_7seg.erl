@@ -49,8 +49,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display_on, true, ?EMPTY_LINK},
-      {segments, empty, ?EMPTY_LINK}
+      {display_on, {true, ?EMPTY_LINK}},
+      {segments, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -60,14 +60,14 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {seg_a, not_active, []},
-      {seg_b, not_active, []},
-      {seg_c, not_active, []},
-      {seg_d, not_active, []},
-      {seg_e, not_active, []},
-      {seg_f, not_active, []},
-      {seg_g, not_active, []},
-      {seg_dp, not_active, []}
+      {seg_a, {not_active, []}},
+      {seg_b, {not_active, []}},
+      {seg_c, {not_active, []}},
+      {seg_d, {not_active, []}},
+      {seg_e, {not_active, []}},
+      {seg_f, {not_active, []}},
+      {seg_g, {not_active, []}},
+      {seg_dp, {not_active, []}}
     ]). 
 
 

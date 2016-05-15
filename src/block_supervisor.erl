@@ -132,11 +132,10 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
   
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
-                        [BlockName, BlockModule, Version],
+                        [BlockName, BlockModule, Version]),
 
 	BlockSpec = #{id => BlockName, restart => transient,
                    start => {block_server, create, [BlockValues]}},
 	NewBlockSpecs = [BlockSpec | BlockSpecs],
 	
 	create_block_specs(RemainingBlockValuesList, NewBlockSpecs).
-	

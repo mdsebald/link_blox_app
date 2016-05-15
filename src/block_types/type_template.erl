@@ -50,7 +50,7 @@ default_configs(BlockName, Description) ->
     [
       % INTRUCTIONS: Insert block type specific config attribute tuples here
       % Config attribute tuples consist of a value name and a value
-      % Example: {gpio_pin, 0}
+      % Example: {gpio_pin, {0}}
       % Config values are set once on block creation and never modified.                   
     ]). 
 
@@ -63,7 +63,7 @@ default_inputs() ->
     [
       % INTRUCTIONS: Insert block type specific input attribute tuples here
       % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, 100, ?EMPTY_LINK}
+      % Example: {hi_limit, {100, ?EMPTY_LINK}}
       % Inputs may be fixed values, or linked to a block output value 
     ]). 
 
@@ -78,7 +78,7 @@ default_outputs() ->
       % Output attribute tuples consist of a value name, a calculated value, 
       % and a list of blocks that reference (have links to) this output value
       % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, not_active, []}
+      % Example: {dwell, {not_active, []}}
     ]). 
 
 %%  

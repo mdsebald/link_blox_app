@@ -34,10 +34,10 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, "i2c-1"},
-      {i2c_addr, 16#18},
-      {deg_f, true},
-      {offset, 0.0}
+      {i2c_device, {"i2c-1"}},
+      {i2c_addr, {16#18}},
+      {deg_f, {true}},
+      {offset, {0.0}}
     ]). 
 
 
@@ -47,7 +47,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, 0, ?EMPTY_LINK} 
+      {input, {0, ?EMPTY_LINK}} 
     ]). 
 
 
@@ -109,7 +109,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, empty}),
+  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
   
   % Get the the I2C Address of the sensor 
   % TODO: Check for valid I2C Address

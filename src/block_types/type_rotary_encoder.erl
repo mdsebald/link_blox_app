@@ -38,11 +38,11 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {gpio_pin_phase_A, 21},   % TODO: Final block set to zero
-      {gpio_pin_phase_B, 20},
-      {phase_int_edge, both},  % Valid values are: falling, rising, or both
-      {gpio_pin_switch, 19},
-      {switch_int_edge, falling}  
+      {gpio_pin_phase_A, {21}},   % TODO: Final block set to zero
+      {gpio_pin_phase_B, {20}},
+      {phase_int_edge, {both}},  % Valid values are: falling, rising, or both
+      {gpio_pin_switch, {19}},
+      {switch_int_edge, {falling}}  
     ]). 
 
 
@@ -62,7 +62,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {switch, not_active, []}
+      {switch, {not_active, []}}
     ]). 
 
 %%  
@@ -110,12 +110,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
   
   % Set up the private values needed  
   Private1 = attrib_utils:merge_attribute_lists(Private, 
-                            [{gpio_pin_A_ref, empty},
-                             {last_A_value, empty},
-                             {gpio_pin_B_ref, empty},
-                             {last_B_value, empty},
-                             {gpio_pin_sw_ref, empty},
-                             {last_sw_value, empty}]),
+                            [{gpio_pin_A_ref, {empty}},
+                             {last_A_value, {empty}},
+                             {gpio_pin_B_ref, {empty}},
+                             {last_B_value, {empty}},
+                             {gpio_pin_sw_ref, {empty}},
+                             {last_sw_value, {empty}}]),
     
   % Get the GPIO pin numbers and interrupt edge directions used by this block
   {ok, PhaseA_Pin} = attrib_utils:get_value(Config, gpio_pin_phase_A),

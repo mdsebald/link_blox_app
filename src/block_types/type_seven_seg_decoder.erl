@@ -46,7 +46,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, empty, ?EMPTY_LINK}
+      {input, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -56,10 +56,10 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digit_1, not_active, []},
-      {digit_2, not_active, []},
-      {digit_3, not_active, []},
-      {digit_4, not_active, []}
+      {digit_1, {not_active, []}},
+      {digit_2, {not_active, []}},
+      {digit_3, {not_active, []}},
+      {digit_4, {not_active, []}}
     ]). 
 
 

@@ -302,10 +302,10 @@ update_execute_track(Outputs, ExecMethod) ->
 update_all_outputs(Outputs, NewValue, NewStatus) ->
   lists:map(
     fun(Output) ->
-      {ValueName, _Value, BlockNames} = Output,
+      {ValueName, {_Value, BlockNames}} = Output,
       case ValueName of
-        status -> {ValueName, NewStatus, BlockNames};
-             _ -> {ValueName, NewValue,  BlockNames}
+        status -> {ValueName, {NewStatus, BlockNames}};
+             _ -> {ValueName, {NewValue,  BlockNames}}
       end
     end,
     Outputs).
@@ -326,8 +326,8 @@ update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
   [CurrentOutput | RemainingCurrentOutputs] = CurrentOutputs,
   [NewOutput | RemainingNewOutputs] = NewOutputs,
 
-  {ValueName, CurrentValue, Links} = CurrentOutput,
-  {ValueName, NewValue, Links} = NewOutput,
+  {ValueName, {CurrentValue, Links}} = CurrentOutput,
+  {ValueName, {NewValue, Links}} = NewOutput,
 
   % For each output value that changed, call update() to send 
   % a new value message to each linked block.

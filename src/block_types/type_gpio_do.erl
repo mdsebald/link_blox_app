@@ -33,9 +33,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {gpio_pin, 0}, 
-      {default_value, false},
-      {invert_output, false}
+      {gpio_pin, {0}}, 
+      {default_value, {false}},
+      {invert_output, {false}}
     ]).
 
 
@@ -45,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, empty, ?EMPTY_LINK}
+      {input, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -109,7 +109,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, empty}),
+  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
   
   % Get the GPIO Pin number used for digital outputs 
   {ok, PinNumber} = attrib_utils:get_value(Config, gpio_pin),
