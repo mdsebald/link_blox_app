@@ -44,5 +44,10 @@ clean:
 
 distclean:
 	-rm -fr _rel _images ebin deps $(DEPSOLVER_PLT)
+	
+test:
+	rebar skip_deps=true eunit
 
-.PHONY: dialyzer typer clean distclean burn
+
+
+.PHONY: dialyzer typer clean distclean test burn
