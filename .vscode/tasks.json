@@ -21,7 +21,7 @@
 	"showOutput": "silent",
 
 	// args is the current file open to compile.
-	"args": ["-oebin-dump", "${file}"]
+	"args": ["-DTEST", "-oebin-dump", "${file}"]
 
 	// use the standard tsc problem matcher to find compile problems
 	// in the output.
