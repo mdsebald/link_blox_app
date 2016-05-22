@@ -23,7 +23,7 @@ type_name() -> "int_to_7seg".
 
 version() -> "0.1.0".
 
-description() -> "Convert integer input to multiple 7 segment digits".
+description() -> "Convert integer input to multiple 7 segment digits outputs".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -208,7 +208,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Digits7Seg = lists:map(fun(Digit) -> char_to_segments(Digit, false) end, Digits)
   end,
   
-  Outputs1 = output_utils:set_array_value(Outputs, digits, Digits7Seg),
+  Outputs1 = output_utils:set_array_value(Outputs, digit, Digits7Seg),
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % Return updated block state
@@ -261,3 +261,25 @@ char_to_segments(Char, DecPnt) ->
     {Char, Segments} -> % Combine the 7 segments with the decimal point segment
       (Segments bor DecPntSeg)
   end.
+  
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+  
+
+ create_test() ->
+    create(create_test, "Testing Block Creation").
+  %{Config, Inputs, Outputs} = BlockDefn.
+
+initialize_test() ->
+  BlockDefn = create(initialize_test, "Testing Block Initialization"),
+  _BlockState = block_common:initialize(BlockDefn).
+
+    
+
+
+-endif.

@@ -159,18 +159,18 @@ execute(BlockValues, ExecMethod) ->
                     
         error -> % Freeze input value error
           error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
-          Outputs2 = update_all_outputs(Outputs, not_active, input_err),
+          Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
           % Nothing to update in private values
           Private1 = Private
       end;
     active -> % Block is disabled
-      Outputs2 = update_all_outputs(Outputs, not_active, disabled),
+      Outputs2 = output_utils:update_all_outputs(Outputs, not_active, disabled),
       % Nothing to update in private values
       Private1 = Private;
         
     error -> % Disable input value error 
       error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
-      Outputs2 = update_all_outputs(Outputs, not_active, input_err),
+      Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
       % Nothing to update in private values
       Private1 = Private
   end,
@@ -178,7 +178,7 @@ execute(BlockValues, ExecMethod) ->
   {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
     
   if (Status /= normal) ->  % Some kind error setting execution timer
-    Outputs3 = update_all_outputs(Outputs2, not_active, Status);
+    Outputs3 = output_utils:update_all_outputs(Outputs2, not_active, Status);
   true -> % Execution timer status is normal
     Outputs3 = Outputs2
   end,
@@ -210,8 +210,8 @@ check_boolean_input(Value) ->
 %%
 %% Update the block execution timer 
 %%
--spec update_execution_timer(BlockName :: atom(),
-                             Inputs :: list(),
+-spec update_execution_timer(BlockName :: block_name(),
+                             Inputs :: list(input_attr()),
                              Private :: list()) -> {atom(), list()}.
                              
 update_execution_timer(BlockName, Inputs, Private) ->
@@ -289,93 +289,99 @@ update_execute_track(Outputs, ExecMethod) ->
   Outputs2.
 
 
-%% 
-%% Update all outputs to the New value,
-%% except update status output to the New Staus value
-%% Used to mass update block outputs in disabled or error conditions
-%% TODO: Move this function to output_utils module, and update array values also
-%% 
--spec update_all_outputs(Outputs :: list(), 
-                         NewValue :: term(), 
-                         NewStatus :: atom()) -> list().
-
-update_all_outputs(Outputs, NewValue, NewStatus) ->
-  lists:map(
-    fun(Output) ->
-      {ValueName, {_Value, BlockNames}} = Output,
-      case ValueName of
-        status -> {ValueName, {NewStatus, BlockNames}};
-             _ -> {ValueName, {NewValue,  BlockNames}}
-      end
-    end,
-    Outputs).
-
-
 %%
 %% Send an update message to each block linked to any output value that has changed
 %% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
 %%
--spec update_blocks(FromBlockName :: atom(), 
-                    CurrentOutputs :: list(), 
-                    NewOutputs :: list()) -> ok.
+-spec update_blocks(FromBlockName :: block_name(), 
+                    CurrentOutputs :: list(output_attr()), 
+                    NewOutputs :: list(output_attr())) -> ok.
 
 update_blocks(_FromBlockName, [], [])-> ok;
 
-update_blocks(FromBlockName, CurrentOutputs, NewOutputs)->
+update_blocks(FromBlockName, 
+              [CurrentOutput | CurrentOutputs], 
+              [NewOutput | NewOutputs])->
 
-  [CurrentOutput | RemainingCurrentOutputs] = CurrentOutputs,
-  [NewOutput | RemainingNewOutputs] = NewOutputs,
-
-  {ValueName, {CurrentValue, Links}} = CurrentOutput,
-  {ValueName, {NewValue, Links}} = NewOutput,
-
-  % For each output value that changed, call update() to send 
-  % a new value message to each linked block.
-  % Don't check the 'exec_out' output, that is for control flow execution
-  if (ValueName /= exec_out) andalso (CurrentValue /= NewValue) -> 
-    update_linked_inputs(Links, FromBlockName, ValueName, NewValue);
-  true -> 
-    ok % else do nothing
+  case CurrentOutput of
+    % Non-array value output
+    {ValueName, {CurrentValue, Refs}} ->
+      {ValueName, {NewValue, Refs}} = NewOutput,
+      
+      % For each output value that changed, call update() to send 
+      % a new value message to each linked block.
+      % Don't check the 'exec_out' output, that is for control flow execution
+      if (ValueName /= exec_out) andalso (CurrentValue /= NewValue) -> 
+        update_linked_inputs(Refs, FromBlockName, ValueName, NewValue);
+      true -> 
+        ok % else do nothing
+      end,
+      update_blocks(FromBlockName, CurrentOutputs, NewOutputs);
+      
+    % Array value output
+    {ValueName, CurrentArrayValues} ->
+      {ValueName, NewArrayValues} = NewOutput,
+        check_array_values(FromBlockName, ValueName, 1,
+                           CurrentArrayValues, NewArrayValues) 
   end,
 
-  update_blocks(FromBlockName, RemainingCurrentOutputs, RemainingNewOutputs).
+  update_blocks(FromBlockName, CurrentOutputs, NewOutputs).
+
+
+%%
+%% Check the values in the output array value
+%%
+-spec check_array_values(FromBlockName :: block_name(),
+                         ValueName :: value_name(),
+                         ArrayIndex :: pos_integer(),
+                         CurrentArrayValues :: list(), 
+                         NewArrayValues :: list()) -> ok.
+
+check_array_values(_FromBlockName, _ValueName, _ArrayIndex, [], []) ->
+  ok;
+  
+check_array_values(FromBlockName, ValueName, ArrayIndex, 
+                   [{CurrentValue, Refs} | CurrentArrayValues], 
+                   [{NewValue, Refs} | NewArrayValues]) ->
+                   
+  if  CurrentValue /= NewValue -> 
+    update_linked_inputs(Refs, FromBlockName, {ValueName, ArrayIndex}, NewValue);
+  true -> 
+    ok
+  end,
+                   
+  check_array_values(FromBlockName, ValueName, ArrayIndex+1, 
+                       CurrentArrayValues, NewArrayValues).
+
 
 %%
 %% update each block input value in the list of block names, 
 %% linked to this block's output value
 %%
--spec update_linked_inputs(list(), 
-                           FromBlockName :: atom(),
-                           ValueName :: atom(),
-                           NewValue :: term()) -> ok.
-                                   
-update_linked_inputs([], _FromBlockName, _ValueName, _NewValue) -> 
-  ok;
-update_linked_inputs([BlockName | RemainingLinks], FromBlockName, ValueName, NewValue) ->
-  block_server:update(BlockName, FromBlockName, ValueName, NewValue),
-  update_linked_inputs(RemainingLinks, FromBlockName, ValueName, NewValue).
+-spec update_linked_inputs(Refs :: list(pid()), 
+                           FromBlockName :: block_name(),
+                           ValueId :: value_id(),
+                           NewValue :: value()) -> ok.
+                           
+update_linked_inputs(Refs, FromBlockName, ValueId, NewValue) ->
+  lists:map(fun(Ref) -> 
+            block_server:update(Ref, FromBlockName, ValueId, NewValue) 
+            end, 
+            Refs),
+  ok.
 
 
 %%    
 %% Send an exec_out_execute message to each block connected to the 'exec_out' output of this block
 %% This will implement control flow execution, versus data flow done in the update_blocks function. 
 %%
--spec update_execute(list()) -> ok.
+-spec update_execute(Outputs :: list(output_attr())) -> ok.
 
 update_execute(Outputs) ->	
-  {ok, {exec_out,  {_Value, BlockNames}}} = attrib_utils:get_attribute(Outputs, exec_out),
-  execute_out(BlockNames).
-
-%%
-%% Execute each block in the list of block names, assigned to this block's 'exec_out' output
-%%
--spec execute_out(list()) -> ok.
-   
-execute_out([]) ->
-  ok;
-execute_out([BlockName | RemainingBlockNames]) ->
-  block_server:exec_out_execute(BlockName),
-  execute_out(RemainingBlockNames).
+  {ok, {exec_out,  {_Value, Refs}}} = attrib_utils:get_attribute(Outputs, exec_out),
+  
+  lists:map(fun(Ref) -> block_server:exec_out_execute(Ref) end, Refs),
+  ok.
 
 
 %%
@@ -398,7 +404,7 @@ delete(BlockValues) ->
   link_utils:unlink_blocks(BlockName, Inputs),
   
   % Set all output values of this block, including status, to 'empty'
-  EmptyOutputs = update_all_outputs(Outputs, empty, empty),
+  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
     
   % Update the block inputs linked to this block's outputs 
   % This will set the input value of any block 

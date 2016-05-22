@@ -103,7 +103,7 @@ get_value(Inputs, ValueName, CheckType) ->
 %% to match the target quantity
 %% Returns updated Inputs attribute list
 %%
--spec resize_attribute_array_value(BlockName :: atom(),
+-spec resize_attribute_array_value(BlockName :: block_name(),
                                    Inputs :: list(input_attr()),
                                    ArrayValueName :: value_name(),
                                    TargQuant :: pos_integer(),
@@ -127,7 +127,7 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
 %% Log input value error
 %%
 -spec log_error(Config :: list(config_attr()),
-                ValueName :: atom(),
+                ValueName :: value_name(),
                 Reason :: atom()) -> {not_active, input_err}.
                   
 log_error(Config, ValueName, Reason) ->
@@ -150,24 +150,96 @@ log_error(Config, ValueName, Reason) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Test input value list
-test_inputs() ->
-  [ {float_good, 123.45, {null, block1, value}},
-    {float_bad, xyz, ?EMPTY_LINK}
-    {integer_good, 12345, {null, block2, value}},
-    {integer_bad, "bad", ?EMPTY_LINK},
-    {boolean_good, true, ?EMPTY_LINK},
-    {boolean_bad, 0.0, ?EMPTY_LINK},
-    {not_active_good, not_active, ?EMPTY_LINK},
-    {empty_good, empty, ?EMPTY_LINK},
-    {empty_bad, empty, {knot, empty, link}},
-    {not_input, 123, [test1,test2]}
+% ====================================================================
+% Test data
+%
+test_config_attribs1() ->
+  [ {block_name, {test_input_utils}},
+    {block_module, {type_test}},
+    {version, {"0.0.0"}},
+    {description, {"Unit Testing Data"}}
+  ].
+
+test_input_attribs1() ->
+  [ {disable, {true, ?EMPTY_LINK}},
+    {freeze, {false, ?EMPTY_LINK}},
+    {exec_in, {empty, ?EMPTY_LINK}},
+    {exec_interval, {0, ?EMPTY_LINK}},
+    {float_good, {123.45, {null, block1, value}}},
+    {float_bad, {xyz, ?EMPTY_LINK}},
+    {integer_good, {12345, {null, block2, value}}},
+    {integer_bad, {"bad", ?EMPTY_LINK}},
+    {boolean_good, {true, ?EMPTY_LINK}},
+    {boolean_bad, {0.0, ?EMPTY_LINK}},
+    {not_active_good, {not_active, ?EMPTY_LINK}},
+    {empty_good, {empty, ?EMPTY_LINK}},
+    {empty_bad, {empty, {knot, empty, link}}},
+    {not_input, {123, [test1,test2]}},
+    {integer_array, [{123, {}}, {789, {null, test_block, test_output}}]}
   ].
   
+test_input_attribs2() ->
+  InputList = test_input_attribs1(),
+  ModifiedAttribute = {integer_array, 
+                       [{123, {}}, 
+                        {789, {null, test_block, test_output}},
+                        {empty, ?EMPTY_LINK},
+                        {empty, ?EMPTY_LINK}]},
+   attrib_utils:replace_attribute(InputList, integer_array, 
+                            ModifiedAttribute).
   
-get_value_test() ->
-  TestInputs = test_inputs().
-    
+% ====================================================================
 
+% ====================================================================
+% Test name()
+%   
+get_value_test() ->
+  _TestInputs = test_input_attribs1().
+
+% ====================================================================
+
+
+% ====================================================================
+% Test resize_attribute_array_value()  
+%
+%   Test input array attribute doesn't change size
+resize_attribute_array_value_nochange_test() ->
+  BlockName = test_input_utils,
+  Inputs = test_input_attribs1(),
+  ArrayValueName = integer_array,
+  TargQuant = 2,
+  DefaultValue = {empty, ?EMPTY_LINK},
+  
+  ExpectedResult = test_input_attribs1(),
+  
+  Result = resize_attribute_array_value(BlockName, Inputs, 
+                         ArrayValueName, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+  
+%   Test input array attribute increases in size
+resize_attribute_array_value_increase_test() ->
+  BlockName = test_input_utils,
+  Inputs = test_input_attribs1(),
+  ArrayValueName = integer_array,
+  TargQuant = 4,
+  DefaultValue = {empty, ?EMPTY_LINK},
+  
+  ExpectedResult = test_input_attribs2(),
+  
+  Result = resize_attribute_array_value(BlockName, Inputs, 
+                         ArrayValueName, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+% Test log_error()
+%     
+log_error_test() ->
+  Config = test_config_attribs1(),
+  
+  ExpectedResult =  {not_active, input_err},
+  
+  Result = log_error(Config, value_name, bad_value),
+  ?assertEqual(ExpectedResult, Result) .
+% ====================================================================
 
 -endif.

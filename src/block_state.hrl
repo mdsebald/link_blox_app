@@ -59,7 +59,9 @@
                       
 -type empty_link() :: {}.
 -define (EMPTY_LINK, {}).
- 
+
+-ifdef(INCLUDE_OBSOLETE). 
+% TODO: Delete after we finalize link structure 
 -type self_link() :: {ValueName :: value_name(), 
                       ArrayInex :: integer()}.
                        
@@ -71,6 +73,16 @@
                         BlockName :: block_name(),
                         ValueName :: value_name(), 
                         ArrayInex :: integer()}.
+-endif.
+
+-type self_link() :: {value_id()}.
+                       
+-type local_link() :: {block_name(), value_id()}.
+                        
+-type global_link() :: {node(), block_name(), value_id()}.
+                        
+-type value_id() :: value_name() |
+                    {value_name(), ArrayIndex :: pos_integer()}.
                         
 
 -type link_refs() :: list(pid()).
@@ -78,7 +90,7 @@
 -type value() :: empty | not_active | integer() | float() | boolean() | 
                  string() | tuple() | list().
 
--type attrib_errors() :: {error, not_found | invalid_value | invalid_index | negative_index}.
+-type attrib_errors() :: {error, not_found | invalid_value | invalid_index }.
                           
 -type attrib_value() :: {ok, value()} | attrib_errors().
 

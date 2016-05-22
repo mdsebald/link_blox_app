@@ -23,7 +23,7 @@
 %%
 -spec name(Config :: list(config_attr()) |
            block_defn() | 
-           block_state()) -> atom().
+           block_state()) -> block_name().
 
 name({Config, _Inputs, _Outputs, _Private}) ->
   {ok, BlockName} = attrib_utils:get_value(Config, block_name),
@@ -110,7 +110,7 @@ name_module_version(Config) ->
 %% Get configuration value of any type and check for errors.
 %%
 -spec get_any_type(Config :: list(config_attr()),
-                   ValueName :: atom()) -> generic_config_value().
+                   ValueName :: value_name()) -> generic_config_value().
 
 get_any_type(Config, ValueName) ->
   % Return true for every value
@@ -121,7 +121,7 @@ get_any_type(Config, ValueName) ->
 %% Get an integer configuration value and check for errors.
 %%
 -spec get_integer_range(Config :: list(config_attr()), 
-                        ValueName :: atom(),
+                        ValueName :: value_name(),
                         Min :: integer(),
                         Max :: integer()) -> integer_config_value().
 
@@ -140,7 +140,7 @@ get_integer_range(Config, ValueName, Min, Max) ->
        
 
 -spec get_integer(Config :: list(config_attr()), 
-                  ValueName :: atom()) -> integer_config_value().
+                  ValueName :: value_name()) -> integer_config_value().
 
 get_integer(Config, ValueName) ->
   CheckType = fun is_integer/1,
@@ -151,7 +151,7 @@ get_integer(Config, ValueName) ->
 %% Get a floating point configuration value and check for errors.
 %%
 -spec get_float(Config :: list(config_attr()), 
-                ValueName :: atom()) -> float_config_value().
+                ValueName :: value_name()) -> float_config_value().
 
 get_float(Config, ValueName) ->
   CheckType = fun is_float/1,
@@ -162,7 +162,7 @@ get_float(Config, ValueName) ->
 %% Get a boolean configuration value and check for errors
 %%
 -spec get_boolean(Config :: list(config_attr()), 
-                  ValueName :: atom()) -> boolean_config_value().
+                  ValueName :: value_name()) -> boolean_config_value().
 
 get_boolean(Config, ValueName) ->
   CheckType = fun is_boolean/1,
@@ -173,7 +173,7 @@ get_boolean(Config, ValueName) ->
 %% Generic get configuration value, check for errors.
 %%
 -spec get_value(Config :: list(config_attr()),
-                ValueName :: atom(),
+                ValueName :: value_name(),
                 CheckType :: fun()) -> term().
                 
 get_value(Config, ValueName, CheckType) ->
@@ -231,24 +231,167 @@ log_error(Config, ValueName, Reason) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Test configuration value list
-test_configs() ->
-  [ {float_good, 123.45},
-    {float_bad, xyz}
-    {integer_good, 12345},
-    {integer_bad, "bad"},
-    {boolean_good, true},
-    {boolean_bad, 0.0},
-    {not_active_good, not_active},
-    {empty_good, empty},
-    {empty_bad, empty, {knot, empty, link}},
-    {not_config, 123, [test1,test2]}
+% ====================================================================
+% Test data
+%
+test_config_attribs1() ->
+  [ {block_name, {test_config_utils}},
+    {block_module, {type_test}},
+    {version, {"0.0.0"}},
+    {description, {"Unit Testing Data"}},
+    {number1, {123.45}},
+    {string1, {"Testing"}},
+    {bool_array, [{true}, {false}]},
+    {integer1, {123}},
+    {integer_array, [{234}, {456}, {-123}]},
+    {float_good, {123.45}},
+    {float_bad, {xyz}},
+    {integer_good, {12345}},
+    {integer_bad, {"bad"}},
+    {boolean_good, {true}},
+    {boolean_bad, {0.0}},
+    {not_active_good, {not_active}},
+    {empty_good, {empty}},
+    {empty_bad, {empty, {knot, empty, link}}},
+    {not_config, {123, [test1,test2]}}
   ].
-  
-  
-get_value_test() ->
-  TestInputs = test_inputs().
-    
 
+% ====================================================================
+
+% ====================================================================
+% Test name()
+% 
+name_config_test()->
+  Config = test_config_attribs1(),
+  
+  ExpectedResult = test_config_utils,
+  
+  Result = name(Config),
+  ?assertEqual(ExpectedResult, Result).
+  
+name_block_defn_test()->
+  Config = test_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  BlockDefn = {Config, Inputs, Outputs},
+  
+  ExpectedResult = test_config_utils,
+  
+  Result = name(BlockDefn),
+  ?assertEqual(ExpectedResult, Result).
+  
+name_block_state_test()->
+  Config = test_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  Private = [],
+  BlockState = {Config, Inputs, Outputs, Private},
+  
+  ExpectedResult = test_config_utils,
+  
+  Result = name(BlockState),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
+% ====================================================================
+% Test name_module()
+% 
+name_module_config_test()->
+  Config = test_config_attribs1(),
+  
+  ExpectedResult = {test_config_utils, type_test},
+  
+  Result = name_module(Config),
+  ?assertEqual(ExpectedResult, Result).
+  
+name_module_block_defn_test()->
+  Config = test_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  BlockDefn = {Config, Inputs, Outputs},
+  
+  ExpectedResult = {test_config_utils, type_test},
+  
+  Result = name_module(BlockDefn),
+  ?assertEqual(ExpectedResult, Result).
+  
+name_module_block_state_test()->
+  Config = test_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  Private = [],
+  BlockState = {Config, Inputs, Outputs, Private},
+  
+  ExpectedResult = {test_config_utils, type_test},
+  
+  Result = name_module(BlockState),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
+% ====================================================================
+% Test name_module_version()
+% 
+name_module_version_config_test()->
+  Config = test_config_attribs1(),
+  
+  ExpectedResult = {test_config_utils, type_test, "0.0.0"},
+  
+  Result = name_module_version(Config),
+  ?assertEqual(ExpectedResult, Result).
+  
+name_module_version_block_defn_test()->
+  Config = test_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  BlockDefn = {Config, Inputs, Outputs},
+  
+  ExpectedResult = {test_config_utils, type_test, "0.0.0"},
+  
+  Result = name_module_version(BlockDefn),
+  ?assertEqual(ExpectedResult, Result).
+  
+name_module_version_block_state_test()->
+  Config = test_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  Private = [],
+  BlockState = {Config, Inputs, Outputs, Private},
+  
+  ExpectedResult = {test_config_utils, type_test, "0.0.0"},
+  
+  Result = name_module_version(BlockState),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
+% ====================================================================
+% Test get_integer_range()
+% 
+get_integer_range_test()->
+  Config = test_config_attribs1(),
+  ValueName = integer_good,
+  
+  ExpectedResult = {error, range},
+  
+  Result = get_integer_range(Config, ValueName, 1, 100),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+  
+
+
+get_value_test() ->
+  _Config = test_config_attribs1().
+
+
+% ====================================================================
+% Test log_error()
+%     
+log_error_test() ->
+  Config = test_config_attribs1(),
+  
+  ExpectedResult =  {not_active, config_err},
+  
+  Result = log_error(Config, value_name, bad_value),
+  ?assertEqual(ExpectedResult, Result) .
+% ====================================================================
 
 -endif.

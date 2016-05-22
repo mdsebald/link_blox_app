@@ -74,8 +74,8 @@ exec_out_execute(BlockName) ->
 %% to the input(s) of the linked block
 %% i.e. Implement Data Flow
 %% TODO: Convert to a common Target Link: {NodeName, BlockName, ValueName} plus Value
-update(BlockName, FromBlockName, ValueName, Value) ->
-  gen_server:cast(BlockName, {update, FromBlockName, ValueName, Value}).
+update(BlockName, FromBlockName, ValueId, Value) ->
+  gen_server:cast(BlockName, {update, FromBlockName, ValueId, Value}).
 
 
 %% Perform initial configuration of the block.  
@@ -247,12 +247,12 @@ handle_cast(exec_out_execute, BlockValues) ->
 %% ====================================================================
 %% Update this block's input value(s) with the block value received in this message
 %% ====================================================================
-handle_cast({update, FromBlockName, ValueName, Value}, BlockValues) ->
+handle_cast({update, FromBlockName, ValueId, Value}, BlockValues) ->
 	
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
 	% Update the block input(s), that are linked this value, with the new Value
-	NewInputs = link_utils:update_linked_input_values(Inputs, {FromBlockName, ValueName}, Value),
+	NewInputs = link_utils:update_linked_input_values(Inputs, {FromBlockName, ValueId}, Value),
 	
   % Execute the block because input values have changed
   NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),

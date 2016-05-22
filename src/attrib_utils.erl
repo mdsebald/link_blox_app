@@ -13,8 +13,8 @@
 %% API functions
 %% ====================================================================
 -export([get_attribute/2]).
--export([get_value/2, get_value/3, get_value_any/3]).
--export([set_value/3, set_value/4, set_values/2, set_value_any/3]).
+-export([get_value/2, get_value_any/2]).
+-export([set_value/3, set_values/2]).  %, set_value_any/3]).
 -export([update_attribute_list/2, merge_attribute_lists/2]).
 -export([replace_attribute/3, add_attribute/2]).
 -export([resize_attribute_array_value/4, resize_attribute_array_value/5]).
@@ -25,10 +25,15 @@
 %% List of attributes may be Config, Inputs, Outputs, or Private type
 %%
 -spec get_attribute(Attributes :: list(attribute()), 
-                    ValueName :: atom()) -> {ok, attribute()} | {error, not_found}.
-
-get_attribute(Attributes, ValueName) ->
-  % io:format("~p~n", [Attributes]),
+                    ValueId :: value_id()) -> {ok, attribute()} | {error, not_found}.
+% Array Value ID case
+get_attribute(Attributes, ValueId) ->
+  % Get the ValueName from the ValueId
+  case ValueId of
+    {ValueName, _ArrayIndex} -> ok;
+    ValueName -> ok
+  end,
+  
   % ValueName is always the first element in the tuple, regardless of the attribute type
   case lists:keyfind(ValueName, 1, Attributes) of 
     false     -> {error, not_found};
@@ -37,78 +42,69 @@ get_attribute(Attributes, ValueName) ->
 
 
 %%	
-%% Simple get value function for non-array attribute values
+%% Get the value of the ValueId attribute in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
 -spec get_value(Attributes :: list(attribute()), 
-                ValueName :: atom()) -> attrib_value().
+                ValueId :: value_id()) -> attrib_value().
 
-get_value(Attributes, ValueName) ->
-  get_value(Attributes, ValueName, 0).
-  
-
-%%	
-%% Get the value of the ValueName attribute in the list of Attributes
-%% List of attributes may be Config, Inputs, Outputs, or Private
-%%
--spec get_value(Attributes :: list(attribute()), 
-                ValueName :: atom(),
-                ArrayIndex :: integer()) -> attrib_value().
-
-% Assumes the attriute is a single value
-get_value(Attributes, ValueName, ArrayIndex) when ArrayIndex == 0 ->
-  case get_attribute(Attributes, ValueName) of
-	  {error, not_found}                      -> {error, not_found};
-    % Config or Private value
-    {ok, {ValueName, {Value}}}              -> {ok, Value};
+% Get array value 
+get_value(Attributes, ValueId) ->
+  case get_attribute(Attributes, ValueId) of
+	  {error, not_found} -> {error, not_found};
+    
+    % For non-array values, the ValueId is the attribute ValueName
+    % Non-array Config or Private value
+    {ok, {ValueId, {Value}}} -> {ok, Value};
+    
      % Input or Output value
-    {ok, {ValueName, {Value, _LinkOrRefs}}} -> {ok, Value};
-    % Unrecognized value
-    {ok, {ValueName, _InvalidValue}}        -> {error, invalid_value}
-  end;
-
-% Assumes the attribute is an array value.
-get_value(Attributes, ValueName, ArrayIndex) when ArrayIndex > 0 ->
-  case get_attribute(Attributes, ValueName) of
-	  {error, not_found}            -> {error, not_found};
+    {ok, {ValueId, {Value, _LinkOrRefs}}} -> {ok, Value};
+    
+    % Assume this is an array value
     {ok, {ValueName, ArrayValue}} ->
-      if length(ArrayValue) >= ArrayIndex ->
-        case lists:nth(ArrayValue) of
-          % Config or Private array value
-          {Value}              -> {ok, Value};
-          % Input or Output array value
-          {Value, _LinkOrRefs} -> {ok, Value}; 
-          % Unrecognized value
-          _InvalidValue        -> {error, invalid_value}
-        end;
-      true ->  {error, invalid_index}
-      end
-  end;
-  
-% Negative array indexes, not allowed 
-get_value(_Attributes, _ValueName, ArrayIndex) when ArrayIndex < 0 ->
-  {error, negative_index}.
+        % if this is an array value, the ValueName from get_attribute()
+        % will match ValueName in the ValueId tuple
+      case ValueId of
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            case lists:nth(ArrayIndex, ArrayValue) of
+              % Config or Private array value
+              {Value} -> {ok, Value};
+              % Input or Output array value
+              {Value, _LinkOrRefs} -> {ok, Value}; 
+              % Unrecognized value
+              _InvalidValue -> {error, invalid_value}
+            end;
+          true -> {error, invalid_index}
+          end;
+        _InvalidValue -> {error, invalid_value}
+      end;
+    _InvalidValue -> {error, invalid_value}
+  end.
 
 
 %%	
 %% Get the value of the attribute ValueName
 %% Check attribute types: Config, Inputs, and Outputs
 %%
+%% This is used by processes external to the block
+%% so don't allow getting Private values 
+%%
 -spec get_value_any(BlockValues :: block_state(), 
-                    ValueName :: atom(),
-                    ArrayIndex :: integer()) -> attrib_value().
-	
-get_value_any(BlockValues, ValueName, ArrayIndex) ->
+                    ValueId :: value_id()) -> attrib_value().
+
+% Get array value	
+get_value_any(BlockValues, ValueId) ->
 
   {Config, Inputs, Outputs, _Private} = BlockValues,
 
-  case get_value(Config, ValueName, ArrayIndex) of
+  case get_value(Config, ValueId) of
     {error, not_found} ->
 
-      case get_value(Inputs, ValueName, ArrayIndex) of
+      case get_value(Inputs, ValueId) of
         {error, not_found} ->
 
-          case get_value(Outputs, ValueName, ArrayIndex) of
+          case get_value(Outputs, ValueId) of
             {error, Reason} -> {error, Reason};
             % Output value
             {ok, Value} -> {ok, Value}
@@ -128,79 +124,66 @@ get_value_any(BlockValues, ValueName, ArrayIndex) ->
 
 
 %%	
-%% Simple set value function for non-array attribute values
+%% Set a value in attribute ValueId
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
 -spec set_value(Attributes :: list(attribute()), 
-                ValueName :: atom(), 
+                ValueId :: value_id(), 
                 NewValue :: value()) -> {ok, list(attribute())} | attrib_errors().
-                
-set_value(Attributes, ValueName, NewValue) ->
-  set_value(Attributes, ValueName, NewValue, 0).
-
-%%	
-%% Set the value of the attribute ValueName
-%% List of attributes may be Config, Inputs, Outputs, or Private
-%%
--spec set_value(Attributes :: list(attribute()), 
-                ValueName :: atom(), 
-                NewValue :: value(), 
-                ArrayIndex :: integer()) -> {ok, list(attribute())} | attrib_errors().
-                
-% Assumes the attriute is a single value
-set_value(Attributes, ValueName, NewValue, ArrayIndex) when ArrayIndex == 0 ->
-  case get_attribute(Attributes, ValueName) of
+              
+set_value(Attributes, ValueId, NewValue)->
+  case get_attribute(Attributes, ValueId) of
     {error, not_found} -> {error, not_found};
-
-    % Config or Private value
-    {ok, {ValueName, {_OldValue}}} -> 
-      NewAttribute = {ValueName, {NewValue}},
-      {ok, replace_attribute(Attributes, ValueName, NewAttribute)};
     
-    % Input or Output value
-    {ok, {ValueName, {_OldValue, LinkOrRefs}}} ->  
-      NewAttribute = {ValueName, {NewValue, LinkOrRefs}},
-      {ok, replace_attribute(Attributes, ValueName, NewAttribute)};
+    % For non-array values, the ValueId is the attribute ValueName
+    % Non-array Config or Private value
+    {ok, {ValueId, {_OldValue}}} -> 
+      NewAttribute = {ValueId, {NewValue}},
+      {ok, replace_attribute(Attributes, ValueId, NewAttribute)};
     
-    % Unrecognized value  
-    {ok, {ValueName, _InvalidValue}} -> {error, invalid_value}
-  end;
-
-% Assumes the attribute is an array value.
-set_value(Attributes, ValueName, NewValue, ArrayIndex) when ArrayIndex > 0 ->
-  case get_attribute(Attributes, ValueName) of
-    {error, not_found} -> {error, not_found};
+    % Non-array Input or Output value
+    {ok, {ValueId, {_OldValue, LinkOrRefs}}} ->  
+      NewAttribute = {ValueId, {NewValue, LinkOrRefs}},
+      {ok, replace_attribute(Attributes, ValueId, NewAttribute)};
       
+    % Assume this is an array value
     {ok, {ValueName, ArrayValue}} ->
-      if length(ArrayValue) >= ArrayIndex ->
-        case lists:nth(ArrayValue) of
-          % Config or Private value
-          {_OldValue} ->
-            NewArrayValue = 
-              insert_array_value({NewValue}, ArrayIndex, ArrayValue),
-            {ok, replace_attribute(Attributes, ValueName, NewArrayValue)};
+      case ValueId of 
+        % if this is an array value, the ValueName from get_attribute()
+        % will match ValueName in the ValueId tuple
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            case lists:nth(ArrayIndex, ArrayValue) of
+              % Config or Private value
+              {_OldValue} ->
+                NewArrayValue = 
+                  replace_array_value({NewValue}, ArrayIndex, ArrayValue),
+                {ok, replace_attribute(Attributes, ValueName, 
+                                                      {ValueName,NewArrayValue})};
             
-          % Input or Output value
-          {_OldValue, LinkOrRefs} ->  
-            NewArrayValue = 
-              insert_array_value({NewValue, LinkOrRefs}, ArrayIndex, ArrayValue),
-            {ok, replace_attribute(Attributes, ValueName, NewArrayValue)};
+              % Input or Output value
+              {_OldValue, LinkOrRefs} ->  
+                NewArrayValue = 
+                  replace_array_value({NewValue, LinkOrRefs}, ArrayIndex, ArrayValue),
+                {ok, replace_attribute(Attributes, ValueName, {ValueName,NewArrayValue})};
             
-         % Unrecognized value
-          _InvalidValue -> {error, invalid_value}
-        end;
-      true ->
-        {error, invalid_index}
-      end
+              _InvalidValue -> {error, invalid_value}
+            end;
+          true ->
+            {error, invalid_index}
+          end;
+        _InvalidValue -> {error, invalid_value}
+      end;
+    _InvalidValue -> {error, invalid_value}
   end.
 
 
-%% insert a new value into the array of values
--spec insert_array_value(NewValue :: term(), 
+%% replace a value in the array of values
+-spec replace_array_value(NewValue :: term(), 
                          ArrayIndex :: integer(),
                          ArrayValue :: list()) -> list().
                          
-insert_array_value(NewValue, ArrayIndex, ArrayValue) ->
+replace_array_value(NewValue, ArrayIndex, ArrayValue) ->
   lists:sublist(ArrayValue, ArrayIndex-1) ++ 
                                [NewValue] ++ 
                 lists:nthtail(ArrayIndex, ArrayValue).
@@ -208,7 +191,7 @@ insert_array_value(NewValue, ArrayIndex, ArrayValue) ->
 
 %%	
 %% Set multiple values in the attribute list 
-%% Values are in the form of Attribute Name, Value tuples
+%% Values are in the form of ValueID, Value tuples
 %% All values must belong to the same attribute list
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
@@ -217,31 +200,32 @@ insert_array_value(NewValue, ArrayIndex, ArrayValue) ->
  
 set_values(Attributes, []) ->{ok, Attributes};
 
-set_values(Attributes, [{AttributeName, NewValue} | RemainingValues]) ->
-  case set_value(Attributes, AttributeName, NewValue) of
+set_values(Attributes, [{ValueId, NewValue} | RemainingValues]) ->
+  case set_value(Attributes, ValueId, NewValue) of
     % Return immediately on error
     {error, Reason}     -> {error, Reason};
     {ok, NewAttributes} -> set_values(NewAttributes, RemainingValues)
   end.
 
 
-%%	
+-ifdef(INCLUDE_OBSOLETE).
+%% TODO: Don't think we need this cut it out for now	
 %% Set the value of the attribute ValueName
 %%
 -spec set_value_any(BlockValues :: block_state(), 
-                    ValueName :: atom(),
-                    NewValue :: term()) -> block_state().
+                    ValueId :: value_id(),
+                    NewValue :: value()) -> block_state().
 
-set_value_any(BlockValues, ValueName, NewValue)->
+set_value_any(BlockValues, ValueId, NewValue)->
 	
 	{Config, Inputs, Outputs, Private} = BlockValues,
 	% Can't modify Configs, don't bother checking those
 
-  case get_attribute(Inputs, ValueName) of
+  case get_attribute(Inputs, ValueId) of
     {error, not_found} ->
-      case get_attribute(Outputs, ValueName) of
+      case get_attribute(Outputs, ValueId) of
         {error, not_found} ->					
-          case get_attribute(Private, ValueName) of
+          case get_attribute(Private, ValueId) of
             {error, not_found} ->
               BlockName = config_utils:name(Config),
               error_logger:error_msg("~p set_value() Error. ~p not found in the BlockValues list~n", 
@@ -262,7 +246,7 @@ set_value_any(BlockValues, ValueName, NewValue)->
       NewInputs = replace_attribute(Inputs, ValueName, NewInput),
       {Config, NewInputs, Outputs, Private}
   end.
-
+-endif.
 
 %%
 %% Update attributes in the Attribute List with the New Attributes list 
@@ -303,7 +287,7 @@ update_attribute_list(Attributes, NewAttribute) ->
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
 -spec replace_attribute(Attributes :: list(attribute()), 
-                        ValueName :: atom(), 
+                        ValueName :: value_name(), 
                         NewAttribute :: attribute()) -> list(attribute()).
 
 replace_attribute(Attributes, ValueName, NewAttribute) ->
@@ -352,14 +336,13 @@ resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue
     % If attribute not found, just return attribute list unchanged
     {error, not_found} -> Attributes;
       
-    {ok, {ArrayValueName, ArrayValues}} ->
-      {NewArrayValues, DeleteArrayValues} = 
+    {ok, {ArrayValueName, ArrayValues}} ->  
+        {NewArrayValues, DeleteArrayValues} = 
           resize_array_value(ArrayValues, TargQuant, DefaultValue),
       
       % Handle the deletion of the excess array values
       % i.e. deleted values could be block input values containing links to other blocks
       DeleteExcess(DeleteArrayValues),
-      
       % Update the attribute list with the resized array value
       replace_attribute(Attributes, ArrayValueName, {ArrayValueName, NewArrayValues})
   end.
@@ -372,7 +355,7 @@ resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue
 %%  
 -spec resize_array_value(ValuesArray :: attr_value_array(),
                          TargQuant :: pos_integer(),
-                         DefaultValue :: attr_value()) -> {attr_value_array(), attr_value_array}.
+                         DefaultValue :: attr_value()) -> {attr_value_array(), attr_value_array()}.
                                      
 resize_array_value(ValuesArray, TargQuant, DefaultValue)->
   ValuesQuant = length(ValuesArray),
@@ -396,3 +379,232 @@ resize_array_value(ValuesArray, TargQuant, DefaultValue)->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% ====================================================================
+% Test data
+%
+test_config_attribs1() ->
+  [ {block_name, {test_config}},
+    {block_module, {type_template}},
+    {version, {"0.0.0"}},
+    {description, {"Unit Testing Data"}},
+    {number1, {123.45}},
+    {string1, {"Testing"}},
+    {bool_array, [{true}, {false}]},
+    {integer1, {123}},
+    {integer_array, [{234}, {456}, {-123}]}
+  ].
+  
+test_config_attribs2() ->
+  [ {block_name, {test_config}},
+    {block_module, {type_template}},
+    {version, {"0.0.0"}},
+    {description, {"Unit Testing Data"}},
+    {number1, {123.45}},
+    {string1, {"Testing"}},
+    {bool_array, [{true}, {false}, {true}, {true}, {true}, {true}, {true}, {true}, {true}, {true}]},
+    {integer1, {123}},
+    {integer_array, [{234}, {456}, {-123}]}
+  ].
+  
+test_config_attribs3() ->
+  [ {block_name, {test_config}},
+    {block_module, {type_template}},
+    {version, {"0.0.0"}},
+    {description, {"Unit Testing Data"}},
+    {number1, {123.45}},
+    {string1, {"Testing"}},
+    {bool_array, [{true}, {false}]},
+    {integer1, {123}},
+    {integer_array, [{234}]}
+  ].
+  
+test_input_attribs1() ->
+  [ {block_name, {test_config}},
+    {block_module, {type_template}},
+    {version, {"0.0.0"}},
+    {description, {"Unit Testing Data"}},
+    {number_in, {123.45, {}}},
+    {string_in, {"Testing", {}}},
+    {bool_array_in, [{true,{}}, {false,{}}]},
+    {integer_in, {123}},
+    {integer_array_in, [{234,{}}, {456,{}}, {-123,{}}]}
+  ].
+  
+% ====================================================================
+
+% ====================================================================
+% Test get_attribute()
+% 
+%   Test get_attribute() found
+get_attribute_found_test() ->
+  Attributes = test_config_attribs1(),
+  ValueName = number1,
+  ExpectedResult = {ok, {number1, {123.45}}},
+  
+  Result = get_attribute(Attributes, ValueName),
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test get_attribute() not_found
+get_attribute_not_found_test() ->
+  Attributes = test_config_attribs1(),
+  ValueName = unexpected,
+  ExpectedResult = {error, not_found},
+  
+  Result = get_attribute(Attributes, ValueName),
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+% Test get_value()
+% 
+%   Test get_value() input ok
+get_value_input_ok_test() ->
+  Attributes = test_input_attribs1(),
+  ValueName = number_in,
+  ExpectedResult = {ok, 123.45},
+  
+  Result = get_value(Attributes, ValueName),
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test get_value() input not_found
+get_value_input_not_found_test() ->
+  Attributes = test_input_attribs1(),
+  ValueName = unexpected,
+  ExpectedResult = {error, not_found},
+  
+  Result = get_value(Attributes, ValueName),
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test get_value() input array value ok
+get_value_input_array_ok_test() ->
+  Attributes = test_input_attribs1(),
+  ValueName = integer_array_in,
+  ArrayIndex = 2,
+  ExpectedResult = {ok, 456},
+  
+  Result = get_value(Attributes, {ValueName, ArrayIndex}),
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test get_value() input array value negative index
+get_value_input_array_invalid_index_test() ->
+  Attributes = test_input_attribs1(),
+  ValueName = bool_array_in,
+  ArrayIndex = -23,
+  ExpectedResult = {error, invalid_index},
+  
+  Result = get_value(Attributes, {ValueName, ArrayIndex}),
+  ?assertEqual(ExpectedResult, Result).
+  
+%   Test get_value() config array value 0 index
+get_value_config_array_0_index_test() ->
+  Attributes = test_config_attribs1(),
+  ValueName = string1,
+  ArrayIndex = 0,
+  ExpectedResult = {error, invalid_index},
+  
+  Result = get_value(Attributes, {ValueName, ArrayIndex}),
+  ?assertEqual(ExpectedResult, Result).
+  
+%   Test get_value() config array value index too large
+get_value_config_array_negative_index_test() ->
+  Attributes = test_config_attribs1(),
+  ValueName = bool_array,
+  ArrayIndex = 99,
+  ExpectedResult = {error, invalid_index},
+  
+  Result = get_value(Attributes, {ValueName, ArrayIndex}),
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+% Test resize_attribute_array_value(), No special delete handling
+% 
+%   Test config array attribute doesn't change 
+resize_attribute_array_value_config_same_test() ->
+  Attributes = test_config_attribs1(),
+  ArrayValueName = bool_array,
+  TargQuant = 2,
+  DefaultValue = {true},
+  
+  ExpectedResult = test_config_attribs1(),
+  
+  Result = resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+  
+%   Test config array attribute increases in size 
+resize_attribute_array_value_config_increase_test() ->
+  Attributes = test_config_attribs1(),
+  ArrayValueName = bool_array,
+  TargQuant = 10,
+  DefaultValue = {true},
+  
+  ExpectedResult = test_config_attribs2(),
+  
+  Result = resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+  
+%   Test config array attribute decreases in size 
+resize_attribute_array_value_config_decrease_test() ->
+  Attributes = test_config_attribs1(),
+  ArrayValueName = integer_array,
+  TargQuant = 1,
+  DefaultValue = {0},
+  
+  ExpectedResult = test_config_attribs3(),
+  
+  Result = resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
+
+% ====================================================================
+% Test resize_array_value()
+%
+%   Test same array value size
+resize_array_value_same_test() ->
+  ValuesArray = [{1}, {2}, {3}],
+  TargQuant = 3,
+  DefaultValue = {0},
+  
+  KeepValueArray = [{1}, {2}, {3}],
+  DeleteValueArray = [],
+  ExpectedResult = {KeepValueArray, DeleteValueArray},
+  
+  Result = resize_array_value(ValuesArray, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test increase array value size
+resize_array_value_increase_test() ->
+  ValuesArray = [{1}, {2}, {3}],
+  TargQuant = 6,
+  DefaultValue = {0},
+  
+  KeepValueArray = [{1}, {2}, {3}, {0}, {0}, {0}],
+  DeleteValueArray = [],
+  ExpectedResult = {KeepValueArray, DeleteValueArray},
+  
+  Result = resize_array_value(ValuesArray, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+  
+%   Test decrease array value size  
+resize_array_value_decrease_test() ->
+  ValuesArray = [{1}, {2}, {3}],
+  TargQuant = 1,
+  DefaultValue = {0},
+  
+  KeepValueArray = [{1}],
+  DeleteValueArray = [{2},{3}],
+  ExpectedResult = {KeepValueArray, DeleteValueArray},
+  
+  Result = resize_array_value(ValuesArray, TargQuant, DefaultValue),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+-endif.

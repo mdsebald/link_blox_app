@@ -143,3 +143,24 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+  
+
+ create_test() ->
+    create(create_test, "Testing Block Creation").
+  %{Config, Inputs, Outputs} = BlockDefn.
+
+initialize_test() ->
+  BlockDefn = create(initialize_test, "Testing Block Initialization"),
+  _BlockState = block_common:initialize(BlockDefn).
+
+    
+
+
+-endif.

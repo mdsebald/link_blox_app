@@ -12,11 +12,11 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([unregistered_blocks/1, link_blocks/2, unlink_blocks/2, unlink/2]).
+-export([link_blocks/2, unlink_blocks/2, unlink/2]).
 -export([add_ref/3, delete_ref/3]).
--export([update_linked_input_values/3, set_input_link/3]).
+-export([update_linked_input_values/3]). %, set_input_link/3]).
 
-
+-ifdef(INCLUDE_OBSOLETE).
 %%
 %% Return the name of the first block connected to this block, that is not registered, 
 %% Return 'ok' if all bocks connected to this block are registered / running
@@ -51,6 +51,7 @@ unregistered_blocks(BlockInputs)->
     UnhandledLink -> 
       error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]) 
   end.
+-endif.
 
 
 %%
@@ -65,56 +66,89 @@ link_blocks(BlockName, Inputs)->
 link_blocks(_BlockName, [], UpdatedInputs)->
   UpdatedInputs;
 
-link_blocks(BlockName, Inputs, UpdatedInputs)->
+link_blocks(BlockName, [Input | RemainingInputs], UpdatedInputs) ->
 
-  [Input | RemainingInputs] = Inputs,
-	
-  {ValueName, {Value, Link}} = Input,
+  case Input of	
+    % Non-array value
+    {ValueName, {Value, Link}} ->
+      NewUpdatedInputs = evaluate_link(BlockName, ValueName, Value, Link, UpdatedInputs);
+      
+    % Array value  
+    {ValueName, ArrayValues} ->
+      NewUpdatedInputs = 
+          process_array_input(BlockName, ValueName, 1, ArrayValues, UpdatedInputs)
+  end,                 
+  link_blocks(BlockName, RemainingInputs, NewUpdatedInputs).
+
+%%
+%%  Check the link on each value of an input array value
+%%
+-spec process_array_input(BlockName :: block_name(),
+                          ValueName :: value_name(),
+                          ArrayIndex :: pos_integer(),
+                          ArrayValues :: list(value()),
+                          UpdatedInputs :: list(input_attr())) -> list(input_attr).
+
+process_array_input(_BlockName, _ValueName, _ArrayIndex, [], UpdatedInputs) ->
+  UpdatedInputs;
+  
+process_array_input(BlockName, ValueName, ArrayIndex, [ArrayValue| RemainingArrayValues], Inputs) ->
+  {Value, Link} = ArrayValue,
+  UpdatedInputs = evaluate_link(BlockName, {ValueName, ArrayIndex}, Value, Link, Inputs),
+  process_array_input(BlockName, ValueName, (ArrayIndex+1), RemainingArrayValues, UpdatedInputs).
+
+
+%%
+%% Evaluate the link on this input attribute, and decide what to do
+%%
+-spec evaluate_link(BlockName ::block_name(), 
+                    ValueId :: value_id(),
+                    Value :: value(),
+                    Link :: input_link(), 
+                    Inputs :: list(input_attr())) -> list(input_attr()).
+                  
+evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
   case Link of
     ?EMPTY_LINK ->
       % Input is not linked to another block, nothing to do
-      link_blocks(BlockName, RemainingInputs, UpdatedInputs);
+      Inputs;
       
-    {LinkBlockName, LinkValueName} ->
+    {LinkBlockName, LinkValueId} ->
       case whereis(LinkBlockName) of
         undefined  ->
-          % If linked block is not running input value better be empty
-          % TODO: Set input value to empty here. 
-          %     Would require returning list of updated inputs
-          %     Belt and suspenders design
-          %     Should not have to do this, if everything is perfect
+          % If linked block is not running, input value should be empty
           if Value /= empty ->
-            error_logger:error_msg("~p Error: linked input value not empty~n", 
-                                    [BlockName]); 
-          true -> ok
-          end,
-
-          % Linked block is not running, nothing to do
-          link_blocks(BlockName, RemainingInputs, UpdatedInputs);
+            {ok, UpdatedInputs} = 
+                      attrib_utils:set_value(Inputs, ValueId, empty),   
+            UpdatedInputs;
+          true ->
+            Inputs
+          end;
 
         _Pid  ->
           % Linked block is running,
           % if the block input value is empty, 
           if Value == empty ->
             % send a link message to the linked block, get current linked value back
-            UpdatedValue = block_server:link(LinkBlockName, LinkValueName, BlockName),
+            UpdatedValue = block_server:link(LinkBlockName, LinkValueId, BlockName),
             
-            {ok, NewUpdatedInputs} = 
-                      attrib_utils:set_value(UpdatedInputs, ValueName, UpdatedValue),
+            {ok, UpdatedInputs} = 
+                      attrib_utils:set_value(Inputs, ValueId, UpdatedValue),
             
             error_logger:info_msg("Link Output <~p:~p> To Input <~p:~p>~n", 
-                        [LinkBlockName, LinkValueName, BlockName, ValueName]),
+                        [LinkBlockName, LinkValueId, BlockName, ValueId]),
                         
-            link_blocks(BlockName, RemainingInputs, NewUpdatedInputs);
+            UpdatedInputs;
           true ->
-            % Value is not empty, link must already be established
-            link_blocks(BlockName, RemainingInputs, UpdatedInputs)
+            % Value is not empty, link must already be established, nothing to do
+            Inputs
           end
       end;
       
     %TODO: Handle other link types, i.e. links to other nodes      
     UnhandledLink -> 
-      error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]) 
+      error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]),
+      Inputs
   end.
 
 
@@ -278,16 +312,43 @@ update_linked_input_values(Inputs, TargetLink, NewValue) ->
   % Update the value of each input record pointing at the given value 
   lists:map(
     fun(Input) -> 
-      {ValueName, {_Value, Link}} = Input,
-      case Link =:= TargetLink of
-        true  -> {ValueName, {NewValue, Link}};
-        false -> Input	% This block input is not linked to the target block output. 
-                        % Don't change the input value 
+      case Input of
+        % Non-array value
+        {ValueName, {_Value, Link}} ->
+          case Link =:= TargetLink of
+            % Matching links, update the input attribute value
+            true  -> {ValueName, {NewValue, Link}};
+            % Links don't match don't change the input value 
+            false -> Input	
+          end;
+        % Array value  
+        {ValueName, ArrayValues} ->
+          {ValueName, 
+           update_linked_array_values(ArrayValues, TargetLink, NewValue)}
       end
 		end, 
     Inputs).
 
+%%
+%% Update array values with a link matching TargetLink
+%%
+-spec  update_linked_array_values(ArrayValues :: list(), 
+                                  TargetLink :: input_link(), 
+                                  NewValue :: value()) -> list(). 
+                                  
+update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
+  lists:map(
+    fun({Value, Link}) ->
+      case Link =:= TargetLink of
+        % Matching links, update the value
+        true  -> {NewValue, Link};
+        % Links don't match, don't change the array value
+        false -> {Value, Link}
+      end
+    end,
+    ArrayValues).
 
+-ifdef(INCLUDE_OBSOLETE).
 %%
 %% Update the input Link for the input value 'ValueName'
 %% TODO: Do we need this? not used right now
@@ -313,4 +374,4 @@ set_input_link(BlockValues, ValueName, NewLink) ->
       NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, NewInput),
       {Config, NewInputs, Outputs, Private}
   end.
- 
+ -endif.

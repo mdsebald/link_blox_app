@@ -20,6 +20,15 @@
  
  
  create_demo_config() ->
+    Test7Seg = type_int_to_7seg:create(test_7seg, "Testing Seven Segment Decoder",
+                                 [
+                                     {num_digits, {4}}
+                                 ],
+                                 [
+                                     {disable, {false, ?EMPTY_LINK}}
+                                 ]),
+    
+    
     RotEncoder = type_rotary_encoder:create(rotary_encode, "Rotary Encoder with Switch",
                                 [],
                                  [
@@ -118,7 +127,7 @@
                                   {input, {empty, {display, seg_g}}}]
                                 ),
 
-    [RotEncoder, SegDecoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 
+    [Test7Seg, RotEncoder, SegDecoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 
      SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
 
 
