@@ -141,12 +141,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
               % Create a decimal point input for each digit
               BlockName = config_utils:name(Config),
               Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  NumOfDigits, dec_pnt, {false, ?EMPTY_LINK}),
+                                  dec_pnt, NumOfDigits, {false, ?EMPTY_LINK}),
 
               % Create a digit output for each digit
               Outputs1 = 
                 output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                      NumOfDigits, digit, {not_active, []}),
+                                       digit, NumOfDigits, {not_active, []}),
               Value = not_active,
               Status = initialed
           end                    

@@ -180,15 +180,15 @@ handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
 %% =====================================================================
 %% Link the value 'ValueName' of this block to the block 'ToBlockName'
 %% =====================================================================
-handle_call({link, ValueName, ToBlockName}, _From, BlockValues) ->
+handle_call({link, ValueId, ToBlockName}, _From, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 	
   %% Add the block 'ToBlockName' to the output 'ValueName's list of block references
-  NewOutputs = link_utils:add_ref(Outputs, ValueName, ToBlockName),
+  NewOutputs = link_utils:add_ref(Outputs, ValueId, ToBlockName),
 
   % Send the current value of this output to the block 'ToBlockName'
-  {ok, Value} = attrib_utils:get_value(NewOutputs, ValueName),
+  {ok, Value} = attrib_utils:get_value(NewOutputs, ValueId),
  
   {reply, Value, {Config, Inputs, NewOutputs, Private}};
   

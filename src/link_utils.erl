@@ -227,18 +227,18 @@ unlink(BlockName, Input) ->
 %% in the ValueName output attribute
 %%
 -spec add_ref(Outputs :: list(output_attr()), 
-              ValueName :: value_name(), 
+              ValueId :: value_id(), 
               ToBlockName :: block_name()) -> list(output_attr()).
 
-add_ref(Outputs, ValueName, ToBlockName) ->
+add_ref(Outputs, ValueId, ToBlockName) ->
 
-  case attrib_utils:get_attribute(Outputs, ValueName) of
+  case attrib_utils:get_attribute(Outputs, ValueId) of
 
     {error, not_found} ->
-      % This block doesn't have an output called 'ValueName'
+      % This block doesn't have an output 'ValueId'
       % Just return the original Outputs list
 			error_logger:error_msg("add_ref() Error. ~p Doesn't exist for this block~n", 
-                             [ValueName]),
+                             [ValueId]),
 			Outputs;
 		
 		{ok, {ValueName, {Value, Refs}}} ->  
@@ -261,6 +261,22 @@ add_ref(Outputs, ValueName, ToBlockName) ->
 				  NewOutput = {ValueName, {Value, NewRefs}},
 				  attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)
 			end;
+    {ok, {ValueName, ArrayValues}} ->
+      % if this is an array value, the ValueName from get_attribute()
+      % will match ValueName in the ValueId tuple
+      {ValueName, ArrayIndex} = ValueId,
+        if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
+          {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
+          NewRefs = [ToBlockName | Refs],
+          NewArrayValue = {Value, NewRefs},
+          NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+          NewOutput = {ValueName, NewArrayValues}, 
+          attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+        true ->
+          error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
+                             [ValueId])
+        end;
+        
     Unknown ->
       error_logger:error_msg("add_ref() Error. Unknown output value record  ~p~n",
                              [Unknown]),
@@ -273,18 +289,18 @@ add_ref(Outputs, ValueName, ToBlockName) ->
 %% in the ValueName output attribute
 %%
 -spec delete_ref(Outputs :: list(output_attr()), 
-                 ValueName :: value_name(), 
+                 ValueId :: value_id(), 
                  ToBlockName :: block_name()) -> list(output_attr()).
 
-delete_ref(Outputs, ValueName, ToBlockName) ->
+delete_ref(Outputs, ValueId, ToBlockName) ->
 
-  case attrib_utils:get_attribute(Outputs, ValueName) of
+  case attrib_utils:get_attribute(Outputs, ValueId) of
 
     {error, not_found} ->
-      % This block doesn't have an output called 'ValueName'
+      % This block doesn't have an output 'ValueId'
       % Just return the original Outputs list
       error_logger:error_msg("delete_ref() Error. ~p Doesn't exist for this block~n", 
-                              [ValueName]),
+                              [ValueId]),
       Outputs;
 		
     {ok, {ValueName, {Value, Refs}}} ->  
@@ -292,6 +308,22 @@ delete_ref(Outputs, ValueName, ToBlockName) ->
       NewRefs = lists:delete(ToBlockName, Refs),
 		  NewOutput = {ValueName, {Value, NewRefs}},
       attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+      
+    {ok, {ValueName, ArrayValues}} ->
+      % if this is an array value, the ValueName from get_attribute()
+      % will match ValueName in the ValueId tuple
+      {ValueName, ArrayIndex} = ValueId,
+        if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
+          {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
+          NewRefs = lists:delete(ToBlockName, Refs),
+          NewArrayValue = {Value, NewRefs},
+          NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+          NewOutput = {ValueName, NewArrayValues}, 
+          attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+        true ->
+          error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
+                             [ValueId])
+        end;
 
     Unknown ->
       error_logger:error_msg("delete_ref() Error. Unknown output value record  ~p~n", [Unknown]),
@@ -329,6 +361,7 @@ update_linked_input_values(Inputs, TargetLink, NewValue) ->
 		end, 
     Inputs).
 
+
 %%
 %% Update array values with a link matching TargetLink
 %%
@@ -347,6 +380,7 @@ update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
       end
     end,
     ArrayValues).
+
 
 -ifdef(INCLUDE_OBSOLETE).
 %%

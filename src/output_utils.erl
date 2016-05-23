@@ -108,7 +108,7 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
                                 
 update_all_array_values(ArrayValues, NewValue) ->
   lists:map(fun({_Value, Refs}) -> {NewValue, Refs} end, ArrayValues).
- 
+  
     
 %%
 %% Resize an array value in the Outputs attribute list

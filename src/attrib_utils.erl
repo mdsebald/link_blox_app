@@ -18,6 +18,7 @@
 -export([update_attribute_list/2, merge_attribute_lists/2]).
 -export([replace_attribute/3, add_attribute/2]).
 -export([resize_attribute_array_value/4, resize_attribute_array_value/5]).
+-export([replace_array_value/3]).
 
 
 %%	
@@ -157,14 +158,14 @@ set_value(Attributes, ValueId, NewValue)->
               % Config or Private value
               {_OldValue} ->
                 NewArrayValue = 
-                  replace_array_value({NewValue}, ArrayIndex, ArrayValue),
+                  replace_array_value(ArrayValue, ArrayIndex, {NewValue}),
                 {ok, replace_attribute(Attributes, ValueName, 
                                                       {ValueName,NewArrayValue})};
             
               % Input or Output value
               {_OldValue, LinkOrRefs} ->  
                 NewArrayValue = 
-                  replace_array_value({NewValue, LinkOrRefs}, ArrayIndex, ArrayValue),
+                  replace_array_value(ArrayValue, ArrayIndex, {NewValue, LinkOrRefs}),
                 {ok, replace_attribute(Attributes, ValueName, {ValueName,NewArrayValue})};
             
               _InvalidValue -> {error, invalid_value}
@@ -179,14 +180,14 @@ set_value(Attributes, ValueId, NewValue)->
 
 
 %% replace a value in the array of values
--spec replace_array_value(NewValue :: term(), 
+-spec replace_array_value(ArrayValue :: list(), 
                          ArrayIndex :: integer(),
-                         ArrayValue :: list()) -> list().
+                         NewValue :: term()) -> list().
                          
-replace_array_value(NewValue, ArrayIndex, ArrayValue) ->
-  lists:sublist(ArrayValue, ArrayIndex-1) ++ 
-                               [NewValue] ++ 
-                lists:nthtail(ArrayIndex, ArrayValue).
+replace_array_value(ArrayValue, ArrayIndex, NewValue) ->
+  lists:sublist(ArrayValue, ArrayIndex-1) 
+                  ++ [NewValue] 
+                  ++ lists:nthtail(ArrayIndex, ArrayValue).
 
 
 %%	

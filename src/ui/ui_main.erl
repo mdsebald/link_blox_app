@@ -283,7 +283,7 @@ create_blocks(BlockValuesList) ->
 % Process the save blocks command
 ui_save_blocks(Params) ->
   %% Write the block values to a configuration file
-  % TODO:  Add BlockPoint specific header to config file
+  % TODO:  Add LinkBlox specific header to config file
    case length(Params) of
     0 -> io:format("Error: Enter file name~n");
     1 ->

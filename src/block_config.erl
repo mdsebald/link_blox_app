@@ -22,10 +22,12 @@
  create_demo_config() ->
     Test7Seg = type_int_to_7seg:create(test_7seg, "Testing Seven Segment Decoder",
                                  [
-                                     {num_digits, {4}}
+                                     {num_of_digits, {4}}
                                  ],
                                  [
-                                     {disable, {false, ?EMPTY_LINK}}
+                                     {disable, {false, ?EMPTY_LINK}},
+                                     {exec_interval, {0, ?EMPTY_LINK}},
+                                     {input, {empty, {counter, value}}}
                                  ]),
     
     
@@ -46,17 +48,17 @@
                                  [],
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
-                                     {seven_segs_1, {empty, {seg_decode, digit_1}}},
-                                     {seven_segs_2, {empty, {seg_decode, digit_2}}},
-                                     {seven_segs_3, {empty, {seg_decode, digit_3}}},
-                                     {seven_segs_4, {empty, {seg_decode, digit_4}}},
+                                     {seven_segs_1, {empty, {test_7seg, {digit,1}}}},
+                                     {seven_segs_2, {empty, {test_7seg, {digit,2}}}},
+                                     {seven_segs_3, {empty, {test_7seg, {digit,3}}}},
+                                     {seven_segs_4, {empty, {test_7seg, {digit,4}}}},
                                      {colon, {false, ?EMPTY_LINK}}
                                  ]),
                                  
     RmTemp = type_mcp9808_temp:create(room_temp, "Room Temp Sensor",
                                  [],
                                  [
-                                     {disable, {true, ?EMPTY_LINK}},
+                                     {disable, {false, ?EMPTY_LINK}},
                                      {exec_interval, {1000, ?EMPTY_LINK}}
                                  ]),
                                  
@@ -75,7 +77,8 @@
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
                                      {reset, {empty, {switch_27, value}}},
-                                     {exec_interval, {1000, ?EMPTY_LINK}}
+                                     {exec_interval, {500, ?EMPTY_LINK}},
+                                     {final_value, {9999, ?EMPTY_LINK}}
                                  ]),
  
     Display = type_one_digit_7seg:create(display, "Decode count to seven-segments",
