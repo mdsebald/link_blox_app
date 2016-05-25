@@ -24,7 +24,7 @@
 %%  by type name string.
 %%  Do not add the "template" block type
 %%
--spec block_type_modules() -> [module(),...].
+-spec block_type_modules() -> list(module()).
 
 block_type_modules() ->
   [
@@ -61,7 +61,7 @@ block_type_to_module(BlockTypeStr) ->
 %% Get a list of block types and associated info 
 %% for all of the block types in this application
 %%
--spec block_types_info() -> [{string(), string(), string()},...].
+-spec block_types_info() -> list({string(), string(), string()}).
 
 block_types_info() ->
   lists:map(fun(Module) -> block_type_info(Module) end,
@@ -78,7 +78,7 @@ block_type_info(Module) ->
 %%
 %% Get a list of block type names for all of the block modules in this app
 %%
--spec block_type_names() -> [string(),...].
+-spec block_type_names() -> list(string()).
 
 block_type_names() ->
   lists:map(fun(Module) -> block_type_name(Module) end,

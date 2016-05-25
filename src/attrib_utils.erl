@@ -48,8 +48,7 @@ get_attribute(Attributes, ValueId) ->
 %%
 -spec get_value(Attributes :: list(attribute()), 
                 ValueId :: value_id()) -> attrib_value().
-
-% Get array value 
+ 
 get_value(Attributes, ValueId) ->
   case get_attribute(Attributes, ValueId) of
 	  {error, not_found} -> {error, not_found};
@@ -58,7 +57,7 @@ get_value(Attributes, ValueId) ->
     % Non-array Config or Private value
     {ok, {ValueId, {Value}}} -> {ok, Value};
     
-     % Input or Output value
+     % Non-array Input or Output value
     {ok, {ValueId, {Value, _LinkOrRefs}}} -> {ok, Value};
     
     % Assume this is an array value
@@ -72,15 +71,12 @@ get_value(Attributes, ValueId) ->
               % Config or Private array value
               {Value} -> {ok, Value};
               % Input or Output array value
-              {Value, _LinkOrRefs} -> {ok, Value}; 
-              % Unrecognized value
-              _InvalidValue -> {error, invalid_value}
+              {Value, _LinkOrRefs} -> {ok, Value}
             end;
           true -> {error, invalid_index}
           end;
         _InvalidValue -> {error, invalid_value}
-      end;
-    _InvalidValue -> {error, invalid_value}
+      end
   end.
 
 
@@ -166,28 +162,25 @@ set_value(Attributes, ValueId, NewValue)->
               {_OldValue, LinkOrRefs} ->  
                 NewArrayValue = 
                   replace_array_value(ArrayValue, ArrayIndex, {NewValue, LinkOrRefs}),
-                {ok, replace_attribute(Attributes, ValueName, {ValueName,NewArrayValue})};
-            
-              _InvalidValue -> {error, invalid_value}
+                {ok, replace_attribute(Attributes, ValueName, {ValueName,NewArrayValue})}
             end;
           true ->
             {error, invalid_index}
           end;
         _InvalidValue -> {error, invalid_value}
-      end;
-    _InvalidValue -> {error, invalid_value}
+      end
   end.
 
 
 %% replace a value in the array of values
--spec replace_array_value(ArrayValue :: list(), 
-                         ArrayIndex :: integer(),
-                         NewValue :: term()) -> list().
+-spec replace_array_value(ArrayValues :: attr_value_array(), 
+                          ArrayIndex :: pos_integer(),
+                          NewValue :: term()) -> attr_value_array().
                          
-replace_array_value(ArrayValue, ArrayIndex, NewValue) ->
-  lists:sublist(ArrayValue, ArrayIndex-1) 
+replace_array_value(ArrayValues, ArrayIndex, NewValue) ->
+  lists:sublist(ArrayValues, ArrayIndex-1) 
                   ++ [NewValue] 
-                  ++ lists:nthtail(ArrayIndex, ArrayValue).
+                  ++ lists:nthtail(ArrayIndex, ArrayValues).
 
 
 %%	

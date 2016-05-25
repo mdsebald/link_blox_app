@@ -25,7 +25,7 @@
 -spec configs(Name :: atom(),
               Module :: module(),
               Version :: string(),
-              Description :: string()) -> list().
+              Description :: string()) -> list(config_attr()).
 
 configs(Name, Module, Version, Description) ->
   [
@@ -47,6 +47,8 @@ configs(Name, Module, Version, Description) ->
 %% Common Input Attributes, 
 %% Inputs may be set to a fixed value or linked to a block output value
 %%
+-spec inputs() -> list(input_attr()).
+
 inputs() ->
   [
     % Block will execute as long as disable input is false/not_active
@@ -87,6 +89,7 @@ inputs() ->
 %% Common Output Attributes
 %% Block output values are modified upon block execution
 %%
+-spec outputs() -> list(output_attr).
 outputs() ->
   [
     % Blocks with the 'exec_in' input linked to this output
@@ -127,7 +130,7 @@ initialize({Config, Inputs, Outputs}) ->
 
   % Perform block type specific initialization 
   BlockModule:initialize({Config, Inputs, Outputs, Private1}).
-
+  
 
 %%
 %% Common block execute function
@@ -212,7 +215,7 @@ check_boolean_input(Value) ->
 %%
 -spec update_execution_timer(BlockName :: block_name(),
                              Inputs :: list(input_attr()),
-                             Private :: list()) -> {atom(), list()}.
+                             Private :: list(private_attr())) -> {atom(), list(private_attr())}.
                              
 update_execution_timer(BlockName, Inputs, Private) ->
 
@@ -259,8 +262,8 @@ cancel_timer(TimerRef) ->
   end.
 
 %%
-%% Set timer to execute the block on expiration
-%%
+%% Set timer to execute the block on expiration  
+%%  TODO: Deleted not used
 -spec set_timer(BlockName :: atom(),
                 ExecuteInterval :: integer()) -> 
                 reference().
@@ -330,7 +333,7 @@ update_blocks(FromBlockName,
 
 %%
 %% Check the values in the output array value
-%%
+%% TODO: Do we need this, not called.
 -spec check_array_values(FromBlockName :: block_name(),
                          ValueName :: value_name(),
                          ArrayIndex :: pos_integer(),

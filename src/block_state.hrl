@@ -88,7 +88,7 @@
 -type link_refs() :: list(pid()).
 
 -type value() :: empty | not_active | integer() | float() | boolean() | 
-                 string() | tuple() | list().
+                 string() | tuple() | list() | reference().
 
 -type attrib_errors() :: {error, not_found | invalid_value | invalid_index }.
                           

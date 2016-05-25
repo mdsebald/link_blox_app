@@ -173,7 +173,7 @@ handle_call({get_value, ValueName}, _From, BlockValues) ->
 %% Set a block value
 %% ===================================================================== 
 handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
-  NewBlockValues = attrib_utils:set_value_any(BlockValues, ValueName, Value),
+  NewBlockValues = BlockValues, %attrib_utils:set_value_any(BlockValues, ValueName, Value),
   {reply, {ValueName, Value}, NewBlockValues};
   
   

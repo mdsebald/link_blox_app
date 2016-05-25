@@ -14,7 +14,7 @@
 %% ====================================================================
 -export([link_blocks/2, unlink_blocks/2, unlink/2]).
 -export([add_ref/3, delete_ref/3]).
--export([update_linked_input_values/3]). %, set_input_link/3]).
+-export([update_linked_input_values/3]). %, TODO: delete? set_input_link/3]).
 
 -ifdef(INCLUDE_OBSOLETE).
 %%
@@ -86,8 +86,8 @@ link_blocks(BlockName, [Input | RemainingInputs], UpdatedInputs) ->
 -spec process_array_input(BlockName :: block_name(),
                           ValueName :: value_name(),
                           ArrayIndex :: pos_integer(),
-                          ArrayValues :: list(value()),
-                          UpdatedInputs :: list(input_attr())) -> list(input_attr).
+                          ArrayValues :: attr_value_array(),
+                          UpdatedInputs :: list(input_attr())) -> list(input_attr()).
 
 process_array_input(_BlockName, _ValueName, _ArrayIndex, [], UpdatedInputs) ->
   UpdatedInputs;
@@ -265,22 +265,18 @@ add_ref(Outputs, ValueId, ToBlockName) ->
       % if this is an array value, the ValueName from get_attribute()
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
-        if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-          {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
-          NewRefs = [ToBlockName | Refs],
-          NewArrayValue = {Value, NewRefs},
-          NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
-          NewOutput = {ValueName, NewArrayValues}, 
-          attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
-        true ->
-          error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
-                             [ValueId])
-        end;
-        
-    Unknown ->
-      error_logger:error_msg("add_ref() Error. Unknown output value record  ~p~n",
-                             [Unknown]),
-      Outputs
+      if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
+        {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
+        NewRefs = [ToBlockName | Refs],
+        NewArrayValue = {Value, NewRefs},
+        NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+        NewOutput = {ValueName, NewArrayValues}, 
+        attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+      true ->
+        error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
+                             [ValueId]),
+        Outputs
+      end
   end.
 
 
@@ -313,21 +309,18 @@ delete_ref(Outputs, ValueId, ToBlockName) ->
       % if this is an array value, the ValueName from get_attribute()
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
-        if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-          {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
-          NewRefs = lists:delete(ToBlockName, Refs),
-          NewArrayValue = {Value, NewRefs},
-          NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
-          NewOutput = {ValueName, NewArrayValues}, 
-          attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
-        true ->
-          error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
-                             [ValueId])
-        end;
-
-    Unknown ->
-      error_logger:error_msg("delete_ref() Error. Unknown output value record  ~p~n", [Unknown]),
-      Outputs
+      if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
+        {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
+        NewRefs = lists:delete(ToBlockName, Refs),
+        NewArrayValue = {Value, NewRefs},
+        NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+        NewOutput = {ValueName, NewArrayValues}, 
+        attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+      true ->
+        error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
+                             [ValueId]),
+        Outputs
+      end
   end.
 
 

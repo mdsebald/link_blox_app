@@ -32,8 +32,8 @@ version() -> "0.1.0".
 %% Merge the block type specific, Config, Input, Output, and Private attributes
 %% with the common Config, Input, Output, and Private attributes, that all block types have
  
--spec default_configs(BlockName :: atom(),
-                      Description :: string()) -> list().
+-spec default_configs(BlockName :: block_name(),
+                      Description :: string()) -> list(config_attr()).
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -43,7 +43,7 @@ default_configs(BlockName, Description) ->
     ]).
                             
                              
--spec default_inputs() -> list().
+-spec default_inputs() -> list(input_attr()).
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -53,8 +53,9 @@ default_inputs() ->
       {initial_value, {0, ?EMPTY_LINK}},
       {final_value, {9, ?EMPTY_LINK}}
     ]). 
-                            
-                            
+
+-spec default_outputs() -> list(output_attr()).
+                           
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
@@ -68,25 +69,25 @@ default_outputs() ->
 %% Init attributes are used to override the default attribute values
 %% and to add attributes to the lists of default attributes
 %%
--spec create(BlockName :: atom(),
+-spec create(BlockName :: block_name(),
              Description :: string()) -> block_defn().
 
 create(BlockName, Description) -> 
   create(BlockName, Description, [], [], []).
 
--spec create(BlockName :: atom(),
+-spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(), 
-             InitInputs :: list()) -> block_defn().
+             InitConfig :: list(config_attr()), 
+             InitInputs :: list(input_attr())) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
--spec create(BlockName :: atom(),
+-spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(), 
-             InitInputs :: list(), 
-             InitOutputs :: list()) -> block_defn().
+             InitConfig :: list(config_attr()), 
+             InitInputs :: list(input_attr()), 
+             InitOutputs :: list(output_attr())) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
