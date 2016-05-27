@@ -203,7 +203,7 @@ set_values(Attributes, [{ValueId, NewValue} | RemainingValues]) ->
 
 
 -ifdef(INCLUDE_OBSOLETE).
-%% TODO: Don't think we need this cut it out for now	
+%% TODO: Don't think we need this cut it out for now, 	
 %% Set the value of the attribute ValueName
 %%
 -spec set_value_any(BlockValues :: block_state(), 
