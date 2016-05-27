@@ -102,7 +102,7 @@ ui_execute_block(Params) ->
 
 % Process block delete command
 ui_delete_block(Params) ->
-  % TODO: Add delete * command to delete all blocks at once
+  % TODO: Add delete all command to delete all blocks at once
   case validate_block_name(Params) of
     error     -> ok;  % Params was not a block name
     BlockName ->

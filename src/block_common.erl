@@ -134,7 +134,7 @@ initialize({Config, Inputs, Outputs}) ->
 
 %%
 %% Common block execute function
-%% TODO: Don't execute block when status = config_err
+%% TODO: Don't execute block when status is in error,
 %%
 -spec execute(BlockValues :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
@@ -263,7 +263,7 @@ cancel_timer(TimerRef) ->
 
 %%
 %% Set timer to execute the block on expiration  
-%%  TODO: Deleted not used
+%%  TODO: Delete, not used
 -spec set_timer(BlockName :: atom(),
                 ExecuteInterval :: integer()) -> 
                 reference().
@@ -333,7 +333,7 @@ update_blocks(FromBlockName,
 
 %%
 %% Check the values in the output array value
-%% TODO: Do we need this, not called.
+%% TODO: Delete  not used
 -spec check_array_values(FromBlockName :: block_name(),
                          ValueName :: value_name(),
                          ArrayIndex :: pos_integer(),
