@@ -62,7 +62,7 @@ set_status(Outputs, Status) ->
 %% 
 -spec set_array_value(Outputs :: list(output_attr()), 
                       ArrayValueName :: value_name(),
-                      ArrayValues :: list(value())) -> list(output_attr()).
+                      ArrayValues :: list(attr_value_array())) -> list(output_attr()).
 
 set_array_value(Outputs, ArrayValueName, ArrayValues) ->
   set_array_value(Outputs, ArrayValueName, 1, ArrayValues).
@@ -103,8 +103,8 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
 %%
 %% Set all of the values in ArrayValues to NewValue
 %%
--spec update_all_array_values(ArrayValues :: list(),
-                              NewValue :: value()) -> list().
+-spec update_all_array_values(ArrayValues :: list(attr_value_array()),
+                              NewValue :: value()) -> list(attr_value_array()).
                                 
 update_all_array_values(ArrayValues, NewValue) ->
   lists:map(fun({_Value, Refs}) -> {NewValue, Refs} end, ArrayValues).
@@ -127,7 +127,7 @@ resize_attribute_array_value(BlockName, Outputs, ArrayValueName, TargQuant, Defa
       lists:map(
         fun(DeleteValue) -> 
           DeleteAttr = {ArrayValueName, DeleteValue},
-          link_utils:deref(BlockName, DeleteAttr)
+          link_utils:deref(BlockName, DeleteAttr)   % TODO: link_utils:deref() doesn't exist
 		      end, 
           DeleteArrayValues) end,
   
