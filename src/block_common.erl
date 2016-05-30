@@ -146,10 +146,10 @@ execute(BlockValues, ExecMethod) ->
   {BlockName, BlockModule} = config_utils:name_module(Config),
     
   {ok, Disable} = attrib_utils:get_value(Inputs, disable),
-  case check_boolean_input(Disable) of
+  case input_utils:check_boolean_input(Disable) of
     not_active ->
       {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
-      case check_boolean_input(Freeze) of
+      case input_utils:check_boolean_input(Freeze) of
         not_active -> % block is not disabled or frozen, execute it
           {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
           Outputs2 = update_execute_track(Outputs1, ExecMethod);
@@ -195,20 +195,6 @@ execute(BlockValues, ExecMethod) ->
   % Return the updated block state
   {Config, Inputs, Outputs3, Private2}.
 
-
-%
-% Check the value of the disable or freeze control value input
-% TODO: Move this function to input_utils module
-%
-check_boolean_input(Value) ->
-  case Value of
-    true       -> active;
-    false      -> not_active; 
-    not_active -> not_active;
-    empty      -> not_active;
-    _Error     -> error
-  end.
- 
 
 %%
 %% Update the block execution timer 
@@ -263,7 +249,7 @@ cancel_timer(TimerRef) ->
 
 %%
 %% Set timer to execute the block on expiration  
-%%  TODO: Delete, not used
+%% 
 -spec set_timer(BlockName :: atom(),
                 ExecuteInterval :: integer()) -> 
                 reference().
@@ -333,7 +319,7 @@ update_blocks(FromBlockName,
 
 %%
 %% Check the values in the output array value
-%% TODO: Delete  not used
+%% 
 -spec check_array_values(FromBlockName :: block_name(),
                          ValueName :: value_name(),
                          ArrayIndex :: pos_integer(),

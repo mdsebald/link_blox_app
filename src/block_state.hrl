@@ -60,21 +60,6 @@
 -type empty_link() :: {}.
 -define (EMPTY_LINK, {}).
 
--ifdef(INCLUDE_OBSOLETE). 
-% TODO: Delete after we finalize link structure 
--type self_link() :: {ValueName :: value_name(), 
-                      ArrayInex :: integer()}.
-                       
--type local_link() :: {BlockName :: block_name(),
-                       ValueName :: value_name(), 
-                       ArrayInex :: integer()}.
-                        
--type global_link() :: {NodeName :: node(),
-                        BlockName :: block_name(),
-                        ValueName :: value_name(), 
-                        ArrayInex :: integer()}.
--endif.
-
 -type self_link() :: {value_id()}.
                        
 -type local_link() :: {block_name(), value_id()}.

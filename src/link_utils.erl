@@ -168,6 +168,7 @@ unlink_blocks(BlockName, BlockInputs, LinksRequested)->
 	
   [Input | RemainingBlockInputs] = BlockInputs,
 
+  % TODO: Scan Array value inputs too, see link_blocks() function
   {ValueName, {_Value, Link}} = Input,
   case Link of
     ?EMPTY_LINK ->

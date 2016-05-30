@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([get_any_type/2, get_integer/2, get_float/2, get_boolean/2]).
--export([get_value/3, resize_attribute_array_value/5]).
+-export([get_value/3, check_boolean_input/1, resize_attribute_array_value/5]).
 -export([log_error/3]).
 
 
@@ -96,8 +96,20 @@ get_value(Inputs, ValueName, CheckType) ->
     % Attribute value was not an input value  
     _ -> {error, not_input}    
   end.
-  
 
+  
+%
+% Check the value of the disable or freeze control value input
+%
+check_boolean_input(Value) ->
+  case Value of
+    true       -> active;
+    false      -> not_active; 
+    not_active -> not_active;
+    empty      -> not_active;
+    _Error     -> error
+  end.
+ 
 %%
 %% Resize an array value in the Inputs attribute list
 %% to match the target quantity
