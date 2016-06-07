@@ -4,7 +4,6 @@
 %%% @end
 %%%
 
-
 -module(block_supervisor).
 
 -author("Mark Sebald").
@@ -33,12 +32,12 @@ create_block(BlockValues) ->
 %% Delete a block
 %%
 delete_block(BlockName) ->
-    % Send a delete message to block an wait for response
-    block_server:delete(BlockName),
+  % Send a delete message to block an wait for response
+  block_server:delete(BlockName),
     
-    % Delete the block's child spec, 
-    % so a block using the same name may be created later
-    supervisor:delete_child(?MODULE, BlockName).
+  % Delete the block's child spec, 
+  % so a block using the same name may be created later
+  supervisor:delete_child(?MODULE, BlockName).
     
 %% 
 %% Get the block names of currently running processes
@@ -71,9 +70,9 @@ block_processes() ->
 %% Behavioural functions
 %% ====================================================================
 
+%% ====================================================================
 %% init/1
 %% ====================================================================
-%% @doc <a href="http://www.erlang.org/doc/man/supervisor.html#Module:init-1">supervisor:init/1</a>
 -spec init(Args :: term()) -> Result when
 	Result :: {ok, {SupervisionPolicy, [ChildSpec]}} | ignore,
 	SupervisionPolicy :: {RestartStrategy, MaxR :: non_neg_integer(), MaxT :: pos_integer()},
@@ -87,11 +86,15 @@ block_processes() ->
 				   | transient
 				   | temporary,
 	Modules :: [module()] | dynamic.
-%% ====================================================================
+
 init(BlockValuesFile) ->
 
   % Start the UI loop
   spawn(ui_main, ui_loop, []),
+  
+  % Spec for UI Server
+  ApiServerSpec = #{id => linkblox_api, restart => transient,
+             start => {linkblox_api, start, []}},
 
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
@@ -99,23 +102,21 @@ init(BlockValuesFile) ->
 
 			% TODO: Check for good, "ok" return value
 			BlockSpecs = create_block_specs(BlockValuesList),
+      
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-			{ok, {SupFlags, BlockSpecs} };
+			{ok, {SupFlags, [ApiServerSpec | BlockSpecs]}};
+      
 		{error, Reason} ->
 			error_logger:error_msg("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
             error_logger:error_msg("Loading Demo config... ~n"),
       
       BlockSpecs = create_block_specs(block_config:create_demo_config()),
-            
-      % UiSpec = #{id => ui_main, restart => transient,
-      %       start => {ui_main, ui_loop, []}},
                    
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
             
-			{ok, {SupFlags, BlockSpecs}}
+			{ok, {SupFlags, [ApiServerSpec | BlockSpecs]}}
 		end.
 		
-
 
 %% ====================================================================
 %% Internal functions

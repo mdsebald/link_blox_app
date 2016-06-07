@@ -111,31 +111,53 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
   Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
   
-  % Get the GPIO Pin number used for digital outputs 
-  {ok, PinNumber} = attrib_utils:get_value(Config, gpio_pin),
-  % TODO: Check if Pin Number is an integer, and range
-    
-  {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
-  {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
-	    
-  case gpio:start_link(PinNumber, output) of
-    {ok, GpioPinRef} ->
-      Status = initialed,
-      Value = DefaultValue,
- 	    {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-      set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
+  % Get the GPIO Pin number used for digital outputs  
+  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
+    {ok, PinNumber} ->
+      case config_utils:get_boolean(Config, default_value) of
+        {ok, DefaultValue} ->
+          case config_utils:get_boolean(Config, invert_output) of
+            {ok, InvertOutput} -> 
+	            case gpio:start_link(PinNumber, output) of
+                {ok, GpioPinRef} ->
+                  Status = initialed,
+                  Value = DefaultValue,
+ 	                {ok, Private2} = 
+                     attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+                  set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
-    {error, ErrorResult} ->
-      error_logger:error_msg("Error: ~p intitiating GPIO pin; ~p~n", 
+                {error, ErrorResult} ->
+                  error_logger:error_msg("Error: ~p intitiating GPIO pin; ~p~n", 
                               [ErrorResult, PinNumber]),
-      Status = proc_error,
+                  Status = proc_err,
+                  Value = not_active,
+                  Private2 = Private1
+              end;
+            {error, Reason} ->
+            	error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
+                              [Reason]),
+              Status = config_err,
+              Value = not_active,
+              Private2 = Private1
+          end;
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p Error reading default_value~n", 
+                              [Reason]),
+          Status = config_err,
+          Value = not_active,
+          Private2 = Private1
+      end;
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p Error reading GPIO pin number~n", 
+                              [Reason]),
+      Status = config_err,
       Value = not_active,
       Private2 = Private1
-    end,	
-  
-    Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  end,
+
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
     
-    {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%

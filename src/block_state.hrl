@@ -130,7 +130,7 @@
 %%  normal:     Block has executed normally
 %%  disabled:   Block disable input is true/on. All block outputs are set to not_active 
 %%  frozen:     Block freeze input is true/on.  All block outputs are frozen at last calculated value
-%%  error:      Block has encountered some error when attempting to executed
+%%  error:      Block has encountered some error when attempting to execute
 %%  input_err:  One or more of the block input values is incompatible with the block's code
 %%  config_err: One or more of the block configuration values is incompatible with the block's code
 %%  proc_err:   There is an error outside of the block code that is preventing the block from executing

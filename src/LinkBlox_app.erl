@@ -1,8 +1,12 @@
-%% @author Mark Sebald
-%% @doc LinkBlox application'.
+%%% @doc
+%%% LinkBlox application
+%%%
+%%% @end
 
 
 -module('LinkBlox_app').
+
+-author("Mark Sebald").
 
 -behaviour(application).
 
@@ -11,40 +15,41 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([]).
-
 
 
 %% ====================================================================
 %% Behavioural functions
 %% ====================================================================
 
+
+%% ====================================================================
 %% start/2
 %% ====================================================================
-%% @doc <a href="http://www.erlang.org/doc/apps/kernel/application.html#Module:start-2">application:start/2</a>
 -spec start(Type :: normal | {takeover, Node} | {failover, Node}, Args :: term()) ->
 	{ok, Pid :: pid()}
 	| {ok, Pid :: pid(), State :: term()}
 	| {error, Reason :: term()}.
-%% ====================================================================
+
 start(normal, BlockValuesFile) ->
     case block_supervisor:start_link(BlockValuesFile) of
-		{ok, Pid} ->
-			{ok, Pid};
+			{ok, Pid} ->
+				error_logger:info_msg("block_supervisor started~n"),
+				{ok, Pid};
+				
 		Error ->
+			error_logger:error_msg("Error: ~p starting block_supervisor.~n", [Error]),
 			Error
     end.
 
+
+%% ====================================================================
 %% stop/1
 %% ====================================================================
-%% @doc <a href="http://www.erlang.org/doc/apps/kernel/application.html#Module:stop-1">application:stop/1</a>
 -spec stop(State :: term()) ->  Any :: term().
-%% ====================================================================
+
 stop(_State) ->
     ok.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-

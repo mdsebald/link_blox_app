@@ -279,7 +279,5 @@ initialize_test() ->
   BlockDefn = create(initialize_test, "Testing Block Initialization"),
   _BlockState = block_common:initialize(BlockDefn).
 
-    
-
 
 -endif.

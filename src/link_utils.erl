@@ -16,43 +16,6 @@
 -export([add_ref/3, delete_ref/3]).
 -export([update_linked_input_values/3]). %, TODO: delete? set_input_link/3]).
 
--ifdef(INCLUDE_OBSOLETE).
-%%
-%% Return the name of the first block connected to this block, that is not registered, 
-%% Return 'ok' if all bocks connected to this block are registered / running
-%%
-%% TODO: Delete?  not needed anymore
--spec unregistered_blocks(BlockInputs :: list(input_attr())) -> block_name() | ok.
-
-unregistered_blocks([])->
-  ok;
-unregistered_blocks(BlockInputs)->
-  
-  [Input | RemainingInputs] = BlockInputs,
-  
-  {_ValueName, {_Value, Link}} = Input,
-  case Link of 
-    ?EMPTY_LINK -> 
-      % Not linked to another block, do nothing
-      unregistered_blocks(RemainingInputs);
- 
-    {LinkBlockName, _LinkValueName} ->
-      % get the components of this input value link
-      case whereis(LinkBlockName) of
-        undefined  ->  
-          % Linked block is not running, return error
-          {error, LinkBlockName};
-        _Pid  ->
-          % Linked block is running, do nothing
-          unregistered_blocks(RemainingInputs)
-      end;
-
-    %TODO: Handle other link types, i.e. links to other nodes      
-    UnhandledLink -> 
-      error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]) 
-  end.
--endif.
-
 
 %%
 %% Send a link message to each block linked to the inputs of this block

@@ -112,27 +112,35 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
     
   % Get the GPIO pin number used by this block
-  {ok, PinNumber} = attrib_utils:get_value(Config, gpio_pin),
-  % TODO: Check Pin Number is an integer in the right range
+  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
+    {ok, PinNumber} ->
+      % Initialize the GPIO pin as an input
+      case gpio:start_link(PinNumber, input) of
+        {ok, GpioPinRef} ->
+          Status = initialed,
+          Value = not_active,
+	        {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+          gpio:register_int(GpioPinRef),
+          % TODO: Make interrupt type selectable via config value
+          gpio:set_int(GpioPinRef, both);
 
-  % Initialize the GPIO pin as an input
-  case gpio:start_link(PinNumber, input) of
-    {ok, GpioPinRef} ->
-      Status = initialed,
-      Value = not_active,
-	    {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-      gpio:register_int(GpioPinRef),
-      % TODO: Make interrupt type selectable via config value
-      gpio:set_int(GpioPinRef, both);
-
-    {error, ErrorResult} ->
-      BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", 
+        {error, ErrorResult} ->
+          BlockName = config_utils:name(Config),
+          error_logger:error_msg("~p Error: ~p intitiating GPIO pin: ~p~n", 
                               [BlockName, ErrorResult, PinNumber]),
-      Status = process_error,
+          Status = proc_err,
+          Value = not_active,
+          Private2 = Private1
+      end;
+    {error, Reason} ->
+      BlockName = config_utils:name(Config),
+      error_logger:error_msg("~p Error: ~p reading GPIO pin number ~n", 
+                              [BlockName, Reason]),
+      Status = config_err,
       Value = not_active,
       Private2 = Private1
   end,
+    
     
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 

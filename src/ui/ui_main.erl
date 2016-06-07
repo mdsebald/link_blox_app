@@ -50,6 +50,8 @@ ui_loop() ->
       "types"     -> ui_block_types(Params);
       "load"      -> ui_load_blocks(Params);
       "save"      -> ui_save_blocks(Params);
+      "node"      -> ui_node(Params);
+      "nodes"     -> ui_nodes(Params);
       "help"      -> ui_help(Params);
       "exit"      -> ui_exit(Params);
             
@@ -58,6 +60,14 @@ ui_loop() ->
   true -> ok
   end,
   ui_loop().
+
+% Execute Erlang BIF node()
+ui_node(_Params) ->
+  io:format( "Node: ~p~n", [node()]).
+
+% Execute Erlang BIF nodes()
+ui_nodes(_Params) ->  
+  io:format( "Nodes: ~p~n", [nodes()]).
 
 
 % Process block create command
@@ -68,10 +78,10 @@ ui_create_block(Params) ->
     2 -> 
       [BlockTypeStr, BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case is_block_type(BlockTypeStr) of
+      case linkblox_api:is_block_type(BlockTypeStr) of
         true ->
           BlockModule = block_types:block_type_to_module(BlockTypeStr), 
-          case is_block_name(BlockName) of
+          case linkblox_api:is_block_name(BlockName) of
             false ->
               % TODO: Add a parameter for the block comment
               BlockValues = BlockModule:create(BlockName, "Test Comment"),
@@ -175,7 +185,7 @@ ui_get_values(Params) ->
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
 
-      case is_block_name(BlockName) of
+      case linkblox_api:is_block_name(BlockName) of
         true -> 
           BlockValues = block_server:get_values(BlockName),
           io:format("~n~p~n", [BlockValues]);
@@ -183,24 +193,24 @@ ui_get_values(Params) ->
           io:format("Error: Block ~s does not exist~n", [BlockNameStr])
         end;
 
-      2 -> 
-        [BlockNameStr, ValueNameStr] = Params,
-        BlockName = list_to_atom(BlockNameStr),
+    2 -> 
+      [BlockNameStr, ValueNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),
             
-        case is_block_name(BlockName) of
-          true -> 
-            ValueName = list_to_atom(ValueNameStr),
-            case block_server:get_value(BlockName, ValueName) of
-              not_found ->
-                io:format("Error: ~s is not a value of block ~s~n", 
+      case linkblox_api:is_block_name(BlockName) of
+        true -> 
+          ValueName = list_to_atom(ValueNameStr),
+          case block_server:get_value(BlockName, ValueName) of
+            not_found ->
+              io:format("Error: ~s is not a value of block ~s~n", 
                                       [ValueNameStr, BlockNameStr]);
-              CurrentValue ->
-                io:format("~n~p~n", [CurrentValue])        
-            end;
-          false -> 
-            io:format("Error: Block ~s does not exist~n", [BlockNameStr])
-        end;
-      _ -> io:format("Error: Too many parameters~n")
+            CurrentValue ->
+              io:format("~n~p~n", [CurrentValue])
+          end;
+        false -> 
+          io:format("Error: Block ~s does not exist~n", [BlockNameStr])
+      end;
+    _ -> io:format("Error: Too many parameters~n")
   end.    
  
  
@@ -214,7 +224,7 @@ ui_set_value(Params) ->
       [BlockNameStr, ValueNameStr, ValueStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
 
-      case is_block_name(BlockName) of
+      case linkblox_api:is_block_name(BlockName) of
         true -> 
           ValueName = list_to_atom(ValueNameStr),
           case block_server:get_value(BlockName, ValueName) of
@@ -395,7 +405,7 @@ validate_block_name(Params) ->
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
       % check if block name is an existing block
-      case is_block_name(BlockName) of
+      case linkblox_api:is_block_name(BlockName) of
         true  -> BlockName;
         false ->
           io:format("Error: Block ~p does not exist~n", [BlockName]),
@@ -408,15 +418,6 @@ validate_block_name(Params) ->
       io:format("Error: Too many parameters~n"),
       error
   end.
-
-
-% Is block name  an existing block
-is_block_name(BlockName) -> 
-  lists:member(BlockName, block_supervisor:block_names()).
-
-% Is block type an existing block type
-is_block_type(BlockTypeStr) -> 
-  lists:member(BlockTypeStr, block_types:block_type_names()).
 
 
 %%
