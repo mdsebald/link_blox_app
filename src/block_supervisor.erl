@@ -54,8 +54,15 @@ block_names([BlockProcess | RemainingProcesses], BlockNames) ->
     restarting -> NewBlockNames = BlockNames;
     undefined  -> NewBlockNames = BlockNames;
     _Pid       ->
-      BlockName = element(1, BlockProcess),
-      NewBlockNames = [BlockName | BlockNames]
+      case element(1, BlockProcess) of
+        linkblox_api ->  
+          % TODO: start the linkblox_api with another supervisor
+          % In the meantime, just ignore it, it is not a block,  
+          NewBlockNames = BlockNames;
+
+        BlockName ->
+          NewBlockNames = [BlockName | BlockNames]
+      end
   end,
   block_names(RemainingProcesses, NewBlockNames).
   
@@ -89,8 +96,8 @@ block_processes() ->
 
 init(BlockValuesFile) ->
 
-  % Start the UI loop
-  spawn(ui_main, ui_loop, []),
+  % Start the UI loop, 
+  spawn(ui_main, ui_init, []),
   
   % Spec for UI Server
   ApiServerSpec = #{id => linkblox_api, restart => transient,

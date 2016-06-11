@@ -17,7 +17,7 @@
 %% API functions
 %% ====================================================================
 -export([create/1, delete/1]). 
--export([get_value/2, set_value/3, override/2, get_values/1]).
+-export([get_value/2, set_value/3, override/2, get_block/1]).
 -export([execute/1, exec_out_execute/1]).
 -export([update/4, init_configure/1, configure/1, reconfigure/2]).
 -export([link/3, unlink/3]).
@@ -49,8 +49,8 @@ override(BlockName, Value)->
 
 
 %% Get the current set of values for this block
-get_values(BlockName) ->
-  gen_server:call(BlockName, get_values).
+get_block(BlockName) ->
+  gen_server:call(BlockName, get_block).
 
 
 %% Link the value 'ValueName' of this block to 'ToBlockName' 
@@ -157,7 +157,7 @@ init(BlockValues) ->
 %% =====================================================================
 %% Get all block values
 %% =====================================================================    
-handle_call(get_values, _From, BlockValues) ->
+handle_call(get_block, _From, BlockValues) ->
   {reply, BlockValues, BlockValues};
 
   
@@ -165,8 +165,8 @@ handle_call(get_values, _From, BlockValues) ->
 %% Get a block value
 %% =====================================================================    
 handle_call({get_value, ValueName}, _From, BlockValues) ->
-  {ok, Value} = attrib_utils:get_value_any(BlockValues, ValueName),
-  {reply, Value, BlockValues};
+  Result = attrib_utils:get_value_any(BlockValues, ValueName),
+  {reply, Result, BlockValues};
 
 
 %% =====================================================================
@@ -211,8 +211,9 @@ handle_call(stop, _From, BlockValues) ->
 %% Unknown Call message
 %% =====================================================================      
 handle_call(Request, From, BlockValues) ->
-  error_logger:warning_msg("Unknown call message: ~p From: ~p~n", 
-                            [Request, From]),
+  BlockName = config_utils:name(BlockValues),
+  error_logger:warning_msg("block_server(~p): Unknown call message: ~p From: ~p~n", 
+                            [BlockName, Request, From]),
   {reply, ok, BlockValues}.
 
 
@@ -329,7 +330,8 @@ handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
 %% Unknown Cast message
 %% =====================================================================      
 handle_cast(Msg, BlockValues) ->
-  error_logger:warning_msg("Unknown cast message: ~p~n", [Msg]),
+  BlockName = config_utils:name(BlockValues),
+  error_logger:warning_msg("block_server(~p) Unknown cast message: ~p~n", [BlockName,Msg]),
   {noreply, BlockValues}.
 
 

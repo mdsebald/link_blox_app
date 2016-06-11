@@ -232,37 +232,10 @@ log_error(Config, ValueName, Reason) ->
 -include_lib("eunit/include/eunit.hrl").
 
 % ====================================================================
-% Test data
-%
-test_config_attribs1() ->
-  [ {block_name, {test_config_utils}},
-    {block_module, {type_test}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}},
-    {number1, {123.45}},
-    {string1, {"Testing"}},
-    {bool_array, [{true}, {false}]},
-    {integer1, {123}},
-    {integer_array, [{234}, {456}, {-123}]},
-    {float_good, {123.45}},
-    {float_bad, {xyz}},
-    {integer_good, {12345}},
-    {integer_bad, {"bad"}},
-    {boolean_good, {true}},
-    {boolean_bad, {0.0}},
-    {not_active_good, {not_active}},
-    {empty_good, {empty}},
-    {empty_bad, {empty, {knot, empty, link}}},
-    {not_config, {123, [test1,test2]}}
-  ].
-
-% ====================================================================
-
-% ====================================================================
 % Test name()
 % 
 name_config_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   
   ExpectedResult = test_config_utils,
   
@@ -270,7 +243,7 @@ name_config_test()->
   ?assertEqual(ExpectedResult, Result).
   
 name_block_defn_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   BlockDefn = {Config, Inputs, Outputs},
@@ -281,7 +254,7 @@ name_block_defn_test()->
   ?assertEqual(ExpectedResult, Result).
   
 name_block_state_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   Private = [],
@@ -297,7 +270,7 @@ name_block_state_test()->
 % Test name_module()
 % 
 name_module_config_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   
   ExpectedResult = {test_config_utils, type_test},
   
@@ -305,7 +278,7 @@ name_module_config_test()->
   ?assertEqual(ExpectedResult, Result).
   
 name_module_block_defn_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   BlockDefn = {Config, Inputs, Outputs},
@@ -316,7 +289,7 @@ name_module_block_defn_test()->
   ?assertEqual(ExpectedResult, Result).
   
 name_module_block_state_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   Private = [],
@@ -332,7 +305,7 @@ name_module_block_state_test()->
 % Test name_module_version()
 % 
 name_module_version_config_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   
   ExpectedResult = {test_config_utils, type_test, "0.0.0"},
   
@@ -340,7 +313,7 @@ name_module_version_config_test()->
   ?assertEqual(ExpectedResult, Result).
   
 name_module_version_block_defn_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   BlockDefn = {Config, Inputs, Outputs},
@@ -351,7 +324,7 @@ name_module_version_block_defn_test()->
   ?assertEqual(ExpectedResult, Result).
   
 name_module_version_block_state_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   Private = [],
@@ -367,7 +340,7 @@ name_module_version_block_state_test()->
 % Test get_integer_range()
 % 
 get_integer_range_test()->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   ValueName = integer_good,
   
   ExpectedResult = {error, range},
@@ -379,14 +352,14 @@ get_integer_range_test()->
 
 
 get_value_test() ->
-  _Config = test_config_attribs1().
+  _Config = test_data:config_utils_config_attribs1().
 
 
 % ====================================================================
 % Test log_error()
 %     
 log_error_test() ->
-  Config = test_config_attribs1(),
+  Config = test_data:config_utils_config_attribs1(),
   
   ExpectedResult =  {not_active, config_err},
   

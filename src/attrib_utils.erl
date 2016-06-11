@@ -384,64 +384,11 @@ resize_array_value(ValuesArray, TargQuant, DefaultValue)->
 -include_lib("eunit/include/eunit.hrl").
 
 % ====================================================================
-% Test data
-%
-test_config_attribs1() ->
-  [ {block_name, {test_config}},
-    {block_module, {type_template}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}},
-    {number1, {123.45}},
-    {string1, {"Testing"}},
-    {bool_array, [{true}, {false}]},
-    {integer1, {123}},
-    {integer_array, [{234}, {456}, {-123}]}
-  ].
-  
-test_config_attribs2() ->
-  [ {block_name, {test_config}},
-    {block_module, {type_template}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}},
-    {number1, {123.45}},
-    {string1, {"Testing"}},
-    {bool_array, [{true}, {false}, {true}, {true}, {true}, {true}, {true}, {true}, {true}, {true}]},
-    {integer1, {123}},
-    {integer_array, [{234}, {456}, {-123}]}
-  ].
-  
-test_config_attribs3() ->
-  [ {block_name, {test_config}},
-    {block_module, {type_template}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}},
-    {number1, {123.45}},
-    {string1, {"Testing"}},
-    {bool_array, [{true}, {false}]},
-    {integer1, {123}},
-    {integer_array, [{234}]}
-  ].
-  
-test_input_attribs1() ->
-  [ {block_name, {test_config}},
-    {block_module, {type_template}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}},
-    {number_in, {123.45, {}}},
-    {string_in, {"Testing", {}}},
-    {bool_array_in, [{true,{}}, {false,{}}]},
-    {integer_in, {123}},
-    {integer_array_in, [{234,{}}, {456,{}}, {-123,{}}]}
-  ].
-  
-% ====================================================================
-
-% ====================================================================
 % Test get_attribute()
 % 
 %   Test get_attribute() found
 get_attribute_found_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ValueName = number1,
   ExpectedResult = {ok, {number1, {123.45}}},
   
@@ -450,7 +397,7 @@ get_attribute_found_test() ->
 
 %   Test get_attribute() not_found
 get_attribute_not_found_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ValueName = unexpected,
   ExpectedResult = {error, not_found},
   
@@ -462,7 +409,7 @@ get_attribute_not_found_test() ->
 % 
 %   Test get_value() input ok
 get_value_input_ok_test() ->
-  Attributes = test_input_attribs1(),
+  Attributes = test_data:attrib_utils_input_attribs1(),
   ValueName = number_in,
   ExpectedResult = {ok, 123.45},
   
@@ -471,7 +418,7 @@ get_value_input_ok_test() ->
 
 %   Test get_value() input not_found
 get_value_input_not_found_test() ->
-  Attributes = test_input_attribs1(),
+  Attributes = test_data:attrib_utils_input_attribs1(),
   ValueName = unexpected,
   ExpectedResult = {error, not_found},
   
@@ -480,7 +427,7 @@ get_value_input_not_found_test() ->
 
 %   Test get_value() input array value ok
 get_value_input_array_ok_test() ->
-  Attributes = test_input_attribs1(),
+  Attributes = test_data:attrib_utils_input_attribs1(),
   ValueName = integer_array_in,
   ArrayIndex = 2,
   ExpectedResult = {ok, 456},
@@ -490,7 +437,7 @@ get_value_input_array_ok_test() ->
 
 %   Test get_value() input array value negative index
 get_value_input_array_invalid_index_test() ->
-  Attributes = test_input_attribs1(),
+  Attributes = test_data:attrib_utils_input_attribs1(),
   ValueName = bool_array_in,
   ArrayIndex = -23,
   ExpectedResult = {error, invalid_index},
@@ -500,7 +447,7 @@ get_value_input_array_invalid_index_test() ->
   
 %   Test get_value() config array value 0 index
 get_value_config_array_0_index_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ValueName = string1,
   ArrayIndex = 0,
   ExpectedResult = {error, invalid_index},
@@ -510,7 +457,7 @@ get_value_config_array_0_index_test() ->
   
 %   Test get_value() config array value index too large
 get_value_config_array_negative_index_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ValueName = bool_array,
   ArrayIndex = 99,
   ExpectedResult = {error, invalid_index},
@@ -523,36 +470,36 @@ get_value_config_array_negative_index_test() ->
 % 
 %   Test config array attribute doesn't change 
 resize_attribute_array_value_config_same_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ArrayValueName = bool_array,
   TargQuant = 2,
   DefaultValue = {true},
   
-  ExpectedResult = test_config_attribs1(),
+  ExpectedResult = test_data:attrib_utils_config_attribs1(),
   
   Result = resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
   
 %   Test config array attribute increases in size 
 resize_attribute_array_value_config_increase_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ArrayValueName = bool_array,
   TargQuant = 10,
   DefaultValue = {true},
   
-  ExpectedResult = test_config_attribs2(),
+  ExpectedResult = test_data:attrib_utils_config_attribs2(),
   
   Result = resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
   
 %   Test config array attribute decreases in size 
 resize_attribute_array_value_config_decrease_test() ->
-  Attributes = test_config_attribs1(),
+  Attributes = test_data:attrib_utils_config_attribs1(),
   ArrayValueName = integer_array,
   TargQuant = 1,
   DefaultValue = {0},
   
-  ExpectedResult = test_config_attribs3(),
+  ExpectedResult = test_data:attrib_utils_config_attribs3(),
   
   Result = resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
