@@ -17,20 +17,28 @@
 %% API functions
 %% ====================================================================
 -export([
-					start/0, 
+					start/0,
+					stop/1,
 					create_block/4,
 					delete_block/2,
 					get_block/2,
 					get_value/3,
 					get_block_names/1,
+					execute_block/2,
          	is_block_name/2, 
 				 	is_block_type/2
 ]). 
 
 
-%% Startup the UI Server
+%% Start the LinkBlox API Server
 start()->
   gen_server:start_link({local, linkblox_api}, ?MODULE, null, []).
+
+
+%% Stop the LinkBlox API server
+stop(Node) ->
+	gen_server:call({linkblox_api, Node}, stop).
+
 
 %%
 %% Process API calls
@@ -79,6 +87,13 @@ get_value(Node, BlockNameStr, ValueNameStr) ->
 get_block_names(Node) ->
 	gen_server:call({linkblox_api, Node}, get_block_names).
 
+%% Execute the block
+-spec execute_block(Node :: node(),
+                    BlockNameStr :: string()) -> term().
+
+execute_block(Node, BlockNameStr) ->
+	gen_server:call({linkblox_api, Node}, {execute_block, BlockNameStr}).
+
 
 %% Is BlockName a valid block name?
 -spec is_block_name(Node :: node(),
@@ -117,7 +132,7 @@ is_block_type(Node, BlockTypeStr) ->
 	Timeout :: non_neg_integer() | infinity.
 
 init(null) ->
-  error_logger:info_msg("Initializing UI Server~n"),
+  error_logger:info_msg("Starting LinkBlox API server~n"),
   {ok, []}.
 
 %% ====================================================================
@@ -136,6 +151,15 @@ init(null) ->
 	NewState :: term(),
 	Timeout :: non_neg_integer() | infinity,
 	Reason :: term().
+
+
+%% =====================================================================
+%% Stop the API server
+%% =====================================================================
+handle_call(stop, _From, State) ->  
+  error_logger:info_msg("Stopping LinkBlox API server~n"),
+
+  {stop, normal, ok, State};
 
 %% =====================================================================
 %% Create a block
@@ -226,6 +250,20 @@ handle_call(get_block_names, _From, State) ->
 
 
 %% =====================================================================
+%% Execute block
+%% =====================================================================    
+handle_call({execute_block, BlockNameStr}, _From, State) ->
+	case valid_block_name(BlockNameStr) of
+		{true, BlockName} ->
+			block_server:execute(BlockName),
+			Result = ok;
+		{false, _BlockName} ->
+			Result = {error, block_not_found}
+	end,
+  {reply, Result, State};
+
+
+%% =====================================================================
 %% Is BlockNameStr a valid block name?
 %% =====================================================================    
 handle_call({is_block_name, BlockNameStr}, _From, State) ->
@@ -308,7 +346,7 @@ terminate(normal, _State) ->
   ok;
     
 terminate(Reason, _State) ->
-  error_logger:error_msg("UI Server, Abnormal Termination: ~p~n", [Reason]),
+  error_logger:error_msg("LinkBlox API server, Abnormal Termination: ~p~n", [Reason]),
   ok.
 
 
@@ -338,3 +376,43 @@ valid_block_name(BlockNameStr)->
 	BlockName = list_to_atom(BlockNameStr),
   Result = lists:member(BlockName, block_supervisor:block_names()),
 	{Result, BlockName}.
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+%-ifdef(UNDER_DEVELOPMENT).
+
+linkblox_api_test_() ->
+	{
+		setup,
+		fun start_linkblox_api/0,
+		fun stop_linkblox_api/1,
+		fun() ->
+			{
+				inorder,
+			 	[
+					create_block_test(),
+					delete_block_test()
+				]
+			}
+		end
+	}.
+
+start_linkblox_api() ->
+	start().
+ 
+stop_linkblox_api(_) ->
+	stop(node()).
+
+create_block_test() ->
+	create_block(node(), "template", "test_block", []).
+
+delete_block_test() ->
+	delete_block(node(), "test_block"). 
+
+%-endif.
+-endif.

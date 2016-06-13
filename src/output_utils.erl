@@ -162,97 +162,23 @@ log_error(Config, ValueName, Reason) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% ====================================================================
-% Test data
-%
-test_config_attribs1() ->
-  [ {block_name, {test_input_utils}},
-    {block_module, {type_test}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}}
-  ].
-
-test_input_attribs1() ->
-  [ {disable, {true, ?EMPTY_LINK}},
-    {freeze, {false, ?EMPTY_LINK}},
-    {exec_in, {empty, ?EMPTY_LINK}},
-    {exec_interval, {0, ?EMPTY_LINK}},
-    {float_good, {123.45, {null, block1, value}}},
-    {float_bad, {xyz, ?EMPTY_LINK}},
-    {integer_good, {12345, {null, block2, value}}},
-    {integer_bad, {"bad", ?EMPTY_LINK}},
-    {boolean_good, {true, ?EMPTY_LINK}},
-    {boolean_bad, {0.0, ?EMPTY_LINK}},
-    {not_active_good, {not_active, ?EMPTY_LINK}},
-    {empty_good, {empty, ?EMPTY_LINK}},
-    {empty_bad, {empty, {knot, empty, link}}},
-    {not_input, {123, [test1,test2]}},
-    {integer_array, [{123, {}}, {789, {null, test_block, test_output}}]}
-  ].
-  
-test_input_attribs2() ->
-  InputList = test_input_attribs1(),
-  ModifiedAttribute = {integer_array, 
-                       [{123, {}}, 
-                        {789, {null, test_block, test_output}},
-                        {empty, ?EMPTY_LINK},
-                        {empty, ?EMPTY_LINK}]},
-   attrib_utils:replace_attribute(InputList, integer_array, 
-                            ModifiedAttribute).
-test_output_attribs1() ->
-  [
-    {exec_out, {false, []}},                         
-    {status, {created, []}},     
-    {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
-    {value, {not_active, []}},
-    {integer_array_out, [{0, []}, {1,[]}, {2, []}]}
-  ].
- 
-  test_output_attribs2() ->
-    OutputList = test_output_attribs1(),
-    ModifiedAttribute = {integer_array_out, 
-    [{0, []}, {1,[]}, {2, []}, {not_active, []}, {not_active, []}, {not_active, []}]},
-    
-    attrib_utils:replace_attribute(OutputList, integer_array_out, 
-                            ModifiedAttribute).
- 
- test_output_attribs3() ->
-    OutputList = test_output_attribs1(),
-    ModifiedAttribute = {integer_array_out, 
-    [{6, []}, {7,[]}, {8, []}]},
-    
-    attrib_utils:replace_attribute(OutputList, integer_array_out, 
-                            ModifiedAttribute).
-                            
-test_output_attribs4() ->
-  [
-    {exec_out, {not_active, []}},                         
-    {status, {input_err, []}},     
-    {exec_method, {not_active, []}},
-    {last_exec, {not_active, []}},
-    {value, {not_active, []}},
-    {integer_array_out, [{not_active, []}, {not_active,[]}, {not_active, []}]}
-  ].
-  
-% ====================================================================
 
 % ====================================================================
 % Test name()
 %   
 get_value_test() ->
-  _TestInputs = test_input_attribs1().
+  _TestInputs = test_data:output_utils_input_attribs1().
 
 % ====================================================================
 
 % ====================================================================
 % Test set_array_value()  
 set_array_value_test() ->
-  Outputs = test_output_attribs1(),
+  Outputs = test_data:output_utils_output_attribs1(),
   ArrayValueName = integer_array_out,
   ArrayValues = [6,7,8],
   
-  ExpectedResult = test_output_attribs3(),
+  ExpectedResult = test_data:output_utils_output_attribs3(),
   
   Result = set_array_value(Outputs, ArrayValueName, ArrayValues),
   ?assertEqual(ExpectedResult, Result). 
@@ -262,11 +188,11 @@ set_array_value_test() ->
 % ====================================================================
 % Test update_all_outputs()  
 update_all_outputs_test() ->
-  Outputs = test_output_attribs1(),
+  Outputs = test_data:output_utils_output_attribs1(),
   Value = not_active,
   Status = input_err,
   
-  ExpectedResult = test_output_attribs4(),
+  ExpectedResult = test_data:output_utils_output_attribs4(),
   
   Result = update_all_outputs(Outputs, Value, Status),
   ?assertEqual(ExpectedResult, Result). 
@@ -280,12 +206,12 @@ update_all_outputs_test() ->
 %   Test input array attribute doesn't change size
 resize_attribute_array_value_nochange_test() ->
   BlockName = test_output_utils,
-  Outputs = test_output_attribs1(),
+  Outputs = test_data:output_utils_output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 3,
   DefaultValue = {not_active, []},
   
-  ExpectedResult = test_output_attribs1(),
+  ExpectedResult = test_data:output_utils_output_attribs1(),
   
   Result = resize_attribute_array_value(BlockName, Outputs, 
                          ArrayValueName, TargQuant, DefaultValue),
@@ -293,13 +219,13 @@ resize_attribute_array_value_nochange_test() ->
   
 %   Test input array attribute increases in size
 resize_attribute_array_value_increase_test() ->
-  BlockName = test_output_utils,
-  Outputs = test_output_attribs1(),
+  BlockName = testt_utils_output_utils,
+  Outputs = test_data:output_utils_output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 6,
   DefaultValue = {not_active, []},
   
-  ExpectedResult = test_output_attribs2(),
+  ExpectedResult = test_data:output_utils_output_attribs2(),
   
   Result = resize_attribute_array_value(BlockName, Outputs, 
                          ArrayValueName, TargQuant, DefaultValue),
@@ -310,7 +236,7 @@ resize_attribute_array_value_increase_test() ->
 % Test log_error()
 %     
 log_error_test() ->
-  Config = test_config_attribs1(),
+  Config = test_data:output_utils_config_attribs1(),
   
   ExpectedResult =  ok,
   

@@ -99,7 +99,7 @@ init(BlockValuesFile) ->
   % Start the UI loop, 
   spawn(ui_main, ui_init, []),
   
-  % Spec for UI Server
+  % Spec for API Server
   ApiServerSpec = #{id => linkblox_api, restart => transient,
              start => {linkblox_api, start, []}},
 

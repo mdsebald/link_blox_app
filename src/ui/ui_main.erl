@@ -118,11 +118,17 @@ ui_create_block(Params) ->
 
 % Process manual block execute command
 ui_execute_block(Params) ->
-  case validate_block_name(Params) of
-    error     -> ok;  % Params was not a block name
-    BlockNameStr ->
-      block_server:execute(BlockNameStr),
-      ok
+   case length(Params) of  
+    0 -> io:format("Error: Enter block name~n");
+    1 -> 
+      [BlockNameStr] = Params,
+      case linkblox_api:execute_block(get_node(), BlockNameStr) of
+        ok -> 
+          ok;
+        {error, block_not_found} ->
+          io:format("Error: block ~s not found~n", [BlockNameStr])  
+      end;
+     _ -> io:format("Error: Too many parameters~n")
   end.
 
 
@@ -205,7 +211,7 @@ ui_get_values(Params) ->
         "names" ->  % Just get the list of block names
           BlockNames = linkblox_api:get_block_names(get_node()),
           io:format("~n"),
-          lists:map(fun(BlockName) -> io:format("~p~n", [BlockName]) end, BlockNames);
+          lists:map(fun(BlockName) -> io:format("~s~n", [BlockName]) end, BlockNames);
 
         _ ->
           case linkblox_api:get_block(get_node(), BlockNameStr) of
