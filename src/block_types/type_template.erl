@@ -24,9 +24,9 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-% INSTRUCTIONS: String naming the block type. 
+% INSTRUCTIONS: atom naming the block type. 
 %   Usually the module name minus "type_"
-type_name() -> "template".
+type_name() -> template.
 
 % INSTRUCTIONS: Major.Minor.Patch, 
 %   Major version change implies a breaking change, 

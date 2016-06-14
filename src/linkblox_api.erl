@@ -46,39 +46,39 @@ stop(Node) ->
 
 %% Create a block
 -spec create_block(Node :: node(),
-									 BlockTypeStr :: string(),
-									 BlockNameStr :: string(),
+									 BlockType :: type_name(),
+									 BlockName :: block_name(),
 									 InitAttribs :: list()) -> term().
 
-create_block(Node, BlockTypeStr, BlockNameStr, InitAttribs) ->
+create_block(Node, BlockType, BlockName, InitAttribs) ->
 	gen_server:call({linkblox_api, Node}, 
-	                {create_block, BlockTypeStr, BlockNameStr, InitAttribs}).
+	                {create_block, BlockType, BlockName, InitAttribs}).
 
 
 %% delete a block
 -spec delete_block(Node :: node(),
-									 BlockNameStr :: string()) -> term().
+									 BlockName :: block_name()) -> term().
 
-delete_block(Node, BlockNameStr) ->
+delete_block(Node, BlockName) ->
 	gen_server:call({linkblox_api, Node}, 
-	                {delete_block, BlockNameStr}).
+	                {delete_block, BlockName}).
 
 
 %% Get block values
 -spec get_block(Node :: node(),
-								BlockNameStr :: string()) -> term().
+								BlockName :: block_name()) -> term().
 
-get_block(Node, BlockNameStr) ->
-	gen_server:call({linkblox_api, Node}, {get_block, BlockNameStr}).
+get_block(Node, BlockName) ->
+	gen_server:call({linkblox_api, Node}, {get_block, BlockName}).
 
 
 %% Get a block value
 -spec get_value(Node :: node(),
-								BlockNameStr :: string(),
-								ValueNameStr :: string()) -> term().
+								BlockName :: block_name(),
+								ValueId :: value_id()) -> term().
 
-get_value(Node, BlockNameStr, ValueNameStr) ->
-	gen_server:call({linkblox_api, Node}, {get_value, BlockNameStr, ValueNameStr}).
+get_value(Node, BlockName, ValueId) ->
+	gen_server:call({linkblox_api, Node}, {get_value, BlockName, ValueId}).
 
 
 %% Get list of block names
@@ -87,28 +87,29 @@ get_value(Node, BlockNameStr, ValueNameStr) ->
 get_block_names(Node) ->
 	gen_server:call({linkblox_api, Node}, get_block_names).
 
+
 %% Execute the block
 -spec execute_block(Node :: node(),
-                    BlockNameStr :: string()) -> term().
+                    BlockName :: block_name()) -> term().
 
-execute_block(Node, BlockNameStr) ->
-	gen_server:call({linkblox_api, Node}, {execute_block, BlockNameStr}).
+execute_block(Node, BlockName) ->
+	gen_server:call({linkblox_api, Node}, {execute_block, BlockName}).
 
 
 %% Is BlockName a valid block name?
 -spec is_block_name(Node :: node(),
-										BlockNameStr :: string()) -> term().
+										BlockName :: block_name()) -> term().
 
-is_block_name(Node, BlockNameStr) ->
-	gen_server:call({linkblox_api,Node}, {is_block_name, BlockNameStr}).
+is_block_name(Node, BlockName) ->
+	gen_server:call({linkblox_api,Node}, {is_block_name, BlockName}).
 
 
 %% Is BlockTypeStr a valid block type name?
 -spec is_block_type(Node :: node(),
-										BlockTypeStr :: string()) -> term().
+										BlockType :: type_name()) -> term().
 
-is_block_type(Node, BlockTypeStr) ->
-	gen_server:call({linkblox_api, Node}, {is_block_type, BlockTypeStr}).
+is_block_type(Node, BlockType) ->
+	gen_server:call({linkblox_api, Node}, {is_block_type, BlockType}).
 
 %command(Command, Args)->
  % gen_server:call(linkblox_api, {comand, Command, Args}).
@@ -165,12 +166,12 @@ handle_call(stop, _From, State) ->
 %% Create a block
 %% =====================================================================    
 % TODO: Set initial attribute values
-handle_call({create_block, BlockTypeStr, BlockNameStr, _InitAttribs}, _From, State) ->
-	case lists:member(BlockTypeStr, block_types:block_type_names()) of
+handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
+	case lists:member(BlockType, block_types:block_type_names()) of
 		true ->
-			BlockModule = block_types:block_type_to_module(BlockTypeStr),
-  		case valid_block_name(BlockNameStr) of
-				{false, BlockName} ->
+			BlockModule = block_types:block_type_to_module(BlockType),
+  		case valid_block_name(BlockName) of
+				false ->
 					BlockValues = BlockModule:create(BlockName, "Default Comment"),
 					case block_supervisor:create_block(BlockValues) of
             {ok, _Pid} -> 
@@ -187,11 +188,11 @@ handle_call({create_block, BlockTypeStr, BlockNameStr, _InitAttribs}, _From, Sta
   {reply, Result, State};
 
 %% =====================================================================
-%% Get all block values
+%% Delete a block
 %% =====================================================================    
-handle_call({delete_block, BlockNameStr}, _From, State) ->
-	case valid_block_name(BlockNameStr) of
-		{true, BlockName} ->
+handle_call({delete_block, BlockName}, _From, State) ->
+	case valid_block_name(BlockName) of
+		true ->
 			case block_supervisor:delete_block(BlockName) of
         ok -> 
 					Result = ok;
@@ -203,12 +204,13 @@ handle_call({delete_block, BlockNameStr}, _From, State) ->
 	end,
   {reply, Result, State};
 
+
 %% =====================================================================
 %% Get all block values
 %% =====================================================================    
-handle_call({get_block, BlockNameStr}, _From, State) ->
-	case valid_block_name(BlockNameStr) of
-		{true, BlockName} ->
+handle_call({get_block, BlockName}, _From, State) ->
+	case valid_block_name(BlockName) of
+		true ->
 			{Config, Inputs, Outputs, _Private} = block_server:get_block(BlockName),
 			% Strip private values,
 			Result = {ok, {Config, Inputs, Outputs}};
@@ -221,13 +223,10 @@ handle_call({get_block, BlockNameStr}, _From, State) ->
 %% =====================================================================
 %% Get a block value
 %% =====================================================================    
-handle_call({get_value, BlockNameStr, ValueNameStr}, _From, State) ->
-	case valid_block_name(BlockNameStr) of
-		{true, BlockName} ->
-			% TODO: Convert ValueNameString to value_id() type, account for array index
-			%  i.e.  "digit[1]"  -> {digit, 1}
-			ValueName = list_to_atom(ValueNameStr),
-      case block_server:get_value(BlockName, ValueName) of
+handle_call({get_value, BlockName, ValueId}, _From, State) ->
+	case valid_block_name(BlockName) of
+		true ->
+      case block_server:get_value(BlockName, ValueId) of
       	{error, not_found} ->
 					Result = {error, value_not_found};
 				{ok, CurrentValue} ->
@@ -252,12 +251,12 @@ handle_call(get_block_names, _From, State) ->
 %% =====================================================================
 %% Execute block
 %% =====================================================================    
-handle_call({execute_block, BlockNameStr}, _From, State) ->
-	case valid_block_name(BlockNameStr) of
-		{true, BlockName} ->
+handle_call({execute_block, BlockName}, _From, State) ->
+	case valid_block_name(BlockName) of
+		true ->
 			block_server:execute(BlockName),
 			Result = ok;
-		{false, _BlockName} ->
+		_ ->
 			Result = {error, block_not_found}
 	end,
   {reply, Result, State};
@@ -266,9 +265,9 @@ handle_call({execute_block, BlockNameStr}, _From, State) ->
 %% =====================================================================
 %% Is BlockNameStr a valid block name?
 %% =====================================================================    
-handle_call({is_block_name, BlockNameStr}, _From, State) ->
-  case valid_block_name(BlockNameStr) of
-		{true, _BlockName} -> 
+handle_call({is_block_name, BlockName}, _From, State) ->
+  case valid_block_name(BlockName) of
+		true-> 
 			Result = true;
 		_ ->
 			Result = false
@@ -279,8 +278,8 @@ handle_call({is_block_name, BlockNameStr}, _From, State) ->
 %% =====================================================================
 %% Is BlockTypeStr a valid block type?
 %% =====================================================================    
-handle_call({is_block_type, BlockTypeStr}, _From, State) ->
-  Result = lists:member(BlockTypeStr, block_types:block_type_names()),
+handle_call({is_block_type, BlockType}, _From, State) ->
+  Result = lists:member(BlockType, block_types:block_type_names()),
   {reply, Result, State};
 
 
@@ -367,15 +366,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 
 %%
-%% Is the BlockNameStr a valid block name?
-%% Return atomized BlockNameStr regardless.
+%% Is the BlockName a valid block name?
 %%
--spec valid_block_name(BlockNameStr :: string())-> {boolean(), block_name()}.
+-spec valid_block_name(BlockName :: block_name())-> boolean().
 
-valid_block_name(BlockNameStr)->
-	BlockName = list_to_atom(BlockNameStr),
-  Result = lists:member(BlockName, block_supervisor:block_names()),
-	{Result, BlockName}.
+valid_block_name(BlockName)->
+  lists:member(BlockName, block_supervisor:block_names()).
 
 
 %% ====================================================================
@@ -384,7 +380,7 @@ valid_block_name(BlockNameStr)->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
-%-ifdef(UNDER_DEVELOPMENT).
+-ifdef(UNDER_DEVELOPMENT).
 
 linkblox_api_test_() ->
 	{
@@ -403,6 +399,8 @@ linkblox_api_test_() ->
 	}.
 
 start_linkblox_api() ->
+	% Need to start LinkBlox Supervisor
+	% That will start the API Server, (This module) and the block supervisor.
 	start().
  
 stop_linkblox_api(_) ->
@@ -414,5 +412,5 @@ create_block_test() ->
 delete_block_test() ->
 	delete_block(node(), "test_block"). 
 
-%-endif.
+-endif.
 -endif.

@@ -99,7 +99,9 @@ ui_create_block(Params) ->
     2 -> 
       [BlockTypeStr, BlockNameStr] = Params,
 
-      case linkblox_api:create_block(get_node(), BlockTypeStr, BlockNameStr, []) of
+      BlockType = list_to_atom(BlockTypeStr),
+      BlockName = list_to_atom(BlockNameStr),
+      case linkblox_api:create_block(get_node(), BlockType, BlockName, []) of
         ok ->
           io:format("Block ~s:~s Created~n", [BlockTypeStr, BlockNameStr]);
 
@@ -139,8 +141,9 @@ ui_delete_block(Params) ->
    case length(Params) of  
     0 -> io:format("Error: Enter block name~n");
     1 -> 
-      [BlockNameStr] = Params,    
-      case linkblox_api:delete_block(get_node(), BlockNameStr) of
+      [BlockNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),  
+      case linkblox_api:delete_block(get_node(), BlockName) of
         ok -> 
           io:format("~p Deleted~n", [BlockNameStr]);
             
@@ -214,7 +217,8 @@ ui_get_values(Params) ->
           lists:map(fun(BlockName) -> io:format("~s~n", [BlockName]) end, BlockNames);
 
         _ ->
-          case linkblox_api:get_block(get_node(), BlockNameStr) of
+          BlockName = list_to_atom(BlockNameStr),
+          case linkblox_api:get_block(get_node(), BlockName) of
             {ok, BlockValues} -> 
               io:format("~n~p~n", [BlockValues]);
             {error, block_not_found} -> 
@@ -226,8 +230,11 @@ ui_get_values(Params) ->
 
     2 -> 
       [BlockNameStr, ValueNameStr] = Params,
-            
-      case linkblox_api:get_value(get_node(), BlockNameStr, ValueNameStr) of
+      BlockName = list_to_atom(BlockNameStr),
+      % TODO: Need to convert value name to Value ID, i.e. account for array indexes
+			%  i.e.  "digit[1]"  -> {digit, 1} 
+      ValueId = list_to_atom(ValueNameStr),
+      case linkblox_api:get_value(get_node(), BlockName, ValueId) of
         {ok, CurrentValue} ->
           io:format("~n~p~n", [CurrentValue]);
           
@@ -283,7 +290,6 @@ ui_add_attrib(_Params) ->
 % Process remove attribute command
 ui_remove_attrib(_Params) ->
   io:format("Not Implemented~n").
-
 
 % Process the load blocks command
 ui_load_blocks(Params) ->

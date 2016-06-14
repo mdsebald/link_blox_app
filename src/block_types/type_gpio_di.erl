@@ -17,7 +17,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "gpio_di". 
+type_name() -> gpio_di. 
 
 description() -> "GPIO digital input". 
 

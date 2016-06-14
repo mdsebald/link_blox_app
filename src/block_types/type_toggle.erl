@@ -17,7 +17,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "toggle".
+type_name() -> toggle.
 
 description() -> "Toggle binary output value on block execution".
 

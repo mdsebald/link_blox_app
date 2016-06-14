@@ -19,7 +19,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "seven_seg_decoder".
+type_name() -> seven_seg_decoder.
 
 version() -> "0.1.0".
 

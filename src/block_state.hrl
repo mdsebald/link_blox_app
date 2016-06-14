@@ -38,6 +38,7 @@
 
 -type value_name() :: atom().
 -type block_name() :: atom().
+-type type_name() :: atom().
 
 -type attr_value() :: config_value() | input_value() | output_value().
 -type attr_value_array() ::  config_value_array() | input_value_array() | output_value_array().

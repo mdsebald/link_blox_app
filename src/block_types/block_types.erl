@@ -44,10 +44,10 @@ block_type_modules() ->
 %%
 %%  Get the block module for the given block type string
 %% 
--spec block_type_to_module(string()) -> module() | not_found | error.
+-spec block_type_to_module(BlockType :: type_name()) -> module() | not_found | error.
 
-block_type_to_module(BlockTypeStr) ->
-  Modules = lists:filter(fun(Module)-> Module:type_name() == BlockTypeStr end, 
+block_type_to_module(BlockType) ->
+  Modules = lists:filter(fun(Module)-> Module:type_name() == BlockType end, 
                  block_type_modules()),
   case length(Modules) of
     0 -> not_found;

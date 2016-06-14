@@ -17,7 +17,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "mcp9808_temp".
+type_name() -> mcp9808_temp.
 
 version() -> "0.1.0".
 

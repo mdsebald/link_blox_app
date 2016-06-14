@@ -17,7 +17,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "ht16k33_4digit_led".
+type_name() -> ht16k33_4digit_led.
 
 version() -> "0.1.0".
 

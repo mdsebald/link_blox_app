@@ -22,7 +22,7 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-type_name() -> "exec_count". 
+type_name() -> exec_count. 
 
 description() -> "Incr/Decr counter output value on block execution".
 
