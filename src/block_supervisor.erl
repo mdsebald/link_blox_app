@@ -1,6 +1,6 @@
 %%%
 %%% @doc 
-%%% Supervisor for LinkBlox app.
+%%% Block Supervisor
 %%% @end
 %%%
 
@@ -55,11 +55,6 @@ block_names([BlockProcess | RemainingProcesses], BlockNames) ->
     undefined  -> NewBlockNames = BlockNames;
     _Pid       ->
       case element(1, BlockProcess) of
-        linkblox_api ->  
-          % TODO: start the linkblox_api with another supervisor
-          % In the meantime, just ignore it, it is not a block,  
-          NewBlockNames = BlockNames;
-
         BlockName ->
           NewBlockNames = [BlockName | BlockNames]
       end
@@ -96,13 +91,6 @@ block_processes() ->
 
 init(BlockValuesFile) ->
 
-  % Start the UI loop, 
-  spawn(ui_main, ui_init, []),
-  
-  % Spec for API Server
-  ApiServerSpec = #{id => linkblox_api, restart => transient,
-             start => {linkblox_api, start, []}},
-
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
       error_logger:info_msg("Loading block Values config file: ~p~n", [BlockValuesFile]),
@@ -121,7 +109,7 @@ init(BlockValuesFile) ->
                    
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
             
-			{ok, {SupFlags, [ApiServerSpec | BlockSpecs]}}
+			{ok, {SupFlags, BlockSpecs}}
 		end.
 		
 

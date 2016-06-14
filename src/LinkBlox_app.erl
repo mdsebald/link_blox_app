@@ -31,13 +31,13 @@
 	| {error, Reason :: term()}.
 
 start(normal, BlockValuesFile) ->
-    case block_supervisor:start_link(BlockValuesFile) of
+    case linkblox_supervisor:start_link(BlockValuesFile) of
 			{ok, Pid} ->
-				error_logger:info_msg("block_supervisor started~n"),
+				error_logger:info_msg("LinkBlox supervisor started~n"),
 				{ok, Pid};
 				
 		Error ->
-			error_logger:error_msg("Error: ~p starting block_supervisor.~n", [Error]),
+			error_logger:error_msg("Error: ~p starting LinkBlox supervisor.~n", [Error]),
 			Error
     end.
 
