@@ -20,13 +20,9 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([type_name/0, description/0, version/0]). 
+-export([description/0, version/0]). 
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
-
-% INSTRUCTIONS: atom naming the block type. 
-%   Usually the module name minus "type_"
-type_name() -> template.
 
 % INSTRUCTIONS: Major.Minor.Patch, 
 %   Major version change implies a breaking change, 

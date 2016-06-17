@@ -15,11 +15,9 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([type_name/0, description/0, version/0]). 
+-export([description/0, version/0]). 
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
-
-type_name() -> int_to_7seg.
 
 version() -> "0.1.0".
 

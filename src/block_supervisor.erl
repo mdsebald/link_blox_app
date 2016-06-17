@@ -90,6 +90,7 @@ block_processes() ->
 	Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
+  error_logger:info_msg("Starting LinkBlox Block supervisor~n"),
 
 	case block_config:read_config(BlockValuesFile) of
 		{ok, BlockValuesList} ->
@@ -99,7 +100,7 @@ init(BlockValuesFile) ->
 			BlockSpecs = create_block_specs(BlockValuesList),
       
 			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-			{ok, {SupFlags, [ApiServerSpec | BlockSpecs]}};
+			{ok, {SupFlags, BlockSpecs}};
       
 		{error, Reason} ->
 			error_logger:error_msg("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),

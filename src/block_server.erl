@@ -33,9 +33,9 @@ delete(BlockName)->
   gen_server:call(BlockName, stop).
 
 
-%% Get the value of 'ValueName' from this block
-get_value(BlockName, ValueName)->
-  gen_server:call(BlockName, {get_value, ValueName}).
+%% Get the value of 'Value ID' from this block
+get_value(BlockName, ValueId)->
+  gen_server:call(BlockName, {get_value, ValueId}).
 
 
 %% Set the ValueName = Value in this block
@@ -164,8 +164,8 @@ handle_call(get_block, _From, BlockValues) ->
 %% =====================================================================
 %% Get a block value
 %% =====================================================================    
-handle_call({get_value, ValueName}, _From, BlockValues) ->
-  Result = attrib_utils:get_value_any(BlockValues, ValueName),
+handle_call({get_value, ValueId}, _From, BlockValues) ->
+  Result = attrib_utils:get_value_any(BlockValues, ValueId),
   {reply, Result, BlockValues};
 
 

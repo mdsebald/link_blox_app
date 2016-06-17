@@ -24,6 +24,8 @@
 					get_block/2,
 					get_value/3,
 					get_block_names/1,
+					get_types_info/1,
+					get_type_info/2,
 					execute_block/2,
          	is_block_name/2, 
 				 	is_block_type/2
@@ -86,6 +88,21 @@ get_value(Node, BlockName, ValueId) ->
 
 get_block_names(Node) ->
 	gen_server:call({linkblox_api, Node}, get_block_names).
+
+
+%% Get list of block types information
+-spec get_types_info(Node :: node()) -> term().
+
+get_types_info(Node) ->
+	gen_server:call({linkblox_api, Node}, get_types_info).
+
+
+%% Get the block type information for the given block
+-spec get_type_info(Node :: node(),
+                    BlockName :: block_name()) -> term().
+
+get_type_info(Node, BlockName) ->
+	gen_server:call({linkblox_api, Node}, {get_type_info, BlockName}).
 
 
 %% Execute the block
@@ -227,10 +244,14 @@ handle_call({get_value, BlockName, ValueId}, _From, State) ->
 	case valid_block_name(BlockName) of
 		true ->
       case block_server:get_value(BlockName, ValueId) of
+				{ok, CurrentValue} ->
+					Result = {ok, CurrentValue};
+
       	{error, not_found} ->
 					Result = {error, value_not_found};
-				{ok, CurrentValue} ->
-					Result = {ok, CurrentValue}
+
+				{error, Reason} ->
+					Result = {error, Reason}
 			end;
 		_ ->
 			Result = {error, block_not_found}
@@ -242,9 +263,31 @@ handle_call({get_value, BlockName, ValueId}, _From, State) ->
 %% Get a list of all block names
 %% =====================================================================    
 handle_call(get_block_names, _From, State) ->
-	BlockNames = block_supervisor:block_names(),
-  % Convert block name atoms to strings
-	Result = lists:map(fun(BlockName) -> atom_to_list(BlockName) end, BlockNames),
+	Result = block_supervisor:block_names(),
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Get a list of all block types information 
+%% =====================================================================    
+handle_call(get_types_info, _From, State) ->
+	Result = block_types:block_types_info(),
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Get the type info for the given block name 
+%% =====================================================================    
+handle_call({get_type_info, BlockName}, _From, State) ->
+	% Get the block_module (i.e. block code), for the given block
+	% Block type info is in there.
+	case block_server:get_value(BlockName, block_module) of
+		{ok, BlockModule} ->
+			Result = block_types:block_type_info(BlockModule);
+			
+		{error, Reason} ->
+			Result = {error, Reason}	
+	end,
   {reply, Result, State};
 
 
@@ -400,8 +443,11 @@ linkblox_api_test_() ->
 
 start_linkblox_api() ->
 	% Need to start LinkBlox Supervisor
-	% That will start the API Server, (This module) and the block supervisor.
-	start().
+	% That will start the API Server, (i.e. this module) and the block supervisor
+	% which is needed for some calls
+	% TODO: May not be able to get this to work.  
+	%   node() returns 'nonode@nohost'. May not be valid  
+	linkblox_supervisor:start_link("NoFile"). 
  
 stop_linkblox_api(_) ->
 	stop(node()).

@@ -73,7 +73,7 @@ block_types_info() ->
 -spec block_type_info(module()) -> {string(), string(), string()}.
     
 block_type_info(Module) ->
-  {Module:type_name(), Module:version(), Module:description()}.
+  {block_type_name(Module), Module:version(), Module:description()}.
 
 %%
 %% Get a list of block type names for all of the block modules in this app
@@ -85,10 +85,13 @@ block_type_names() ->
                block_type_modules()).
  
 %%
-%% Get the block type string for this block modules
+%% Get the block type name for this block module
 %%
 -spec block_type_name(module()) -> string().
     
 block_type_name(Module) ->
-  Module:type_name().
+  ModuleStr = atom_to_list(Module),
+  % Module always starts with "type_"  
+  % Removing that leaves the block type name 
+  string:substr(ModuleStr, 6).  
     

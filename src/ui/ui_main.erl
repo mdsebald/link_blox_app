@@ -60,34 +60,40 @@ ui_loop() ->
     [Cmd | Params] = CmdAndParams,
     CmdLcase = string:to_lower(Cmd),
         
-    case CmdLcase of
-      "create"    -> ui_create_block(Params);
-      "execute"   -> ui_execute_block(Params);
-      "delete"    -> ui_delete_block(Params);
-      "disable"   -> ui_disable_block(Params);
-      "enable"    -> ui_enable_block(Params);
-      "freeze"    -> ui_freeze_block(Params);
-      "thaw"      -> ui_thaw_block(Params);
-      "get"       -> ui_get_values(Params);
-      "set"       -> ui_set_value(Params);
-      "link"      -> ui_link_blocks(Params);
-      "add"       -> ui_add_attrib(Params);
-      "remove"    -> ui_remove_attrib(Params);
-      "status"    -> ui_status(Params);
-      "types"     -> ui_block_types(Params);
-      "load"      -> ui_load_blocks(Params);
-      "save"      -> ui_save_blocks(Params);
-      "node"      -> ui_node(Params);
-      "nodes"     -> ui_nodes(Params);
-      "connect"   -> ui_connect(Params);
-      "help"      -> ui_help(Params);
-      "exit"      -> ui_exit(Params);
+    if CmdLcase /= "exit" ->
+      case CmdLcase of
+        "create"    -> ui_create_block(Params);
+        "execute"   -> ui_execute_block(Params);
+        "delete"    -> ui_delete_block(Params);
+        "disable"   -> ui_disable_block(Params);
+        "enable"    -> ui_enable_block(Params);
+        "freeze"    -> ui_freeze_block(Params);
+        "thaw"      -> ui_thaw_block(Params);
+        "get"       -> ui_get_values(Params);
+        "set"       -> ui_set_value(Params);
+        "link"      -> ui_link_blocks(Params);
+        "add"       -> ui_add_attrib(Params);
+        "remove"    -> ui_remove_attrib(Params);
+        "status"    -> ui_status(Params);
+        "types"     -> ui_block_types(Params);
+        "load"      -> ui_load_blocks(Params);
+        "save"      -> ui_save_blocks(Params);
+        "node"      -> ui_node(Params);
+        "nodes"     -> ui_nodes(Params);
+        "connect"   -> ui_connect(Params);
+        "help"      -> ui_help(Params);
             
-      _Unknown    -> io:format("Error: Unknown command: ~p~n", [Raw3])
+        _Unknown    -> io:format("Error: Unknown command: ~p~n", [Raw3])
+      end,
+      ui_loop();  % processed command keep looping
+
+    true -> % user entered "exit", stop looping
+      ok
     end;
-  true -> ok
-  end,
-  ui_loop().
+  true -> % user just hit "Enter", keep looping 
+    ui_loop()
+  end.
+  
 
 
 
@@ -214,9 +220,21 @@ ui_get_values(Params) ->
         "names" ->  % Just get the list of block names
           BlockNames = linkblox_api:get_block_names(get_node()),
           io:format("~n"),
-          lists:map(fun(BlockName) -> io:format("~s~n", [BlockName]) end, BlockNames);
+          lists:map(fun(BlockName) -> io:format("  ~p~n", [BlockName]) end, BlockNames),
+          io:format("~n");
 
-        _ ->
+        "types" ->  % Just get the list of block types information
+          TypesInfo = linkblox_api:get_types_info(get_node()),
+          io:format("~n"),
+          io:format("Block Type Name   Version   Description~n"),
+          io:format("---------------- --------- ----------------------------------------~n"),
+          lists:map(fun(TypeInfo) ->
+                      {TypeName, Version, Description} = TypeInfo, 
+                      io:format("~s, ~s, ~s~n", [TypeName, Version, Description]) end, 
+                      TypesInfo),
+          io:format("~n");
+
+       _ ->
           BlockName = list_to_atom(BlockNameStr),
           case linkblox_api:get_block(get_node(), BlockName) of
             {ok, BlockValues} -> 
@@ -229,24 +247,32 @@ ui_get_values(Params) ->
         end;
 
     2 -> 
-      [BlockNameStr, ValueNameStr] = Params,
+      [BlockNameStr, ValueIdStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      % TODO: Need to convert value name to Value ID, i.e. account for array indexes
-			%  i.e.  "digit[1]"  -> {digit, 1} 
-      ValueId = list_to_atom(ValueNameStr),
-      case linkblox_api:get_value(get_node(), BlockName, ValueId) of
-        {ok, CurrentValue} ->
-          io:format("~n~p~n", [CurrentValue]);
+      case str_to_value_id(ValueIdStr) of
+        {ok, ValueId} ->
+          case linkblox_api:get_value(get_node(), BlockName, ValueId) of
+            {ok, CurrentValue} ->
+              io:format("~n   ~p~n", [CurrentValue]);
           
-        {error, block_not_found} ->
-          io:format("Error: Block ~s does not exist~n", [BlockNameStr]);
+            {error, block_not_found} ->
+              io:format("Error: Block ~s does not exist~n", [BlockNameStr]);
 
-        {error, value_not_found} ->
-          io:format("Error: ~s is not a value of block ~s~n", 
-                     [ValueNameStr, BlockNameStr]);
-        Unknown ->
-          io:format("Error: Unkown result from linkblox_api:get_value(): ~p~n", Unknown) 
+            {error, value_not_found} ->
+              io:format("Error: ~s is not a value of block: ~s~n", 
+                         [ValueIdStr, BlockNameStr]);
+            {error, Reason} ->
+              io:format("Error: ~p retrieving value: ~s:~s~n", 
+                           [Reason, BlockNameStr, ValueIdStr]);
+
+            Unknown ->
+              io:format("Error: Unkown result from linkblox_api:get_value(): ~p~n", 
+                         [Unknown]) 
+          end;
+        {error, invalid} ->
+          io:format("Error: Invalid Value Id string: ~s~n", [ValueIdStr])
       end;
+
     _ -> io:format("Error: Too many parameters~n")
   end.    
  
@@ -393,38 +419,44 @@ ui_node(_Params) ->
 
 % Execute Erlang BIF nodes()
 ui_nodes(_Params) ->  
-  io:format( "Nodes: ~p~n", [nodes()]).
+  io:format( "Nodes: ~p~n", [[node() | nodes()]]).
 
 % Connect to another node
 ui_connect(Params) ->
-    case length(Params) of
-    1 ->
-      [NodeStr] = Params,
-      Node= list_to_atom(NodeStr),
-      case net_kernel:connect_node(Node) of
-        true -> 
-          set_node(Node),
-          io:format("Connected to node: ~p~n", [Node]);
-        false ->
-          io:format("Unable to connect to node: ~p~n", [Node])
-      end;
+  case length(Params) of
     0 ->
-      io:format("Error: No node name specified~n"),
-      error;
+      io:format("Error: Enter Node Name or local~n");
+
+    1 ->
+      case Params of
+        ["local"] ->  % Just connect to the local node
+          io:format("Connecting to local node~n"),
+          connect_to_node(node());
+
+        [NodeStr] ->   
+          Node = list_to_atom(NodeStr),
+          connect_to_node(Node)
+      end;
     _ ->
       io:format("Error: Too many parameters~n"),
       error
   end.
 
+% Attempt to connect to the given node
+connect_to_node(Node) ->
+  case net_kernel:connect_node(Node) of
+    true -> 
+      set_node(Node),
+      io:format("Connected to node: ~p~n", [Node]);
+
+    _ ->
+      io:format("Unable to connect to node: ~p~n", [Node])
+  end.
+
+
 % Process the help command
 ui_help(_Params) ->
   io:format("Not Implemented~n").
-
-
-% Process exit command
-ui_exit(_Params) ->
-  io:format("Not Implemented~n").
-
 
 %%
 %% Display status off each running block
@@ -439,17 +471,16 @@ block_status([]) ->
   io:format("~n"), 
   ok;
 
-block_status([BlockNameStr | RemainingBlockNames]) ->
-  % TODO: Get via message to linkblox_api
-  % BlockModule = linkblox_api:get_value(get_node(),BlockName, block_module),
-  %BlockType = BlockModule:type_name(),
-  BlockTypeStr = "block type name",
+block_status([BlockName | RemainingBlockNames]) ->
+  {BlockTypeStr, _Version, _Description} = 
+        linkblox_api:get_type_info(get_node(), BlockName),
+
   % TODO: Create get_values() API call, get multiple values in one call 
-  {ok, Value} = linkblox_api:get_value(get_node(),BlockNameStr, "value"),
-  {ok, Status} = linkblox_api:get_value(get_node(),BlockNameStr, "status"),
-  {ok, ExecMethod} = linkblox_api:get_value(get_node(),BlockNameStr, "exec_method"),
+  {ok, Value} = linkblox_api:get_value(get_node(), BlockName, value),
+  {ok, Status} = linkblox_api:get_value(get_node(), BlockName, status),
+  {ok, ExecMethod} = linkblox_api:get_value(get_node(), BlockName, exec_method),
   
-  case linkblox_api:get_value(get_node(), BlockNameStr, "last_exec") of 
+  case linkblox_api:get_value(get_node(), BlockName, last_exec) of 
     {ok, not_active} ->
       LastExecuted = "not_active";
     {ok, {Hour, Minute, Second, Micro}} ->
@@ -461,7 +492,7 @@ block_status([BlockNameStr | RemainingBlockNames]) ->
     
   io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-15s~n", 
             [string:left(BlockTypeStr, 16), 
-             string:left(BlockNameStr, 16), 
+             string:left(atom_to_list(BlockName), 16), 
              Value, Status, ExecMethod, LastExecuted]),
   block_status(RemainingBlockNames).
 
@@ -520,20 +551,95 @@ ui_block_types(_Params) ->
                        string:left(Description, 60)]) end, 
                       BlockTypes),
   io:format("~n").
-        
-    
-    
-%get_module_attribute(Module,Attribute) ->
-%
-%    case beam_lib:chunks(Module, [attributes]) of
-%
-%        { ok, { _, [ {attributes,Attributes} ] } } ->
-%            case lists:keysearch(Attribute, 1, Attributes) of
-%                { value, {Attribute,[Value]} } -> Value;
-%                false                          -> { error, no_such_attribute }
-%            end;
-%
-%        { error, beam_lib, { file_error, _, enoent} } ->
-%            { error, no_such_module }
-%
-%    end.     
+
+
+%%
+%% Convert a string to a value id. 
+%% Need to handle the case of a value name string and
+%% the case of a value name string plus an array index
+%% Examples:
+%%   "value"  -> value (atom type)
+%%   "digit[1]"  -> {digit, 1} (atom and array index tuple)
+%%
+-spec str_to_value_id(ValueIdStr :: string()) -> {ok, value_id()} | {error, invalid}.
+
+str_to_value_id(ValueIdStr) ->
+  LeftBracket = string:chr(ValueIdStr, $[),
+  if LeftBracket > 0 ->
+    RightBracket = string:rchr(ValueIdStr, $]),
+    if RightBracket > (LeftBracket + 1) ->
+      ArrayIndexStr = string:substr(ValueIdStr, LeftBracket + 1, 
+                                     RightBracket - LeftBracket - 1),
+      case string:to_integer(ArrayIndexStr) of
+        {error, _} -> 
+          {error, invalid};
+
+        {ArrayIndex, Rest} ->
+          if length(Rest) == 0 ->
+            if ArrayIndex > 0 -> 
+              ValueNameStr = string:substr(ValueIdStr, 1, LeftBracket-1),
+              ValueName = list_to_atom(ValueNameStr),
+              {ok, {ValueName, ArrayIndex}};
+            true -> % ArrayIndex =< 0
+              {error, invalid}
+            end;
+          true -> % There are extra characters after the digit(s)
+            {error, invalid}
+          end
+      end;
+
+    true -> % left bracket found, without a corresponding right bracket
+      {error, invalid}
+    end;
+
+  true ->  % No left bracket found, assume a non array value id
+    {ok, list_to_atom(ValueIdStr)}
+  end.
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% ====================================================================
+% Test str_to_value_id()
+% 
+%   Test good non-array value id
+str_to_value_id_valuename_valid_test() ->
+  Result = str_to_value_id("good_value"),
+  ExpectedResult = {ok, good_value},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test good array value id 1
+str_to_value_id_valuename_array_valid1_test() ->
+  Result = str_to_value_id("good_array[10]"),
+  ExpectedResult = {ok, {good_array, 10}},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test good array value id 2
+str_to_value_id_valuename_array_valid2_test() ->
+  Result = str_to_value_id("good_array[010]"),
+  ExpectedResult = {ok, {good_array, 10}},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test bad array value id 2
+str_to_value_id_valuename_array_invalid2_test() ->
+  Result = str_to_value_id("bad_array[0]"),
+  ExpectedResult = {error, invalid},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test bad array value id 3
+str_to_value_id_valuename_array_invalid3_test() ->
+  Result = str_to_value_id("bad_array[-123]"),
+  ExpectedResult = {error, invalid},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test bad array value id 4
+str_to_value_id_valuename_array_invalid4_test() ->
+  Result = str_to_value_id("bad_array[12.34]"),
+  ExpectedResult = {error, invalid},
+  ?assertEqual(ExpectedResult, Result).
+
+-endif.
