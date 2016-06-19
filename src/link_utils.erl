@@ -12,9 +12,15 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([link_blocks/2, unlink_blocks/2, unlink/2]).
--export([add_ref/3, delete_ref/3]).
--export([update_linked_input_values/3]). %, TODO: delete? set_input_link/3]).
+-export([
+          link_blocks/2,
+          evaluate_link/5, 
+          unlink_blocks/2, 
+          unlink/2,
+          add_ref/3, 
+          delete_ref/3,
+          update_linked_input_values/3
+]). %, TODO: delete? set_input_link/3]).
 
 
 %%
@@ -337,32 +343,3 @@ update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
       end
     end,
     ArrayValues).
-
-
--ifdef(INCLUDE_OBSOLETE).
-%%
-%% Update the input Link for the input value 'ValueName'
-%% TODO: Do we need this? not used right now
-%%
--spec set_input_link(BlockValues :: block_state(),
-                     ValueName :: value_name(),
-                     NewLink :: input_link()) -> block_state().
-                     
-set_input_link(BlockValues, ValueName, NewLink) ->
-	
-  {Config, Inputs, Outputs, Private} = BlockValues,
-
-  case attrib_utils:get_attribute(Inputs, ValueName) of
-    {error, not_found} ->
-      BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p set_input_link() Error.  ~p not found in Input values.~n", 
-                             [BlockName, ValueName]),
-      % Input value not found, just return the BlockValues unchanged
-      BlockValues;
-      
-    {ok, {ValueName, {Value, _Link}}} ->
-      NewInput = {ValueName, {Value, NewLink}},
-      NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, NewInput),
-      {Config, NewInputs, Outputs, Private}
-  end.
- -endif.

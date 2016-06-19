@@ -24,6 +24,9 @@ ui_init() ->
   ets:new(node_store, [set, named_table]),
   % default node to local node
   set_node(node()),
+
+  io:format("   W E L C O M E  T O  L i n k B l o x !~n~n"),
+
   % enter UI loop, and never return
   ui_loop().
 
@@ -94,8 +97,6 @@ ui_loop() ->
     ui_loop()
   end.
   
-
-
 
 % Process block create command
 ui_create_block(Params) ->
@@ -217,7 +218,7 @@ ui_get_values(Params) ->
       [BlockNameStr] = Params,
 
       case BlockNameStr of
-        "names" ->  % Just get the list of block names
+        "blocks" ->  % Just get the list of block names
           BlockNames = linkblox_api:get_block_names(get_node()),
           io:format("~n"),
           lists:map(fun(BlockName) -> io:format("  ~p~n", [BlockName]) end, BlockNames),

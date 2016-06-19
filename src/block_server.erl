@@ -16,11 +16,25 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([create/1, delete/1]). 
--export([get_value/2, set_value/3, override/2, get_block/1]).
--export([execute/1, exec_out_execute/1]).
--export([update/4, init_configure/1, configure/1, reconfigure/2]).
--export([link/3, unlink/3]).
+-export([
+          create/1, 
+          delete/1, 
+          get_value/2, 
+          set_value/3,
+          set_link/3,
+          override/2, 
+          get_block/1,
+          execute/1, 
+          exec_out_execute/1,
+          update/4, 
+          init_configure/1, 
+          configure/1, 
+          reconfigure/2,
+          link/3, 
+          unlink/3
+]).
+
+
 
 %% Create a function block with the given Name, Functionality, and Values
 create(BlockValues)->
@@ -43,6 +57,15 @@ set_value(BlockName, ValueName, Value)->
   gen_server:call(BlockName, {set_value, ValueName, Value}).
 
 
+%% Link the Input value of this block, to the given Node/Block/Value (i.e. Link) 
+-spec set_link(BlockName :: block_name(),
+               InputValueId :: value_id(),
+               Link :: input_link()) -> term().
+
+set_link(BlockName, InputValueId, Link) ->
+  gen_server:call(BlockName, {set_link, InputValueId, Link}).
+
+
 %% Override the Value of this block with the given Value
 override(BlockName, Value)->
   gen_server:call(BlockName, {override, Value}).
@@ -53,10 +76,6 @@ get_block(BlockName) ->
   gen_server:call(BlockName, get_block).
 
 
-%% Link the value 'ValueName' of this block to 'ToBlockName' 
-link(BlockName, ValueName, ToBlockName) ->
-  gen_server:call(BlockName, {link, ValueName, ToBlockName}).
-  
 %% Execute the block 
 execute(BlockName) ->
   gen_server:cast(BlockName, execute).
@@ -95,6 +114,12 @@ reconfigure(BlockName, BlockValues)->
   gen_server:cast(BlockName, {reconfigure, BlockValues}).
 
 
+%% Link the value 'ValueName' of this block to 'ToBlockName' 
+link(BlockName, ValueName, ToBlockName) ->
+  gen_server:call(BlockName, {link, ValueName, ToBlockName}).
+
+
+  
 %% Unlink the value 'ValueName' of this block from the calling block 
 unlink(BlockName, ValueName, ToBlockName) ->
   gen_server:cast(BlockName, {unlink, ValueName, ToBlockName}).
@@ -175,8 +200,33 @@ handle_call({get_value, ValueId}, _From, BlockValues) ->
 handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
   NewBlockValues = BlockValues, %attrib_utils:set_value_any(BlockValues, ValueName, Value),
   {reply, {ValueName, Value}, NewBlockValues};
+
+
+%% =====================================================================
+%% Set the link of the given input value to the given link value
+%% ===================================================================== 
+handle_call({set_link, InputValueId, Link}, _From, BlockValues) ->
+  {Config, Inputs, Outputs, Private} = BlockValues,
+
+  case attrib_utils:set_link(Inputs, InputValueId, Link) of
+    {ok, Inputs1} ->
+      BlockName = config_utils:name(Config),
+      % Attempt to get the current value from the link
+      % set_link() always defaults the input value to 'empty'
+      % so don't need to call get_value() to get the current input value
+      Inputs2 = link_utils:evaluate_link(BlockName, InputValueId, empty,
+                                         Link, Inputs1),
+      NewBlockValues = {Config, Inputs2, Outputs, Private},
+      Result = ok;
+
+    {error, Reason} ->
+      Result = {error, Reason},
+      NewBlockValues = {Config, Inputs, Outputs, Private}
+  end,
   
-  
+  {reply, Result, NewBlockValues};
+
+
 %% =====================================================================
 %% Link the value 'ValueName' of this block to the block 'ToBlockName'
 %% =====================================================================
