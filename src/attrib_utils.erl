@@ -190,7 +190,6 @@ set_value(Attributes, ValueId, NewValue)->
                Link :: input_link()) -> {ok, list(input_attr())} | attrib_errors().
               
 set_link(InputAttributes, InputValueId, Link)->
-
   case get_attribute(InputAttributes, InputValueId) of
     {error, not_found} -> 
       {error, not_found};

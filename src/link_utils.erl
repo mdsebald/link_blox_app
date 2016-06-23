@@ -85,13 +85,15 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
     {LinkBlockName, LinkValueId} ->
       case whereis(LinkBlockName) of
         undefined  ->
+          % Log warning, user may have misspelled the Linked block name
+          error_logger:warning_msg("Linked Block: ~p Does not exist.~n", 
+                        [LinkBlockName]),
+
           % If linked block is not running, input value should be empty
-          if Value /= empty ->
-            {ok, UpdatedInputs} = 
-                      attrib_utils:set_value(Inputs, ValueId, empty),   
-            UpdatedInputs;
-          true ->
-            Inputs
+          case attrib_utils:set_value(Inputs, ValueId, empty) of
+            {ok, UpdatedInputs} -> UpdatedInputs;
+
+            _ -> Inputs % Set value failed return Inputs, unchanged
           end;
 
         _Pid  ->
@@ -104,8 +106,8 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
             {ok, UpdatedInputs} = 
                       attrib_utils:set_value(Inputs, ValueId, UpdatedValue),
             
-            error_logger:info_msg("Link Output <~p:~p> To Input <~p:~p>~n", 
-                        [LinkBlockName, LinkValueId, BlockName, ValueId]),
+            error_logger:info_msg("Block Input: ~p:~p Linked to Block Output: ~p:~p~n", 
+                        [BlockName, ValueId, LinkBlockName, LinkValueId]),
                         
             UpdatedInputs;
           true ->

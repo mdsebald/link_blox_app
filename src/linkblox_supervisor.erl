@@ -47,7 +47,7 @@ init(BlockValuesFile) ->
   
   % Start the UI loop,
   % TODO: Is there a better way to do this?  Should this be controled by a config value?
-  spawn(ui_main, ui_init, []),
+  spawn(ui_main, init, []),
 
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 

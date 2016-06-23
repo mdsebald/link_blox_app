@@ -26,7 +26,7 @@
 					get_block_names/1,
 					get_types_info/1,
 					get_type_info/2,
-					link_blocks/4,
+					set_link/4,
 					execute_block/2,
          	is_block_name/2, 
 				 	is_block_type/2
@@ -107,13 +107,13 @@ get_type_info(Node, BlockName) ->
 
 
 %% Link block input to a block output
--spec link_blocks(Node :: node(),
+-spec set_link(Node :: node(),
                   BlockName :: block_name(),
 									InputValueId :: value_id(),
 									Link :: input_link()) -> term().
 
-link_blocks(Node, BlockName, InputValueId, Link) ->
-	gen_server:call({linkblox_api, Node}, {link_blocks, BlockName, InputValueId, Link}).
+set_link(Node, BlockName, InputValueId, Link) ->
+	gen_server:call({linkblox_api, Node}, {set_link, BlockName, InputValueId, Link}).
 
 
 %% Execute the block
@@ -305,10 +305,10 @@ handle_call({get_type_info, BlockName}, _From, State) ->
 %% =====================================================================
 %% Link block input to a block output 
 %% =====================================================================    
-handle_call({link_blocks, BlockName, InputValueId, Link}, _From, State) ->
+handle_call({set_link, BlockName, InputValueId, Link}, _From, State) ->
 	case valid_block_name(BlockName) of
 		true ->
-			Result = block_server:link_blocks(BlockName, block_module);
+			Result = block_server:set_link(BlockName, InputValueId, Link);
 
 		_ ->
 			Result = {error, block_not_found}
