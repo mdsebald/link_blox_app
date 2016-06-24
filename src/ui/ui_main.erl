@@ -75,8 +75,6 @@ loop() ->
         "get"       -> ui_get_values(Params);
         "set"       -> ui_set_value(Params);
         "link"      -> ui_link_blocks(Params);
-        "add"       -> ui_add_attrib(Params);
-        "remove"    -> ui_remove_attrib(Params);
         "status"    -> ui_status(Params);
         "types"     -> ui_block_types(Params);
         "load"      -> ui_load_blocks(Params);
@@ -285,7 +283,7 @@ ui_set_value(Params) ->
     1 -> io:format("Error: Enter block-name value-name value~n");
     2 -> io:format("Error: Enter block-name value-name value~n");
     3 -> 
-      [BlockNameStr, ValueNameStr, ValueStr] = Params,
+      [BlockNameStr, ValueIdStr, ValueStr] = Params,
 
       case linkblox_api:is_block_name(get_node(), BlockNameStr) of
         true -> 
@@ -308,107 +306,74 @@ ui_set_value(Params) ->
 
 % Process link blocks command
 ui_link_blocks(Params) ->
-   case length(Params) of  
-    0 -> io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
-    1 -> io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
-    2 -> io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
-    3 ->
-      [InputBlockNameStr, InputValueIdStr, OutputValueIdStr] = Params,
-      InputBlockName = list_to_atom(InputBlockNameStr),
-      case str_to_value_id(InputValueIdStr) of
-        {ok, InputValueId} ->
-          case str_to_value_id(OutputValueIdStr) of
-            {ok, OutputValueId} ->
-              Link = {OutputValueId},
+  NumParams = length(Params),
+  if (0 =< NumParams) andalso (NumParams < 3) ->
+    io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n")
+  end,
 
-              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
-                {error, Reason} ->
-                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~s~n", 
-                        [Reason, InputBlockNameStr, InputValueIdStr, OutputValueIdStr]);
-                ok ->
-                  io:format("Block Input: ~s:~s Linked to Block Output: ~s~n", 
-                            [InputBlockNameStr, InputValueIdStr, OutputValueIdStr])
-              end;
-            {error, Reason} ->
-              io:format("Error: ~p Converting ~s to Output Value ID~n", 
-                                                  [Reason, OutputValueIdStr])
-          end;
-        {error, Reason} ->
-          io:format("Error: ~p Converting ~s to Input Value ID~n", 
+  if (3 =< NumParams) andalso (NumParams < 6) ->
+    % 1st parameter is block name
+    InputBlockNameStr = lists:nth(1, Params),
+    InputBlockName = list_to_atom(InputBlockNameStr),
+
+    % 2nd parameter is the input value ID
+    InputValueIdStr = lists:nth(2, Params),
+    case str_to_value_id(InputValueIdStr) of
+      {ok, InputValueId} ->
+
+        % The remaining params form the Link
+        LinkParams = lists:nthtail(2, Params),
+        case parse_link(LinkParams) of
+          {ok, Link} ->
+            case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
+              {error, Reason} ->
+                io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~p~n", 
+                        [Reason, InputBlockNameStr, InputValueIdStr, Link]);
+              ok ->
+                io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
+                            [InputBlockNameStr, InputValueIdStr, Link])
+            end;
+          {error, Reason} ->
+            io:format("Error: ~p Converting ~p to a Link~n", 
+                           [Reason, LinkParams])
+        end;
+      {error, Reason} ->
+        io:format("Error: ~p Converting ~s to Input Value ID~n", 
                                                   [Reason, InputValueIdStr])
       end;
 
-    4 ->
-      [InputBlockNameStr, InputValueIdStr, 
-       OutputBlockNameStr, OutputValueIdStr] = Params,
-      InputBlockName = list_to_atom(InputBlockNameStr),
-      case str_to_value_id(InputValueIdStr) of
-        {ok, InputValueId} ->
-          OutputBlockName = list_to_atom(OutputBlockNameStr),
-          case str_to_value_id(OutputValueIdStr) of
-            {ok, OutputValueId} ->
-              Link = {OutputBlockName, OutputValueId},
+  true -> 
+    io:format("Error: Too many parameters~n")
+  end.
 
-              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
-                {error, Reason} ->
-                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~s:~s~n", 
-                        [Reason, InputBlockNameStr, InputValueIdStr, 
-                         OutputBlockNameStr, OutputValueIdStr]);
-                ok ->
-                  io:format("Block Input: ~s:~s Linked to Block Output: ~s:~s~n", 
-                            [InputBlockNameStr, InputValueIdStr, 
-                             OutputBlockNameStr, OutputValueIdStr])
-              end;
-            {error, Reason} ->
-              io:format("Error: ~p Converting ~s to Output Value ID~n", 
-                                                  [Reason, OutputValueIdStr])
-          end;
-        {error, Reason} ->
-          io:format("Error: ~p Converting ~s to Input Value ID~n", 
-                                                  [Reason, InputValueIdStr])
-      end;
 
-    5 ->
-      [InputBlockNameStr, InputValueIdStr, 
-       NodeNameStr, OutputBlockNameStr, OutputValueIdStr] = Params,
-      InputBlockName = list_to_atom(InputBlockNameStr),
-      case str_to_value_id(InputValueIdStr) of
-        {ok, InputValueId} ->
+% Parse the params into a Link tuple
+parse_link(LinkParams) ->
+
+  % Output Value ID is always the last parameter
+  % So work backward to construct the link
+  [OutputValueIdStr | OutputBlockNameAndNodeNameList] = lists:reverse(LinkParams),
+  case str_to_value_id(OutputValueIdStr) of
+    {ok, OutputValueId} ->
+      if 0 < length(OutputBlockNameAndNodeNameList) ->
+        [OutputBlockNameStr | NodeNameList] = OutputBlockNameAndNodeNameList,
+        OutputBlockName = list_to_atom(OutputBlockNameStr),
+        if 0 < length(NodeNameList) ->
+          [NodeNameStr] = NodeNameList,
           NodeName = list_to_atom(NodeNameStr),
-          OutputBlockName = list_to_atom(OutputBlockNameStr),
-          case str_to_value_id(OutputValueIdStr) of
-            {ok, OutputValueId} ->
-              Link = {NodeName, OutputBlockName, OutputValueId},
+          
+          {ok, {NodeName, OutputBlockName, OutputValueId}};
 
-              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
-                {error, Reason} ->
-                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~s:~s:~s~n", 
-                        [Reason, InputBlockNameStr, InputValueIdStr, 
-                         NodeNameStr, OutputBlockName, OutputValueIdStr]);
-                ok ->
-                  io:format("Block Input: ~s:~s Linked to Block Output: ~s:~s:~s~n", 
-                            [InputBlockNameStr, InputValueIdStr, 
-                             NodeNameStr, OutputBlockNameStr, OutputValueIdStr])
-              end;
-            {error, Reason} ->
-              io:format("Error: ~p Converting ~s to Output Value ID~n", 
-                                                  [Reason, OutputValueIdStr])
-          end;
-        {error, Reason} ->
-          io:format("Error: ~p Converting ~s to Input Value ID~n", 
-                                                  [Reason, InputValueIdStr])
+        true ->
+          {ok, {OutputBlockName, OutputValueId}}
+        end;
+
+      true ->
+        {ok, {OutputValueId}}
       end;
+   {error, Reason} -> {error, Reason}
+  end.
 
-    _ -> io:format("Error: Too many parameters~n")
-  end.    
-    
-% Process add attribute command
-ui_add_attrib(_Params) ->
-  io:format("Not Implemented~n").
-    
-% Process remove attribute command
-ui_remove_attrib(_Params) ->
-  io:format("Not Implemented~n").
 
 % Process the load blocks command
 ui_load_blocks(Params) ->

@@ -52,9 +52,9 @@ get_value(BlockName, ValueId)->
   gen_server:call(BlockName, {get_value, ValueId}).
 
 
-%% Set the ValueName = Value in this block
-set_value(BlockName, ValueName, Value)->
-  gen_server:call(BlockName, {set_value, ValueName, Value}).
+%% Set the ValueId= Value in this block
+set_value(BlockName, ValueId, Value)->
+  gen_server:call(BlockName, {set_value, ValueId, Value}).
 
 
 %% Link the Input value of this block, to the given Node/Block/Value (i.e. Link) 
@@ -197,7 +197,7 @@ handle_call({get_value, ValueId}, _From, BlockValues) ->
 %% =====================================================================
 %% Set a block value
 %% ===================================================================== 
-handle_call({set_value, ValueName, Value}, _From, BlockValues) ->
+handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
   NewBlockValues = BlockValues, %attrib_utils:set_value_any(BlockValues, ValueName, Value),
   {reply, {ValueName, Value}, NewBlockValues};
 
