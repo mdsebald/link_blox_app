@@ -26,6 +26,7 @@
 					get_block_names/1,
 					get_types_info/1,
 					get_type_info/2,
+					set_value/4,
 					set_link/4,
 					execute_block/2,
          	is_block_name/2, 
@@ -104,6 +105,16 @@ get_types_info(Node) ->
 
 get_type_info(Node, BlockName) ->
 	gen_server:call({linkblox_api, Node}, {get_type_info, BlockName}).
+
+%% Set a block value
+-spec set_value(Node :: node(),
+                BlockName :: block_name(),
+								ValueId :: value_id(),
+								Value :: value()) -> ok | {error, atom()}.
+
+set_value(Node, BlockName, ValueId, Value) ->
+	gen_server:call({linkblox_api, Node}, {set_value, BlockName, ValueId, Value}).
+
 
 
 %% Link block input to a block output
@@ -300,6 +311,20 @@ handle_call({get_type_info, BlockName}, _From, State) ->
 			Result = {error, Reason}	
 	end,
   {reply, Result, State};
+
+
+%% =====================================================================
+%% Set a block value 
+%% =====================================================================    
+handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
+	case valid_block_name(BlockName) of
+		true ->
+			Result = block_server:set_value(BlockName, ValueId, Value);
+
+		_ ->
+			Result = {error, block_not_found}
+	end,
+  {reply, Result, State};	
 
 
 %% =====================================================================

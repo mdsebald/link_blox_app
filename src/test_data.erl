@@ -22,7 +22,7 @@
          output_utils_config_attribs1/0,
          output_utils_input_attribs1/0,
          output_utils_input_attribs2/0,
-         output_utils_output_attribs1/0,
+         output_attribs1/0,
          output_utils_output_attribs2/0,
          output_utils_output_attribs3/0,
          output_utils_output_attribs4/0
@@ -68,16 +68,13 @@ attrib_utils_config_attribs3() ->
   ].
   
 attrib_utils_input_attribs1() ->
-  [ {block_name, {test_config}},
-    {block_module, {type_template}},
-    {version, {"0.0.0"}},
-    {description, {"Unit Testing Data"}},
-    {number_in, {123.45, {}}},
+  [ {number_in, {123.45, {}}},
     {string_in, {"Testing", {}}},
     {bool_array_in, [{true,{}}, {false,{}}]},
     {integer_in, {123}},
     {integer_array_in, [{234,{}}, {456,{}}, {-123,{}}]}
   ].
+
 
 config_utils_config_attribs1() ->
   [ {block_name, {test_config_utils}},
@@ -171,7 +168,8 @@ output_utils_input_attribs2() ->
                         {empty, ?EMPTY_LINK}]},
    attrib_utils:replace_attribute(InputList, integer_array, 
                             ModifiedAttribute).
-output_utils_output_attribs1() ->
+
+output_attribs1() ->
   [
     {exec_out, {false, []}},                         
     {status, {created, []}},     
@@ -182,7 +180,7 @@ output_utils_output_attribs1() ->
   ].
  
   output_utils_output_attribs2() ->
-    OutputList = output_utils_output_attribs1(),
+    OutputList = output_attribs1(),
     ModifiedAttribute = {integer_array_out, 
     [{0, []}, {1,[]}, {2, []}, {not_active, []}, {not_active, []}, {not_active, []}]},
     
@@ -190,7 +188,7 @@ output_utils_output_attribs1() ->
                             ModifiedAttribute).
  
  output_utils_output_attribs3() ->
-    OutputList = output_utils_output_attribs1(),
+    OutputList = output_attribs1(),
     ModifiedAttribute = {integer_array_out, 
     [{6, []}, {7,[]}, {8, []}]},
     

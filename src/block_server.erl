@@ -53,6 +53,10 @@ get_value(BlockName, ValueId)->
 
 
 %% Set the ValueId= Value in this block
+-spec set_value(BlockName :: block_name(),
+                ValueId :: value_id(),
+                Value :: value()) -> ok | {error, atom()}.
+
 set_value(BlockName, ValueId, Value)->
   gen_server:call(BlockName, {set_value, ValueId, Value}).
 
@@ -198,8 +202,37 @@ handle_call({get_value, ValueId}, _From, BlockValues) ->
 %% Set a block value
 %% ===================================================================== 
 handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
-  NewBlockValues = BlockValues, %attrib_utils:set_value_any(BlockValues, ValueName, Value),
-  {reply, {ValueName, Value}, NewBlockValues};
+  {Config, Inputs, Outputs, Private} = BlockValues,
+
+  case attrib_utils:is_attribute_type(Config, ValueId) of
+    true ->
+      % Modifying a config value, need to delete and re-initialize the block
+      block_common:delete(BlockValues),
+      NewConfig = attrib_utils:set_value(Config, ValueId, Value),
+      NewBlockValues = block_common:initialize({NewConfig, Inputs, Outputs}),
+      Result = ok;
+
+    _ -> % Not a Config attribute, try the Inputs
+      case attrib_utils:is_attribute_type(Inputs, ValueId) of
+        true ->
+          NewInputs = attrib_utils:set_value(Inputs, ValueId, Value),
+          NewBlockValues = {Config, NewInputs, Outputs, Private},
+          Result = ok;
+
+        _ ->  % Not an Input attribute, try the Outputs
+          case attrib_utils:is_attribute_type(Outputs, ValueId) of
+            true ->
+              NewOutputs = attrib_utils:set_value(Outputs, ValueId, Value),
+              NewBlockValues = {Config, Inputs, NewOutputs, Private},
+              Result = ok;
+
+            _ -> % Not an Output either, do nothing
+              NewBlockValues = BlockValues,
+              Result = {error, not_found}
+          end
+      end
+  end,
+  {reply, Result, NewBlockValues};
 
 
 %% =====================================================================

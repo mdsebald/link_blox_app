@@ -18,7 +18,9 @@
           get_value_any/2,
           set_value/3, 
           set_values/2,
-          set_link/3, 
+          set_link/3,
+          is_attribute/2,
+          is_attribute_type/2,
           % set_value_any/3,
           update_attribute_list/2, 
           merge_attribute_lists/2,
@@ -26,7 +28,8 @@
           add_attribute/2,
           resize_attribute_array_value/4, 
           resize_attribute_array_value/5,
-          replace_array_value/3
+          replace_array_value/3,
+          str_to_value_id/1
 ]).
 
 
@@ -217,6 +220,46 @@ set_link(InputAttributes, InputValueId, Link)->
           {error, invalid_value}
       end
   end.
+
+
+%%
+%% is ValueID an attribute of this block
+%% Don't check the private attributes list
+%%
+-spec is_attribute(BlockValues :: block_state(),
+                   ValueId :: value_id()) -> boolean().
+
+is_attribute(BlockValues, ValueId) ->
+  {Config, Inputs, Outputs, _Private} = BlockValues,
+  case is_attribute_type(Config, ValueId) of
+    true -> true;
+
+    false ->
+      case is_attribute_type(Inputs, ValueId) of
+        true -> true;
+
+        false ->
+          case is_attribute_type(Outputs, ValueId) of
+            true -> true;
+
+            false -> false
+          end
+      end
+  end.
+
+
+%%
+%% Is ValueID an attribute in this list of attributes
+%% List of attributes may be Config, Inputs, Outputs, or Private
+%%
+-spec is_attribute_type(Attribs :: list(attribute()),
+                        ValueId :: value_id()) -> boolean().
+
+is_attribute_type(Attribs, ValueId) ->
+  case get_value(Attribs, ValueId) of
+    {ok, _Value} -> true;
+               _ -> false
+  end. 
 
 
 %% replace a value in the array of values
@@ -417,6 +460,50 @@ resize_array_value(ValuesArray, TargQuant, DefaultValue)->
     end
   end.      
 
+
+%%
+%% Convert a string to a value id. 
+%% Need to handle the case of a value name string and
+%% the case of a value name string plus an array index
+%% Examples:
+%%   "value"  -> value (atom type)
+%%   "digit[1]"  -> {digit, 1} (atom and array index tuple)
+%%
+-spec str_to_value_id(ValueIdStr :: string()) -> {ok, value_id()} | {error, invalid}.
+
+str_to_value_id(ValueIdStr) ->
+  LeftBracket = string:chr(ValueIdStr, $[),
+  if LeftBracket > 0 ->
+    RightBracket = string:rchr(ValueIdStr, $]),
+    if RightBracket > (LeftBracket + 1) ->
+      ArrayIndexStr = string:substr(ValueIdStr, LeftBracket + 1, 
+                                     RightBracket - LeftBracket - 1),
+      case string:to_integer(ArrayIndexStr) of
+        {error, _} -> 
+          {error, invalid};
+
+        {ArrayIndex, Rest} ->
+          if length(Rest) == 0 ->
+            if ArrayIndex > 0 -> 
+              ValueNameStr = string:substr(ValueIdStr, 1, LeftBracket-1),
+              ValueName = list_to_atom(ValueNameStr),
+              {ok, {ValueName, ArrayIndex}};
+            true -> % ArrayIndex =< 0
+              {error, invalid}
+            end;
+          true -> % There are extra characters after the digit(s)
+            {error, invalid}
+          end
+      end;
+
+    true -> % left bracket found, without a corresponding right bracket
+      {error, invalid}
+    end;
+
+  true ->  % No left bracket found, assume a non array value id
+    {ok, list_to_atom(ValueIdStr)}
+  end.
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
@@ -558,6 +645,66 @@ set_link_array_bad_test() ->
   Result = set_link(InputAttribs, InputValueId, Link),
   ?assertEqual(ExpectedResult, Result).
 
+% ====================================================================
+% Test is_attribute(), 
+% 
+% Test config good
+is_attribute_config_test() ->
+  BlockValues = {test_data:attrib_utils_config_attribs1(),
+                 test_data:input_utils_input_attribs1(),
+                 test_data:output_attribs1(),
+                 []}, % No private data
+
+  Result = is_attribute(BlockValues, {integer_array, 2}),
+  ExpectedResult = true,
+  ?assertEqual(ExpectedResult, Result).
+
+% Test input good
+is_attribute_input_test() ->
+  BlockValues = {test_data:attrib_utils_config_attribs1(),
+                 test_data:attrib_utils_input_attribs1(),
+                 test_data:output_attribs1(),
+                 []}, % No private data
+
+  Result = is_attribute(BlockValues, {integer_array_in, 2}),
+  ExpectedResult = true,
+  ?assertEqual(ExpectedResult, Result).
+
+% Test output good
+is_attribute_output_test() ->
+  BlockValues = {test_data:attrib_utils_config_attribs1(),
+                 test_data:attrib_utils_input_attribs1(),
+                 test_data:output_attribs1(),
+                 []}, % No private data
+
+  Result = is_attribute(BlockValues, value),
+  ExpectedResult = true,
+  ?assertEqual(ExpectedResult, Result).
+
+% Test bad value id
+is_attribute_bad_value_test() ->
+  BlockValues = {test_data:attrib_utils_config_attribs1(),
+                 test_data:attrib_utils_input_attribs1(),
+                 test_data:output_attribs1(),
+                 []}, % No private data
+
+  Result = is_attribute(BlockValues, does_not_exist),
+  ExpectedResult = false,
+  ?assertEqual(ExpectedResult, Result).
+
+% Test bad array value id
+is_attribute_bad_array_test() ->
+  BlockValues = {test_data:attrib_utils_config_attribs1(),
+                 test_data:attrib_utils_input_attribs1(),
+                 test_data:output_attribs1(),
+                 []}, % No private data
+
+  Result = is_attribute(BlockValues, {integer_array_out, 4}),
+  ExpectedResult = false,
+  ?assertEqual(ExpectedResult, Result).
+
+
+% ====================================================================
 
 
 % ====================================================================
@@ -643,4 +790,46 @@ resize_array_value_decrease_test() ->
   Result = resize_array_value(ValuesArray, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
 % ====================================================================
+
+
+% ====================================================================
+% Test str_to_value_id()
+% 
+%   Test good non-array value id
+str_to_value_id_valuename_valid_test() ->
+  Result = str_to_value_id("good_value"),
+  ExpectedResult = {ok, good_value},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test good array value id 1
+str_to_value_id_valuename_array_valid1_test() ->
+  Result = str_to_value_id("good_array[10]"),
+  ExpectedResult = {ok, {good_array, 10}},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test good array value id 2
+str_to_value_id_valuename_array_valid2_test() ->
+  Result = str_to_value_id("good_array[010]"),
+  ExpectedResult = {ok, {good_array, 10}},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test bad array value id 2
+str_to_value_id_valuename_array_invalid2_test() ->
+  Result = str_to_value_id("bad_array[0]"),
+  ExpectedResult = {error, invalid},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test bad array value id 3
+str_to_value_id_valuename_array_invalid3_test() ->
+  Result = str_to_value_id("bad_array[-123]"),
+  ExpectedResult = {error, invalid},
+  ?assertEqual(ExpectedResult, Result).
+
+%   Test bad array value id 4
+str_to_value_id_valuename_array_invalid4_test() ->
+  Result = str_to_value_id("bad_array[12.34]"),
+  ExpectedResult = {error, invalid},
+  ?assertEqual(ExpectedResult, Result).
+
+
 -endif.

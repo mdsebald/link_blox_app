@@ -14,7 +14,7 @@
 %% ====================================================================
 %% UI functions
 %% ====================================================================
--export([block_status/0, init/0]).
+-export([init/0]).
 
 %%
 %% Initialize node, before entering the UI loop
@@ -98,10 +98,10 @@ loop() ->
 
 % Process block create command
 ui_create_block(Params) ->
-  case length(Params) of  
-    0 -> io:format("Error: Enter block type and name~n");
-    1 -> io:format("Error: Enter block type and name~n");
-    2 -> 
+  case check_num_params(Params, 2) of  
+    low -> io:format("Error: Enter block type and name~n");
+
+    ok -> 
       [BlockTypeStr, BlockNameStr] = Params,
 
       BlockType = list_to_atom(BlockTypeStr),
@@ -119,15 +119,17 @@ ui_create_block(Params) ->
         {error, Reason} -> 
           io:format("Error: ~p creating block ~s:~s ~n", [Reason, BlockTypeStr, BlockNameStr])
       end;
-    _ -> io:format("Error: Too many parameters~n")
+
+    high -> io:format("Error: Too many parameters~n")
   end.    
 
 
 % Process manual block execute command
 ui_execute_block(Params) ->
-   case length(Params) of  
-    0 -> io:format("Error: Enter block name~n");
-    1 -> 
+   case check_num_params(Params, 1) of  
+    low -> io:format("Error: Enter block name~n");
+
+    ok -> 
       [BlockNameStr] = Params,
       case linkblox_api:execute_block(get_node(), BlockNameStr) of
         ok -> 
@@ -135,7 +137,8 @@ ui_execute_block(Params) ->
         {error, block_not_found} ->
           io:format("Error: block ~s not found~n", [BlockNameStr])  
       end;
-     _ -> io:format("Error: Too many parameters~n")
+
+    high -> io:format("Error: Too many parameters~n")
   end.
 
 
@@ -143,9 +146,10 @@ ui_execute_block(Params) ->
 ui_delete_block(Params) ->
   % TODO: Add delete all command to delete all blocks at once
   % TODO: Ask the user if they really want to delete
-   case length(Params) of  
-    0 -> io:format("Error: Enter block name~n");
-    1 -> 
+   case check_num_params(Params, 1) of  
+    low -> io:format("Error: Enter block name~n");
+
+    ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),  
       case linkblox_api:delete_block(get_node(), BlockName) of
@@ -155,7 +159,8 @@ ui_delete_block(Params) ->
         {error, Reason} ->
           io:format("Error: ~p deleting ~p~n", [Reason, BlockNameStr]) 
       end;
-    _ -> io:format("Error: Too many parameters~n")
+
+    high -> io:format("Error: Too many parameters~n")
   end.
     
     
@@ -201,10 +206,10 @@ ui_thaw_block(Params) ->
 
 % Process block status command
 ui_status(Params) ->
-  case length(Params) of  
-    0 -> block_status();
+  case check_num_params(Params, 0) of  
+    ok -> block_status();
 
-    _ -> io:format("Error: Too many parameters~n")
+    high -> io:format("Error: Too many parameters~n")
   end.
  
  
@@ -248,7 +253,7 @@ ui_get_values(Params) ->
     2 -> 
       [BlockNameStr, ValueIdStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case str_to_value_id(ValueIdStr) of
+      case attrib_utils:str_to_value_id(ValueIdStr) of
         {ok, ValueId} ->
           case linkblox_api:get_value(get_node(), BlockName, ValueId) of
             {ok, CurrentValue} ->
@@ -278,72 +283,71 @@ ui_get_values(Params) ->
  
 % Process the set value command
 ui_set_value(Params) ->
-  case length(Params) of  
-    0 -> io:format("Error: Enter block-name value-name value~n");
-    1 -> io:format("Error: Enter block-name value-name value~n");
-    2 -> io:format("Error: Enter block-name value-name value~n");
-    3 -> 
+  case check_num_params(Params, 3) of
+
+    low -> io:format("Error: Enter block-name value-name value~n");
+    
+    ok -> 
       [BlockNameStr, ValueIdStr, ValueStr] = Params,
 
-      case linkblox_api:is_block_name(get_node(), BlockNameStr) of
-        true -> 
-          ValueName = list_to_atom(ValueNameStr),
-          BlockName = list_to_atom(BlockNameStr),
-          case block_server:get_value(BlockName, ValueName) of
-            not_found ->
-              io:format("Error: ~s is not a value of block ~s~n", 
-                            [ValueNameStr, BlockNameStr]);
-            _CurrentValue ->
-              NewValue = list_to_atom(ValueStr),
-              block_server:set_value(BlockName, ValueName, NewValue)        
+      BlockName = list_to_atom(BlockNameStr),
+      case attrib_utils:str_to_value_id(ValueIdStr) of
+        {ok, ValueId} ->
+          Value = parse_value(ValueStr),
+          case linkblox_api:set_value(get_node(), BlockName, ValueId, Value) of
+            ok ->
+              io:format("~s:~s Set to: ~s~n", [BlockNameStr, ValueIdStr, ValueIdStr]);
+
+            {error, Reason} ->
+              io:format("Error: ~p Setting: ~s:~s to value: ~s~n", 
+                         [Reason, BlockNameStr, ValueIdStr, ValueIdStr])
           end;
-        false -> 
-          io:format("Error: Block ~s does not exist~n", [BlockNameStr])
+            
+        {error, invalid} ->
+          io:format("Error: Invalid Value Id string: ~s~n", [ValueIdStr])
       end;
-    _ -> io:format("Error: Too many parameters~n")
+
+    high -> io:format("Error: Too many parameters~n")
   end.    
 
 
 % Process link blocks command
 ui_link_blocks(Params) ->
-  NumParams = length(Params),
-  if (0 =< NumParams) andalso (NumParams < 3) ->
-    io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n")
-  end,
+  case check_num_params(Params, 3, 5) of
+    low -> io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
 
-  if (3 =< NumParams) andalso (NumParams < 6) ->
-    % 1st parameter is block name
-    InputBlockNameStr = lists:nth(1, Params),
-    InputBlockName = list_to_atom(InputBlockNameStr),
+    ok ->
+      % 1st parameter is block name
+      InputBlockNameStr = lists:nth(1, Params),
+      InputBlockName = list_to_atom(InputBlockNameStr),
 
-    % 2nd parameter is the input value ID
-    InputValueIdStr = lists:nth(2, Params),
-    case str_to_value_id(InputValueIdStr) of
-      {ok, InputValueId} ->
+      % 2nd parameter is the input value ID
+      InputValueIdStr = lists:nth(2, Params),
+      case attribu_utils:str_to_value_id(InputValueIdStr) of
+        {ok, InputValueId} ->
 
-        % The remaining params form the Link
-        LinkParams = lists:nthtail(2, Params),
-        case parse_link(LinkParams) of
-          {ok, Link} ->
-            case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
-              {error, Reason} ->
-                io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~p~n", 
-                        [Reason, InputBlockNameStr, InputValueIdStr, Link]);
-              ok ->
-                io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
-                            [InputBlockNameStr, InputValueIdStr, Link])
-            end;
-          {error, Reason} ->
-            io:format("Error: ~p Converting ~p to a Link~n", 
+          % The remaining params form the Link
+          LinkParams = lists:nthtail(2, Params),
+          case parse_link(LinkParams) of
+            {ok, Link} ->
+              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
+                {error, Reason} ->
+                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~p~n", 
+                          [Reason, InputBlockNameStr, InputValueIdStr, Link]);
+                ok ->
+                  io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
+                              [InputBlockNameStr, InputValueIdStr, Link])
+              end;
+            {error, Reason} ->
+              io:format("Error: ~p Converting ~p to a Link~n", 
                            [Reason, LinkParams])
-        end;
-      {error, Reason} ->
-        io:format("Error: ~p Converting ~s to Input Value ID~n", 
-                                                  [Reason, InputValueIdStr])
+          end;
+        {error, Reason} ->
+          io:format("Error: ~p Converting ~s to Input Value ID~n", 
+                                        [Reason, InputValueIdStr])
       end;
 
-  true -> 
-    io:format("Error: Too many parameters~n")
+    high -> io:format("Error: Too many parameters~n")
   end.
 
 
@@ -353,7 +357,7 @@ parse_link(LinkParams) ->
   % Output Value ID is always the last parameter
   % So work backward to construct the link
   [OutputValueIdStr | OutputBlockNameAndNodeNameList] = lists:reverse(LinkParams),
-  case str_to_value_id(OutputValueIdStr) of
+  case attrib_utils:str_to_value_id(OutputValueIdStr) of
     {ok, OutputValueId} ->
       if 0 < length(OutputBlockNameAndNodeNameList) ->
         [OutputBlockNameStr | NodeNameList] = OutputBlockNameAndNodeNameList,
@@ -361,7 +365,7 @@ parse_link(LinkParams) ->
         if 0 < length(NodeNameList) ->
           [NodeNameStr] = NodeNameList,
           NodeName = list_to_atom(NodeNameStr),
-          
+
           {ok, {NodeName, OutputBlockName, OutputValueId}};
 
         true ->
@@ -379,9 +383,9 @@ parse_link(LinkParams) ->
 ui_load_blocks(Params) ->
   %% Read a set of block values from a config file
   % TODO: Check for existence and validity
-  case length(Params) of
-    0 -> io:format("Error: Enter file name~n");
-    1 ->
+  case check_num_params(Params, 1) of
+    low -> io:format("Error: Enter file name~n");
+    ok ->
       FileName = Params,
 	    case file:consult(FileName) of
     	  {ok, BlockValuesList} ->
@@ -390,7 +394,7 @@ ui_load_blocks(Params) ->
 			    io:format("Error: ~p loading blocks file: ~p~n", [Reason, FileName])
       end;
 
-    _ -> io:format("Error: Too many parameters~n")
+    high -> io:format("Error: Too many parameters~n")
   end.
 
 
@@ -414,9 +418,9 @@ create_blocks(BlockValuesList) ->
 ui_save_blocks(Params) ->
   %% Write the block values to a configuration file
   % TODO:  Add LinkBlox specific header to config file
-   case length(Params) of
-    0 -> io:format("Error: Enter file name~n");
-    1 ->
+   case check_num_params(Params, 1) of
+    low -> io:format("Error: Enter file name~n");
+    ok ->
       FileName = Params,
       % TODO: Check for existence
 
@@ -436,7 +440,7 @@ ui_save_blocks(Params) ->
           io:format("Error: ~p saving blocks file: ~s~~n", [Reason, FileName])
       end;
  
-    _ -> io:format("Error: Too many parameters~n")
+    high -> io:format("Error: Too many parameters~n")
   end.
 
     
@@ -481,11 +485,11 @@ ui_nodes(_Params) ->
 
 % Connect to another node
 ui_connect(Params) ->
-  case length(Params) of
-    0 ->
+  case check_num_params(Params, 1) of
+    low ->
       io:format("Error: Enter Node Name or local~n");
 
-    1 ->
+    ok ->
       case Params of
         ["local"] ->  % Just connect to the local node
           io:format("Connecting to local node~n"),
@@ -495,7 +499,7 @@ ui_connect(Params) ->
           Node = list_to_atom(NodeStr),
           connect_to_node(Node)
       end;
-    _ ->
+    high ->
       io:format("Error: Too many parameters~n"),
       error
   end.
@@ -557,8 +561,12 @@ block_status([BlockName | RemainingBlockNames]) ->
 
 % validate Params is one valid block name
 validate_block_name(Params) ->
-  case length(Params) of
-    1 ->
+  case check_num_params(Params, 1) of
+    low ->
+      io:format("Error: No block name specified~n"),
+      error;
+
+    ok ->
       [BlockNameStr] = Params,
       % check if block name is an existing block
       case linkblox_api:is_block_name(get_node(), BlockNameStr) of
@@ -567,10 +575,8 @@ validate_block_name(Params) ->
           io:format("Error: Block ~p does not exist~n", [BlockNameStr]),
           error
       end;
-    0 ->
-      io:format("Error: No block name specified~n"),
-      error;
-    _ ->
+ 
+    high ->
       io:format("Error: Too many parameters~n"),
       error
   end.
@@ -612,46 +618,53 @@ ui_block_types(_Params) ->
 
 
 %%
-%% Convert a string to a value id. 
-%% Need to handle the case of a value name string and
-%% the case of a value name string plus an array index
-%% Examples:
-%%   "value"  -> value (atom type)
-%%   "digit[1]"  -> {digit, 1} (atom and array index tuple)
+%% Check the number of parameters in the param list
 %%
--spec str_to_value_id(ValueIdStr :: string()) -> {ok, value_id()} | {error, invalid}.
+-spec check_num_params(Params :: list(string()),
+                       Exact :: non_neg_integer()) -> low | ok | high.
 
-str_to_value_id(ValueIdStr) ->
-  LeftBracket = string:chr(ValueIdStr, $[),
-  if LeftBracket > 0 ->
-    RightBracket = string:rchr(ValueIdStr, $]),
-    if RightBracket > (LeftBracket + 1) ->
-      ArrayIndexStr = string:substr(ValueIdStr, LeftBracket + 1, 
-                                     RightBracket - LeftBracket - 1),
-      case string:to_integer(ArrayIndexStr) of
-        {error, _} -> 
-          {error, invalid};
+check_num_params(Params, Exact) ->
+  check_num_params(Params, Exact, Exact).
 
-        {ArrayIndex, Rest} ->
-          if length(Rest) == 0 ->
-            if ArrayIndex > 0 -> 
-              ValueNameStr = string:substr(ValueIdStr, 1, LeftBracket-1),
-              ValueName = list_to_atom(ValueNameStr),
-              {ok, {ValueName, ArrayIndex}};
-            true -> % ArrayIndex =< 0
-              {error, invalid}
-            end;
-          true -> % There are extra characters after the digit(s)
-            {error, invalid}
-          end
+-spec check_num_params(Params :: list(string()),
+                       Low :: non_neg_integer(),
+                       High :: non_neg_integer()) -> low | ok | high.
+
+check_num_params(Params, Low, High) ->
+  NumParams = length(Params),
+  if (NumParams < Low) -> low;
+    true ->
+      if (NumParams > High) -> high;
+        true ->
+          ok
+      end
+  end.
+
+%%
+%% Naive parse value function, i.e. take a stab at the value type
+%%
+parse_value(ValueStr) ->
+  case string:to_float(ValueStr) of
+    {error, _Reason} ->
+
+      case string:to_integer(ValueStr) of
+        {error, _Reason} ->
+          error_logger:info_msg("pv: ~s -> ~p~n", [ValueStr, list_to_atom(ValueStr)]),
+          case list_to_atom(ValueStr) of
+            true       -> true;
+            false      -> false;
+            empty      -> empty;
+            not_active -> not_active;
+                     _ -> ValueStr
+          end;
+        {Integer, []} -> Integer;
+
+        {_Integer, _Rest} -> ValueStr
       end;
 
-    true -> % left bracket found, without a corresponding right bracket
-      {error, invalid}
-    end;
+    {Float, []} -> Float;
 
-  true ->  % No left bracket found, assume a non array value id
-    {ok, list_to_atom(ValueIdStr)}
+    {_Float, _Rest} -> ValueStr  
   end.
 
 %% ====================================================================
@@ -662,42 +675,57 @@ str_to_value_id(ValueIdStr) ->
 -include_lib("eunit/include/eunit.hrl").
 
 % ====================================================================
-% Test str_to_value_id()
+% Test parse_value()
 % 
-%   Test good non-array value id
-str_to_value_id_valuename_valid_test() ->
-  Result = str_to_value_id("good_value"),
-  ExpectedResult = {ok, good_value},
+%   Test float good
+parse_value_float_good_test() ->
+  ExpectedResult = 12.345,
+  ValueStr = "12.345",
+  Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).
 
-%   Test good array value id 1
-str_to_value_id_valuename_array_valid1_test() ->
-  Result = str_to_value_id("good_array[10]"),
-  ExpectedResult = {ok, {good_array, 10}},
+%   Test float bad
+parse_value_float_bad_test() ->
+  ExpectedResult = "12.345crap",
+  ValueStr = "12.345crap",
+  Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).
 
-%   Test good array value id 2
-str_to_value_id_valuename_array_valid2_test() ->
-  Result = str_to_value_id("good_array[010]"),
-  ExpectedResult = {ok, {good_array, 10}},
+%   Test integer good
+parse_value_integer_good_test() ->
+  ExpectedResult = 12345,
+  ValueStr = "12345",
+  Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).
 
-%   Test bad array value id 2
-str_to_value_id_valuename_array_invalid2_test() ->
-  Result = str_to_value_id("bad_array[0]"),
-  ExpectedResult = {error, invalid},
+%   Test integer bad
+parse_value_integer_bad_test() ->
+  ExpectedResult = "12345crap",
+  ValueStr = "12345crap",
+  Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).
 
-%   Test bad array value id 3
-str_to_value_id_valuename_array_invalid3_test() ->
-  Result = str_to_value_id("bad_array[-123]"),
-  ExpectedResult = {error, invalid},
+%   Test boolean true
+parse_value_boolean_true_test() ->
+  ExpectedResult = true,
+  ValueStr = "true",
+  Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).
 
-%   Test bad array value id 4
-str_to_value_id_valuename_array_invalid4_test() ->
-  Result = str_to_value_id("bad_array[12.34]"),
-  ExpectedResult = {error, invalid},
+%   Test boolean false
+parse_value_boolean_false_test() ->
+  ExpectedResult = false,
+  ValueStr = "false",
+  Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).
+
+%   Test string good
+parse_value_string_good_test() ->
+  ExpectedResult = "TestString",
+  ValueStr = "TestString",
+  Result = parse_value(ValueStr),
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
 
 -endif.

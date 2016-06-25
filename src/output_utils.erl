@@ -174,7 +174,7 @@ get_value_test() ->
 % ====================================================================
 % Test set_array_value()  
 set_array_value_test() ->
-  Outputs = test_data:output_utils_output_attribs1(),
+  Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   ArrayValues = [6,7,8],
   
@@ -188,7 +188,7 @@ set_array_value_test() ->
 % ====================================================================
 % Test update_all_outputs()  
 update_all_outputs_test() ->
-  Outputs = test_data:output_utils_output_attribs1(),
+  Outputs = test_data:output_attribs1(),
   Value = not_active,
   Status = input_err,
   
@@ -206,12 +206,12 @@ update_all_outputs_test() ->
 %   Test input array attribute doesn't change size
 resize_attribute_array_value_nochange_test() ->
   BlockName = test_output_utils,
-  Outputs = test_data:output_utils_output_attribs1(),
+  Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 3,
   DefaultValue = {not_active, []},
   
-  ExpectedResult = test_data:output_utils_output_attribs1(),
+  ExpectedResult = test_data:output_attribs1(),
   
   Result = resize_attribute_array_value(BlockName, Outputs, 
                          ArrayValueName, TargQuant, DefaultValue),
@@ -220,7 +220,7 @@ resize_attribute_array_value_nochange_test() ->
 %   Test input array attribute increases in size
 resize_attribute_array_value_increase_test() ->
   BlockName = testt_utils_output_utils,
-  Outputs = test_data:output_utils_output_attribs1(),
+  Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 6,
   DefaultValue = {not_active, []},
