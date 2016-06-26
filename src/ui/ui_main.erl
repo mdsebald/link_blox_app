@@ -131,7 +131,8 @@ ui_execute_block(Params) ->
 
     ok -> 
       [BlockNameStr] = Params,
-      case linkblox_api:execute_block(get_node(), BlockNameStr) of
+      BlockName = list_to_atom(BlockNameStr),
+      case linkblox_api:execute_block(get_node(), BlockName) of
         ok -> 
           ok;
         {error, block_not_found} ->
@@ -296,11 +297,17 @@ ui_set_value(Params) ->
           Value = parse_value(ValueStr),
           case linkblox_api:set_value(get_node(), BlockName, ValueId, Value) of
             ok ->
-              io:format("~s:~s Set to: ~s~n", [BlockNameStr, ValueIdStr, ValueIdStr]);
+              io:format("~s:~s Set to: ~s~n", [BlockNameStr, ValueIdStr, ValueStr]);
+
+            {error, block_not_found} ->
+              io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+
+            {error, not_found} ->
+              io:format("Error: Attribute: ~s does not exist~n",  [ValueIdStr]);
 
             {error, Reason} ->
-              io:format("Error: ~p Setting: ~s:~s to value: ~s~n", 
-                         [Reason, BlockNameStr, ValueIdStr, ValueIdStr])
+              io:format("Error: ~p Setting: ~s:~s to ~s~n",  
+                         [Reason, BlockNameStr, ValueIdStr, ValueStr]) 
           end;
             
         {error, invalid} ->
@@ -323,7 +330,7 @@ ui_link_blocks(Params) ->
 
       % 2nd parameter is the input value ID
       InputValueIdStr = lists:nth(2, Params),
-      case attribu_utils:str_to_value_id(InputValueIdStr) of
+      case attrib_utils:str_to_value_id(InputValueIdStr) of
         {ok, InputValueId} ->
 
           % The remaining params form the Link
@@ -645,11 +652,9 @@ check_num_params(Params, Low, High) ->
 %%
 parse_value(ValueStr) ->
   case string:to_float(ValueStr) of
-    {error, _Reason} ->
-
+    {error, no_float} ->
       case string:to_integer(ValueStr) of
-        {error, _Reason} ->
-          error_logger:info_msg("pv: ~s -> ~p~n", [ValueStr, list_to_atom(ValueStr)]),
+        {error, no_integer} ->
           case list_to_atom(ValueStr) of
             true       -> true;
             false      -> false;
@@ -664,7 +669,7 @@ parse_value(ValueStr) ->
 
     {Float, []} -> Float;
 
-    {_Float, _Rest} -> ValueStr  
+    {_Float, _Rest} ->  ValueStr  
   end.
 
 %% ====================================================================

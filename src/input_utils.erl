@@ -126,8 +126,8 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
   DeleteExcess = fun (DeleteArrayValues) ->
       lists:map(
         fun(DeleteValue) -> 
-          DeleteAttr = {ArrayValueName, DeleteValue},
-          link_utils:unlink(BlockName, DeleteAttr)
+          {_Value, Link} = DeleteValue,
+          link_utils:unlink_input(BlockName, ArrayValueName, Link)
 		      end, 
           DeleteArrayValues) end,
           

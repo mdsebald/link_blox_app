@@ -71,7 +71,7 @@
                     {value_name(), ArrayIndex :: pos_integer()}.
                         
 
--type link_refs() :: list(pid()).
+-type link_refs() :: list(block_name() | {node(), block_name}).
 
 -type value() :: empty | not_active | integer() | float() | boolean() | 
                  string() | tuple() | list() | reference().

@@ -15,12 +15,13 @@
 -export([
           link_blocks/2,
           evaluate_link/5, 
-          unlink_blocks/2, 
-          unlink/2,
+          unlink_inputs/2, 
+          unlink_input/3,
+          unlink_output/3,
           add_ref/3, 
           delete_ref/3,
           update_linked_input_values/3
-]). %, TODO: delete? set_input_link/3]).
+]).
 
 
 %%
@@ -93,7 +94,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
           case attrib_utils:set_value(Inputs, ValueId, empty) of
             {ok, UpdatedInputs} -> UpdatedInputs;
 
-            _ -> Inputs % Set value failed return Inputs, unchanged
+            _ -> Inputs % Set value failed, return Inputs, unchanged
           end;
 
         _Pid  ->
@@ -126,73 +127,86 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
 %%
 %% Send an unlink message to each block linked to the inputs of this block
 %%
--spec unlink_blocks(BlockName :: block_name(),
-                    BlockInputs :: list(input_attr())) -> {ok, integer()}.
+-spec unlink_inputs(BlockName :: block_name(),
+                    Inputs :: list(input_attr())) -> ok.
 
-unlink_blocks(BlockName, BlockInputs)->
-  unlink_blocks(BlockName, BlockInputs, 0).
+unlink_inputs(_BlockName, [])-> ok;
 
-unlink_blocks(_BlockName, [], LinksRequested)->
-  {ok, LinksRequested};
+unlink_inputs(BlockName, [Input | RemainingInputs])->
 
-unlink_blocks(BlockName, BlockInputs, LinksRequested)->
-	
-  [Input | RemainingBlockInputs] = BlockInputs,
+  case Input of
+    % Non-array value
+    {ValueName, {_Value, Link}} ->
+      unlink_input(BlockName, ValueName, Link);
+      
+    % Array value  
+    {ValueName, ArrayValues} ->
+      unlink_array_input(BlockName, ValueName, ArrayValues)
+  end,
 
-  % TODO: Scan Array value inputs too, see link_blocks() function
-  {ValueName, {_Value, Link}} = Input,
-  case Link of
-    ?EMPTY_LINK ->
-      % Input is not linked, do nothing
-       unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested);
-       
-     {LinkBlockName, LinkValueName} -> 
-      % if the block name of this link is not null
-      if LinkBlockName /= null ->
-        error_logger:info_msg("Unlink Output <~p:~p> From Input <~p:~p>~n", 
-                            [LinkBlockName, LinkValueName, BlockName, ValueName]),
-        block_server:unlink(LinkBlockName, LinkValueName, BlockName),
-        unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested + 1);
-      true ->
-        unlink_blocks(BlockName, RemainingBlockInputs, LinksRequested)
-      end;
+  unlink_inputs(BlockName, RemainingInputs).
 
-    %TODO: Handle other link types, i.e. links to other nodes      
-    UnhandledLink -> 
-      error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]) 
-  end.
+
+%%
+%%  Unlink each value of an input array value
+%%
+-spec unlink_array_input(BlockName :: block_name(),
+                         ValueName :: value_name(),
+                         ArrayValues :: attr_value_array()) -> ok.
+
+unlink_array_input(_BlockName, _ValueName, []) -> ok;
+  
+unlink_array_input(BlockName, ValueName, [ArrayValue | RemainingArrayValues]) ->
+  {_Value, Link} = ArrayValue,
+  unlink_input(BlockName, ValueName, Link),
+  unlink_array_input(BlockName, ValueName, RemainingArrayValues).
 
   
 %%
 %% Unlink one input value link
-%% TODO: Make unlink_blocks call this function
 %%
--spec unlink(BlockName :: block_name(),
-             Input :: input_attr()) -> ok.  
+-spec unlink_input(BlockName :: block_name(),
+                   ValueName :: value_name(),
+                   Link :: input_link()) -> ok.  
   
-unlink(BlockName, Input) ->
-  {ValueName, {_Value, Link}} = Input,
+unlink_input(BlockName, ValueName, Link) ->
+
   case Link of
     % Input is not linked, do nothing
     ?EMPTY_LINK -> ok;
        
-    {LinkBlockName, LinkValueName} -> 
-      % if the block name of this link is not null
-      if LinkBlockName /= null ->
-        error_logger:info_msg("Unlink Output <~p:~p> From Input <~p:~p>~n", 
-                            [LinkBlockName, LinkValueName, BlockName, ValueName]),
-        block_server:unlink(LinkBlockName, LinkValueName, BlockName),
-        ok;
-      true ->
-        ok
+    {LinkBlockName, LinkValueId} ->
+      case whereis(LinkBlockName) of
+        undefined  ->
+          error_logger:warning_msg("unlink_input(): Linked Block: ~p Does not exist.~n", 
+                                    [LinkBlockName]),
+          ok;
+        _Pid ->
+          % Linked block is running
+          error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p~n", 
+                            [BlockName, ValueName, LinkBlockName, LinkValueId]),
+          block_server:unlink(LinkBlockName, LinkValueId, BlockName),
+          ok
       end;
 
     %TODO: Handle other link types, i.e. links to other nodes      
     UnhandledLink -> 
-      error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]) 
+      error_logger:error_msg("unlink_input(): Unhandled Link Type: ~p~n", [UnhandledLink]),
+      ok
   end.
 
 
+%%
+%% Set all input values linked to this output to 'empty'
+%%
+-spec unlink_output(BlockName :: block_name(),
+                    ValueName :: value_name(),
+                    Refs :: link_refs()) -> ok.  
+  
+unlink_output(BlockName, ValueName, Refs) ->
+
+  block_common:update_linked_inputs(BlockName, ValueName, empty, Refs).
+ 
 
 %%
 %% Add 'ToBlockName' to the list of referenced blocks 
@@ -213,26 +227,18 @@ add_ref(Outputs, ValueId, ToBlockName) ->
                              [ValueId]),
 			Outputs;
 		
-		{ok, {ValueName, {Value, Refs}}} ->  
-			case lists:member(ToBlockName, Refs) of
-			  true ->
-          % TODO: Are we sure we want to do this?
-          %    If a block has an array of inputs, and more than one of the inputs in the array
-          %    is linked to this output value, and the block is reconfigured, reducing the number of inputs,
-          %    When the input is deleted, the link to this output should be deleted, but 
-          %    another input in that block could still be linked to this output
-          %    May want to allow multiple refs to the same block, filter dupes in update_block()
-          %    More than one reference to this will serve as a reference counter.
-				  % This output is already linked to block 'ToBlockName' 
-				  % Just return the original Outputs list
-				  Outputs;
-			  false ->
-				  % add 'ToBlockName' to list of block references for this output
-          % Return updated Outputs list
-				  NewRefs = [ToBlockName | Refs],
-				  NewOutput = {ValueName, {Value, NewRefs}},
-				  attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)
-			end;
+    % Non-array value
+		{ok, {ValueName, {Value, Refs}}} ->
+
+			% add 'ToBlockName' to list of block references for this output
+      % ToBlockName can be added more than once, 
+      % if multiple inputs of the same block are linked to this output.
+      % Return updated Outputs list
+			NewRefs = [ToBlockName | Refs],
+			NewOutput = {ValueName, {Value, NewRefs}},
+			attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+
+    % Array value
     {ok, {ValueName, ArrayValues}} ->
       % if this is an array value, the ValueName from get_attribute()
       % will match ValueName in the ValueId tuple
@@ -271,26 +277,33 @@ delete_ref(Outputs, ValueId, ToBlockName) ->
                               [ValueId]),
       Outputs;
 		
+    % Non-Array value
     {ok, {ValueName, {Value, Refs}}} ->  
       % Delete the 'ToBlockName' from the list of linked blocks, if it exists
+      % This deletes the first element matching ToBlockName, 
+      % ToBlockName could be in the list more than once
       NewRefs = lists:delete(ToBlockName, Refs),
 		  NewOutput = {ValueName, {Value, NewRefs}},
       attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
-      
+
+    % Array value  
     {ok, {ValueName, ArrayValues}} ->
       % if this is an array value, the ValueName from get_attribute()
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
       if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
         {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
+        % Delete the 'ToBlockName' from the list of linked blocks, if it exists
+        % This deletes the first element matching ToBlockName, 
+        % ToBlockName could be in the list more than once
         NewRefs = lists:delete(ToBlockName, Refs),
         NewArrayValue = {Value, NewRefs},
         NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
         NewOutput = {ValueName, NewArrayValues}, 
         attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
       true ->
-        error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
-                             [ValueId]),
+        error_logger:error_msg("delete_ref() Error. Invalid array index ~p~n",
+                                [ValueId]),
         Outputs
       end
   end.

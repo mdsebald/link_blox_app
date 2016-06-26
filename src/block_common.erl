@@ -14,9 +14,15 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([configs/4, inputs/0, outputs/0]).
--export([execute/2, initialize/1, delete/1]).
-
+-export([
+          configs/4, 
+          inputs/0, 
+          outputs/0,
+          execute/2,
+          initialize/1,
+          delete/1,
+          update_linked_inputs/4
+]).
 
 %%
 %% Common Config Attributes
@@ -142,58 +148,68 @@ initialize({Config, Inputs, Outputs}) ->
 execute(BlockValues, ExecMethod) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
-  
-  {BlockName, BlockModule} = config_utils:name_module(Config),
-    
-  {ok, Disable} = attrib_utils:get_value(Inputs, disable),
-  case input_utils:check_boolean_input(Disable) of
-    not_active ->
-      {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
-      case input_utils:check_boolean_input(Freeze) of
-        not_active -> % block is not disabled or frozen, execute it
-          {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
-          Outputs2 = update_execute_track(Outputs1, ExecMethod);
-                    
-        active -> % Block is frozen
-          % Just update the status output, all other outputs are frozen
-          Outputs2 = output_utils:set_status(Outputs, frozen),
-          % Nothing to update in private values
-          Private1 = Private;
-                    
-        error -> % Freeze input value error
-          error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
-          Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
-          % Nothing to update in private values
-          Private1 = Private
-      end;
-    active -> % Block is disabled
-      Outputs2 = output_utils:update_all_outputs(Outputs, not_active, disabled),
-      % Nothing to update in private values
-      Private1 = Private;
-        
-    error -> % Disable input value error 
-      error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
-      Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
-      % Nothing to update in private values
-      Private1 = Private
-  end,
-    
-  {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
-    
-  if (Status /= normal) ->  % Some kind error setting execution timer
-    Outputs3 = output_utils:update_all_outputs(Outputs2, not_active, Status);
-  true -> % Execution timer status is normal
-    Outputs3 = Outputs2
-  end,
+  BlockStatus = output_utils:get_status(Outputs),
 
-  % Update the block inputs linked to the block outputs that have just been updated (Data Flow)
-  update_blocks(BlockName, Outputs, Outputs3),
+  % Don't execute block if the block is configured incorrectly
+  % or if there is a problem accessing the hardware
+  if (BlockStatus /= config_err) andalso (BlockStatus /= proc_err) -> 
+    {BlockName, BlockModule} = config_utils:name_module(Config),
     
-  % Execute the blocks connected to the exec_out output value (Control Flow)
-  update_execute(Outputs3),
+    {ok, Disable} = attrib_utils:get_value(Inputs, disable),
+    case input_utils:check_boolean_input(Disable) of
+      not_active ->
+        {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
+        case input_utils:check_boolean_input(Freeze) of
+          not_active -> % block is not disabled or frozen, execute it
+            {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
+            Outputs2 = update_execute_track(Outputs1, ExecMethod);
+                    
+          active -> % Block is frozen
+            % Just update the status output, all other outputs are frozen
+            Outputs2 = output_utils:set_status(Outputs, frozen),
+            % Nothing to update in private values
+            Private1 = Private;
+                    
+          error -> % Freeze input value error
+            error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
+            Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
+            % Nothing to update in private values
+            Private1 = Private
+        end;
+      active -> % Block is disabled
+        Outputs2 = output_utils:update_all_outputs(Outputs, not_active, disabled),
+        % Nothing to update in private values
+        Private1 = Private;
+        
+      error -> % Disable input value error 
+        error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
+        Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
+        % Nothing to update in private values
+        Private1 = Private
+    end,
+      
+    {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
     
-  % Return the updated block state
-  {Config, Inputs, Outputs3, Private2}.
+    if (Status /= normal) ->  % Some kind error setting execution timer
+      Outputs3 = output_utils:update_all_outputs(Outputs2, not_active, Status);
+    true -> % Execution timer status is normal
+      Outputs3 = Outputs2
+    end,
+
+    % Update the block inputs linked to the block outputs 
+    % that have just been updated (Data Flow)
+    update_blocks(BlockName, Outputs, Outputs3),
+    
+    % Execute the blocks connected to the exec_out output value (Control Flow)
+    update_execute(Outputs3),
+    
+    % Return the updated block state
+    {Config, Inputs, Outputs3, Private2};
+
+  true -> % Block is in config error or process error state
+    % Just return the current block state, unchanged
+    {Config, Inputs, Outputs, Private}
+  end.
 
 
 %%
@@ -301,7 +317,7 @@ update_blocks(FromBlockName,
       % a new value message to each linked block.
       % Don't check the 'exec_out' output, that is for control flow execution
       if (ValueName /= exec_out) andalso (CurrentValue /= NewValue) -> 
-        update_linked_inputs(Refs, FromBlockName, ValueName, NewValue);
+        update_linked_inputs(FromBlockName, ValueName, NewValue, Refs);
       true -> 
         ok % else do nothing
       end,
@@ -334,7 +350,7 @@ check_array_values(FromBlockName, ValueName, ArrayIndex,
                    [{NewValue, Refs} | NewArrayValues]) ->
                    
   if  CurrentValue /= NewValue -> 
-    update_linked_inputs(Refs, FromBlockName, {ValueName, ArrayIndex}, NewValue);
+    update_linked_inputs(FromBlockName, {ValueName, ArrayIndex}, NewValue, Refs);
   true -> 
     ok
   end,
@@ -347,16 +363,20 @@ check_array_values(FromBlockName, ValueName, ArrayIndex,
 %% update each block input value in the list of block names, 
 %% linked to this block's output value
 %%
--spec update_linked_inputs(Refs :: list(pid()), 
-                           FromBlockName :: block_name(),
+-spec update_linked_inputs(FromBlockName :: block_name(),
                            ValueId :: value_id(),
-                           NewValue :: value()) -> ok.
+                           NewValue :: value(),
+                           Refs :: link_refs()) -> ok.
                            
-update_linked_inputs(Refs, FromBlockName, ValueId, NewValue) ->
+update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
+  % Eliminate duplicate references, 
+  % One update message to the same block, 
+  % will update all inputs linked to this output
+  DedupedRefs = sets:to_list(sets:from_list(Refs)),
   lists:map(fun(Ref) -> 
             block_server:update(Ref, FromBlockName, ValueId, NewValue) 
             end, 
-            Refs),
+            DedupedRefs),
   ok.
 
 
@@ -390,7 +410,7 @@ delete(BlockValues) ->
   end,
     
   % Scan this block's inputs, and unlink from other block outputs
-  link_utils:unlink_blocks(BlockName, Inputs),
+  link_utils:unlink_inputs(BlockName, Inputs),
   
   % Set all output values of this block, including status, to 'empty'
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),

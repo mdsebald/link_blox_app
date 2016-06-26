@@ -121,7 +121,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   Status = initialed,
                   Value = DefaultValue,
  	                {ok, Private2} = 
-                     attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+                    attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
                   set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
                 {error, ErrorResult} ->
@@ -166,7 +166,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
   
-  {ok, GpioPin} = attrib_utils:get_value(Private, gpio_pin_ref),
+  {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
   {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
   {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
      
@@ -174,7 +174,7 @@ execute({Config, Inputs, Outputs, Private}) ->
  	
   % Set Output Val to input and set the actual GPIO pin value too
   case Input of
-    empty -> 
+     empty -> 
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
       Value = not_active,
       Status = no_input;
@@ -194,18 +194,18 @@ execute({Config, Inputs, Outputs, Private}) ->
       Value = false,
       Status = normal;
 
-		Other ->
+		 Other ->
       BlockName = config_utils:name(Config),
       error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
-                             [BlockName, Other]),
+                               [BlockName, Other]),
 			PinValue = DefaultValue, % TODO: Set pin to default value or input? 
 		  Value = not_active,
       Status = input_error
 	end,
-  set_pin_value_bool(GpioPin, PinValue, InvertOutput),
+  set_pin_value_bool(GpioPinRef, PinValue, InvertOutput),
  
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),     
- 
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
   {Config, Inputs, Outputs1, Private}.
 
 
@@ -224,17 +224,17 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 %% ====================================================================
 
 % Set the actual value of the GPIO pin here
-set_pin_value_bool(GpioPin, Value, Invert) ->
+set_pin_value_bool(GpioPinRef, Value, Invert) ->
   if Value -> % Value is true/on
     if Invert -> % Invert pin value 
-      gpio:write(GpioPin, 0); % turn output off
+      gpio:write(GpioPinRef, 0); % turn output off
     true ->      % Don't invert_output output value
-      gpio:write(GpioPin, 1) % turn output on
+      gpio:write(GpioPinRef, 1) % turn output on
     end;
   true -> % Value is false/off
     if Invert -> % Invert pin value
-      gpio:write(GpioPin, 1); % turn output on
+      gpio:write(GpioPinRef, 1); % turn output on
     true ->      % Don't invert_output output value
-      gpio:write(GpioPin, 0)  % turn output off
+      gpio:write(GpioPinRef, 0)  % turn output off
     end
   end.

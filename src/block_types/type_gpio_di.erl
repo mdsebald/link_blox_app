@@ -154,6 +154,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   % Read the current value of the GPIO pin 
   {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
+
   Value = read_pin_value_bool(GpioPinRef),
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, normal),
@@ -175,8 +176,8 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
-read_pin_value_bool(GpioPin) ->
-  case gpio:read(GpioPin) of
+read_pin_value_bool(GpioPinRef) ->
+  case gpio:read(GpioPinRef) of
     1  -> true;
     0 -> false
   end.

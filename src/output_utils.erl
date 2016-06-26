@@ -12,10 +12,16 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([set_value_status/3, set_value_normal/2, set_status/2]).
--export([set_array_value/3, update_all_outputs/3]).
--export([resize_attribute_array_value/5]).
--export([log_error/3]).
+-export([
+          set_value_status/3, 
+          set_value_normal/2, 
+          set_status/2,
+          get_status/1,
+          set_array_value/3,
+          update_all_outputs/3,
+          resize_attribute_array_value/5,
+          log_error/3
+]).
 
 
 %%
@@ -54,7 +60,20 @@ set_value_normal(Outputs, Value) ->
 set_status(Outputs, Status) ->
   {ok, Outputs1} = attrib_utils:set_value(Outputs, status, Status),
   Outputs1.
-  
+
+
+%%
+%% Get status output value
+%% 
+-spec get_status(Outputs :: list(output_attr())) -> block_status().
+
+get_status(Outputs) ->
+  case attrib_utils:get_value(Outputs, status) of
+    {ok, Status} -> Status;
+    {error, _Reason} -> error
+  end.
+ 
+
 %%
 %% Set an array of output values to ArrayValues
 %% Number of values in ArrayValues, must match the number of array values
@@ -126,8 +145,8 @@ resize_attribute_array_value(BlockName, Outputs, ArrayValueName, TargQuant, Defa
    DeleteExcess = fun(DeleteArrayValues) -> 
       lists:map(
         fun(DeleteValue) -> 
-          DeleteAttr = {ArrayValueName, DeleteValue},
-          link_utils:deref(BlockName, DeleteAttr)   % TODO: link_utils:deref() doesn't exist
+          {_Value, Refs} = DeleteValue,
+          link_utils:unlink_output(BlockName, ArrayValueName, Refs)
 		      end, 
           DeleteArrayValues) end,
   

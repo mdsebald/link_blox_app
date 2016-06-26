@@ -208,23 +208,40 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
     true ->
       % Modifying a config value, need to delete and re-initialize the block
       block_common:delete(BlockValues),
-      NewConfig = attrib_utils:set_value(Config, ValueId, Value),
-      NewBlockValues = block_common:initialize({NewConfig, Inputs, Outputs}),
-      Result = ok;
+      case attrib_utils:set_value(Config, ValueId, Value) of
+        {ok, NewConfig} ->
+          NewBlockValues = block_common:initialize({NewConfig, Inputs, Outputs}),
+          Result = ok;
+        {error, Reason} ->
+          NewBlockValues = BlockValues,
+          Result = {error, Reason}
+      end;
 
     _ -> % Not a Config attribute, try the Inputs
       case attrib_utils:is_attribute_type(Inputs, ValueId) of
         true ->
-          NewInputs = attrib_utils:set_value(Inputs, ValueId, Value),
-          NewBlockValues = {Config, NewInputs, Outputs, Private},
-          Result = ok;
+          case attrib_utils:set_value(Inputs, ValueId, Value) of
+            {ok, NewInputs} ->
+              % manually execute the block with updated input value
+              NewBlockValues = 
+               block_common:execute({Config, NewInputs, Outputs, Private}, manual),
+         	    Result = ok;
+            {error, Reason} ->
+              NewBlockValues = BlockValues,
+              Result = {error, Reason}
+          end;
 
         _ ->  % Not an Input attribute, try the Outputs
           case attrib_utils:is_attribute_type(Outputs, ValueId) of
             true ->
-              NewOutputs = attrib_utils:set_value(Outputs, ValueId, Value),
-              NewBlockValues = {Config, Inputs, NewOutputs, Private},
-              Result = ok;
+              case attrib_utils:set_value(Outputs, ValueId, Value) of
+                {ok, NewOutputs} ->
+                  NewBlockValues = {Config, Inputs, NewOutputs, Private},
+                  Result = ok;
+                {error, Reason} ->
+                  NewBlockValues = BlockValues,
+                  Result = {error, Reason}
+              end;
 
             _ -> % Not an Output either, do nothing
               NewBlockValues = BlockValues,
