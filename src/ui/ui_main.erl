@@ -77,6 +77,7 @@ loop() ->
         "link"      -> ui_link_blocks(Params);
         "status"    -> ui_status(Params);
         "types"     -> ui_block_types(Params);
+        "valid"     -> validate_block_name(Params);
         "load"      -> ui_load_blocks(Params);
         "save"      -> ui_save_blocks(Params);
         "node"      -> ui_node(Params);
@@ -167,42 +168,97 @@ ui_delete_block(Params) ->
     
 % Process disable block command
 ui_disable_block(Params) ->
-  case validate_block_name(Params) of
-    error     -> ok;  % Params was not a block name
-    BlockNameStr ->  
-      block_server:set_value(BlockNameStr, disable, true),
-      ok
-  end. 
+  case check_num_params(Params, 1) of
+
+    low -> io:format("Error: Enter block-name~n");
+    
+    ok -> 
+      [BlockNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),
+      case linkblox_api:set_value(get_node(), BlockName, disable, true) of
+        ok ->
+          io:format("~s Disabled~n", [BlockNameStr]);
+
+        {error, block_not_found} ->
+          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+
+        {error, Reason} ->
+          io:format("Error: ~p Disabling: ~s~n",  [Reason, BlockNameStr]) 
+      end;
+ 
+    high -> io:format("Error: Too many parameters~n")
+  end.
 
 
 % Process enable block command
 ui_enable_block(Params) ->
-  case validate_block_name(Params) of
-    error     -> ok;  % Params was not a block name
-    BlockNameStr ->  
-      block_server:set_value(BlockNameStr, disable, false),
-      ok
-  end. 
+ case check_num_params(Params, 1) of
+
+    low -> io:format("Error: Enter block-name~n");
+    
+    ok -> 
+      [BlockNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),
+      case linkblox_api:set_value(get_node(), BlockName, disable, false) of
+        ok ->
+          io:format("~s Enabled~n", [BlockNameStr]);
+
+        {error, block_not_found} ->
+          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+
+        {error, Reason} ->
+          io:format("Error: ~p Enabling: ~s~n",  [Reason, BlockNameStr]) 
+      end;
+ 
+    high -> io:format("Error: Too many parameters~n")
+  end.
     
     
 % Process freeze block command
 ui_freeze_block(Params) ->
-  case validate_block_name(Params) of
-    error     -> ok;  % Params was not a block name
-    BlockNameStr ->  
-      block_server:set_value(BlockNameStr, freeze, true),
-      ok
-  end. 
+case check_num_params(Params, 1) of
 
+    low -> io:format("Error: Enter block-name~n");
+    
+    ok -> 
+      [BlockNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),
+      case linkblox_api:set_value(get_node(), BlockName, freeze, true) of
+        ok ->
+          io:format("~s Frozen~n", [BlockNameStr]);
+
+        {error, block_not_found} ->
+          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+
+        {error, Reason} ->
+          io:format("Error: ~p Freezing: ~s~n",  [Reason, BlockNameStr]) 
+      end;
+ 
+    high -> io:format("Error: Too many parameters~n")
+  end.
     
 % Process thaw block command
 ui_thaw_block(Params) ->
-  case validate_block_name(Params) of
-    error     -> ok;  % Params was not a block name
-    BlockNameStr ->  
-      block_server:set_value(BlockNameStr, freeze, false),
-      ok
-  end. 
+case check_num_params(Params, 1) of
+
+    low -> io:format("Error: Enter block-name~n");
+    
+    ok -> 
+      [BlockNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),
+      case linkblox_api:set_value(get_node(), BlockName, freeze, false) of
+        ok ->
+          io:format("~s Thawed~n", [BlockNameStr]);
+
+        {error, block_not_found} ->
+          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+
+        {error, Reason} ->
+          io:format("Error: ~p Thawing: ~s~n",  [Reason, BlockNameStr]) 
+      end;
+ 
+    high -> io:format("Error: Too many parameters~n")
+  end.
 
 
 % Process block status command
@@ -570,17 +626,18 @@ block_status([BlockName | RemainingBlockNames]) ->
 validate_block_name(Params) ->
   case check_num_params(Params, 1) of
     low ->
-      io:format("Error: No block name specified~n"),
+      io:format("Error: enter block-name~n"),
       error;
 
     ok ->
       [BlockNameStr] = Params,
+      BlockName = list_to_atom(BlockNameStr),
       % check if block name is an existing block
-      case linkblox_api:is_block_name(get_node(), BlockNameStr) of
-        true  -> BlockNameStr;
+      case linkblox_api:is_block_name(get_node(), BlockName) of
+        true  -> 
+          io:format("Block: ~s exists~n", [BlockNameStr]);
         false ->
-          io:format("Error: Block ~p does not exist~n", [BlockNameStr]),
-          error
+          io:format("Block ~p does not exist~n", [BlockNameStr])
       end;
  
     high ->
