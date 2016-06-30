@@ -66,6 +66,7 @@ loop() ->
     if CmdLcase /= "exit" ->
       case CmdLcase of
         "create"    -> ui_create_block(Params);
+        "copy"      -> ui_copy_block(Params);
         "execute"   -> ui_execute_block(Params);
         "delete"    -> ui_delete_block(Params);
         "disable"   -> ui_disable_block(Params);
@@ -98,6 +99,7 @@ loop() ->
   
 
 % Process block create command
+% TODO: Add initial attrib values
 ui_create_block(Params) ->
   case check_num_params(Params, 2) of  
     low -> io:format("Error: Enter block type and name~n");
@@ -124,6 +126,35 @@ ui_create_block(Params) ->
     high -> io:format("Error: Too many parameters~n")
   end.    
 
+% Process block copy command
+% TODO: Add initial attrib values
+ui_copy_block(Params) ->
+  case check_num_params(Params, 2) of  
+    low -> io:format("Error: Enter source-block-name and dest-block-name~n");
+
+    ok -> 
+      [SrcBlockNameStr, DstBlockNameStr] = Params,
+      SrcBlockName = list_to_atom(SrcBlockNameStr),
+      case linkblox_api:get_block(get_node(), SrcBlockName) of
+        {ok, SrcBlockValues} ->
+          DstBlockName = list_to_atom(DstBlockNameStr),
+          case linkblox_api:copy_block(get_node(), DstBlockName, SrcBlockValues) of
+            ok ->
+              io:format("Dest Block ~s Created~n", [DstBlockNameStr]);
+
+            {error, block_exists} ->
+              io:format("Error: Dest Block ~s already exists~n", [DstBlockNameStr]);
+      
+            {error, Reason} -> 
+              io:format("Error: ~p creating block ~s ~n",  [Reason, DstBlockNameStr])
+          end;
+
+        {error, block_not_found} ->
+          io:format("Error: Source Block ~s does not exists~n", [SrcBlockNameStr])
+      end;
+
+    high -> io:format("Error: Too many parameters~n")
+  end.    
 
 % Process manual block execute command
 ui_execute_block(Params) ->
