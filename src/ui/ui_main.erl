@@ -34,6 +34,7 @@ init() ->
 %%
 %% Get the current node this UI is connected to
 %%
+% TODO: Check if node exists before sending
 get_node() ->
   [{curr_node, Node}] = ets:lookup(node_store, curr_node),
   Node.
@@ -129,16 +130,25 @@ ui_create_block(Params) ->
 % Process block copy command
 % TODO: Add initial attrib values
 ui_copy_block(Params) ->
-  case check_num_params(Params, 2) of  
-    low -> io:format("Error: Enter source-block-name and dest-block-name~n");
+  case check_num_params(Params, 2, 3) of  
+    low -> io:format("Error: Enter source-block-name <dest-node-name> dest-block-name~n");
 
-    ok -> 
-      [SrcBlockNameStr, DstBlockNameStr] = Params,
+    ok ->
+      case length(Params) of
+        2 ->
+          [SrcBlockNameStr, DstBlockNameStr] = Params,
+          DstNode = get_node();
+        3 ->
+          [SrcBlockNameStr, DstNodeStr, DstBlockNameStr] = Params,
+          DstNode = list_to_atom(DstNodeStr)
+      end,
+
       SrcBlockName = list_to_atom(SrcBlockNameStr),
+      % Always get source block values from the current node
       case linkblox_api:get_block(get_node(), SrcBlockName) of
         {ok, SrcBlockValues} ->
           DstBlockName = list_to_atom(DstBlockNameStr),
-          case linkblox_api:copy_block(get_node(), DstBlockName, SrcBlockValues) of
+          case linkblox_api:copy_block(DstNode, DstBlockName, SrcBlockValues, []) of
             ok ->
               io:format("Dest Block ~s Created~n", [DstBlockNameStr]);
 

@@ -20,6 +20,7 @@
 					start/0,
 					stop/1,
 					create_block/4,
+					copy_block/4,
 					delete_block/2,
 					get_block/2,
 					get_value/3,
@@ -58,6 +59,15 @@ create_block(Node, BlockType, BlockName, InitAttribs) ->
 	gen_server:call({linkblox_api, Node}, 
 	                {create_block, BlockType, BlockName, InitAttribs}).
 
+%% Create a copy of a block
+-spec copy_block(Node :: node(),
+								 BlockName :: block_name(),
+								 BlockValues :: block_defn(),
+								 InitAttribs :: list()) -> term().
+
+copy_block(Node, BlockName, BlockValues, InitAttribs) ->
+	gen_server:call({linkblox_api, Node}, 
+	                {copy_block, BlockName, BlockValues, InitAttribs}).
 
 %% delete a block
 -spec delete_block(Node :: node(),
@@ -224,6 +234,49 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
 		_ ->
 			Result = {error, invalid_block_type}
 	end,
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Copy a block
+%% =====================================================================    
+% TODO: Set initial attribute values
+handle_call({copy_block, BlockName, BlockValues, _InitAttribs}, _From, State) ->
+	% Make sure the block values to be copied are the correct form
+	case BlockValues of
+		{Config, Inputs, Outputs} ->
+			% Get the block module from the copied config values 
+			case attrib_utils:get_value(Config, block_module) of
+				{ok, BlockModule} ->
+					% Make sure the block type to be copied, exists on this node
+					case lists:member(BlockModule, block_types:block_type_modules()) of
+						true ->
+							% Make sure the block name is not already used
+  						case valid_block_name(BlockName) of
+								false ->
+									% Create the block, but ignore the default values
+									BlockModule:create(BlockName, "Default Comment"),
+									% Change the name in the copied block values, to the new block name
+									{ok, NewConfig} = attrib_utils:set_value(Config, block_name, BlockName),
+									% Start the new block with the set of copied values, only the block name config value is changed
+									case block_supervisor:create_block({NewConfig, Inputs, Outputs}) of
+            				{ok, _Pid} -> 
+          						Result = ok;
+            				{error, Reason} -> 
+              				Result = {error, Reason}
+									end;
+								_ ->
+									Result = {error, block_exists}
+							end;
+						_ ->
+							Result = {error, invalid_block_type}
+					end;
+				_ ->
+					Result = {error, invalid_config_valus}	
+			end;
+		_ ->
+			Result = {error, invalid_block_values}
+	end,	
   {reply, Result, State};
 
 %% =====================================================================

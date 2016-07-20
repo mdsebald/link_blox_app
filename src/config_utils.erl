@@ -82,7 +82,7 @@ name_module(Config) ->
   
   
 %%
-%%  Get block name and module from Config attribute values
+%%  Get block name, module, and version from Config attribute values
 %%
 -spec name_module_version(Config :: list(config_attr()) |
                           block_defn() | 
