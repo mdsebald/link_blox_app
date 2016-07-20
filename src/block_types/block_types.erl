@@ -36,7 +36,6 @@ block_type_modules() ->
     type_mcp9808_temp,
     type_one_digit_7seg,
     type_rotary_encoder,
-    type_seven_seg_decoder,
     type_toggle
   ].  
     

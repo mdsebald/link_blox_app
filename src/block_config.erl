@@ -37,12 +37,6 @@
                                      {disable, {false, ?EMPTY_LINK}}
                                  ]),
                                  
-    SegDecoder = type_seven_seg_decoder:create(seg_decode, "Decode Temp to 4 Digits / 7 Segments",
-                                 [],
-                                 [
-                                     {disable, {false, ?EMPTY_LINK}},
-                                     {input, {empty, {room_temp, value}}}
-                                 ]),
                                  
     LedDisp = type_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
                                  [],
@@ -130,7 +124,7 @@
                                   {input, {empty, {display, seg_g}}}]
                                 ),
 
-    [Test7Seg, RotEncoder, SegDecoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 
+    [Test7Seg, RotEncoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 
      SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
 
 
