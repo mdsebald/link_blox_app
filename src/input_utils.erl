@@ -12,91 +12,144 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([get_any_type/2, get_integer/2, get_float/2, get_boolean/2]).
--export([get_value/3, check_boolean_input/1, resize_attribute_array_value/5]).
--export([log_error/3]).
+-export([
+          get_any_type/2, 
+          get_integer/2,
+          get_integer_range/4, 
+          get_float/2, 
+          get_boolean/2,
+          get_value/3, 
+          check_boolean_input/1, 
+          resize_attribute_array_value/5,
+          log_error/3
+]).
 
 
 %%
 %% Get input value of any type and check for errors.
 %%
 -spec get_any_type(Inputs :: list(input_attr()),
-                   ValueName :: atom()) -> generic_input_value().
+                   ValueId :: value_id()) -> generic_input_value().
 
-get_any_type(Inputs, ValueName) ->
+get_any_type(Inputs, ValueId) ->
   % Return true for every value
   CheckType = fun(_Value) -> true end,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Inputs, ValueId, CheckType).
 
 %%
 %% Get an integer input value and check for errors.
 %%
 -spec get_integer(Inputs :: list(input_attr()), 
-                  ValueName :: atom()) -> integer_input_value().
+                  ValueId :: value_id()) -> integer_input_value().
 
-get_integer(Inputs, ValueName) ->
+get_integer(Inputs, ValueId) ->
   CheckType = fun is_integer/1,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Inputs, ValueId, CheckType).
+
+
+%%
+%% Get an integer input value and check for errors.
+%%
+-spec get_integer_range(Inputs :: list(input_attr()), 
+                        ValueId :: value_id(),
+                        Min :: integer(),
+                        Max :: integer()) -> integer_input_value().
+
+get_integer_range(Inputs, ValueId, Min, Max) ->
+  CheckType = fun is_integer/1,
+  case get_value(Inputs, ValueId, CheckType) of
+    {error, Reason} -> 
+      {error, Reason};
+    {ok, Value} ->
+      if (Value < Min ) orelse (Max < Value) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
 
 
 %%
 %% Get a floating point input value and check for errors.
 %%
 -spec get_float(Inputs :: list(input_attr()), 
-                ValueName :: atom()) -> float_input_value().
+                ValueId :: value_id()) -> float_input_value().
 
-get_float(Inputs, ValueName) ->
+get_float(Inputs, ValueId) ->
   CheckType = fun is_float/1,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Inputs, ValueId, CheckType).
   
   
 %%
 %% Get a boolean input value and check for errors
 %%
 -spec get_boolean(Inputs :: list(input_attr()), 
-                  ValueName :: atom()) -> boolean_input_value().
+                  ValueId :: value_id()) -> boolean_input_value().
 
-get_boolean(Inputs, ValueName) ->
+get_boolean(Inputs, ValueId) ->
   CheckType = fun is_boolean/1,
-  get_value(Inputs, ValueName, CheckType).
+  get_value(Inputs, ValueId, CheckType).
 
 
 %%
 %% Generic get input value, check for errors.
 %%
 -spec get_value(Inputs :: list(input_attr()),
-                ValueName :: atom(),
+                ValueId :: value_id(),
                 CheckType :: fun()) -> term().
                 
-get_value(Inputs, ValueName, CheckType) ->
-  case attrib_utils:get_attribute(Inputs, ValueName) of
+get_value(Inputs, ValueId, CheckType) ->
+  % get the whole attribute, not just the value
+  case attrib_utils:get_attribute(Inputs, ValueId) of
     {error, not_found}  -> {error, not_found};
     
-    {ok, {ValueName, {Value, Link}}} ->
-      case Value of
-        % not_active is a valid value
-        not_active -> {ok, not_active};
-        
-        empty ->   
-          case Link of
-            % if the input value is empty and the link is empty
-            % treat this like a not_active value
-            ?EMPTY_LINK -> {ok, not_active};
-            % input is linked to another block but value is empty,
-            % this is an error
-            _ -> {error, bad_link}
+    % If this is a non-array value, check it
+    {ok, {_ValueName, {Value, Link}}} ->
+      check_value(Value, Link, CheckType);
+
+    % if this is an array value, check the index, and get the nth element
+    {ok, {ValueName, ArrayValue}} ->
+      % if this is an array value, the ValueName from get_attribute()
+      % will match ValueName in the ValueId tuple
+      case ValueId of
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            {Value, Link} = lists:nth(ArrayIndex, ArrayValue),
+            check_value(Value, Link, CheckType);
+
+          true->  % array index is out of bounds
+            {error, invalid_index}
           end;
-        
-        Value ->
-          case CheckType(Value) of
-            true  -> {ok, Value};
-            false -> {error, bad_type}
-          end   
+        _ -> {error, invalid_value}
       end;
+       
     % Attribute value was not an input value  
     _ -> {error, not_input}    
   end.
 
+%% Check the value and link for both non-array and array values
+check_value(Value, Link, CheckType) ->
+  case Value of
+    % not_active is a valid value
+    not_active -> {ok, not_active};
+        
+    empty ->   
+      case Link of
+        % if the input value is empty and the link is empty
+        % treat this like a not_active value
+        ?EMPTY_LINK -> {ok, not_active};
+
+        % input is linked to another block but value is empty,
+        % this is an error
+         _ -> {error, bad_link}
+      end;
+
+    Value ->
+      case CheckType(Value) of
+        true  -> {ok, Value};
+        false -> {error, bad_type}
+      end
+  end.
   
 %
 % Check the value of the disable or freeze control value input

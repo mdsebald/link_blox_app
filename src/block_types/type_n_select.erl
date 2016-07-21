@@ -1,20 +1,14 @@
-% INSTRUCTIONS: Copy this module and modify as appropriate 
-%               for the function this block will perform.
-%               Comments marked "INSTRUCTIONS:" may be deleted 
 
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type: Select Input Value
+%%% Description:  Set the block output value to selected input input value 
 %%%               
 %%% @end 
 
--module(type_template).  % INSTRUCTIONS: Modify to match new module name
-                         % INSTRUCTIONS: Add module name to the list of 
-                         %  block module names in the block_types module
+-module(type_n_select).  
 
--author("Your Name").
+-author("Mark Sebald").
 
- % INSTRUCTIONS: Adjust path to hrl file as needed
 -include("../block_state.hrl"). 
 
 %% ====================================================================
@@ -24,14 +18,9 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-% INSTRUCTIONS: Major.Minor.Patch, 
-%   Major version change implies a breaking change, 
-%   i.e. Block module code is not compatible with a 
-%   block definition created with block code with a different major revison 
 version() -> "0.1.0".
 
-% INSTRUCTIONS String describing block function
-description() -> "Short description of block function".
+description() -> "Select 1 of N Inputs".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -44,10 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      % INTRUCTIONS: Insert block type specific config attribute tuples here
-      % Config attribute tuples consist of a value name and a value
-      % Example: {gpio_pin, {0}}
-      % Config values are set once on block creation and never modified.                   
+       {num_of_inputs, {3}}  % Default number of selectable inputs to 3                
     ]). 
 
 
@@ -57,11 +43,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      % INTRUCTIONS: Insert block type specific input attribute tuples here
-      % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, {100, ?EMPTY_LINK}}
-      % Array Example: {inputs, [{empty, ?EMPTY_LINK}]}
-      % Inputs may be fixed values, or linked to a block output value 
+      {select, {1, ?EMPTY_LINK}}, % Default selection to 1st input
+      {inputs, [{empty, ?EMPTY_LINK}]} % Array attribute
     ]). 
 
 
@@ -71,12 +54,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      % INTRUCTIONS: Insert block type specific output attribute tuples here
-      % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, {not_active, []}}
-      % Array Example: {digit, [{not_active, []}]}  
     ]). 
 
 
@@ -129,14 +106,29 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-    
-  % Perform block type specific initializations here
-  % Add and intialize private attributes here
-  Outputs1 = Outputs,
-  Private1 = Private,
+  % Check the config values
+  case config_utils:get_integer_range(Config, num_of_inputs, 1, 99) of
+    {error, Reason} ->
+      Inputs1 = Inputs,
+      {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason);
+       
+    {ok, NumOfInputs} ->      
+      % All config values are OK
+              
+      % Create N inputs
+      BlockName = config_utils:name(Config),
+      Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
+                                  inputs, NumOfInputs, {empty, ?EMPTY_LINK}),
+
+      % Initialize output values
+      Value = not_active,
+      Status = initialed
+  end,
+
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),  
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs1, Outputs1, Private}.
 
 
 %%
@@ -146,14 +138,29 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % INSTRUCTIONS: Perform block type specific actions here, 
-  % read input value(s) calculate new outut value(s)
-  % set block output status value
-  Outputs1 = Outputs,
-  Private1 = Private,
+  {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
+
+  case input_utils:get_integer_range(Inputs, select, 1, NumOfInputs) of
+    {error, Reason} ->
+      {Value, Status} = input_utils:log_error(Config, select, Reason);
+
+    {ok, not_active} ->
+      Value = not_active, Status = no_input;
+   
+    {ok, SelectedInput} ->  
+      case input_utils:get_any_type(Inputs, {inputs, SelectedInput}) of
+        {ok, Value} ->
+          Status = ok;
+
+        {error, Reason} ->
+          {Value, Status} = input_utils:log_error(Config, inputs, Reason)
+      end
+  end,
+   
+   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -162,7 +169,6 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(block_state()) -> ok.
 
 delete({_Config, _Inputs, _Outputs, _Private}) -> 
-  % INSTRUCTIONS: Perform any block type specific delete functionality here
   ok.
 
 

@@ -34,6 +34,7 @@ block_type_modules() ->
     type_ht16k33_4digit_led,
     type_int_to_7seg,
     type_mcp9808_temp,
+    type_n_select,
     type_one_digit_7seg,
     type_rotary_encoder,
     type_toggle
