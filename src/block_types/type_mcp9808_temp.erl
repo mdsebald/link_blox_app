@@ -45,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {0, ?EMPTY_LINK}} 
+      {input, {0, ?EMPTY_LINK}} % TODO: Delete, not used
     ]). 
 
 

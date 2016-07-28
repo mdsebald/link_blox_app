@@ -150,65 +150,79 @@ execute(BlockValues, ExecMethod) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
   BlockStatus = output_utils:get_status(Outputs),
 
-  % Don't execute block if the block is configured incorrectly
-  % or if there is a problem accessing the hardware
-  if (BlockStatus /= config_err) andalso (BlockStatus /= proc_err) -> 
-    {BlockName, BlockModule} = config_utils:name_module(Config),
+  % Check block status before executing
+  case ok_to_execute(BlockStatus) of
+    true ->
+      {BlockName, BlockModule} = config_utils:name_module(Config),
     
-    {ok, Disable} = attrib_utils:get_value(Inputs, disable),
-    case input_utils:check_boolean_input(Disable) of
-      not_active ->
-        {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
-        case input_utils:check_boolean_input(Freeze) of
-          not_active -> % block is not disabled or frozen, execute it
-            {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
-            Outputs2 = update_execute_track(Outputs1, ExecMethod);
+      {ok, Disable} = attrib_utils:get_value(Inputs, disable),
+      case input_utils:check_boolean_input(Disable) of
+        not_active ->
+          {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
+          case input_utils:check_boolean_input(Freeze) of
+            not_active -> % block is not disabled or frozen, execute it
+              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
+              Outputs2 = update_execute_track(Outputs1, ExecMethod);
                     
-          active -> % Block is frozen
-            % Just update the status output, all other outputs are frozen
-            Outputs2 = output_utils:set_status(Outputs, frozen),
-            % Nothing to update in private values
-            Private1 = Private;
+            active -> % Block is frozen
+              % Just update the status output, all other outputs are frozen
+              Outputs2 = output_utils:set_status(Outputs, frozen),
+              % Nothing to update in private values
+              Private1 = Private;
                     
-          error -> % Freeze input value error
-            error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
-            Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
-            % Nothing to update in private values
-            Private1 = Private
-        end;
-      active -> % Block is disabled
-        Outputs2 = output_utils:update_all_outputs(Outputs, not_active, disabled),
-        % Nothing to update in private values
-        Private1 = Private;
+            error -> % Freeze input value error
+              error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
+              Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
+              % Nothing to update in private values
+              Private1 = Private
+          end;
+        active -> % Block is disabled
+          Outputs2 = output_utils:update_all_outputs(Outputs, not_active, disabled),
+          % Nothing to update in private values
+          Private1 = Private;
         
-      error -> % Disable input value error 
-        error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
-        Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
-        % Nothing to update in private values
-        Private1 = Private
-    end,
+        error -> % Disable input value error 
+          error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
+          Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
+          % Nothing to update in private values
+          Private1 = Private
+      end,
       
-    {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
+      {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
     
-    if (Status /= normal) ->  % Some kind error setting execution timer
-      Outputs3 = output_utils:update_all_outputs(Outputs2, not_active, Status);
-    true -> % Execution timer status is normal
-      Outputs3 = Outputs2
-    end,
+      if (Status /= normal) ->  % Some kind error setting execution timer
+        Outputs3 = output_utils:update_all_outputs(Outputs2, not_active, Status);
+      true -> % Execution timer status is normal
+        Outputs3 = Outputs2
+      end,
 
-    % Update the block inputs linked to the block outputs 
-    % that have just been updated (Data Flow)
-    update_blocks(BlockName, Outputs, Outputs3),
+      % Update the block inputs linked to the block outputs 
+      % that have just been updated (Data Flow)
+      update_blocks(BlockName, Outputs, Outputs3),
     
-    % Execute the blocks connected to the exec_out output value (Control Flow)
-    update_execute(Outputs3),
+      % Execute the blocks connected to the exec_out output value (Control Flow)
+      update_execute(Outputs3),
     
-    % Return the updated block state
-    {Config, Inputs, Outputs3, Private2};
+      % Return the updated block state
+      {Config, Inputs, Outputs3, Private2};
 
-  true -> % Block is in config error or process error state
-    % Just return the current block state, unchanged
-    {Config, Inputs, Outputs, Private}
+    false -> % Block is in error state
+      % Just return the current block state, unchanged
+      {Config, Inputs, Outputs, Private}
+  end.
+
+
+%%
+%% Don't execute block if the block is configured incorrectly,
+%% if there is a problem accessing the hardware,
+%% or if an input is missing or in error
+%%
+-spec ok_to_execute(BlockStatus :: block_status()) -> boolean().
+
+ok_to_execute(BlockStatus) ->
+  case lists:member(BlockStatus, [input_err, config_err, proc_err, no_input]) of
+    true -> false;
+    false -> true
   end.
 
 

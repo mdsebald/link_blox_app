@@ -28,6 +28,7 @@
 
 block_type_modules() ->
   [
+    type_bme280_env_sensor,
     type_exec_count,
     type_gpio_di,
     type_gpio_do,
