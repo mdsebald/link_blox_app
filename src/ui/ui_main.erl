@@ -656,10 +656,11 @@ block_status([BlockName | RemainingBlockNames]) ->
       LastExecuted = "undef last_exec val"
   end,  
     
-  io:fwrite("~-16s ~-16s ~-12w ~-12w ~-12w ~-15s~n", 
+  io:fwrite("~-16s ~-16s ~-12s ~-12w ~-12w ~-15s~n", 
             [string:left(BlockTypeStr, 16), 
              string:left(atom_to_list(BlockName), 16), 
-             Value, Status, ExecMethod, LastExecuted]),
+             string:left(io_lib:format("~w",[Value]), 12), 
+             Status, ExecMethod, LastExecuted]),
   block_status(RemainingBlockNames).
 
 

@@ -34,12 +34,12 @@ default_configs(BlockName, Description) ->
     [
       {i2c_device, {"i2c-1"}},
       {i2c_addr, {16#76}},
-      {sensor_mode, {normal}},  % Valid values: normal, forced
-      {filter_coeff, {0}},      % Valid values: 0,2,4,6,8,16
-      {standby_time, {500}},     % Valid values: 0.5, 62.5, 125, 250, 500, 1000, 10, 20 Msecs 
-      {temp_mode, {1}},         % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-      {press_mode, {1}},        % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-      {humid_mode, {1}},        % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate)
+      {read_mode, {normal}},  % Valid values: normal, forced
+      {filter_coeff, {0}},    % Valid values: 0,2,4,6,8,16
+      {standby_time, {500}},  % Valid values: 0.5, 62.5, 125, 250, 500, 1000, 10, 20 Msecs 
+      {temp_mode, {1}},       % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
+      {press_mode, {1}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
+      {humid_mode, {1}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate)
       {deg_f, {true}},
       {temp_offset, {0.0}},
       {press_offset, {0.0}},
@@ -157,33 +157,42 @@ initialize({Config, Inputs, Outputs, Private}) ->
       case configure_sensor(I2cRef, Config) of 
         ok ->
           
-          case get_calibration(I2cRef, Private3) of
-            {ok, Private4} -> 
-              case read_sensor(I2cRef, Private4) of
+          case get_calibration(I2cRef, Private2) of
+            {ok, Private3} -> 
+              case read_sensor(I2cRef, Private3) of
                 {ok, Temp, Press, Humid} ->
                   Status = initialed,
-                  % update output values
+                  Value = Temp,
                   ok;
 
                 {error, Reason} ->
                   error_logger:error_msg("Error: ~p Reading sensor~n", 
                               [Reason]),
                   Status = proc_error,
-                  Value = not_active
+                  Value = not_active,
+                  Temp = not_active,
+                  Press = not_active,
+                  Humid = not_active
               end;
 
             {error, Reason} ->
               error_logger:error_msg("Error: ~p reading sensor calibration~n", [Reason]),
               Status = config_err,
               Value = not_active,
-              Private4 = Private3
+              Temp = not_active,
+              Press = not_active,
+              Humid = not_active,
+              Private3 = Private2
           end;
   
         {error, Reason} ->
           error_logger:error_msg("Error: ~p configuring sensor~n", [Reason]),
           Status = config_err,
           Value = not_active,
-          Private2 = Private1
+          Temp = not_active,
+          Press = not_active,
+          Humid = not_active,
+          Private3 = Private1
       end;
 
     {error, Reason} ->
@@ -191,13 +200,21 @@ initialize({Config, Inputs, Outputs, Private}) ->
                               [Reason, I2cAddr]),
       Status = proc_error,
       Value = not_active,
-      Private2 = Private1
+      Temp = not_active,
+      Press = not_active,
+      Humid = not_active,
+      Private3 = Private1
   end,	
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  {ok, Outputs2} = attrib_utils:set_values(Outputs1, 
+                                           [{value, Value},
+                                            {temp, Temp},
+                                            {press, Press},
+                                            {humid, Humid}]),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs2, Private3}.
 
 
 %%
@@ -214,24 +231,34 @@ execute({Config, Inputs, Outputs, Private}) ->
   
   {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
   {ok, _DegF} = attrib_utils:get_value(Config, deg_f),
-  {ok, _Offset} = attrib_utils:get_value(Config, offset),
+  {ok, _TempOffset} = attrib_utils:get_value(Config, temp_offset),
   
-  % Read the ambient temperature
-  case read_sensor(I2cRef) of
+  % Read the sensor
+  case read_sensor(I2cRef, Private) of
+    {ok, Temp, Press, Humid} ->
+      Status = normal,
+      Value = Temp,
+      ok;
+
     {error, Reason} ->
       error_logger:error_msg("Error: ~p Reading temperature sensor~n", 
                               [Reason]),
       Status = proc_error,
-      Value = not_active;
-  
-    Value ->
-      Status = normal
+      Value = not_active,
+      Temp = not_active,
+      Press = not_active,
+      Humid = not_active
   end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  {ok, Outputs2} = attrib_utils:set_values(Outputs1, 
+                                           [{value, Value},
+                                            {temp, Temp},
+                                            {press, Press},
+                                            {humid, Humid}]),
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private}.
+  {Config, Inputs, Outputs2, Private}.
 
 
 %% 
@@ -315,7 +342,7 @@ delete({_Config, _Inputs, _Outputs, Private}) ->
 
 
 %
-% Configure sensor
+% Configure the sensor
 %
 -spec configure_sensor(I2cRef :: pid(),
                        Config :: list(config_attr())) -> ok | {error, atom()}.
@@ -323,29 +350,27 @@ delete({_Config, _Inputs, _Outputs, Private}) ->
 configure_sensor(I2cRef, Config) -> 
   case reset_sensor(I2cRef) of
     ok ->
+
       case set_config_reg(I2cRef, Config) of
-        ok -> ok;
+        ok ->
+
+          case set_humid_mode(I2cRef, Config) of
+            ok ->
+
+              case set_temp_press_read_modes(I2cRef, Config) of
+                ok -> ok;
+
+                {error, Reason} -> {error, Reason}
+              end;
+
+            {error, Reason} -> {error, Reason} 
+          end;
 
         {error, Reason} -> {error, Reason} 
       end;
 
     {error, Reason} -> {error, Reason}  
   end.
-
- % case config_utils:get_value(Config, sensor_mode) ->
-%    normal ->
-
-%    forced ->
-
-%    Invalid ->
- %     error_logger:error_msg("Error: ~p is not a valid sensor mode (normal or forced) ~n", 
- %                             [Invalid]), 
- %     {error, config_err}
- % end.
- %     {temp_mode, {1}},        % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
- %     {press_mode, {1}},       % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-  %    {humid_mode, {1}},
-
 
 %
 % Reset sensor
@@ -383,10 +408,69 @@ set_config_reg(I2cRef, Config) ->
               error_logger:error_msg("Error: ~p setting sensor config register~n", [Reason]),
               {error, Reason}
           end;
+
         {error, Reason} -> {error, Reason}
       end;
+
     {error, Reason} -> {error, Reason}
   end. 
+
+%
+% Set Humidity sensor mode
+%
+-spec set_humid_mode(I2cRef :: pid(), 
+                     Config :: list(config_attr())) -> ok | {error, atom()}.
+
+set_humid_mode(I2cRef, Config) ->
+  case get_humid_mode(Config) of
+    {ok, HumidMode} ->
+
+      case i2c:write(I2cRef, <<?CTRL_HUMID_REG, HumidMode>>) of
+        ok -> ok;
+
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p setting humidity mode~n", [Reason]),
+          {error, Reason}
+      end;
+
+    {error, Reason} -> {error, Reason}
+  end. 
+
+%
+% Set Temperature sensor mode, Pressure sensor mode, and Read mode
+%
+-spec set_temp_press_read_modes(I2cRef :: pid(), 
+                                 Config :: list(config_attr())) -> ok | {error, atom()}.
+
+set_temp_press_read_modes(I2cRef, Config) ->
+  
+  case get_temp_mode(Config) of
+    {ok, TempMode} ->
+
+      case get_press_mode(Config) of
+        {ok, PressMode} ->
+
+          case get_read_mode(Config) of
+            {ok, ReadMode} ->
+
+              case i2c:write(I2cRef, <<?CTRL_MEAS_REG, TempMode:3, PressMode:3, ReadMode:2>>) of
+                ok -> ok;
+
+                {error, Reason} ->
+                  error_logger:error_msg("Error: ~p setting temperature, pressure, or read modes~n", [Reason]),
+                  {error, Reason}
+              end;
+
+            {error, Reason} -> {error, Reason}         
+          end;
+
+        {error, Reason} -> {error, Reason}
+      end;
+
+    {error, Reason} -> {error, Reason}
+  end. 
+
+
 
 %
 % Get standby time from config values, and convert to sensor bit format
@@ -394,7 +478,7 @@ set_config_reg(I2cRef, Config) ->
 -spec get_standby_time(Config :: list(config_attr())) -> byte() | {error, atom()}.
 
 get_standby_time(Config) ->
-  case config_utils:get_value(Config, standby_time) of
+  case attrib_utils:get_value(Config, standby_time) of
     {ok, 0.5}  -> {ok, ?STANDBY_TIME_0p5};
     {ok, 62.5} -> {ok, ?STANDBY_TIME_62p5};
     {ok, 125}  -> {ok, ?STANDBY_TIME_125};
@@ -412,12 +496,12 @@ get_standby_time(Config) ->
   end.
 
 %
-% Get filter coefficientfrom config values, and convert to sensor bit format
+% Get filter coefficient from config values, and convert to sensor bit format
 %
 -spec get_filter_coeff(Config :: list(config_attr())) -> byte() | {error, atom()}.
 
 get_filter_coeff(Config) ->
-  case config_utils:get_value(Config, filter_coeff) of
+  case attrib_utils:get_value(Config, filter_coeff) of
     {ok, 0}  -> {ok, ?FILTER_COEFF_OFF};
     {ok, 2}  -> {ok, ?FILTER_COEFF_2};
     {ok, 4}  -> {ok, ?FILTER_COEFF_4};
@@ -430,6 +514,89 @@ get_filter_coeff(Config) ->
       error_logger:error_msg("Error: ~p reading filter coefficiean value~n", [Reason]),
       {error, config_err}
   end.
+
+%
+% Get humidity sensor mode from config values, and convert to sensor bit format
+%
+-spec get_humid_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+
+get_humid_mode(Config) ->
+  case attrib_utils:get_value(Config, humid_mode) of
+    {ok, 0}  -> {ok, ?OSRS_HUMID_SKIP};
+    {ok, 1}  -> {ok, ?OSRS_HUMID_OVSAMPL_1X};
+    {ok, 2}  -> {ok, ?OSRS_HUMID_OVSAMPL_2X};
+    {ok, 4}  -> {ok, ?OSRS_HUMID_OVSAMPL_4X};
+    {ok, 8}  -> {ok, ?OSRS_HUMID_OVSAMPL_8X};
+    {ok, 16} -> {ok, ?OSRS_HUMID_OVSAMPL_16X};
+    {ok, InvalidVal} ->
+      error_logger:error_msg("Error: ~p is an invalid humidity mode value~n", [InvalidVal]),
+      {error, config_err};
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading humidity mode value~n", [Reason]),
+      {error, config_err}
+  end.
+
+%
+% Get temperature sensor mode from config values, and convert to sensor bit format
+%
+-spec get_temp_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+
+get_temp_mode(Config) ->
+  case attrib_utils:get_value(Config, temp_mode) of
+    {ok, 0}  -> {ok, ?OSRS_TEMP_SKIP};
+    {ok, 1}  -> {ok, ?OSRS_TEMP_OVSAMPL_1X};
+    {ok, 2}  -> {ok, ?OSRS_TEMP_OVSAMPL_2X};
+    {ok, 4}  -> {ok, ?OSRS_TEMP_OVSAMPL_4X};
+    {ok, 8}  -> {ok, ?OSRS_TEMP_OVSAMPL_8X};
+    {ok, 16} -> {ok, ?OSRS_TEMP_OVSAMPL_16X};
+    {ok, InvalidVal} ->
+      error_logger:error_msg("Error: ~p is an invalid temperature mode value~n", [InvalidVal]),
+      {error, config_err};
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading temperature mode value~n", [Reason]),
+      {error, config_err}
+  end.
+
+%
+% Get pressure sensor mode from config values, and convert to sensor bit format
+%
+-spec get_press_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+
+get_press_mode(Config) ->
+  case attrib_utils:get_value(Config, press_mode) of
+    {ok, 0}  -> {ok, ?OSRS_PRESS_SKIP};
+    {ok, 1}  -> {ok, ?OSRS_PRESS_OVSAMPL_1X};
+    {ok, 2}  -> {ok, ?OSRS_PRESS_OVSAMPL_2X};
+    {ok, 4}  -> {ok, ?OSRS_PRESS_OVSAMPL_4X};
+    {ok, 8}  -> {ok, ?OSRS_PRESS_OVSAMPL_8X};
+    {ok, 16} -> {ok, ?OSRS_PRESS_OVSAMPL_16X};
+    {ok, InvalidVal} ->
+      error_logger:error_msg("Error: ~p is an invalid pressure mode value~n", [InvalidVal]),
+      {error, config_err};
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading pressure mode value~n", [Reason]),
+      {error, config_err}
+  end.
+
+%
+% Get sensor read mode from config values, and convert to sensor bit format
+%
+-spec get_read_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+
+get_read_mode(Config) ->
+  case attrib_utils:get_value(Config, read_mode) of
+    {ok, sleep}  -> {ok, ?SENSOR_MODE_SLEEP};
+    {ok, forced} -> {ok, ?SENSOR_MODE_FORCED};
+    {ok, normal} -> {ok, ?SENSOR_MODE_NORMAL};
+    {ok, InvalidVal} ->
+      error_logger:error_msg("Error: ~p is an invalid read mode value (sleep, normal, forced)~n", [InvalidVal]),
+      {error, config_err};
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading read mode value~n", [Reason]),
+      {error, config_err}
+  end.
+
+
 
 %
 % Get sensor calibration values
@@ -509,9 +676,10 @@ get_calibration(I2cRef, Private) ->
 %
 % Read the sensor data.
 %
--spec read_sensor(I2cRef :: pid()) -> list() | {error, term()}.
+-spec read_sensor(I2cRef :: pid(),
+                  Private :: list(private_attr())) -> list() | {error, term()}.
                    
-read_sensor(I2cRef) ->
+read_sensor(I2cRef, Private) ->
 
   % Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) 
   % or from 0xF7 to 0xFE (temperature, pressure and humidity). 
@@ -521,61 +689,170 @@ read_sensor(I2cRef) ->
   case i2c:write_read(I2cRef, <<?SENSOR_DATA_REG_BEGIN>>, ?SENSOR_DATA_LEN) of
     {error, Reason} -> {error, Reason};
   
-    <<UncPress:20, _Fill1:4, UncTemp:20, _Fill2:4, UncHumid:16>>->
-      ok
- 
+    <<Adc_Press:20, _Fill1:4, Adc_Temp:20, _Fill2:4, Adc_Humid:16>> ->
+      {Temp, T_fine} = compensate_temp(Adc_Temp, Private),
+      Press = compensate_press(Adc_Press, T_fine, Private),
+      Humid = compensate_humid(Adc_Humid, T_fine, Private),
+
+      TempDegF = ((Temp * 9)/ 5) + 32.0,
+      PressInchMerc = Press * 0.0002953,
+      {ok, TempDegF, PressInchMerc, Humid}
   end.
 
 
+%
+% Compensate the raw temperature sensor value 
+% Use the following formula, found in the BME280 documentation:
+%
 % Returns temperature in DegC, resolution is 0.01 DegC. Output value of “5123” equals 51.23 DegC.
 % t_fine carries fine temperature as global value
-%BME280_S32_t t_fine;
-%BME280_S32_t BME280_compensate_T_int32(BME280_S32_t adc_T)
-%{
-%BME280_S32_t var1, var2, T;
-%var1 = ((((adc_T>>3) – ((BME280_S32_t)dig_T1<<1))) * ((BME280_S32_t)dig_T2)) >> 11;
-%var2 = (((((adc_T>>4) – ((BME280_S32_t)dig_T1)) * ((adc_T>>4) – ((BME280_S32_t)dig_T1))) >> 12) *
-%((BME280_S32_t)dig_T3)) >> 14;
-%t_fine = var1 + var2;
-%T = (t_fine * 5 + 128) >> 8;
-%return T;
-%}
+% BME280_S32_t t_fine;
+% BME280_S32_t BME280_compensate_T_int32(BME280_S32_t adc_T)
+% {
+%   BME280_S32_t var1, var2, T;
+%   var1 = ((((adc_T>>3) - ((BME280_S32_t)dig_T1<<1))) * ((BME280_S32_t)dig_T2)) >> 11;
+%   var2 = (((((adc_T>>4) - ((BME280_S32_t)dig_T1)) * ((adc_T>>4) - ((BME280_S32_t)dig_T1))) >> 12) * 
+%           ((BME280_S32_t)dig_T3)) >> 14;
+%   t_fine = var1 + var2;
+%   T = (t_fine * 5 + 128) >> 8;
+%   return T;
+% }
+%
+-spec compensate_temp(Adc_T :: integer(),
+                      Private :: list(private_attr())) -> {float(), integer()}.
 
+compensate_temp(Adc_T, Private) ->
+  % Get the calibration values
+  {ok, Dig_T1} = attrib_utils:get_value(Private, dig_T1), 
+  {ok, Dig_T2} = attrib_utils:get_value(Private, dig_T2), 
+  {ok, Dig_T3} = attrib_utils:get_value(Private, dig_T3),
+
+  Var1 = ((((Adc_T bsr 3) - (Dig_T1 bsl 1))) * Dig_T2) bsr 11,
+  Var2 = (((((Adc_T bsr 4) - Dig_T1) * ((Adc_T bsr 4) - Dig_T1)) bsr 12) * Dig_T3) bsr 14,
+
+  T_fine = Var1 + Var2,
+  T = (T_fine * 5 + 128) bsr 8,
+  T_DegC = T / 100,
+
+  {T_DegC, T_fine}.
+
+
+%
+% Compensate the raw pressure sensor value
+% Use the following formula, found in the BME280 documentation:
+%
 % Returns pressure in Pa as unsigned 32 bit integer in Q24.8 format (24 integer bits and 8 fractional bits).
 % Output value of “24674867” represents 24674867/256 = 96386.2 Pa = 963.862 hPa
-%BME280_U32_t BME280_compensate_P_int64(BME280_S32_t adc_P)
-%{
-%BME280_S64_t var1, var2, p;
-%var1 = ((BME280_S64_t)t_fine) – 128000;
-%var2 = var1 * var1 * (BME280_S64_t)dig_P6;
-%var2 = var2 + ((var1*(BME280_S64_t)dig_P5)<<17);
-%var2 = var2 + (((BME280_S64_t)dig_P4)<<35);
-%var1 = ((var1 * var1 * (BME280_S64_t)dig_P3)>>8) + ((var1 * (BME280_S64_t)dig_P2)<<12);
-%var1 = (((((BME280_S64_t)1)<<47)+var1))*((BME280_S64_t)dig_P1)>>33;
-%if (var1 == 0)
-%{
-%return 0; // avoid exception caused by division by zero
-%}
-%p = 1048576-adc_P;
-%p = (((p<<31)-var2)*3125)/var1;
-%var1 = (((BME280_S64_t)dig_P9) * (p>>13) * (p>>13)) >> 25;
-%var2 = (((BME280_S64_t)dig_P8) * p) >> 19;
-%p = ((p + var1 + var2) >> 8) + (((BME280_S64_t)dig_P7)<<4);
-%return (BME280_U32_t)p;
-%}
+% BME280_U32_t BME280_compensate_P_int64(BME280_S32_t adc_P)
+% {
+%   BME280_S64_t var1, var2, p;
+%   var1 = ((BME280_S64_t)t_fine) - 128000;
+%   var2 = var1 * var1 * (BME280_S64_t)dig_P6;
+%   var2 = var2 + ((var1*(BME280_S64_t)dig_P5)<<17);
+%   var2 = var2 + (((BME280_S64_t)dig_P4)<<35);
+%   var1 = ((var1 * var1 * (BME280_S64_t)dig_P3)>>8) + ((var1 * (BME280_S64_t)dig_P2)<<12);
+%   var1 = (((((BME280_S64_t)1)<<47)+var1))*((BME280_S64_t)dig_P1)>>33;
+%   if (var1 == 0)
+%   {
+%     return 0; // avoid exception caused by division by zero
+%   }
+%   p = 1048576-adc_P;
+%   p = (((p<<31)-var2)*3125)/var1;
+%   var1 = (((BME280_S64_t)dig_P9) * (p>>13) * (p>>13)) >> 25;
+%   var2 = (((BME280_S64_t)dig_P8) * p) >> 19;
+%   p = ((p + var1 + var2) >> 8) + (((BME280_S64_t)dig_P7)<<4);
+%   return (BME280_U32_t)p;
+% }
+%
+-spec compensate_press(Adc_P :: integer(),
+                       T_fine :: integer(),
+                       Private :: list(private_attr())) -> float().
 
-%// Returns humidity in %RH as unsigned 32 bit integer in Q22.10 format (22 integer and 10 fractional bits).
-%// Output value of “47445” represents 47445/1024 = 46.333 %RH
-%BME280_U32_t bme280_compensate_H_int32(BME280_S32_t adc_H)
-%{
-%BME280_S32_t v_x1_u32r;
-%v_x1_u32r = (t_fine – ((BME280_S32_t)76800));
-%v_x1_u32r = (((((adc_H << 14) – (((BME280_S32_t)dig_H4) << 20) – (((BME280_S32_t)dig_H5) * v_x1_u32r)) +
-%((BME280_S32_t)16384)) >> 15) * (((((((v_x1_u32r * ((BME280_S32_t)dig_H6)) >> 10) * (((v_x1_u32r * 
-%((BME280_S32_t)dig_H3)) >> 11) + ((BME280_S32_t)32768))) >> 10) + ((BME280_S32_t)2097152)) *
-%((BME280_S32_t)dig_H2) + 8192) >> 14));
-%v_x1_u32r = (v_x1_u32r – (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((BME280_S32_t)dig_H1)) >> 4));
-%v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
-%v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
-%return (BME280_U32_t)(v_x1_u32r>>12);
-%}
+compensate_press(Adc_P, T_fine, Private) ->
+  % Get the calibration values
+  {ok, Dig_P1} = attrib_utils:get_value(Private, dig_P1), 
+  {ok, Dig_P2} = attrib_utils:get_value(Private, dig_P2), 
+  {ok, Dig_P3} = attrib_utils:get_value(Private, dig_P3),
+  {ok, Dig_P4} = attrib_utils:get_value(Private, dig_P4), 
+  {ok, Dig_P5} = attrib_utils:get_value(Private, dig_P5), 
+  {ok, Dig_P6} = attrib_utils:get_value(Private, dig_P6),
+  {ok, Dig_P7} = attrib_utils:get_value(Private, dig_P7), 
+  {ok, Dig_P8} = attrib_utils:get_value(Private, dig_P8), 
+  {ok, Dig_P9} = attrib_utils:get_value(Private, dig_P9),
+
+  Var1 = T_fine - 128000,
+  Var2 = Var1 * Var1 * Dig_P6,
+  Var2_1 = Var2 + ((Var1 * Dig_P5) bsl 17),
+  Var2_2 = Var2_1 + (Dig_P4 bsl 35),
+  Var1_1 = ((Var1 * Var1 * Dig_P3) bsr 8) + ((Var1 * Dig_P2) bsl 12),
+  Var1_2 = (((1 bsl 47) + Var1_1)) * Dig_P1 bsr 33,
+
+  if (Var1_2 /= 0) ->
+    P = 1048576 - Adc_P,
+    P_1 = (((P bsl 31) - Var2_2) * 3125 ) div Var1_2,
+    Var1_3 = (Dig_P9 * (P_1 bsr 13) * (P_1 bsr 13)) bsr 25,
+    Var2_3 = (Dig_P8 * P_1) bsr 19,
+    P_2 = ((P_1 + Var1_3 + Var2_3) bsr 8) + (Dig_P7 bsl 4),
+    P_2 / 256; % division converts to floating point number
+  true -> 
+    0.0  % return 0, avoid exception caused by division by zero
+  end.
+
+
+%
+% Compensate the raw humidity sensor value
+% Use the following formula, found in the BME280 documentation:
+%
+% Returns humidity in %RH as unsigned 32 bit integer in Q22.10 format (22 integer and 10 fractional bits).
+% Output value of “47445” represents 47445/1024 = 46.333 %RH
+% BME280_U32_t bme280_compensate_H_int32(BME280_S32_t adc_H)
+% {
+%   BME280_S32_t v_x1_u32r;
+%   v_x1_u32r = (t_fine - ((BME280_S32_t)76800));
+%   v_x1_u32r = (((((adc_H << 14) - (((BME280_S32_t)dig_H4) << 20) - (((BME280_S32_t)dig_H5) * v_x1_u32r)) +
+%   ((BME280_S32_t)16384)) >> 15) * (((((((v_x1_u32r * ((BME280_S32_t)dig_H6)) >> 10) * (((v_x1_u32r * 
+%   ((BME280_S32_t)dig_H3)) >> 11) + ((BME280_S32_t)32768))) >> 10) + ((BME280_S32_t)2097152)) *
+%   ((BME280_S32_t)dig_H2) + 8192) >> 14));
+%   v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((BME280_S32_t)dig_H1)) >> 4));
+%   v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
+%   v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
+%   return (BME280_U32_t)(v_x1_u32r>>12);
+% }
+%
+-spec compensate_humid(Adc_H :: integer(),
+                       T_fine :: integer(),
+                       Private :: list(private_attr())) -> float().
+
+compensate_humid(Adc_H, T_fine, Private) ->
+  % Get the calibration values
+  {ok, Dig_H1} = attrib_utils:get_value(Private, dig_H1), 
+  {ok, Dig_H2} = attrib_utils:get_value(Private, dig_H2), 
+  {ok, Dig_H3} = attrib_utils:get_value(Private, dig_H3),
+  {ok, Dig_H4} = attrib_utils:get_value(Private, dig_H4), 
+  {ok, Dig_H5} = attrib_utils:get_value(Private, dig_H5), 
+  {ok, Dig_H6} = attrib_utils:get_value(Private, dig_H6),
+  
+  V1 = T_fine - 76800,
+  V2 = (((((Adc_H bsl 14) - (Dig_H4 bsl 20) - (Dig_H5 * V1)) +
+       16384) bsr 15) * (((((((V1 * Dig_H6) bsr 10) * (((V1 * 
+       Dig_H3) bsr 11) + 32768)) bsr 10) + 2097152) *
+       Dig_H2 + 8192) bsr 14)),
+  V3 = (V2 - (((((V2 bsr 15) * (V2 bsr 15)) bsr 7) * Dig_H1) bsr 4)),
+
+  if (V3 < 0) ->
+    V4 = 0;
+  true ->
+    V4 = V3
+  end,
+
+  if (V4 > 419430400) ->
+    V5 = 419430400;
+  true ->
+    V5 = V4
+  end,
+
+  H = V5 bsr 12,
+  H / 1024. % division converts to floating point number
+
+  
+

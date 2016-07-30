@@ -124,8 +124,14 @@
                                   {input, {empty, {display, seg_g}}}]
                                 ),
 
+    EnvSensor = type_bme280_env_sensor:create(env_sensor, "Temp, Press, Humid Sensor",
+                                 [], 
+                                 [{disable, {false, ?EMPTY_LINK}},
+                                  {exec_interval, {1000, ?EMPTY_LINK}}]
+                                ),
+
     [Test7Seg, RotEncoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 
-     SegA, SegB, SegC, SegD, SegE, SegF, SegG].                         
+     SegA, SegB, SegC, SegD, SegE, SegF, SegG, EnvSensor].                         
 
 
 
