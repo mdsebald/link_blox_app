@@ -694,6 +694,7 @@ read_sensor(I2cRef, Private) ->
       Press = compensate_press(Adc_Press, T_fine, Private),
       Humid = compensate_humid(Adc_Humid, T_fine, Private),
 
+      % TODO: Read and use conversion and offset config values
       TempDegF = ((Temp * 9)/ 5) + 32.0,
       PressInchMerc = Press * 0.0002953,
       {ok, TempDegF, PressInchMerc, Humid}
@@ -839,19 +840,18 @@ compensate_humid(Adc_H, T_fine, Private) ->
        Dig_H2 + 8192) bsr 14)),
   V3 = (V2 - (((((V2 bsr 15) * (V2 bsr 15)) bsr 7) * Dig_H1) bsr 4)),
 
-  if (V3 < 0) ->
+  % limit the calculated value
+  if (V3 < 0) -> 
     V4 = 0;
   true ->
-    V4 = V3
+    if (V3 > 419430400) -> 
+      V4 = 419430400;
+    true ->
+      V4 = V3
+    end
   end,
 
-  if (V4 > 419430400) ->
-    V5 = 419430400;
-  true ->
-    V5 = V4
-  end,
-
-  H = V5 bsr 12,
+  H = V4 bsr 12,
   H / 1024. % division converts to floating point number
 
   

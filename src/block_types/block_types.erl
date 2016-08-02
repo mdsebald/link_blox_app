@@ -30,6 +30,7 @@ block_type_modules() ->
   [
     type_bme280_env_sensor,
     type_exec_count,
+    type_float_to_7seg,
     type_gpio_di,
     type_gpio_do,
     type_ht16k33_4digit_led,

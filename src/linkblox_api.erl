@@ -372,6 +372,7 @@ handle_call({get_type_info, BlockName}, _From, State) ->
 handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
 	case valid_block_name(BlockName) of
 		true ->
+			% TODO: Don't allow setting block_name, block_type, or version Config values, READ ONLY
 			Result = block_server:set_value(BlockName, ValueId, Value);
 
 		_ ->
