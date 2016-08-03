@@ -372,9 +372,12 @@ handle_call({get_type_info, BlockName}, _From, State) ->
 handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
 	case valid_block_name(BlockName) of
 		true ->
-			% TODO: Don't allow setting block_name, block_type, or version Config values, READ ONLY
-			Result = block_server:set_value(BlockName, ValueId, Value);
-
+			case read_only_attrib(ValueId) of
+				false ->
+					Result = block_server:set_value(BlockName, ValueId, Value);
+				_ ->
+					Result = {error, read_only}
+			end;
 		_ ->
 			Result = {error, block_not_found}
 	end,
@@ -519,6 +522,26 @@ code_change(_OldVsn, State, _Extra) ->
 
 valid_block_name(BlockName)->
   lists:member(BlockName, block_supervisor:block_names()).
+
+
+%%
+%% Is ValueId a read only attribute?
+%%
+-spec read_only_attrib(ValueId :: value_id()) -> boolean().
+
+read_only_attrib(ValueId) ->
+	case ValueId of
+		% So far no array values are read only
+		{_ValueName, _Index} ->
+			false;
+		ValueName ->
+			case ValueName of
+				block_name   -> true;
+				block_module -> true;
+				version      -> true;
+									 _ -> false
+			end
+	end.
 
 
 %% ====================================================================
