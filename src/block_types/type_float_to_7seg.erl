@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_digits, {1}},
+      {num_of_digits, {1}}
     ]). 
 
 
@@ -48,6 +48,7 @@ default_inputs() ->
       {pos_precision, {empty, ?EMPTY_LINK}}, 
       % Number of digits to the right of the decimal point for negative values
       {neg_precision, {empty, ?EMPTY_LINK}},
+      % The value to display.
       {input, {empty, ?EMPTY_LINK}}
      ]). 
 
@@ -141,55 +142,59 @@ execute({Config, Inputs, Outputs, Private}) ->
   
   % Config values are validated in initialize function, just read them here   
   {ok, NumOfDigits} = attrib_utils:get_value(Config, num_of_digits),
-      
-  case input_utils:get_integer_range(Inputs, precision, 0, NumOfDigits) of
-    {ok, PosPrecision} ->
 
-      case input_utils:get_float(Inputs, input) of
-        {ok, not_active} ->
-          Value = not_active, Status = normal,
-          Digits7Seg = lists:duplicate(NumOfDigits, not_active);
+  case input_utils:get_float(Inputs, input) of
+    {ok, not_active} ->
+      Value = not_active, Status = normal,
+      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
    
-        {ok, InValue} ->
-          if (InValue >= 0.0) ->
-          true 
-          InValueStr = integer_to_list(InValue, NumberBase),
-      
-          % Set the main output value to the formated input value
-          % This should be the same as the 7 segment display is showing
-          Value = InValueStr, Status = normal, 
-          LenInValueStr = length(InValueStr),
+    {ok, InValue} ->
+      case get_display_limits(InValue, NumOfDigits, Inputs) of
+        {ok, MinDispPrec} -> ok;
           
-          if LenInValueStr > NumOfDigits ->
-            % The magnitude of the input value exceeds the number of digits
-            % Set the digits outputs to display "---" 
-            Digits = lists:duplicate(NumOfDigits, $-);
-            
-          true ->  % Input value will fit into the digits
-            % Determine if leading digits should be zero or blank
-            NumBlankDigits = NumOfDigits - LenInValueStr,
-            if LeadingZeros ->
-              LeadDigits = lists:duplicate(NumBlankDigits, $0);
-            true ->
-              LeadDigits = lists:duplicate(NumBlankDigits, 32)
-            end,
-            Digits = LeadDigits ++ InValueStr  
-          end,
-     
-      % Convert the digits to 7 segment representations
-      % TODO: Read decimal point inputs, and set decimal points also
-      Digits7Seg = lists:map(fun(Digit) -> char_to_segments(Digit, false) end, Digits)
+        too_big -> ok;
+
+        too_small -> ok;
       
         {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, input, Reason),
-          Digits7Seg = lists:duplicate(NumOfDigits, not_active);
+          {Value, Status} = input_utils:log_error(Config, precision, Reason),
+          Digits7Seg = lists:duplicate(NumOfDigits, not_active)
       end;
 
     {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, precision, Reason),
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
+      {Value, Status} = input_utils:log_error(Config, input, Reason),
+      Digits7Seg = lists:duplicate(NumOfDigits, not_active)
   end,
-  
+
+ %         true get_pos_limit
+ %         InValueStr = integer_to_list(InValue, NumberBase),
+      
+          % Set the main output value to the formated input value
+          % This should be the same as the 7 segment display is showing
+ %         Value = InValueStr, Status = normal, 
+ %         LenInValueStr = length(InValueStr),
+          
+  %        if LenInValueStr > NumOfDigits ->
+            % The magnitude of the input value exceeds the number of digits
+            % Set the digits outputs to display "---" 
+%         Digits = lists:duplicate(NumOfDigits, $-);
+            
+ %         true ->  % Input value will fit into the digits
+            % Determine if leading digits should be zero or blank
+   %         NumBlankDigits = NumOfDigits - LenInValueStr,
+   %         if LeadingZeros ->
+   %          LeadDigits = lists:duplicate(NumBlankDigits, $0);
+    %        true ->
+  %            LeadDigits = lists:duplicate(NumBlankDigits, 32)
+  %          end,
+  %%          Digits = LeadDigits ++ InValueStr  
+  %        end,
+     
+      % Convert the digits to 7 segment representations
+      % TODO: Read decimal point inputs, and set decimal points also
+      Digits7Seg = lists:map(fun(Digit) -> 
+                          block_utils:char_to_segments(Digit, false) end, Digits),
+ 
   Outputs1 = output_utils:set_array_value(Outputs, digit, Digits7Seg),
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
@@ -210,7 +215,41 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
-% Get the largest number that can be displayed
+% Get the limits on what is displayable
+-spec get_display_limits(InValue :: float(),
+                         NumOfDigits :: pos_integer(),
+                         Inputs :: list(input_attr())) -> 
+                         {ok, float()} | too_big | too_small | {error, atom()}.
+                  
+get_display_limits(InValue, NumOfDigits, Inputs) ->
+  if (InValue >= 0.0) ->
+    case get_pos_limit(NumOfDigits, Inputs) of
+      {ok, MaxDispVal, MinDispPrec} ->
+        if (InValue =< MaxDispVal) ->
+          {ok, MinDispPrec};
+        true ->
+          too_big
+        end;
+
+      {error, Reason} -> {error, Reason}
+    end;
+
+  true -> % Input value is negative
+    case get_neg_limit(NumOfDigits, Inputs) of
+      {ok, MinDispVal, MinDispPrec} ->
+        if (MinDispVal =< InValue ) ->
+          {ok, MinDispPrec};
+        true ->
+          too_small
+        end;
+
+      {error, Reason} -> {error, Reason}
+    end
+  end.
+
+% Get the largest positive number that can be displayed
+% Leave one digit for leading zero
+% So maximum number of digits to the right of the decimal point is: NumOfDigits-1
 -spec get_pos_limit(NumOfDigits :: pos_integer(),
                     Inputs :: list(input_attr())) -> {ok, float(), float()} | {error, atom()}.
 
@@ -221,24 +260,48 @@ get_pos_limit(NumOfDigits, Inputs) ->
       % display the maximum number possible
       % with maximum precision possible
       % i.e. 4 digits, MaxDisplayValue = 9999
-      % MinDisplayPrecision = 0.001 (leave one digit for leading zero)
+      % MinDisplayPrecision = 0.001 
 
-      MaxDisplayValue = math:pow(10, NumOfDigits) - 1.0,
-      MinDisplayPrecision = 1.0 / math:pow(10, (NumOfDigits-1)),
-      {ok, MaxDisplayValue, MinDisplayPrecision};
+      MaxDispVal = math:pow(10, NumOfDigits) - 1.0,
+      MinDispPrec = 1.0 / math:pow(10, (NumOfDigits-1)),
+      {ok, MaxDispVal, MinDispPrec};
 
-    {ok, PosPrecision} ->
-      % i.e. NumOfDigits = 4, PosPrecision = 2, 
-      % MaxDisplayValue = 99.99, MinDisplayPrecision = 0.01
+    {ok, PosPrec} ->
+      % i.e. NumOfDigits = 4, PosPrec = 2, 
+      % MaxDispVal = 99.99, MinDispPrec = 0.01
 
-      Max = math:pow(10, (NumOfDigits - PosPrecision)),
-      MinDisplayPrecision = (1.0 / Exponent),
-      MaxDisplayValue = Max - MinDisplayPrecision,
-      {ok, MaxDisplayValue, MinDisplayPrecision};
+      Max = math:pow(10, (NumOfDigits - PosPrec)),
+      MinDispPrec = (1.0 / Max),
+      MaxDispVal = Max - MinDispPrec,
+      {ok, MaxDispVal, MinDispPrec};
     
-    {error, Reason} -> {error, Reason}.
-      
+    {error, Reason} -> {error, Reason}
+  end.
 
+% Get the largest negative number that can be displayed
+% First digit will always be negative sign
+% Leave one digit for leading zero
+% So maximum number of digits to the right of the decimal point is: NumOfDigits-2
+-spec get_neg_limit(NumOfDigits :: pos_integer(),
+                    Inputs :: list(input_attr())) -> {ok, float(), float()} | {error, atom()}.
+
+get_neg_limit(NumOfDigits, Inputs) ->
+
+  case input_utils:get_integer_range(Inputs, neg_precision, 0, (NumOfDigits-2)) of
+    {ok, not_active} ->
+      % Don't care about precision 
+      MaxDispVal = -(math:pow(10, (NumOfDigits-1))) + 1.0,
+      MinDispPrec = 1.0 / math:pow(10, (NumOfDigits-2)),
+      {ok, MaxDispVal, MinDispPrec};
+
+    {ok, NegPrec} ->
+      Max = math:pow(10, ((NumOfDigits-1) - NegPrec)),
+      MinDispPrec = (1.0 / Max),
+      MaxDispVal = (-Max) + MinDispPrec,
+      {ok, MaxDispVal, MinDispPrec};
+    
+    {error, Reason} -> {error, Reason}
+  end.  
 
 %% ====================================================================
 %% Tests
