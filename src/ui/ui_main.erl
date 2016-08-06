@@ -169,6 +169,7 @@ ui_copy_block(Params) ->
 
 
 % Process rename block command
+% TODO: Just copied from copy block command still needs to be finished
 ui_rename_block(Params) ->
   case check_num_params(Params, 2) of  
     low -> io:format("Error: Enter source-block-name dest-block-name~n");
@@ -181,7 +182,7 @@ ui_rename_block(Params) ->
       case linkblox_api:get_block(get_node(), SrcBlockName) of
         {ok, SrcBlockValues} ->
           DstBlockName = list_to_atom(DstBlockNameStr),
-          case linkblox_api:copy_block(DstNode, DstBlockName, SrcBlockValues, []) of
+          case linkblox_api:copy_block(get_node(), DstBlockName, SrcBlockValues, []) of
             ok ->
               io:format("Dest Block ~s Created~n", [DstBlockNameStr]);
 

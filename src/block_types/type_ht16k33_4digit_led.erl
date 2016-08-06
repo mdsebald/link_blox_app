@@ -249,17 +249,19 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(block_state()) -> ok.
+-spec delete(BlockValues :: block_state()) -> block_state().
 
-delete({_Config, _Inputs, _Outputs, Private}) ->
- 
-  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
-  % Turn off the display 
-  shutdown_led_driver(I2cRef),  
-  
-  % Close the I2C Channel
-  i2c:stop(I2cRef),
-  ok.
+delete({Config, Inputs, Outputs, Private}) -> 
+  case attrib_utils:get_value(Private, i2c_ref) of
+    {ok, I2cRef} ->
+      % Turn off the display 
+      shutdown_led_driver(I2cRef),  
+      % Close the I2C Channel
+      i2c:stop(I2cRef);
+      
+    _ -> ok
+  end,
+  {Config, Inputs, Outputs, Private}.
 
 
 %% ====================================================================

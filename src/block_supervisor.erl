@@ -132,7 +132,7 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
                         [BlockName, BlockModule, Version]),
 
 	BlockSpec = #{id => BlockName, restart => transient,
-                   start => {block_server, create, [BlockValues]}},
+                   start => {block_server, start, [BlockValues]}},
 	NewBlockSpecs = [BlockSpec | BlockSpecs],
 	
 	create_block_specs(RemainingBlockValuesList, NewBlockSpecs).

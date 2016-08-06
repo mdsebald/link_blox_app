@@ -58,8 +58,10 @@ get_integer(Inputs, ValueId) ->
 get_integer_range(Inputs, ValueId, Min, Max) ->
   CheckType = fun is_integer/1,
   case get_value(Inputs, ValueId, CheckType) of
-    {error, Reason} -> 
-      {error, Reason};
+    {error, Reason} ->  {error, Reason};
+
+    {ok, not_active} -> {ok, not_active};
+    
     {ok, Value} ->
       if (Value < Min ) orelse (Max < Value) ->
         {error, range};

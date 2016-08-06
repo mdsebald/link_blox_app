@@ -187,14 +187,16 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(block_state()) -> ok.
+-spec delete(BlockValues :: block_state()) -> block_state().
 
-delete({_Config, _Inputs, _Outputs, Private}) -> 
+delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
-  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref), 
-  i2c:stop(I2cRef),
-  ok.
-
+  case attrib_utils:get_value(Private, i2c_ref) of
+    {ok, I2cRef} -> i2c:stop(I2cRef);
+    
+    _ -> ok
+  end,
+  {Config, Inputs, Outputs, Private}.
 
 
 %% ====================================================================

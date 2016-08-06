@@ -151,7 +151,7 @@ execute(BlockValues, ExecMethod) ->
   BlockStatus = output_utils:get_status(Outputs),
 
   % Check block status before executing
-  case ok_to_execute(BlockStatus) of
+  case ok_to_execute(BlockStatus, ExecMethod) of
     true ->
       {BlockName, BlockModule} = config_utils:name_module(Config),
     
@@ -217,12 +217,19 @@ execute(BlockValues, ExecMethod) ->
 %% if there is a problem accessing the hardware,
 %% or if an input is missing or in error
 %%
--spec ok_to_execute(BlockStatus :: block_status()) -> boolean().
+-spec ok_to_execute(BlockStatus :: block_status(),
+                    ExecMethod :: exec_method()) -> boolean().
 
-ok_to_execute(BlockStatus) ->
-  case lists:member(BlockStatus, [input_err, config_err, proc_err, no_input]) of
-    true -> false;
-    false -> true
+ok_to_execute(BlockStatus, ExecMethod) ->
+  case ExecMethod of
+    % always execute the block on a manual command
+    manual -> true;
+
+    _ ->
+      case lists:member(BlockStatus, [input_err, config_err, proc_err, no_input]) of
+        true -> false;
+        false -> true
+      end
   end.
 
 
@@ -408,23 +415,27 @@ update_execute(Outputs) ->
 
 
 %%
-%%  Common block delete function
+%% Common block delete function, 
+%% Return the updated block state, in case calling function wants to reuse it 
 %%
--spec delete(BlockValues :: block_state()) -> ok.
+-spec delete(BlockValues :: block_state()) -> block_state().
 
-delete(BlockValues) ->
-  {Config, Inputs, Outputs, Private} = BlockValues,
+delete({Config, Inputs, Outputs, Private}) ->
   
   {BlockName, BlockModule} = config_utils:name_module(Config),
 
   % Cancel execution timer if it exists
   case attrib_utils:get_value(Private, timer_ref) of
-    {ok, empty}    -> empty;
-    {ok, TimerRef} ->  erlang:cancel_timer(TimerRef)
+    {ok, empty}      -> ok;
+    {ok, TimerRef}   -> erlang:cancel_timer(TimerRef);
+    {error, _Reason} -> ok  % Don't care if timer_ref doesn't exist
   end,
     
   % Scan this block's inputs, and unlink from other block outputs
   link_utils:unlink_inputs(BlockName, Inputs),
+
+  % Set all linked input values to empty, 
+  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
   
   % Set all output values of this block, including status, to 'empty'
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
@@ -439,7 +450,7 @@ delete(BlockValues) ->
   update_execute(EmptyOutputs),
     
   % Perform block type specific delete actions
-  BlockModule:delete(BlockValues).
+  BlockModule:delete({Config, EmptyInputs, EmptyOutputs, Private}).
 
 
 %% ====================================================================

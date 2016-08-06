@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_digits, {1}}
+      {num_of_digits, {2}}
     ]). 
 
 
@@ -116,12 +116,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % Check the config values
   case config_utils:get_integer_range(Config, num_of_digits, 1, 99) of
     {error, Reason} ->
-      Inputs1 = Inputs,
       Outputs1 = Outputs,
       {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason);
        
     {ok, NumOfDigits} ->
       % Create a digit output for each digit
+      BlockName = config_utils:name(Config),
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
                                        digit, NumOfDigits, {not_active, []}),
       Value = not_active,
@@ -130,7 +130,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
   
   % This is the block state
-  {Config, Inputs1, Outputs2, Private}.
+  {Config, Inputs, Outputs2, Private}.
 
 
 %%
@@ -146,69 +146,65 @@ execute({Config, Inputs, Outputs, Private}) ->
   case input_utils:get_float(Inputs, input) of
     {ok, not_active} ->
       Value = not_active, Status = normal,
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
+      Digits7Seg = lists:duplicate(NumOfDigits, not_active),
+      PosOverflow = not_active,
+      NegOverflow = not_active;
    
     {ok, InValue} ->
       case get_display_limits(InValue, NumOfDigits, Inputs) of
-        {ok, MinDispPrec} -> ok;
-          
-        too_big -> ok;
+        {ok, _Precision} ->
+          Value = InValue, Status = normal,
+          Digits7Seg = lists:duplicate(NumOfDigits, $-),
+          PosOverflow = false,
+          NegOverflow = false;
 
-        too_small -> ok;
+        too_big -> 
+          Value = InValue, Status = normal,
+          Digits7Seg = lists:duplicate(NumOfDigits, $-),
+          PosOverflow = true,
+          NegOverflow = false;
+
+        too_small ->
+          Value = InValue, Status = normal,
+          Digits7Seg = lists:duplicate(NumOfDigits, $-),
+          PosOverflow = false,
+          NegOverflow = true;
       
         {error, Reason} ->
           {Value, Status} = input_utils:log_error(Config, precision, Reason),
-          Digits7Seg = lists:duplicate(NumOfDigits, not_active)
+          Digits7Seg = lists:duplicate(NumOfDigits, not_active),
+          PosOverflow = not_active,
+          NegOverflow = not_active
       end;
 
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, input, Reason),
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active)
+      Digits7Seg = lists:duplicate(NumOfDigits, not_active),
+      PosOverflow = not_active,
+      NegOverflow = not_active
   end,
 
- %         true get_pos_limit
- %         InValueStr = integer_to_list(InValue, NumberBase),
-      
-          % Set the main output value to the formated input value
-          % This should be the same as the 7 segment display is showing
- %         Value = InValueStr, Status = normal, 
- %         LenInValueStr = length(InValueStr),
-          
-  %        if LenInValueStr > NumOfDigits ->
-            % The magnitude of the input value exceeds the number of digits
-            % Set the digits outputs to display "---" 
-%         Digits = lists:duplicate(NumOfDigits, $-);
-            
- %         true ->  % Input value will fit into the digits
-            % Determine if leading digits should be zero or blank
-   %         NumBlankDigits = NumOfDigits - LenInValueStr,
-   %         if LeadingZeros ->
-   %          LeadDigits = lists:duplicate(NumBlankDigits, $0);
-    %        true ->
-  %            LeadDigits = lists:duplicate(NumBlankDigits, 32)
-  %          end,
-  %%          Digits = LeadDigits ++ InValueStr  
-  %        end,
      
       % Convert the digits to 7 segment representations
       % TODO: Read decimal point inputs, and set decimal points also
-      Digits7Seg = lists:map(fun(Digit) -> 
-                          block_utils:char_to_segments(Digit, false) end, Digits),
- 
-  Outputs1 = output_utils:set_array_value(Outputs, digit, Digits7Seg),
-  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
+     % Digits7Seg = lists:map(fun(Digit) -> 
+      %                    block_utils:char_to_segments(Digit, false) end, Digits),
+  {ok, Outputs1} = attrib_utils:set_value(Outputs, pos_overflow, PosOverflow),
+  {ok, Outputs2} = attrib_utils:set_value(Outputs1, neg_overflow, NegOverflow),
+  Outputs3 = output_utils:set_array_value(Outputs2, digit, Digits7Seg),
+  Outputs4 = output_utils:set_value_status(Outputs3, Value, Status),
 
   % Return updated block state
-  {Config, Inputs, Outputs2, Private}.
+  {Config, Inputs, Outputs4, Private}.
 
 
 %% 
 %%  Delete the block
 %%	
--spec delete(block_state()) -> ok.
+-spec delete(BlockValues :: block_state()) -> block_state().
 
-delete({_Config, _Inputs, _Outputs, _Private}) -> 
-  ok.
+delete({Config, Inputs, Outputs, Private}) -> 
+  {Config, Inputs, Outputs, Private}.
 
 
 %% ====================================================================
@@ -219,14 +215,14 @@ delete({_Config, _Inputs, _Outputs, _Private}) ->
 -spec get_display_limits(InValue :: float(),
                          NumOfDigits :: pos_integer(),
                          Inputs :: list(input_attr())) -> 
-                         {ok, float()} | too_big | too_small | {error, atom()}.
+                         {ok, pos_integer()} | too_big | too_small | {error, atom()}.
                   
 get_display_limits(InValue, NumOfDigits, Inputs) ->
   if (InValue >= 0.0) ->
     case get_pos_limit(NumOfDigits, Inputs) of
-      {ok, MaxDispVal, MinDispPrec} ->
+      {ok, MaxDispVal, PosPrec} ->
         if (InValue =< MaxDispVal) ->
-          {ok, MinDispPrec};
+          {ok, PosPrec};
         true ->
           too_big
         end;
@@ -236,9 +232,9 @@ get_display_limits(InValue, NumOfDigits, Inputs) ->
 
   true -> % Input value is negative
     case get_neg_limit(NumOfDigits, Inputs) of
-      {ok, MinDispVal, MinDispPrec} ->
+      {ok, MinDispVal, NegPrec} ->
         if (MinDispVal =< InValue ) ->
-          {ok, MinDispPrec};
+          {ok, NegPrec};
         true ->
           too_small
         end;
@@ -251,7 +247,7 @@ get_display_limits(InValue, NumOfDigits, Inputs) ->
 % Leave one digit for leading zero
 % So maximum number of digits to the right of the decimal point is: NumOfDigits-1
 -spec get_pos_limit(NumOfDigits :: pos_integer(),
-                    Inputs :: list(input_attr())) -> {ok, float(), float()} | {error, atom()}.
+                    Inputs :: list(input_attr())) -> {ok, float(), pos_integer()} | {error, atom()}.
 
 get_pos_limit(NumOfDigits, Inputs) ->
   case input_utils:get_integer_range(Inputs, pos_precision, 0, (NumOfDigits-1)) of
@@ -263,8 +259,7 @@ get_pos_limit(NumOfDigits, Inputs) ->
       % MinDisplayPrecision = 0.001 
 
       MaxDispVal = math:pow(10, NumOfDigits) - 1.0,
-      MinDispPrec = 1.0 / math:pow(10, (NumOfDigits-1)),
-      {ok, MaxDispVal, MinDispPrec};
+      {ok, MaxDispVal, undefined};
 
     {ok, PosPrec} ->
       % i.e. NumOfDigits = 4, PosPrec = 2, 
@@ -273,7 +268,7 @@ get_pos_limit(NumOfDigits, Inputs) ->
       Max = math:pow(10, (NumOfDigits - PosPrec)),
       MinDispPrec = (1.0 / Max),
       MaxDispVal = Max - MinDispPrec,
-      {ok, MaxDispVal, MinDispPrec};
+      {ok, MaxDispVal, PosPrec};
     
     {error, Reason} -> {error, Reason}
   end.
@@ -283,7 +278,7 @@ get_pos_limit(NumOfDigits, Inputs) ->
 % Leave one digit for leading zero
 % So maximum number of digits to the right of the decimal point is: NumOfDigits-2
 -spec get_neg_limit(NumOfDigits :: pos_integer(),
-                    Inputs :: list(input_attr())) -> {ok, float(), float()} | {error, atom()}.
+                    Inputs :: list(input_attr())) -> {ok, float(), pos_integer()} | {error, atom()}.
 
 get_neg_limit(NumOfDigits, Inputs) ->
 
@@ -291,14 +286,13 @@ get_neg_limit(NumOfDigits, Inputs) ->
     {ok, not_active} ->
       % Don't care about precision 
       MaxDispVal = -(math:pow(10, (NumOfDigits-1))) + 1.0,
-      MinDispPrec = 1.0 / math:pow(10, (NumOfDigits-2)),
-      {ok, MaxDispVal, MinDispPrec};
+      {ok, MaxDispVal, undefined};
 
     {ok, NegPrec} ->
       Max = math:pow(10, ((NumOfDigits-1) - NegPrec)),
       MinDispPrec = (1.0 / Max),
       MaxDispVal = (-Max) + MinDispPrec,
-      {ok, MaxDispVal, MinDispPrec};
+      {ok, MaxDispVal, NegPrec};
     
     {error, Reason} -> {error, Reason}
   end.  

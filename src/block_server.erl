@@ -17,7 +17,7 @@
 %% API functions
 %% ====================================================================
 -export([
-          create/1, 
+          start/1, 
           delete/1, 
           get_value/2, 
           set_value/3,
@@ -36,8 +36,8 @@
 
 
 
-%% Create a function block with the given Name, Functionality, and Values
-create(BlockValues)->
+%% Start up a block with the given Name, Functionality, and Values
+start(BlockValues)->
   BlockName = config_utils:name(BlockValues),
   gen_server:start_link({local, BlockName}, ?MODULE, BlockValues, []).
 
@@ -207,13 +207,22 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
   case attrib_utils:is_attribute_type(Config, ValueId) of
     true ->
       % Modifying a config value, need to delete and re-initialize the block
-      block_common:delete(BlockValues),
-      case attrib_utils:set_value(Config, ValueId, Value) of
-        {ok, NewConfig} ->
-          NewBlockValues = block_common:initialize({NewConfig, Inputs, Outputs}),
+      {Config1, Inputs1, Outputs1, Private1} = 
+                             block_common:delete(BlockValues),
+
+      case attrib_utils:set_value(Config1, ValueId, Value) of
+        {ok, Config2} ->
+          {Config3, Inputs2, Outputs2, Private2} = 
+                      block_common:initialize({Config2, Inputs1, Outputs1}),
+
+          BlockName = config_utils:name(Config3),
+          % re-establish the links to other blocks 
+          block_server:init_configure(BlockName),
+          NewBlockValues = {Config3, Inputs2, Outputs2, Private2},
           Result = ok;
+
         {error, Reason} ->
-          NewBlockValues = BlockValues,
+          NewBlockValues = {Config1, Inputs1, Outputs1, Private1},
           Result = {error, Reason}
       end;
 

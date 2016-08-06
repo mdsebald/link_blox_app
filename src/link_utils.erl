@@ -15,10 +15,11 @@
 -export([
           link_blocks/2,
           evaluate_link/5, 
-          unlink_inputs/2, 
+          unlink_inputs/2,
+          empty_linked_inputs/1,
           unlink_input/3,
           unlink_output/3,
-          add_ref/3, 
+          add_ref/3,
           delete_ref/3,
           update_linked_input_values/3
 ]).
@@ -78,6 +79,7 @@ process_array_input(BlockName, ValueName, ArrayIndex, [ArrayValue| RemainingArra
                     Inputs :: list(input_attr())) -> list(input_attr()).
                   
 evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
+
   case Link of
     ?EMPTY_LINK ->
       % Input is not linked to another block, nothing to do
@@ -194,6 +196,45 @@ unlink_input(BlockName, ValueName, Link) ->
       error_logger:error_msg("unlink_input(): Unhandled Link Type: ~p~n", [UnhandledLink]),
       ok
   end.
+
+
+%%
+%% Set the value of each input linked to another block, to 'empty'
+%%
+-spec empty_linked_inputs(Inputs :: list(input_attr())) -> list(input_attr()).
+
+empty_linked_inputs(Inputs) ->
+  lists:map(
+    fun(Input) ->
+      case Input of 
+        {ValueName, {Value, Link}} ->
+          case Link of
+            ?EMPTY_LINK   -> {ValueName, {Value, Link}};
+            _NonEmptyLink -> {ValueName, {empty, Link}}
+          end;
+        {ValueName, ArrayValues} ->
+          {ValueName, empty_array_values(ArrayValues)}      
+      end  
+    end,
+    Inputs).
+
+
+%%
+%% Set the value of each linked input in ArrayValues, to empty
+%%
+-spec empty_array_values(ArrayValues :: list(attr_value_array())) -> 
+                          list(attr_value_array()).
+                                
+empty_array_values(ArrayValues) ->
+  lists:map(
+    fun({Value, Link}) -> 
+      case Link of
+        ?EMPTY_LINK   -> {Value, Link};
+        _NonEmptyLink -> {empty, Link}
+      end
+    end, 
+    ArrayValues).
+
 
 
 %%

@@ -12,11 +12,20 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([name/1, module/1, name_module/1, name_module_version/1]).
--export([get_any_type/2, get_integer/2, get_integer_range/4]). 
--export([get_float/2, get_boolean/2]).
--export([get_value/3, resize_attribute_array_value/4]).
--export([log_error/3]).
+-export([
+          name/1, 
+          module/1, 
+          name_module/1, 
+          name_module_version/1,
+          get_any_type/2, 
+          get_integer/2, 
+          get_integer_range/4, 
+          get_float/2, 
+          get_boolean/2,
+          get_value/3, 
+          resize_attribute_array_value/4,
+          log_error/3
+]).
 
 %%
 %%  Get block name from Config attribute values
