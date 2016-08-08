@@ -31,15 +31,15 @@
 	| {error, Reason :: term()}.
 
 start(normal, BlockValuesFile) ->
-    case linkblox_supervisor:start_link(BlockValuesFile) of
-			{ok, Pid} ->
-				error_logger:info_msg("LinkBlox supervisor started~n"),
-				{ok, Pid};
-				
-		Error ->
-			error_logger:error_msg("Error: ~p starting LinkBlox supervisor.~n", [Error]),
-			Error
-    end.
+  case linkblox_supervisor:start_link(BlockValuesFile) of
+    {ok, Pid} ->
+      error_logger:info_msg("LinkBlox supervisor started~n"),
+      {ok, Pid};
+	
+    Error ->
+      error_logger:error_msg("Error: ~p starting LinkBlox supervisor.~n", [Error]),
+      Error
+  end.
 
 
 %% ====================================================================
@@ -48,7 +48,7 @@ start(normal, BlockValuesFile) ->
 -spec stop(State :: term()) ->  Any :: term().
 
 stop(_State) ->
-    ok.
+  ok.
 
 %% ====================================================================
 %% Internal functions
