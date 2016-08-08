@@ -30,8 +30,8 @@
           set_value/4,
           set_link/4,
           execute_block/2,
-           is_block_name/2, 
-           is_block_type/2
+          is_block_name/2, 
+          is_block_type/2
 ]). 
 
 

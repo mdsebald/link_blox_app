@@ -151,22 +151,28 @@ execute({Config, Inputs, Outputs, Private}) ->
       NegOverflow = not_active;
    
     {ok, InValue} ->
+      % In normal status, set the main Value output equal to the input value
+      % Value output is not used to drive 7 segement displays
       case get_display_limits(InValue, NumOfDigits, Inputs) of
-        {ok, _Precision} ->
+        {ok, Precision} ->
           Value = InValue, Status = normal,
-          Digits7Seg = lists:duplicate(NumOfDigits, $-),
+          Digits7Seg = convert_number(InValue, NumOfDigits, Precision),
           PosOverflow = false,
           NegOverflow = false;
 
         too_big -> 
           Value = InValue, Status = normal,
-          Digits7Seg = lists:duplicate(NumOfDigits, $-),
+          % Set all digits to '-' to indicate overflow condition
+          Overflow = block_utils:char_to_segments($-, false),
+          Digits7Seg = lists:duplicate(NumOfDigits, Overflow),
           PosOverflow = true,
           NegOverflow = false;
 
         too_small ->
           Value = InValue, Status = normal,
-          Digits7Seg = lists:duplicate(NumOfDigits, $-),
+          % Set all digits to '-' to indicate underflow condition
+          Underflow = block_utils:char_to_segments($-, false),
+          Digits7Seg = lists:duplicate(NumOfDigits, Underflow),
           PosOverflow = false,
           NegOverflow = true;
       
@@ -184,11 +190,6 @@ execute({Config, Inputs, Outputs, Private}) ->
       NegOverflow = not_active
   end,
 
-     
-      % Convert the digits to 7 segment representations
-      % TODO: Read decimal point inputs, and set decimal points also
-     % Digits7Seg = lists:map(fun(Digit) -> 
-      %                    block_utils:char_to_segments(Digit, false) end, Digits),
   {ok, Outputs1} = attrib_utils:set_value(Outputs, pos_overflow, PosOverflow),
   {ok, Outputs2} = attrib_utils:set_value(Outputs1, neg_overflow, NegOverflow),
   Outputs3 = output_utils:set_array_value(Outputs2, digit, Digits7Seg),
@@ -296,6 +297,28 @@ get_neg_limit(NumOfDigits, Inputs) ->
     
     {error, Reason} -> {error, Reason}
   end.  
+
+% Convert floating point value to a list of bytes
+% One byte per digit. Each byte specifying which digit segment(s) to turn on
+-spec convert_number(Number :: float(), 
+                     NumOfDigits :: pos_integer(),
+                     Precision :: pos_integer() | undefined) -> list(byte()).
+
+convert_number(Number, NumOfDigits, Precision) ->
+  case Precision of
+    undefined ->
+      FormatString = io_lib:format("~c~wf", [$~, NumOfDigits]);
+
+    Precision ->
+      FormatString = io_lib:format("~c~w.~wf", [$~, NumOfDigits+1, Precision])
+  end,
+
+  FormattedNumber = io_lib:format(FormatString, [Number]),
+  Digits7Seg = 
+    lists:map(fun(Digit) ->
+                block_utils:char_to_segments(Digit)
+              end,
+              FormattedNumber).
 
 %% ====================================================================
 %% Tests
