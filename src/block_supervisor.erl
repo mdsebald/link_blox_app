@@ -19,14 +19,14 @@
 -export([block_names/0, block_processes/0]).
 
 start_link(BlockValuesFile) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
+  supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
     
 %%
 %%  Create a block
 %%    
 create_block(BlockValues) ->
-   [BlockSpec] = create_block_specs([BlockValues]),                    
-   supervisor:start_child(?MODULE, BlockSpec).
+  [BlockSpec] = create_block_specs([BlockValues]),                    
+  supervisor:start_child(?MODULE, BlockSpec).
    
 %%
 %% Delete a block
@@ -34,7 +34,7 @@ create_block(BlockValues) ->
 delete_block(BlockName) ->
   % Send a delete message to block an wait for response
   block_server:delete(BlockName),
-    
+  
   % Delete the block's child spec, 
   % so a block using the same name may be created later
   supervisor:delete_child(?MODULE, BlockName).
@@ -60,8 +60,8 @@ block_names([BlockProcess | RemainingProcesses], BlockNames) ->
       end
   end,
   block_names(RemainingProcesses, NewBlockNames).
-  
-  
+
+
 %% 
 %% get the current list of block processes
 %%
@@ -76,63 +76,63 @@ block_processes() ->
 %% init/1
 %% ====================================================================
 -spec init(Args :: term()) -> Result when
-	Result :: {ok, {SupervisionPolicy, [ChildSpec]}} | ignore,
-	SupervisionPolicy :: {RestartStrategy, MaxR :: non_neg_integer(), MaxT :: pos_integer()},
-	RestartStrategy :: one_for_all
-					 | one_for_one
-					 | rest_for_one
-					 | simple_one_for_one,
-	ChildSpec :: {Id :: term(), StartFunc, RestartPolicy, Type :: worker | supervisor, Modules},
-	StartFunc :: {M :: module(), F :: atom(), A :: [term()] | undefined},
-	RestartPolicy :: permanent
-				   | transient
-				   | temporary,
+  Result :: {ok, {SupervisionPolicy, [ChildSpec]}} | ignore,
+  SupervisionPolicy :: {RestartStrategy, MaxR :: non_neg_integer(), MaxT :: pos_integer()},
+  RestartStrategy :: one_for_all
+            | one_for_one
+            | rest_for_one
+            | simple_one_for_one,
+  ChildSpec :: {Id :: term(), StartFunc, RestartPolicy, Type :: worker | supervisor, Modules},
+  StartFunc :: {M :: module(), F :: atom(), A :: [term()] | undefined},
+  RestartPolicy :: permanent
+            | transient
+            | temporary,
 	Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
   error_logger:info_msg("Starting LinkBlox Block supervisor~n"),
 
-	case block_config:read_config(BlockValuesFile) of
-		{ok, BlockValuesList} ->
+  case block_config:read_config(BlockValuesFile) of
+    {ok, BlockValuesList} ->
       error_logger:info_msg("Loading block Values config file: ~p~n", [BlockValuesFile]),
 
-			% TODO: Check for good, "ok" return value
-			BlockSpecs = create_block_specs(BlockValuesList),
+      % TODO: Check for good, "ok" return value
+      BlockSpecs = create_block_specs(BlockValuesList),
       
-			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-			{ok, {SupFlags, BlockSpecs}};
+      SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
+      {ok, {SupFlags, BlockSpecs}};
       
-		{error, Reason} ->
-			error_logger:error_msg("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
-            error_logger:error_msg("Loading Demo config... ~n"),
-      
+    {error, Reason} ->
+      error_logger:error_msg("~p error, reading Block Values config file: ~p~n", [Reason, BlockValuesFile]),
+      error_logger:error_msg("Loading Demo config... ~n"),
+
       BlockSpecs = create_block_specs(block_config:create_demo_config()),
-                   
-			SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
+             
+      SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
             
-			{ok, {SupFlags, BlockSpecs}}
-		end.
+    {ok, {SupFlags, BlockSpecs}}
+  end.
 		
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 create_block_specs(BlockValuesList) ->
-	create_block_specs(BlockValuesList, []).
-	
+  create_block_specs(BlockValuesList, []).
+
 create_block_specs([], BlockSpecs) -> BlockSpecs;
 
 create_block_specs(BlockValuesList, BlockSpecs) ->
-	[BlockValues | RemainingBlockValuesList] = BlockValuesList,	
-	% TODO: Check for expected term match, before creating child spec 
+  [BlockValues | RemainingBlockValuesList] = BlockValuesList,	
+  % TODO: Check for expected term match, before creating child spec 
 	
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
   
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
                         [BlockName, BlockModule, Version]),
 
-	BlockSpec = #{id => BlockName, restart => transient,
-                   start => {block_server, start, [BlockValues]}},
-	NewBlockSpecs = [BlockSpec | BlockSpecs],
-	
-	create_block_specs(RemainingBlockValuesList, NewBlockSpecs).
+  BlockSpec = #{id => BlockName, restart => transient,
+              start => {block_server, start, [BlockValues]}},
+  NewBlockSpecs = [BlockSpec | BlockSpecs],
+
+  create_block_specs(RemainingBlockValuesList, NewBlockSpecs).
