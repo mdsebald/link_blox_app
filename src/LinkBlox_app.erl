@@ -26,16 +26,16 @@
 %% start/2
 %% ====================================================================
 -spec start(Type :: normal | {takeover, Node} | {failover, Node}, Args :: term()) ->
-	{ok, Pid :: pid()}
-	| {ok, Pid :: pid(), State :: term()}
-	| {error, Reason :: term()}.
+  {ok, Pid :: pid()}
+  | {ok, Pid :: pid(), State :: term()}
+  | {error, Reason :: term()}.
 
 start(normal, BlockValuesFile) ->
   case linkblox_supervisor:start_link(BlockValuesFile) of
     {ok, Pid} ->
       error_logger:info_msg("LinkBlox supervisor started~n"),
       {ok, Pid};
-	
+
     Error ->
       error_logger:error_msg("Error: ~p starting LinkBlox supervisor.~n", [Error]),
       Error

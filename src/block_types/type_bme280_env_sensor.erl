@@ -149,7 +149,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % TODO: Check for valid I2C Address
   {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
   {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
-	    
+      
   case i2c:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
@@ -204,7 +204,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Press = not_active,
       Humid = not_active,
       Private3 = Private1
-  end,	
+  end,  
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
   {ok, Outputs2} = attrib_utils:set_values(Outputs1, 
@@ -263,7 +263,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 %% 
 %%  Delete the block
-%%	
+%%  
 -spec delete(BlockValues :: block_state()) -> block_state().
 
 delete({Config, Inputs, Outputs, Private}) -> 
@@ -642,8 +642,8 @@ get_calibration(I2cRef, Private) ->
           Dig_H6:1/signed-integer-unit:8>> ->     % 0xE7             | dig_H6                | signed char
 
           % Registers E4, E5, & E6 are used to make H4 and H5 calibration constants
-	        Dig_H4 = (Dig_H4_E4 bsl 4) bor (Dig_H4_H5_E5 band 16#0F),
-	        Dig_H5 = (Dig_H5_E6 bsl 4) bor ((Dig_H4_H5_E5 bsr 4) band 16#0F),
+          Dig_H4 = (Dig_H4_E4 bsl 4) bor (Dig_H4_H5_E5 band 16#0F),
+          Dig_H5 = (Dig_H5_E6 bsl 4) bor ((Dig_H4_H5_E5 bsr 4) band 16#0F),
 
           % Update the private attributes with the calibration values 
           attrib_utils:set_values(Private, 
@@ -835,7 +835,7 @@ compensate_humid(Adc_H, T_fine, Private) ->
   {ok, Dig_H4} = attrib_utils:get_value(Private, dig_H4), 
   {ok, Dig_H5} = attrib_utils:get_value(Private, dig_H5), 
   {ok, Dig_H6} = attrib_utils:get_value(Private, dig_H6),
-  
+
   V1 = T_fine - 76800,
   V2 = (((((Adc_H bsl 14) - (Dig_H4 bsl 20) - (Dig_H5 * V1)) +
        16384) bsr 15) * (((((((V1 * Dig_H6) bsr 10) * (((V1 * 
@@ -856,6 +856,3 @@ compensate_humid(Adc_H, T_fine, Private) ->
 
   H = V4 bsr 12,
   H / 1024. % division converts to floating point number
-
-  
-

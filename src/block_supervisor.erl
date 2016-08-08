@@ -87,7 +87,7 @@ block_processes() ->
   RestartPolicy :: permanent
             | transient
             | temporary,
-	Modules :: [module()] | dynamic.
+  Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
   error_logger:info_msg("Starting LinkBlox Block supervisor~n"),
@@ -112,7 +112,7 @@ init(BlockValuesFile) ->
             
     {ok, {SupFlags, BlockSpecs}}
   end.
-		
+
 
 %% ====================================================================
 %% Internal functions
@@ -123,9 +123,9 @@ create_block_specs(BlockValuesList) ->
 create_block_specs([], BlockSpecs) -> BlockSpecs;
 
 create_block_specs(BlockValuesList, BlockSpecs) ->
-  [BlockValues | RemainingBlockValuesList] = BlockValuesList,	
+  [BlockValues | RemainingBlockValuesList] = BlockValuesList,
   % TODO: Check for expected term match, before creating child spec 
-	
+
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
   
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 

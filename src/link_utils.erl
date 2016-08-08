@@ -39,7 +39,7 @@ link_blocks(_BlockName, [], UpdatedInputs)->
 
 link_blocks(BlockName, [Input | RemainingInputs], UpdatedInputs) ->
 
-  case Input of	
+  case Input of
     % Non-array value
     {ValueName, {Value, Link}} ->
       NewUpdatedInputs = evaluate_link(BlockName, ValueName, Value, Link, UpdatedInputs);
@@ -264,20 +264,20 @@ add_ref(Outputs, ValueId, ToBlockName) ->
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
       % Just return the original Outputs list
-			error_logger:error_msg("add_ref() Error. ~p Doesn't exist for this block~n", 
+      error_logger:error_msg("add_ref() Error. ~p Doesn't exist for this block~n", 
                              [ValueId]),
-			Outputs;
-		
-    % Non-array value
-		{ok, {ValueName, {Value, Refs}}} ->
+      Outputs;
 
-			% add 'ToBlockName' to list of block references for this output
+    % Non-array value
+    {ok, {ValueName, {Value, Refs}}} ->
+
+      % add 'ToBlockName' to list of block references for this output
       % ToBlockName can be added more than once, 
       % if multiple inputs of the same block are linked to this output.
       % Return updated Outputs list
-			NewRefs = [ToBlockName | Refs],
-			NewOutput = {ValueName, {Value, NewRefs}},
-			attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+      NewRefs = [ToBlockName | Refs],
+      NewOutput = {ValueName, {Value, NewRefs}},
+      attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
 
     % Array value
     {ok, {ValueName, ArrayValues}} ->
@@ -317,14 +317,14 @@ delete_ref(Outputs, ValueId, ToBlockName) ->
       error_logger:error_msg("delete_ref() Error. ~p Doesn't exist for this block~n", 
                               [ValueId]),
       Outputs;
-		
+
     % Non-Array value
     {ok, {ValueName, {Value, Refs}}} ->  
       % Delete the 'ToBlockName' from the list of linked blocks, if it exists
       % This deletes the first element matching ToBlockName, 
       % ToBlockName could be in the list more than once
       NewRefs = lists:delete(ToBlockName, Refs),
-		  NewOutput = {ValueName, {Value, NewRefs}},
+      NewOutput = {ValueName, {Value, NewRefs}},
       attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
 
     % Array value  
@@ -370,14 +370,14 @@ update_linked_input_values(Inputs, TargetLink, NewValue) ->
             % Matching links, update the input attribute value
             true  -> {ValueName, {NewValue, Link}};
             % Links don't match don't change the input value 
-            false -> Input	
+            false -> Input
           end;
         % Array value  
         {ValueName, ArrayValues} ->
           {ValueName, 
            update_linked_array_values(ArrayValues, TargetLink, NewValue)}
       end
-		end, 
+    end, 
     Inputs).
 
 

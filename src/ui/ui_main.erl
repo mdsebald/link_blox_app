@@ -527,11 +527,11 @@ ui_load_blocks(Params) ->
     low -> io:format("Error: Enter file name~n");
     ok ->
       FileName = Params,
-	    case file:consult(FileName) of
-    	  {ok, BlockValuesList} ->
-			    create_blocks(BlockValuesList);
-		    {error, Reason} ->
-			    io:format("Error: ~p loading blocks file: ~p~n", [Reason, FileName])
+      case file:consult(FileName) of
+        {ok, BlockValuesList} ->
+          create_blocks(BlockValuesList);
+        {error, Reason} ->
+          io:format("Error: ~p loading blocks file: ~p~n", [Reason, FileName])
       end;
 
     high -> io:format("Error: Too many parameters~n")

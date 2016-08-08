@@ -127,7 +127,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % Initialize the GPIO pins as inputs
   case gpio:start_link(PhaseA_Pin, input) of
     {ok, GpioPinA_Ref} ->
-	    gpio:register_int(GpioPinA_Ref),
+      gpio:register_int(GpioPinA_Ref),
       gpio:set_int(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = read_pin_value_bool(GpioPinA_Ref),
       {ok, Private2} = attrib_utils:set_values(Private1, 
@@ -136,7 +136,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
       case gpio:start_link(PhaseB_Pin, input) of
         {ok, GpioPinB_Ref} ->
-	        gpio:register_int(GpioPinB_Ref),
+          gpio:register_int(GpioPinB_Ref),
           gpio:set_int(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = read_pin_value_bool(GpioPinB_Ref),
           {ok, Private3} = attrib_utils:set_values(Private2, 
@@ -145,7 +145,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       
           case gpio:start_link(SwitchPin, input) of
             {ok, GpioPinSwRef} ->
-	            gpio:register_int(GpioPinSwRef),
+              gpio:register_int(GpioPinSwRef),
               gpio:set_int(GpioPinSwRef, SwitchIntEdge),
               LastSwValue = read_pin_value_bool(GpioPinSwRef),
               {ok, Private4} = attrib_utils:set_values(Private3, 
@@ -228,7 +228,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 %% 
 %%  Delete the block
-%%	
+%%  
 -spec delete(BlockValues :: block_state()) -> block_state().
 
 delete({Config, Inputs, Outputs, Private}) -> 

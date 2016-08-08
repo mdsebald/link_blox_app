@@ -183,7 +183,7 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
         fun(DeleteValue) -> 
           {_Value, Link} = DeleteValue,
           link_utils:unlink_input(BlockName, ArrayValueName, Link)
-		      end, 
+          end, 
           DeleteArrayValues) end,
           
   attrib_utils:resize_attribute_array_value(Inputs, ArrayValueName, TargQuant, 

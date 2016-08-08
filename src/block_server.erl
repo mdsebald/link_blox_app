@@ -110,7 +110,7 @@ init_configure(BlockName)->
 %% Perform configuration of the block.
 %% Review block inputs and configure links as necessary 
 configure(BlockName)->
-	gen_server:cast(BlockName, configure).
+  gen_server:cast(BlockName, configure).
 
 
 %% Reconfigure the block with the given set of block values
@@ -132,19 +132,19 @@ unlink(BlockName, ValueName, ToBlockName) ->
 %% ====================================================================
 %% Behavioural functions
 %% ====================================================================
-	
+
 
 %% init/1
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:init-1">gen_server:init/1</a>
 -spec init(Args :: term()) -> Result when
-	Result :: {ok, State}
-			| {ok, State, Timeout}
-			| {ok, State, hibernate}
-			| {stop, Reason :: term()}
-			| ignore,
-	State :: term(),
-	Timeout :: non_neg_integer() | infinity.
+  Result :: {ok, State}
+      | {ok, State, Timeout}
+      | {ok, State, hibernate}
+      | {stop, Reason :: term()}
+      | ignore,
+  State :: term(),
+  Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 init(BlockValues) ->
   BlockName = config_utils:name(BlockValues),
@@ -153,10 +153,10 @@ init(BlockValues) ->
 
   %TODO: Need to perform a sanity check here, 
   % make sure BlockModule type and version, matches BlockValues type and version
- 	
+
   % Perform block initialization
   NewBlockValues = block_common:initialize(BlockValues),
-	
+
   % Perform intial configuration
   % Basically, tell all blocks to check their input links
   % and link to this block if necessary
@@ -169,18 +169,18 @@ init(BlockValues) ->
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:handle_call-3">gen_server:handle_call/3</a>
 -spec handle_call(Request :: term(), From :: {pid(), Tag :: term()}, State :: term()) -> Result when
-	Result :: {reply, Reply, NewState}
-			| {reply, Reply, NewState, Timeout}
-			| {reply, Reply, NewState, hibernate}
-			| {noreply, NewState}
-			| {noreply, NewState, Timeout}
-			| {noreply, NewState, hibernate}
-			| {stop, Reason, Reply, NewState}
-			| {stop, Reason, NewState},
-	Reply :: term(),
-	NewState :: term(),
-	Timeout :: non_neg_integer() | infinity,
-	Reason :: term().
+  Result :: {reply, Reply, NewState}
+      | {reply, Reply, NewState, Timeout}
+      | {reply, Reply, NewState, hibernate}
+      | {noreply, NewState}
+      | {noreply, NewState, Timeout}
+      | {noreply, NewState, hibernate}
+      | {stop, Reason, Reply, NewState}
+      | {stop, Reason, NewState},
+  Reply :: term(),
+  NewState :: term(),
+  Timeout :: non_neg_integer() | infinity,
+  Reason :: term().
 %% ====================================================================
 
 %% =====================================================================
@@ -234,7 +234,7 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
               % manually execute the block with updated input value
               NewBlockValues = 
                block_common:execute({Config, NewInputs, Outputs, Private}, manual),
-         	    Result = ok;
+               Result = ok;
             {error, Reason} ->
               NewBlockValues = BlockValues,
               Result = {error, Reason}
@@ -292,7 +292,7 @@ handle_call({set_link, InputValueId, Link}, _From, BlockValues) ->
 handle_call({link, ValueId, ToBlockName}, _From, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
-	
+
   %% Add the block 'ToBlockName' to the output 'ValueName's list of block references
   NewOutputs = link_utils:add_ref(Outputs, ValueId, ToBlockName),
 
@@ -358,16 +358,16 @@ handle_cast(exec_out_execute, BlockValues) ->
 %% Update this block's input value(s) with the block value received in this message
 %% ====================================================================
 handle_cast({update, FromBlockName, ValueId, Value}, BlockValues) ->
-	
+
   {Config, Inputs, Outputs, Private} = BlockValues,
-	
-	% Update the block input(s), that are linked this value, with the new Value
-	NewInputs = link_utils:update_linked_input_values(Inputs, {FromBlockName, ValueId}, Value),
-	
+
+  % Update the block input(s), that are linked this value, with the new Value
+  NewInputs = link_utils:update_linked_input_values(Inputs, {FromBlockName, ValueId}, Value),
+
   % Execute the block because input values have changed
   NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
  
-	{noreply, NewBlockValues};
+  {noreply, NewBlockValues};
 
 %% =====================================================================
 %% Initial block configuration
@@ -428,7 +428,7 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
-	
+
   %% remove the block 'ToBlockName' from the output 'ValueName's list of linked blocks
   NewOutputs = link_utils:delete_ref(Outputs, ValueName, ToBlockName),
 
@@ -448,12 +448,12 @@ handle_cast(Msg, BlockValues) ->
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:handle_info-2">gen_server:handle_info/2</a>
 -spec handle_info(Info :: timeout | term(), State :: term()) -> Result when
-	Result :: {noreply, NewState}
-			| {noreply, NewState, Timeout}
-			| {noreply, NewState, hibernate}
-			| {stop, Reason :: term(), NewState},
-	NewState :: term(),
-	Timeout :: non_neg_integer() | infinity.
+  Result :: {noreply, NewState}
+      | {noreply, NewState, Timeout}
+      | {noreply, NewState, hibernate}
+      | {stop, Reason :: term(), NewState},
+  NewState :: term(),
+  Timeout :: non_neg_integer() | infinity.
 %% ====================================================================
 
 
@@ -489,10 +489,10 @@ handle_info(Info, State) ->
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:terminate-2">gen_server:terminate/2</a>
 -spec terminate(Reason, State :: term()) -> Any :: term() when
-	Reason :: normal
-			| shutdown
-			| {shutdown, term()}
-			| term().
+  Reason :: normal
+      | shutdown
+      | {shutdown, term()}
+      | term().
 %% ====================================================================
 terminate(normal, _BlockValues) ->
   ok;
@@ -508,9 +508,9 @@ terminate(Reason, BlockValues) ->
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:code_change-3">gen_server:code_change/3</a>
 -spec code_change(OldVsn, State :: term(), Extra :: term()) -> Result when
-	Result :: {ok, NewState :: term()} | {error, Reason :: term()},
-	OldVsn :: Vsn | {down, Vsn},
-	Vsn :: term().
+  Result :: {ok, NewState :: term()} | {error, Reason :: term()},
+  OldVsn :: Vsn | {down, Vsn},
+  Vsn :: term().
 %% ====================================================================
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.

@@ -216,7 +216,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 %% 
 %%  Delete the block
-%%	
+%%
 -spec delete(BlockValues :: block_state()) -> block_state().
 
 delete({Config, Inputs, Outputs, Private}) -> 

@@ -116,11 +116,11 @@ initialize({Config, Inputs, Outputs, Private}) ->
         {ok, DefaultValue} ->
           case config_utils:get_boolean(Config, invert_output) of
             {ok, InvertOutput} -> 
-	            case gpio:start_link(PinNumber, output) of
+              case gpio:start_link(PinNumber, output) of
                 {ok, GpioPinRef} ->
                   Status = initialed,
                   Value = DefaultValue,
- 	                {ok, Private2} = 
+                   {ok, Private2} = 
                     attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
                   set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
@@ -132,7 +132,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   Private2 = Private1
               end;
             {error, Reason} ->
-            	error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
+              error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
                               [Reason]),
               Status = config_err,
               Value = not_active,
@@ -171,37 +171,37 @@ execute({Config, Inputs, Outputs, Private}) ->
   {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
      
   {ok, Input} = attrib_utils:get_value(Inputs, input),
- 	
+
   % Set Output Val to input and set the actual GPIO pin value too
   case Input of
      empty -> 
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
       Value = not_active,
       Status = no_input;
-					
-	  not_active ->
+
+    not_active ->
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
       Value = not_active,
       Status = normal;
-					
-	  true ->  
+
+    true ->  
       PinValue = true, 
       Value = true,
       Status = normal;
-					
+
     false ->
       PinValue = false,
       Value = false,
       Status = normal;
 
-		 Other ->
+     Other ->
       BlockName = config_utils:name(Config),
       error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
                                [BlockName, Other]),
-			PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-		  Value = not_active,
+      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
       Status = input_error
-	end,
+  end,
   set_pin_value_bool(GpioPinRef, PinValue, InvertOutput),
  
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -211,7 +211,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 %% 
 %%  Delete the block
-%%	
+%%
 -spec delete(BlockValues :: block_state()) -> block_state().
 
 delete({Config, Inputs, Outputs, Private}) ->

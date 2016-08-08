@@ -117,7 +117,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
         {ok, GpioPinRef} ->
           Status = initialed,
           Value = not_active,
-	        {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+          {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
           gpio:register_int(GpioPinRef),
           % TODO: Make interrupt type selectable via config value
           gpio:set_int(GpioPinRef, both);
@@ -164,7 +164,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
 %% 
 %%  Delete the block
-%%	
+%%  
 -spec delete(BlockValues :: block_state()) -> block_state().
 
 delete({Config, Inputs, Outputs, Private}) -> 

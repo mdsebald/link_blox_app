@@ -138,9 +138,9 @@
 %% Read a set of block values from a config file
 % TODO: Check for existence and validity
 read_config(FileName) ->
-	file:consult(FileName).
-	
-	
+  file:consult(FileName).
+
+
 %% Write the block values to a configuration file
 % TODO:  Add BlockPoint specific header?
 write_config(FileName, BlockValuesList) ->

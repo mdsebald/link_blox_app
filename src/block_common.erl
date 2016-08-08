@@ -42,7 +42,7 @@ configs(Name, Module, Version, Description) ->
     {block_module, {Module}},
     
      % Block Version string
-	  {version, {Version}},
+    {version, {Version}},
 
     % User defined description of this block
     {description, {Description}}    
@@ -310,7 +310,7 @@ update_execute_track(Outputs, ExecMethod) ->
   TS = {_, _, Micro} = os:timestamp(),
   {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
 
-	{ok, Outputs2} = attrib_utils:set_value(Outputs1, last_exec, 
+  {ok, Outputs2} = attrib_utils:set_value(Outputs1, last_exec, 
                                {Hour, Minute, Second, Micro}),
   Outputs2.
 
@@ -407,7 +407,7 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
 %%
 -spec update_execute(Outputs :: list(output_attr())) -> ok.
 
-update_execute(Outputs) ->	
+update_execute(Outputs) ->
   {ok, {exec_out,  {_Value, Refs}}} = attrib_utils:get_attribute(Outputs, exec_out),
   
   lists:map(fun(Ref) -> block_server:exec_out_execute(Ref) end, Refs),

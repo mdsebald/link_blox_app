@@ -30,18 +30,18 @@ start_link(BlockValuesFile) ->
 %% init/1
 %% ====================================================================
 -spec init(Args :: term()) -> Result when
-	Result :: {ok, {SupervisionPolicy, [ChildSpec]}} | ignore,
-	SupervisionPolicy :: {RestartStrategy, MaxR :: non_neg_integer(), MaxT :: pos_integer()},
-	RestartStrategy :: one_for_all
-					 | one_for_one
-					 | rest_for_one
-					 | simple_one_for_one,
-	ChildSpec :: {Id :: term(), StartFunc, RestartPolicy, Type :: worker | supervisor, Modules},
-	StartFunc :: {M :: module(), F :: atom(), A :: [term()] | undefined},
-	RestartPolicy :: permanent
-				   | transient
-				   | temporary,
-	Modules :: [module()] | dynamic.
+  Result :: {ok, {SupervisionPolicy, [ChildSpec]}} | ignore,
+  SupervisionPolicy :: {RestartStrategy, MaxR :: non_neg_integer(), MaxT :: pos_integer()},
+  RestartStrategy :: one_for_all
+           | one_for_one
+           | rest_for_one
+           | simple_one_for_one,
+  ChildSpec :: {Id :: term(), StartFunc, RestartPolicy, Type :: worker | supervisor, Modules},
+  StartFunc :: {M :: module(), F :: atom(), A :: [term()] | undefined},
+  RestartPolicy :: permanent
+           | transient
+           | temporary,
+  Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
   
@@ -62,9 +62,9 @@ init(BlockValuesFile) ->
                           type => supervisor},
                    
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-            
-	{ok, {SupFlags, [ApiServerSpec, BlockSupervisorSpec]}}.
-		
+          
+  {ok, {SupFlags, [ApiServerSpec, BlockSupervisorSpec]}}.
+
 
 %% ====================================================================
 %% Internal functions

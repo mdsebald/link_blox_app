@@ -33,7 +33,7 @@
 ]).
 
 
-%%	
+%%
 %% Get the attribute for the given ValueName in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private type
 %%
@@ -51,10 +51,10 @@ get_attribute(Attributes, ValueId) ->
   case lists:keyfind(ValueName, 1, Attributes) of 
     false     -> {error, not_found};
     Attribute -> {ok, Attribute}
- 	end.
+   end.
 
 
-%%	
+%%
 %% Get the value of the ValueId attribute in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
@@ -63,7 +63,7 @@ get_attribute(Attributes, ValueId) ->
  
 get_value(Attributes, ValueId) ->
   case get_attribute(Attributes, ValueId) of
-	  {error, not_found} -> {error, not_found};
+    {error, not_found} -> {error, not_found};
     
     % For non-array values, the ValueId is the attribute ValueName
     % Non-array Config or Private value
@@ -92,7 +92,7 @@ get_value(Attributes, ValueId) ->
   end.
 
 
-%%	
+%%
 %% Get the value of the attribute ValueName
 %% Check attribute types: Config, Inputs, and Outputs
 %%
@@ -102,7 +102,7 @@ get_value(Attributes, ValueId) ->
 -spec get_value_any(BlockValues :: block_state(), 
                     ValueId :: value_id()) -> attrib_value().
 
-% Get array value	
+% Get array value
 get_value_any(BlockValues, ValueId) ->
 
   {Config, Inputs, Outputs, _Private} = BlockValues,
@@ -122,7 +122,7 @@ get_value_any(BlockValues, ValueId) ->
         % Input value get failed for reason other than not found  
         {error, Reason} -> {error, Reason};  
         % Input value
-        {ok, Value} -> {ok, Value}	
+        {ok, Value} -> {ok, Value}
       end;
     
     % Config value get failed for reason other than not found  
@@ -132,7 +132,7 @@ get_value_any(BlockValues, ValueId) ->
   end.
 
 
-%%	
+%%
 %% Set a value in attribute ValueId
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
@@ -184,7 +184,7 @@ set_value(Attributes, ValueId, NewValue)->
   end.
 
 
-%%	
+%%
 %% Set the link in an input attribute ValueId
 %% List of attributes must be Inputs
 %%
@@ -273,7 +273,7 @@ replace_array_value(ArrayValues, ArrayIndex, NewValue) ->
                   ++ lists:nthtail(ArrayIndex, ArrayValues).
 
 
-%%	
+%%
 %% Set multiple values in the attribute list 
 %% Values are in the form of ValueID, Value tuples
 %% All values must belong to the same attribute list
@@ -293,7 +293,7 @@ set_values(Attributes, [{ValueId, NewValue} | RemainingValues]) ->
 
 
 -ifdef(INCLUDE_OBSOLETE).
-%% TODO: Don't think we need this cut it out for now, 	
+%% TODO: Don't think we need this cut it out for now,
 %% Set the value of the attribute ValueName
 %%
 -spec set_value_any(BlockValues :: block_state(), 
@@ -301,14 +301,14 @@ set_values(Attributes, [{ValueId, NewValue} | RemainingValues]) ->
                     NewValue :: value()) -> block_state().
 
 set_value_any(BlockValues, ValueId, NewValue)->
-	
-	{Config, Inputs, Outputs, Private} = BlockValues,
-	% Can't modify Configs, don't bother checking those
+
+  {Config, Inputs, Outputs, Private} = BlockValues,
+  % Can't modify Configs, don't bother checking those
 
   case get_attribute(Inputs, ValueId) of
     {error, not_found} ->
       case get_attribute(Outputs, ValueId) of
-        {error, not_found} ->					
+        {error, not_found} ->
           case get_attribute(Private, ValueId) of
             {error, not_found} ->
               BlockName = config_utils:name(Config),
