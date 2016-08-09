@@ -45,9 +45,9 @@ default_inputs() ->
     block_common:inputs(),
     [
       % Number of digits to the right of the decimal point for positive values
-      {pos_precision, {empty, ?EMPTY_LINK}}, 
+      {pos_precision, {2, ?EMPTY_LINK}}, 
       % Number of digits to the right of the decimal point for negative values
-      {neg_precision, {empty, ?EMPTY_LINK}},
+      {neg_precision, {1, ?EMPTY_LINK}},
       % The value to display.
       {input, {empty, ?EMPTY_LINK}}
      ]). 
@@ -114,7 +114,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 
 initialize({Config, Inputs, Outputs, Private}) ->
   % Check the config values
-  case config_utils:get_integer_range(Config, num_of_digits, 1, 99) of
+  case config_utils:get_integer_range(Config, num_of_digits, 2, 99) of
     {error, Reason} ->
       Outputs1 = Outputs,
       {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason);
@@ -153,28 +153,31 @@ execute({Config, Inputs, Outputs, Private}) ->
     {ok, InValue} ->
       % In normal status, set the main Value output equal to the input value
       % Value output is not used to drive 7 segement displays
-      case get_display_limits(InValue, NumOfDigits, Inputs) of
-        {ok, Precision} ->
+      case format_number(InValue, NumOfDigits, Inputs) of
+        {ok, DigitsToDisp, _Precision} ->
           Value = InValue, Status = normal,
-          Digits7Seg = convert_number(InValue, NumOfDigits, Precision),
+          
+          Digits7Seg = lists:map(fun(Digit) ->
+                       block_utils:char_to_segments(Digit, false)
+                       end,
+                       DigitsToDisp),
+          % TODO: Set Dec Point based on precision value
           PosOverflow = false,
           NegOverflow = false;
 
-        too_big -> 
+        {error, too_big, IsNegative} -> 
           Value = InValue, Status = normal,
           % Set all digits to '-' to indicate overflow condition
           Overflow = block_utils:char_to_segments($-, false),
           Digits7Seg = lists:duplicate(NumOfDigits, Overflow),
-          PosOverflow = true,
-          NegOverflow = false;
 
-        too_small ->
-          Value = InValue, Status = normal,
-          % Set all digits to '-' to indicate underflow condition
-          Underflow = block_utils:char_to_segments($-, false),
-          Digits7Seg = lists:duplicate(NumOfDigits, Underflow),
-          PosOverflow = false,
-          NegOverflow = true;
+          if IsNegative ->
+            PosOverflow = false,
+            NegOverflow = true;
+          true ->
+            PosOverflow = true,
+            NegOverflow = false
+          end;
       
         {error, Reason} ->
           {Value, Status} = input_utils:log_error(Config, precision, Reason),
@@ -212,113 +215,121 @@ delete({Config, Inputs, Outputs, Private}) ->
 %% Internal functions
 %% ====================================================================
 
-% Get the limits on what is displayable
--spec get_display_limits(InValue :: float(),
-                         NumOfDigits :: pos_integer(),
-                         Inputs :: list(input_attr())) -> 
-                         {ok, pos_integer()} | too_big | too_small | {error, atom()}.
-                  
-get_display_limits(InValue, NumOfDigits, Inputs) ->
+format_number(InValue, NumOfDigits, Inputs) ->
+
+  if ((-1.0 < InValue) andalso (InValue < 1.0)) ->
+    IsLessThanOne = true;
+  true ->
+    IsLessThanOne = false
+  end,
+
   if (InValue >= 0.0) ->
-    case get_pos_limit(NumOfDigits, Inputs) of
-      {ok, MaxDispVal, PosPrec} ->
-        if (InValue =< MaxDispVal) ->
-          {ok, PosPrec};
-        true ->
-          too_big
-        end;
+    % Max precision is NumOfDigits-1, for leading zero
+    PrecResult = input_utils:get_integer_range(Inputs, pos_precision, 0, 
+                                               (NumOfDigits-1)),
+    IsNegative = false; 
+  true ->
+    % Max precision is NumOfDigits-2, for minus sign and leading zero
+    PrecResult = input_utils:get_integer_range(Inputs, neg_precision, 0, 
+                                               (NumOfDigits-2)),
+    IsNegative = true 
+  end,
 
-      {error, Reason} -> {error, Reason}
+  case PrecResult of
+    {ok, not_active} ->
+      % Don't care about precision 
+      % Format number with the maximum possible precision
+      if IsNegative ->
+        MaxPrecision = NumOfDigits - 2;
+      true ->
+        MaxPrecision = NumOfDigits - 1
+      end,
+      
+      max_precision(InValue, NumOfDigits, MaxPrecision, IsNegative, IsLessThanOne);
+
+    {ok, Precision} ->
+      DigitsToDisp = digits_to_display(InValue, Precision, IsNegative, IsLessThanOne),
+      
+      if (length(DigitsToDisp) > NumOfDigits) ->
+        {error, too_big, IsNegative};
+      true ->
+        {ok, DigitsToDisp, Precision}
+      end;
+
+    {error, Reason} -> {error, Reason}
+  end.
+
+
+%
+% Find the maximum precision that fits in the number of digits allowed
+% Starting precision is NumOfDigits -1 or -2 (for negative numbers)
+%
+-spec max_precision(InValue :: float(),
+                    NumOfDigits :: pos_integer(),
+                    Precision :: pos_integer(),
+                    IsNegative :: boolean(),
+                    IsLessThanOne :: boolean()) -> {ok, list(), pos_integer()} |
+                                                   {error, too_big, boolean()}. 
+
+max_precision(InValue, NumOfDigits, 0, IsNegative, IsLessThanOne) ->
+  DigitsToDisp = 
+    digits_to_display(InValue, 0, IsNegative, IsLessThanOne),
+
+  if (length(DigitsToDisp) > NumOfDigits) ->
+    % Number doesn't fit using least (zero) precision, return error
+    {error, too_big, IsNegative};
+  true ->
+    {ok, DigitsToDisp, 0}
+  end;
+
+max_precision(InValue, NumOfDigits, Precision, IsNegative, IsLessThanOne) ->
+  DigitsToDisp = digits_to_display(InValue, Precision, 
+                                    IsNegative, IsLessThanOne),
+
+  if (length(DigitsToDisp) > NumOfDigits) ->
+    % Number doesn't fit, try formatting at a lower precision
+    max_precision(InValue, NumOfDigits, Precision-1, 
+                  IsNegative, IsLessThanOne);
+
+  true ->
+    % Number fits in the display, use this.
+    {ok, DigitsToDisp, Precision}
+  end.
+
+
+%
+% Get the list of digits to display, without a decimal point
+% Add the minus sign and leading zero where appropriate
+%
+-spec digits_to_display(InValue :: float(),
+                        Precision :: pos_integer(),
+                        IsNegative :: boolean(),
+                        IsLessThanOne :: boolean()) -> list().
+
+digits_to_display(InValue, Precision, IsNegative, IsLessThanOne) ->
+  % Example: 
+  %   InValue 12.3456, Precision 3
+  %   InValueNoDecPnt = 12346
+  InValueNoDecPnt = round(math:pow(10, Precision) * InValue),
+
+  RawDigits = integer_to_list(InValueNoDecPnt, 10),
+
+  if IsLessThanOne ->
+    % Add leading zero
+    if IsNegative ->
+      % Add minus sign
+      [$- | [$0 | RawDigits]];
+    true ->
+      [$0 | RawDigits]
     end;
-
-  true -> % Input value is negative
-    case get_neg_limit(NumOfDigits, Inputs) of
-      {ok, MinDispVal, NegPrec} ->
-        if (MinDispVal =< InValue ) ->
-          {ok, NegPrec};
-        true ->
-          too_small
-        end;
-
-      {error, Reason} -> {error, Reason}
+  true -> 
+    if IsNegative ->
+      [$- | RawDigits];
+    true ->
+      RawDigits
     end
   end.
 
-% Get the largest positive number that can be displayed
-% Leave one digit for leading zero
-% So maximum number of digits to the right of the decimal point is: NumOfDigits-1
--spec get_pos_limit(NumOfDigits :: pos_integer(),
-                    Inputs :: list(input_attr())) -> {ok, float(), pos_integer()} | {error, atom()}.
-
-get_pos_limit(NumOfDigits, Inputs) ->
-  case input_utils:get_integer_range(Inputs, pos_precision, 0, (NumOfDigits-1)) of
-    {ok, not_active} ->
-      % Don't care about precision 
-      % display the maximum number possible
-      % with maximum precision possible
-      % i.e. 4 digits, MaxDisplayValue = 9999
-      % MinDisplayPrecision = 0.001 
-
-      MaxDispVal = math:pow(10, NumOfDigits) - 1.0,
-      {ok, MaxDispVal, undefined};
-
-    {ok, PosPrec} ->
-      % i.e. NumOfDigits = 4, PosPrec = 2, 
-      % MaxDispVal = 99.99, MinDispPrec = 0.01
-
-      Max = math:pow(10, (NumOfDigits - PosPrec)),
-      MinDispPrec = (1.0 / Max),
-      MaxDispVal = Max - MinDispPrec,
-      {ok, MaxDispVal, PosPrec};
-    
-    {error, Reason} -> {error, Reason}
-  end.
-
-% Get the largest negative number that can be displayed
-% First digit will always be negative sign
-% Leave one digit for leading zero
-% So maximum number of digits to the right of the decimal point is: NumOfDigits-2
--spec get_neg_limit(NumOfDigits :: pos_integer(),
-                    Inputs :: list(input_attr())) -> {ok, float(), pos_integer()} | {error, atom()}.
-
-get_neg_limit(NumOfDigits, Inputs) ->
-
-  case input_utils:get_integer_range(Inputs, neg_precision, 0, (NumOfDigits-2)) of
-    {ok, not_active} ->
-      % Don't care about precision 
-      MaxDispVal = -(math:pow(10, (NumOfDigits-1))) + 1.0,
-      {ok, MaxDispVal, undefined};
-
-    {ok, NegPrec} ->
-      Max = math:pow(10, ((NumOfDigits-1) - NegPrec)),
-      MinDispPrec = (1.0 / Max),
-      MaxDispVal = (-Max) + MinDispPrec,
-      {ok, MaxDispVal, NegPrec};
-    
-    {error, Reason} -> {error, Reason}
-  end.  
-
-% Convert floating point value to a list of bytes
-% One byte per digit. Each byte specifying which digit segment(s) to turn on
--spec convert_number(Number :: float(), 
-                     NumOfDigits :: pos_integer(),
-                     Precision :: pos_integer() | undefined) -> list(byte()).
-
-convert_number(Number, NumOfDigits, Precision) ->
-  case Precision of
-    undefined ->
-      FormatString = io_lib:format("~c~wf", [$~, NumOfDigits]);
-
-    Precision ->
-      FormatString = io_lib:format("~c~w.~wf", [$~, NumOfDigits+1, Precision])
-  end,
-
-  FormattedNumber = io_lib:format(FormatString, [Number]),
-  Digits7Seg = 
-    lists:map(fun(Digit) ->
-                block_utils:char_to_segments(Digit)
-              end,
-              FormattedNumber).
 
 %% ====================================================================
 %% Tests

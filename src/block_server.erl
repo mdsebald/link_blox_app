@@ -297,8 +297,14 @@ handle_call({link, ValueId, ToBlockName}, _From, BlockValues) ->
   NewOutputs = link_utils:add_ref(Outputs, ValueId, ToBlockName),
 
   % Send the current value of this output to the block 'ToBlockName'
-  {ok, Value} = attrib_utils:get_value(NewOutputs, ValueId),
+  case attrib_utils:get_value(NewOutputs, ValueId) of 
+    {ok, Value} -> ok;
  
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p fetching value: ~p~n", [Reason, ValueId]),
+      Value = not_active
+  end,
+
   {reply, Value, {Config, Inputs, NewOutputs, Private}};
   
   
