@@ -121,6 +121,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Private1 = attrib_utils:merge_attribute_lists(Private, 
               [
                 {i2c_ref, {empty}},
+                {sensor_mode, {empty}}
                 % Temperature calibration values
                 {dig_T1, {empty}},
                 {dig_T2, {empty}},
@@ -155,11 +156,15 @@ initialize({Config, Inputs, Outputs, Private}) ->
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
       
       case configure_sensor(I2cRef, Config) of 
-        ok ->
-          
-          case get_calibration(I2cRef, Private2) of
-            {ok, Private3} -> 
-              case read_sensor(I2cRef, Private3) of
+        {ok, SensorMode} ->
+          % Need to save sensor mode, 
+          % Read mode is part of sensor mode. If read mode is 'forced'
+          % need to set Read mode every time we want to read the sensor
+          {ok, Private3} = attrib_utils:set_value(Private2, sensor_mode, SensorMode),
+
+          case get_calibration(I2cRef, Private3) of
+            {ok, Private4} -> 
+              case read_sensor(I2cRef, Private4) of
                 {ok, Temp, Press, Humid} ->
                   Status = initialed,
                   Value = Temp,
@@ -182,7 +187,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
               Temp = not_active,
               Press = not_active,
               Humid = not_active,
-              Private3 = Private2
+              Private4 = Private3
           end;
   
         {error, Reason} ->
@@ -192,7 +197,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Temp = not_active,
           Press = not_active,
           Humid = not_active,
-          Private3 = Private1
+          Private4 = Private1
       end;
 
     {error, Reason} ->
@@ -203,7 +208,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Temp = not_active,
       Press = not_active,
       Humid = not_active,
-      Private3 = Private1
+      Private4 = Private1
   end,  
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -214,7 +219,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                             {humid, Humid}]),
 
   % This is the block state
-  {Config, Inputs, Outputs2, Private3}.
+  {Config, Inputs, Outputs2, Private4}.
 
 
 %%
@@ -223,31 +228,55 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}) ->
-
-  % Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) 
-  % or from 0xF7 to 0xFE (temperature, pressure and humidity). 
-  % The data are read out in an unsigned 20-bit format both for pressure and for temperature 
-  % and in an unsigned 16-bit format for humidity. 
   
   {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
   {ok, _DegF} = attrib_utils:get_value(Config, deg_f),
   {ok, _TempOffset} = attrib_utils:get_value(Config, temp_offset),
-  
-  % Read the sensor
-  case read_sensor(I2cRef, Private) of
-    {ok, Temp, Press, Humid} ->
-      Status = normal,
-      Value = Temp,
-      ok;
 
-    {error, Reason} ->
-      error_logger:error_msg("Error: ~p Reading temperature sensor~n", 
-                              [Reason]),
-      Status = proc_error,
+  case attrib_utils:get_value(Config, read_mode) of
+    {ok, sleep}  ->
+      % Don't read the sensor
+      Status = no_input,
       Value = not_active,
       Temp = not_active,
       Press = not_active,
-      Humid = not_active
+      Humid = not_active;
+
+    {ok, forced} ->
+      % Need to set the sensor read mode to forced
+      % and wait for it to return to sleep mode before reading it
+      {ok, SensorMode} = attrib_utils:set_value(Private, sensor_mode),
+      case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
+        ok -> ok;
+
+        
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p Setting sensor mode~n", 
+                                  [Reason]),
+          Status = proc_error,
+          Value = not_active,
+          Temp = not_active,
+          Press = not_active,
+          Humid = not_active
+      end;
+
+    {ok, normal} -> 
+      % Read the sensor
+      case read_sensor(I2cRef, Private) of
+        {ok, Temp, Press, Humid} ->
+          Status = normal,
+          Value = Temp,
+          ok;
+
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p Reading sensor~n", 
+                                  [Reason]),
+          Status = proc_error,
+          Value = not_active,
+          Temp = not_active,
+          Press = not_active,
+          Humid = not_active
+      end,
   end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -348,7 +377,7 @@ delete({Config, Inputs, Outputs, Private}) ->
 % Configure the sensor
 %
 -spec configure_sensor(I2cRef :: pid(),
-                       Config :: list(config_attr())) -> ok | {error, atom()}.
+                       Config :: list(config_attr())) -> {ok, binary()} | {error, atom()}.
 
 configure_sensor(I2cRef, Config) -> 
   case reset_sensor(I2cRef) of
@@ -361,7 +390,7 @@ configure_sensor(I2cRef, Config) ->
             ok ->
 
               case set_temp_press_read_modes(I2cRef, Config) of
-                ok -> ok;
+                {ok, SensorMode} -> {ok, SensorMode};
 
                 {error, Reason} -> {error, Reason}
               end;
@@ -443,7 +472,7 @@ set_humid_mode(I2cRef, Config) ->
 % Set Temperature sensor mode, Pressure sensor mode, and Read mode
 %
 -spec set_temp_press_read_modes(I2cRef :: pid(), 
-                                 Config :: list(config_attr())) -> ok | {error, atom()}.
+                                 Config :: list(config_attr())) -> {ok, binary()} | {error, atom()}.
 
 set_temp_press_read_modes(I2cRef, Config) ->
   
@@ -456,8 +485,9 @@ set_temp_press_read_modes(I2cRef, Config) ->
           case get_read_mode(Config) of
             {ok, ReadMode} ->
 
-              case i2c:write(I2cRef, <<?CTRL_MEAS_REG, TempMode:3, PressMode:3, ReadMode:2>>) of
-                ok -> ok;
+              SensorMode = <<TempMode:3, PressMode:3, ReadMode:2>>,
+              case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
+                ok -> {ok, SensorMode};
 
                 {error, Reason} ->
                   error_logger:error_msg("Error: ~p setting temperature, pressure, or read modes~n", [Reason]),
@@ -683,6 +713,11 @@ get_calibration(I2cRef, Private) ->
                   Private :: list(private_attr())) -> list() | {error, term()}.
                    
 read_sensor(I2cRef, Private) ->
+
+  % If read mode is 'forced', need to write read mode before each read
+  % and wait for sensor to return to sleep mode before reading the value
+  {ok, SensorMode} = attrib_utils:get_value(Private, sensor_mode),
+  case (SensorMode band ?SENSOR_MODE_NORMAL) /= ? 
 
   % Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) 
   % or from 0xF7 to 0xFE (temperature, pressure and humidity). 

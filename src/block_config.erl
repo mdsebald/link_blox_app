@@ -30,25 +30,12 @@
                                      {input, {empty, {counter, value}}}
                                  ]),
     
-    
     RotEncoder = type_rotary_encoder:create(rotary_encode, "Rotary Encoder with Switch",
                                 [],
                                  [
                                      {disable, {false, ?EMPTY_LINK}}
                                  ]),
-                                 
-                                 
-    LedDisp = type_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
-                                 [],
-                                 [
-                                     {disable, {false, ?EMPTY_LINK}},
-                                     {seven_segs_1, {empty, {test_7seg, {digit,1}}}},
-                                     {seven_segs_2, {empty, {test_7seg, {digit,2}}}},
-                                     {seven_segs_3, {empty, {test_7seg, {digit,3}}}},
-                                     {seven_segs_4, {empty, {test_7seg, {digit,4}}}},
-                                     {colon, {false, ?EMPTY_LINK}}
-                                 ]),
-                                 
+                                                        
     RmTemp = type_mcp9808_temp:create(room_temp, "Room Temp Sensor",
                                  [],
                                  [
@@ -64,17 +51,6 @@
                                      {disable, {false, ?EMPTY_LINK}}
                                  ]),
 
-    Counter = type_exec_count:create(counter, "Count to 9 and rollover",
-                                 [
-                                    
-                                 ],
-                                 [
-                                     {disable, {false, ?EMPTY_LINK}},
-                                     {reset, {empty, {switch_27, value}}},
-                                     {exec_interval, {500, ?EMPTY_LINK}},
-                                     {final_value, {9999, ?EMPTY_LINK}}
-                                 ]),
- 
     Display = type_one_digit_7seg:create(display, "Decode count to seven-segments",
                                  [],
                                  [
@@ -124,14 +100,61 @@
                                   {input, {empty, {display, seg_g}}}]
                                 ),
 
-    EnvSensor = type_bme280_env_sensor:create(env_sensor, "Temp, Press, Humid Sensor",
-                                 [], 
-                                 [{disable, {false, ?EMPTY_LINK}},
-                                  {exec_interval, {1000, ?EMPTY_LINK}}]
-                                ),
+    Counter = type_exec_count:create(counter, "Count to 3 and rollover",
+                                 [
+                                    
+                                 ],
+                                 [
+                                     {disable, {false, ?EMPTY_LINK}},
+                                     {reset, {empty, {switch_27, value}}},
+                                     {exec_interval, {2000, ?EMPTY_LINK}},
+                                     {initial_value, {1, ?EMPTY_LINK}},
+                                     {final_value, {3, ?EMPTY_LINK}}
+                                 ]),
 
-    [Test7Seg, RotEncoder, LedDisp, RmTemp, PbSwitch, Counter, Display, 
-     SegA, SegB, SegC, SegD, SegE, SegF, SegG, EnvSensor].                         
+    EnvSensor = type_bme280_env_sensor:create(env_sensor, "Temp, Press, Humid Sensor",
+                                 [
+
+                                 ], 
+                                 [
+                                    {disable, {false, ?EMPTY_LINK}},
+                                    {exec_interval, {1000, ?EMPTY_LINK}}
+                                ]),
+
+   SelectVal = type_n_select:create(select_sensor, "Select Temp, Press, or Humid Sensor",
+                                [
+
+                                ],
+                                [
+                                  {disable, {false, ?EMPTY_LINK}},
+                                  {select, {empty, {counter, value}}}, 
+                                  {inputs, [{empty, {env_sensor, temp}}, {empty, {env_sensor, press}}, {empty, {env_sensor, humid}}]}
+                                ]),
+
+    Decoder = type_float_to_7seg:create(decoder, "Decode Number to 7 Segment Digits",
+                                [
+
+                                ], 
+                                [
+                                  {disable, {false, ?EMPTY_LINK}},
+                                  {input, {empty, {select_sensor, value}}}
+                                ]),
+
+    LedDisp = type_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
+                                 [
+
+                                 ],
+                                 [
+                                    {disable, {false, ?EMPTY_LINK}},
+                                    {segs_digit_1, {empty, {decoder, {digit,1}}}},
+                                    {segs_digit_2, {empty, {decoder, {digit,2}}}},
+                                    {segs_digit_3, {empty, {decoder, {digit,3}}}},
+                                    {segs_digit_4, {empty, {decoder, {digit,4}}}},
+                                    {colon, {false, ?EMPTY_LINK}}
+                                 ]),
+
+    [Test7Seg, RotEncoder, RmTemp, PbSwitch, Display, SegA, SegB, SegC, SegD, SegE, SegF, SegG, 
+     Counter, EnvSensor, SelectVal, Decoder, LedDisp].                         
 
 
 

@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_digits, {2}}
+      {num_of_digits, {4}}
     ]). 
 
 
@@ -154,19 +154,25 @@ execute({Config, Inputs, Outputs, Private}) ->
       % In normal status, set the main Value output equal to the input value
       % Value output is not used to drive 7 segement displays
       case format_number(InValue, NumOfDigits, Inputs) of
-        {ok, DigitsToDisp, _Precision} ->
+        {ok, DigitsToDisp, Precision} ->
           Value = InValue, Status = normal,
           
-          Digits7Seg = lists:map(fun(Digit) ->
-                       block_utils:char_to_segments(Digit, false)
-                       end,
-                       DigitsToDisp),
-          % TODO: Set Dec Point based on precision value
+          Digits7SegNoDecPnt = lists:map(fun(Digit) ->
+                              block_utils:char_to_segments(Digit, false)
+                              end,
+                              DigitsToDisp),
+                            
+          DecPntDigitIndex = NumOfDigits - Precision,
+
+          DigitWithDecPnt = lists:nth(DecPntDigitIndex, Digits7SegNoDecPnt) bor 16#80,
+          Digits7Seg = list_replace(Digits7SegNoDecPnt, DigitWithDecPnt, DecPntDigitIndex),
+
           PosOverflow = false,
           NegOverflow = false;
 
         {error, too_big, IsNegative} -> 
           Value = InValue, Status = normal,
+          % TODO: create config attributes for user selectable overflow segments to enable
           % Set all digits to '-' to indicate overflow condition
           Overflow = block_utils:char_to_segments($-, false),
           Digits7Seg = lists:duplicate(NumOfDigits, Overflow),
@@ -330,6 +336,19 @@ digits_to_display(InValue, Precision, IsNegative, IsLessThanOne) ->
     end
   end.
 
+
+%%
+%% Replace the element at Position in the List, with Element
+%% Lists are indexed from 1
+%%
+-spec list_replace(List :: list(),
+                   Element :: term(),
+                   Position :: pos_integer()) -> list(). 
+                           
+list_replace(List, Element, Position) ->
+  lists:sublist(List, Position - 1) 
+         ++ [Element] 
+         ++ lists:nthtail(Position, List).
 
 %% ====================================================================
 %% Tests

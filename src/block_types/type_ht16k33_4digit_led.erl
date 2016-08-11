@@ -47,11 +47,11 @@ default_inputs() ->
       {display_on, {true, ?EMPTY_LINK}},
       {blink_rate, {0, ?EMPTY_LINK}},
       {brightness, {0, ?EMPTY_LINK}},
-      {seven_segs_1, {16#FF, ?EMPTY_LINK}},
-      {seven_segs_2, {16#FF, ?EMPTY_LINK}},
+      {segs_digit_1, {16#FF, ?EMPTY_LINK}},
+      {segs_digit_2, {16#FF, ?EMPTY_LINK}},
       {colon, {true, ?EMPTY_LINK}},
-      {seven_segs_3, {16#FF, ?EMPTY_LINK}},
-      {seven_segs_4, {16#FF, ?EMPTY_LINK}}
+      {segs_digit_3, {16#FF, ?EMPTY_LINK}},
+      {segs_digit_4, {16#FF, ?EMPTY_LINK}}
     ]). 
 
 
@@ -175,9 +175,9 @@ execute({Config, Inputs, Outputs, Private}) ->
             {ok, Brightness} ->
               set_brightness(I2cRef, Brightness),
               
-              case input_utils:get_integer(Inputs, seven_segs_1) of
+              case input_utils:get_integer(Inputs, segs_digit_1) of
                 {error, Reason} ->
-                  input_utils:log_error(Config, seven_segs_1, Reason),
+                  input_utils:log_error(Config, segs_digit_1, Reason),
                   Value = not_active, Status = input_err;
                   
                 {ok, not_active} -> 
@@ -186,9 +186,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                 {ok, Segments1} ->
                   write_segments(I2cRef, 1, Segments1),
                   
-                  case input_utils:get_integer(Inputs, seven_segs_2) of
+                  case input_utils:get_integer(Inputs, segs_digit_2) of
                     {error, Reason} ->
-                      input_utils:log_error(Config, seven_segs_2, Reason),
+                      input_utils:log_error(Config, segs_digit_2, Reason),
                       Value = not_active, Status = input_err;
                       
                     {ok, not_active} -> 
@@ -208,9 +208,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                         {ok, ColonState} ->
                           set_colon(I2cRef, ColonState),
                            
-                          case input_utils:get_integer(Inputs, seven_segs_3) of
+                          case input_utils:get_integer(Inputs, segs_digit_3) of
                             {error, Reason} ->
-                              input_utils:log_error(Config, seven_segs_3, Reason),
+                              input_utils:log_error(Config, segs_digit_3, Reason),
                               Value = not_active, Status = input_err;
                               
                             {ok, not_active} -> 
@@ -219,9 +219,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                             {ok, Segments3} ->
                               write_segments(I2cRef, 3, Segments3),
                               
-                              case input_utils:get_integer(Inputs, seven_segs_4) of
+                              case input_utils:get_integer(Inputs, segs_digit_4) of
                                 {error, Reason} ->
-                                  input_utils:log_error(Config, seven_segs_4, Reason),
+                                  input_utils:log_error(Config, segs_digit_4, Reason),
                                   Value = not_active, Status = input_err;
                                   
                                 {ok, not_active} -> 
@@ -365,7 +365,7 @@ set_brightness(I2cRef, Brightness) ->
   i2c:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor Brightness)>>).
   
 %%
-%% Set the brightness level
+%% Set the the colon segment state
 %%
 -spec set_colon(I2cRef :: pid(),
                 ColonState :: boolean()) -> term().
