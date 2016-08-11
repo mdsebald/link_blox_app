@@ -21,7 +21,6 @@
           set_link/3,
           is_attribute/2,
           is_attribute_type/2,
-          % set_value_any/3,
           update_attribute_list/2, 
           merge_attribute_lists/2,
           replace_attribute/3, 
@@ -291,46 +290,6 @@ set_values(Attributes, [{ValueId, NewValue} | RemainingValues]) ->
     {ok, NewAttributes} -> set_values(NewAttributes, RemainingValues)
   end.
 
-
--ifdef(INCLUDE_OBSOLETE).
-%% TODO: Don't think we need this cut it out for now,
-%% Set the value of the attribute ValueName
-%%
--spec set_value_any(BlockValues :: block_state(), 
-                    ValueId :: value_id(),
-                    NewValue :: value()) -> block_state().
-
-set_value_any(BlockValues, ValueId, NewValue)->
-
-  {Config, Inputs, Outputs, Private} = BlockValues,
-  % Can't modify Configs, don't bother checking those
-
-  case get_attribute(Inputs, ValueId) of
-    {error, not_found} ->
-      case get_attribute(Outputs, ValueId) of
-        {error, not_found} ->
-          case get_attribute(Private, ValueId) of
-            {error, not_found} ->
-              BlockName = config_utils:name(Config),
-              error_logger:error_msg("~p set_value() Error. ~p not found in the BlockValues list~n", 
-                              [BlockName, ValueName]),
-              BlockValues;  % Return Block values unchanged
-            {ok, {ValueName, _OldValue1}} ->
-              NewPrivateValue = {ValueName, NewValue},
-              NewPrivate = replace_attribute(Private, ValueName, NewPrivateValue),
-              {Config, Inputs, Outputs, NewPrivate}
-          end;
-        {ok, {ValueName, {_OldValue2, Refs}}} -> 
-          NewOutput = {ValueName, {NewValue, Refs}},
-          NewOutputs = replace_attribute(Outputs, ValueName, NewOutput),
-          {Config, Inputs, NewOutputs, Private}
-      end; 
-    {ok, {ValueName, {_OldValue3, Link}}} -> 
-      NewInput = {ValueName, {NewValue, Link}},
-      NewInputs = replace_attribute(Inputs, ValueName, NewInput),
-      {Config, NewInputs, Outputs, Private}
-  end.
--endif.
 
 %%
 %% Update attributes in the Attribute List with the New Attributes list 
