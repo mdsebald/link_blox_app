@@ -37,10 +37,11 @@ default_configs(BlockName, Description) ->
       {read_mode, {normal}},  % Valid values: normal, forced
       {filter_coeff, {0}},    % Valid values: 0,2,4,6,8,16
       {standby_time, {500}},  % Valid values: 0.5, 62.5, 125, 250, 500, 1000, 10, 20 Msecs 
-      {temp_mode, {1}},       % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-      {press_mode, {1}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-      {humid_mode, {1}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate)
+      {temp_mode, {16}},       % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
+      {press_mode, {16}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
+      {humid_mode, {16}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate)
       {deg_f, {true}},
+      {inch_merc, {true}},
       {temp_offset, {0.0}},
       {press_offset, {0.0}},
       {humid_offset, {0.0}} 
@@ -121,7 +122,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Private1 = attrib_utils:merge_attribute_lists(Private, 
               [
                 {i2c_ref, {empty}},
-                {sensor_mode, {empty}}
+                {sensor_mode, {empty}},
                 % Temperature calibration values
                 {dig_T1, {empty}},
                 {dig_T2, {empty}},
@@ -243,15 +244,14 @@ execute({Config, Inputs, Outputs, Private}) ->
       Humid = not_active;
 
     {ok, forced} ->
-      % Need to set the sensor read mode to forced
-      % and wait for it to return to sleep mode before reading it
-      {ok, SensorMode} = attrib_utils:set_value(Private, sensor_mode),
-      case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
-        ok -> ok;
+      case read_sensor_forced(I2cRef, Private) of
+        {ok, Temp, Press, Humid} ->
+          Status = normal,
+          Value = Temp,
+          ok;
 
-        
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p Setting sensor mode~n", 
+          error_logger:error_msg("Error: ~p Reading sensor forced mode~n", 
                                   [Reason]),
           Status = proc_error,
           Value = not_active,
@@ -261,7 +261,6 @@ execute({Config, Inputs, Outputs, Private}) ->
       end;
 
     {ok, normal} -> 
-      % Read the sensor
       case read_sensor(I2cRef, Private) of
         {ok, Temp, Press, Humid} ->
           Status = normal,
@@ -276,7 +275,7 @@ execute({Config, Inputs, Outputs, Private}) ->
           Temp = not_active,
           Press = not_active,
           Humid = not_active
-      end,
+      end
   end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -371,6 +370,13 @@ delete({Config, Inputs, Outputs, Private}) ->
 
 -define(SENSOR_DATA_REG_BEGIN, 16#F7).
 -define(SENSOR_DATA_LEN, 8).
+
+
+% The active measurement time depends on the selected values for 
+% humidity, temperature and pressure oversampling. 
+% See the BME280 Data sheet for formulas to calculate typical and maximum
+ 
+-define(MAX_MEASUREMENT_TIME_MS, 100).
 
 
 %
@@ -485,7 +491,7 @@ set_temp_press_read_modes(I2cRef, Config) ->
           case get_read_mode(Config) of
             {ok, ReadMode} ->
 
-              SensorMode = <<TempMode:3, PressMode:3, ReadMode:2>>,
+              <<SensorMode>> = <<TempMode:3, PressMode:3, ReadMode:2>>,
               case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
                 ok -> {ok, SensorMode};
 
@@ -705,19 +711,74 @@ get_calibration(I2cRef, Private) ->
     _ ->  {error, data_match}  
   end.
   
+  
 
 %
-% Read the sensor data.
+% Read the sensor using forced mode.
+%
+-spec read_sensor_forced(I2cRef :: pid(),
+                  Private :: list(private_attr())) -> list() | {error, term()}.
+                   
+read_sensor_forced(I2cRef, Private) ->
+
+  % Read mode is 'forced'. Need to write the forced read mode before each read
+  % and wait for sensor to return to sleep mode before reading the value
+  {ok, SensorMode} = attrib_utils:get_value(Private, sensor_mode),
+
+  case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
+    ok -> 
+
+      case wait_for_sleep_mode(?MAX_MEASUREMENT_TIME_MS, I2cRef) of
+        ok ->
+          read_sensor(I2cRef, Private);
+
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p waiting for sleep mode~n", [Reason]),
+          {error, Reason}
+      end;
+
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p setting forced read mode~n", [Reason]),
+      {error, Reason}
+  end.
+
+  %
+  % Wait for sensor to return to sleep mode
+  %
+  wait_for_sleep_mode(TotalWait, I2cRef) ->
+    MinDelay = 3,
+
+    if (TotalWait > MinDelay) ->
+      block_utils:sleep(MinDelay),
+
+      case i2c:write_read(I2cRef, <<?CTRL_MEAS_REG>>, 1) of  
+        <<_TempPressMode:6, ReadMode:2>> ->
+      
+          case ReadMode of
+            ?SENSOR_MODE_SLEEP ->
+              % sensor is back in sleep mode ok to read
+              ok;
+
+            _ -> 
+              % keep waiting
+              wait_for_sleep_mode(TotalWait - MinDelay, I2cRef)
+          end;
+        {error, Reason} -> {error, Reason}
+      end;
+    true -> 
+      {error, timeout}
+    end.
+    
+    
+%
+% Read the sensor in normal mode.
+% Sensor is continuously reading, with the "StandbyTime" delay between each read.
+% We are just reading the last values.
 %
 -spec read_sensor(I2cRef :: pid(),
                   Private :: list(private_attr())) -> list() | {error, term()}.
                    
 read_sensor(I2cRef, Private) ->
-
-  % If read mode is 'forced', need to write read mode before each read
-  % and wait for sensor to return to sleep mode before reading the value
-  {ok, SensorMode} = attrib_utils:get_value(Private, sensor_mode),
-  case (SensorMode band ?SENSOR_MODE_NORMAL) /= ? 
 
   % Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) 
   % or from 0xF7 to 0xFE (temperature, pressure and humidity). 
