@@ -225,6 +225,13 @@ ok_to_execute(BlockStatus, ExecMethod) ->
     % always execute the block on a manual command
     manual -> true;
 
+    % if input value changed, allow block to execute if normal, or some kind of input error
+    input_cos ->
+      case lists:member(BlockStatus, [input_err, no_input, initialed, normal]) of
+        true -> true;
+        false -> false
+      end;
+ 
     _ ->
       case lists:member(BlockStatus, [input_err, config_err, proc_err, no_input]) of
         true -> false;
@@ -448,9 +455,11 @@ delete({Config, Inputs, Outputs, Private}) ->
   % Execute the blocks connected to the exec_out output value
   % of this block, one last time.
   update_execute(EmptyOutputs),
+
+  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
     
   % Perform block type specific delete actions
-  BlockModule:delete({Config, EmptyInputs, EmptyOutputs, Private}).
+  BlockModule:delete({Config, EmptyInputs, EmptyOutputs1, Private}).
 
 
 %% ====================================================================

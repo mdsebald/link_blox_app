@@ -150,7 +150,7 @@ execute({Config, Inputs, Outputs, Private}) ->
     {ok, SelectedInput} ->  
       case input_utils:get_any_type(Inputs, {inputs, SelectedInput}) of
         {ok, Value} ->
-          Status = ok;
+          Status = normal;
 
         {error, Reason} ->
           {Value, Status} = input_utils:log_error(Config, inputs, Reason)

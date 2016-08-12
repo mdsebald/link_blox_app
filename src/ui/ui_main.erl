@@ -786,25 +786,32 @@ check_num_params(Params, Low, High) ->
 %% Naive parse value function, i.e. take a stab at the value type
 %%
 parse_value(ValueStr) ->
-  case string:to_float(ValueStr) of
-    {error, no_float} ->
-      case string:to_integer(ValueStr) of
-        {error, no_integer} ->
-          case list_to_atom(ValueStr) of
-            true       -> true;
-            false      -> false;
-            empty      -> empty;
-            not_active -> not_active;
-                     _ -> ValueStr
+  case ((lists:nth(1,ValueStr) == $") andalso
+      (lists:last(ValueStr)  == $")) of
+    true ->
+      % ValueStr is surrounded by quotes
+      % Remove the quotes and use the bare string
+      [_FirstQuote | RemString] = ValueStr,
+      lists:droplast(RemString);
+      
+    false ->
+      case string:to_float(ValueStr) of
+        {Float, []}       -> Float;
+
+        {error, no_float} ->
+
+          case string:to_integer(ValueStr) of
+            {Integer, []}     -> Integer;
+            
+            {error, no_integer} ->
+              % just turn the input into an atom
+              list_to_atom(ValueStr);
+
+            {_Integer, _Rest} -> ValueStr 
           end;
-        {Integer, []} -> Integer;
 
-        {_Integer, _Rest} -> ValueStr
-      end;
-
-    {Float, []} -> Float;
-
-    {_Float, _Rest} ->  ValueStr  
+        {_Float, _Rest}   -> ValueStr
+      end
   end.
 
 %% ====================================================================

@@ -19,6 +19,7 @@
           get_status/1,
           set_array_value/3,
           update_all_outputs/3,
+          clear_output_refs/1,
           resize_attribute_array_value/5,
           log_error/3
 ]).
@@ -127,8 +128,38 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
                                 
 update_all_array_values(ArrayValues, NewValue) ->
   lists:map(fun({_Value, Refs}) -> {NewValue, Refs} end, ArrayValues).
-  
-    
+
+
+%% 
+%% Clear references to other blocks in the Output values
+%% Used to mass update block outputs in disabled or error conditions
+%% 
+-spec clear_output_refs(Outputs :: list(output_attr())) -> list(output_attr()).
+
+clear_output_refs(Outputs) ->
+  lists:map(
+    fun(Output) ->
+      case Output of 
+        {ValueName, {Value, _Refs}} ->
+           {ValueName, {Value, []}};
+
+        {ValueName, ArrayValues} ->
+          {ValueName, clear_array_output_refs(ArrayValues)}      
+      end  
+    end,
+    Outputs).
+
+ 
+%%
+%% Clear references to other blocks, in output arrray values
+%%
+-spec clear_array_output_refs(ArrayValues :: list(attr_value_array())) -> 
+                                      list(attr_value_array()).
+                                
+clear_array_output_refs(ArrayValues) ->
+  lists:map(fun({Value, _Refs}) -> {Value, []} end, ArrayValues).  
+
+
 %%
 %% Resize an array value in the Outputs attribute list
 %% to match the target quantity
