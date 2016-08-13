@@ -523,46 +523,65 @@ parse_link(LinkParams) ->
 ui_load_blocks(Params) ->
   %% Read a set of block values from a config file
   % TODO: Check for existence and validity
-  case check_num_params(Params, 1) of
-    low -> io:format("Error: Enter file name~n");
+  case check_num_params(Params, 0, 1) of
     ok ->
-      FileName = Params,
+      case length(Params) of  
+        0 -> 
+          io:format("Enter file name, or press <Enter> for default: 'LinkBloxConfig': "),
+          case get_input() of
+                  [] -> FileName = "LinkBloxConfig";
+            FileName -> FileName
+          end;
+        1 ->
+          % Use the entered parameter as the file name
+          FileName = Params
+      end,
+      
+      % file:consult() turns the contents of a text file into Erlang terms
       case file:consult(FileName) of
-        {ok, BlockValuesList} ->
-          create_blocks(BlockValuesList);
+        {ok, BlockDefnList} ->
+          create_blocks(BlockDefnList);
         {error, Reason} ->
-          io:format("Error: ~p loading blocks file: ~p~n", [Reason, FileName])
+          io:format("Error: ~p loading block config file: ~p~n", [Reason, FileName])
       end;
 
     high -> io:format("Error: Too many parameters~n")
   end.
 
 
-% Create blocks from a list of block values
+% Create blocks from a list of block definitions
 create_blocks([]) -> ok;
 
-create_blocks(BlockValuesList) ->
-  [BlockValues | RemainingBlockValuesList] = BlockValuesList,
-  {Config, _Inputs, _Outputs} = BlockValues,
+create_blocks(BlockDefnList) ->
+  [BlockDefn | RemainingBlockDefnList] = BlockDefnList,
+  {Config, _Inputs, _Outputs} = BlockDefn,
   BlockName = config_utils:name(Config),
-  case block_supervisor:create_block(BlockValues) of
-    {ok, _Pid} -> 
-      io:format("Block ~p Created~n", [BlockName]);
+  case linkblox_api:create_block(get_node(), BlockDefn) of
+    ok -> 
+      io:format("Block ~p Created on node: ~p~n", [BlockName, get_node()]);
     {error, Reason} -> 
-      io:format("Error: ~p creating block ~s ~n", [Reason, BlockName])
+      io:format("Error: ~p creating block ~p on node: ~p ~n", [Reason, BlockName, get_node()])
   end,
-  create_blocks(RemainingBlockValuesList).    
+  create_blocks(RemainingBlockDefnList).    
 
 
 % Process the save blocks command
 ui_save_blocks(Params) ->
   %% Write the block values to a configuration file
   % TODO:  Add LinkBlox specific header to config file
-   case check_num_params(Params, 1) of
-    low -> io:format("Error: Enter file name~n");
+  case check_num_params(Params, 0, 1) of
     ok ->
-      FileName = Params,
-      % TODO: Check for existence
+      case length(Params) of  
+        0 -> 
+          io:format("Enter file name, or press <Enter> for default: 'LinkBloxConfig': "),
+          case get_input() of
+                  [] -> FileName = "LinkBloxConfig";
+            FileName -> FileName
+          end;
+        1 ->
+          % Use the entered parameter as the file name
+          FileName = Params
+      end,
 
       BlockValuesList = block_values(),
             
@@ -573,46 +592,68 @@ ui_save_blocks(Params) ->
       Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
       Text = lists:map(Format, CleanedBlockValuesList),
             
-      case file:write_file(FileName, Text) of
+      case file:write_file(FileName, Text, [exclusive]) of
         ok -> 
-          io:format("Blocks file: ~s saved~n", [FileName]);
+          io:format("Block config file: ~s saved~n", [FileName]);
+
+        {error, eexist} ->
+          io:format("Error: ~s exists. Overwrite? (Y/N): ", [FileName]),
+          case get_yes() of
+            true ->
+              case file:write_file(FileName, Text) of
+                ok ->
+                  io:format("Block config file: ~s saved~n", [FileName]);
+
+                {error, Reason} ->
+                  io:format("Error: ~p saving block conifg file: ~s~n", [Reason, FileName])
+              end;
+            _ -> ok
+          end;
         {error, Reason} ->
-          io:format("Error: ~p saving blocks file: ~s~~n", [Reason, FileName])
+          io:format("Error: ~p saving block config file: ~s~n", [Reason, FileName])
       end;
  
     high -> io:format("Error: Too many parameters~n")
   end.
 
     
-% Clean block values of Output and Private values
-% To make the block values suitable for saving to a file 
+% Clean block values of linked Input and calculated Output values,
+% to make the block values suitable for saving to a file 
 
-clean_block_values({Config, Inputs, Outputs, _Private}) ->
+clean_block_values({Config, Inputs, Outputs}) ->
 
-  CleanInput = fun({ValueName, Value, Link}) ->
-                  case Link of
-                    ?EMPTY_LINK -> 
-                      % fixed value, do nothing
-                      {ValueName, Value, ?EMPTY_LINK};
-                    {_NodeName, _BlockName, _ValueName} ->
-                      % Linked to another block, set value to empty, before saving
-                      {ValueName, empty, Link}
-                   end
-                 end,
-                    
-  NewInputs = lists:map(CleanInput, Inputs),
-        
-  % Set all output values to 'not_active' and delete any block link references
-  CleanOutput = fun({ValueName, _Value, _LinkedBlocks}) ->
-                      {ValueName, not_active, []} end,
-                    
-  NewOutputs = lists:map(CleanOutput, Outputs),
-  
-  
-  % Private attributes are not saved in persistent storage
-  % Just remove them
+  % At this point the Block Values are on the local node
+  % so it is OK to call the local utility functions without
+  % going through the linkblox_api.  
+  % This also means the file will be saved on the local node
+  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
+  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
+  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
+ 
   % Cleaned block values
-  {Config, NewInputs, NewOutputs}.    
+  {Config, EmptyInputs, EmptyOutputs1}.
+
+
+%%
+%% Get the list of block values for all of the blocks currently running
+%% linkblox_api:get_block() does not return Private values
+%%
+block_values() ->
+  block_values(linkblox_api:get_block_names(get_node()), []).
+    
+block_values([], BlockValuesList) -> 
+  BlockValuesList;
+ 
+block_values(BlockNames, BlockValuesList) ->
+  [BlockName | RemainingBlockNames] = BlockNames,
+  case linkblox_api:get_block(get_node(), BlockName) of
+    {ok, BlockValues} ->
+      block_values(RemainingBlockNames, [BlockValues | BlockValuesList]);
+
+    {error, Reason} -> 
+      io:format("Error: ~p getting block: ~p~n", [Reason, BlockName]),
+      block_values(RemainingBlockNames, BlockValuesList)
+  end.
 
 
 % Execute Erlang BIF node()
@@ -725,21 +766,6 @@ validate_block_name(Params) ->
 
 
 %%
-%% Get the list of block values for all of the blocks currently running
-%%
-block_values() ->
-  block_values(linkblox_api:get_block_names(get_node()), []).
-    
-block_values([], BlockValuesList) -> 
-  BlockValuesList;
- 
-block_values(BlockNames, BlockValuesList) ->
-  [BlockName | RemainingBlockNames] = BlockNames,
-  BlockValues = linkblox_api:get_block(get_node(), BlockName),
-  block_values(RemainingBlockNames, [BlockValues | BlockValuesList]).
-
-
-%%
 %% Get list of the block type names and versions
 %%
 ui_block_types(_Params) ->
@@ -793,7 +819,7 @@ parse_value(ValueStr) ->
       % Remove the quotes and use the bare string
       [_FirstQuote | RemString] = ValueStr,
       lists:droplast(RemString);
-      
+
     false ->
       case string:to_float(ValueStr) of
         {Float, []}       -> Float;
@@ -813,6 +839,28 @@ parse_value(ValueStr) ->
         {_Float, _Rest}   -> ValueStr
       end
   end.
+
+  %
+  % Get input, return 'true' if first char is 'Y' or 'y'
+  %
+  get_yes() ->
+    case lists:nth(1, get_input()) of
+      $Y -> true;
+      $y -> true;
+      _  -> false
+    end.
+
+  %
+  % Get user input, 
+  % minus new line char, leading whitespace, 
+  % and trailing whitespace
+  %
+  get_input() ->
+    Raw1 = io:get_line(""),
+    % Remove new line char
+    Raw2 = string:strip(Raw1, right, 10),
+    % Remove leading and trailing whitespace
+    string:strip(Raw2).
 
 %% ====================================================================
 %% Tests

@@ -1,12 +1,12 @@
 %%%
 %%%  @doc 
 %%% 
-%%%  Create initial block configuration
+%%%  Create a demo configuration in code instead of a config file
 %%%
 %%%  @ndd
 
 
--module(block_config).
+-module(demo_config).
 
 -author("Mark Sebald").
 
@@ -15,10 +15,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([read_config/1, write_config/2, create_demo_config/0]).
+-export([create_demo_config/0]).
 
  
- 
+ % Save this demo configuration, in case a config file is not available to load.
  create_demo_config() ->
     Test7Seg = type_int_to_7seg:create(test_7seg, "Testing Seven Segment Decoder",
                                  [
@@ -156,17 +156,3 @@
     [Test7Seg, RotEncoder, RmTemp, PbSwitch, Display, SegA, SegB, SegC, SegD, SegE, SegF, SegG, 
      Counter, EnvSensor, SelectVal, Decoder, LedDisp].                         
 
-
-
-%% Read a set of block values from a config file
-% TODO: Check for existence and validity
-read_config(FileName) ->
-  file:consult(FileName).
-
-
-%% Write the block values to a configuration file
-% TODO:  Add BlockPoint specific header?
-write_config(FileName, BlockValuesList) ->
-    Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
-    Text = lists:map(Format, BlockValuesList),
-    file:write_file(FileName, Text).

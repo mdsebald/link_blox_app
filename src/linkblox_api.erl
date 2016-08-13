@@ -20,6 +20,7 @@
           start/0,
           stop/1,
           create_block/4,
+          create_block/2,
           copy_block/4,
           delete_block/2,
           get_block/2,
@@ -58,6 +59,14 @@ stop(Node) ->
 create_block(Node, BlockType, BlockName, InitAttribs) ->
   gen_server:call({linkblox_api, Node}, 
                   {create_block, BlockType, BlockName, InitAttribs}).
+
+%% create a block from a set of existing block values
+-spec create_block(Node :: node(),
+                   BlockDefn :: block_defn()) -> term().
+
+create_block(Node, BlockDefn) ->
+  gen_server:call({linkblox_api, Node}, 
+                  {create_block, BlockDefn}).
 
 %% Create a copy of a block
 -spec copy_block(Node :: node(),
@@ -221,8 +230,8 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
       BlockModule = block_types:block_type_to_module(BlockType),
       case valid_block_name(BlockName) of
         false ->
-          BlockValues = BlockModule:create(BlockName, "Default Comment"),
-          case block_supervisor:create_block(BlockValues) of
+          BlockDefn = BlockModule:create(BlockName, "Default Comment"),
+          case block_supervisor:create_block(BlockDefn) of
             {ok, _Pid} -> 
               Result = ok;
             {error, Reason} -> 
@@ -233,6 +242,37 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
       end;
     _ ->
       Result = {error, invalid_block_type}
+  end,
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Create a block from a set of existing block values
+%% =====================================================================    
+handle_call({create_block, BlockDefn}, _From, State) ->
+  case BlockDefn of
+    {Config, _Inputs, _Outputs} ->
+      % TODO: Check the BlockDefn version against the local block module code version
+      {BlockName, BlockModule, _Version} = config_utils:name_module_version(Config),
+      % Check if this block type exists on this node
+      case lists:member(BlockModule, block_types:block_type_modules()) of
+        true ->
+          case valid_block_name(BlockName) of
+            false ->
+              case block_supervisor:create_block(BlockDefn) of
+                {ok, _Pid} -> 
+                  Result = ok;
+                {error, Reason} -> 
+                  Result = {error, Reason}
+              end;
+            _ ->
+              Result = {error, block_exists}
+          end;
+        _ ->
+          Result = {error, invalid_block_type}
+      end;
+    _ ->
+      Result = {error, invalid_block_defn}
   end,
   {reply, Result, State};
 
