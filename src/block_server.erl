@@ -207,22 +207,22 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
   case attrib_utils:is_attribute_type(Config, ValueId) of
     true ->
       % Modifying a config value, need to delete and re-initialize the block
-      {Config1, Inputs1, Outputs1, Private1} = 
+      {Config1, Inputs1, Outputs1} = 
                              block_common:delete(BlockValues),
 
       case attrib_utils:set_value(Config1, ValueId, Value) of
         {ok, Config2} ->
-          {Config3, Inputs2, Outputs2, Private2} = 
+          {Config3, Inputs2, Outputs2, Private1} = 
                       block_common:initialize({Config2, Inputs1, Outputs1}),
 
           BlockName = config_utils:name(Config3),
           % re-establish the links to other blocks 
           block_server:init_configure(BlockName),
-          NewBlockValues = {Config3, Inputs2, Outputs2, Private2},
+          NewBlockValues = {Config3, Inputs2, Outputs2, Private1},
           Result = ok;
 
         {error, Reason} ->
-          NewBlockValues = {Config1, Inputs1, Outputs1, Private1},
+          NewBlockValues = {Config1, Inputs1, Outputs1, Private},
           Result = {error, Reason}
       end;
 

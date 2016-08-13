@@ -159,12 +159,17 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, Private}) -> 
+delete({Config, Inputs, Outputs, _Private}) -> 
   % INSTRUCTIONS: Perform any block type specific delete functionality here
-  % Return block state in case calling function wants to reuse it.
-  {Config, Inputs, Outputs, Private}.
+  % Return block definition, (Block state - Private values)
+  % in case calling function wants to reuse them.
+  %
+  % Private values are created in the block initialization routine
+  % So they should be deleted here
+  
+  {Config, Inputs, Outputs}.
 
 
 

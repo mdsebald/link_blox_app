@@ -214,9 +214,9 @@ execute({Config, Inputs, Outputs, Private}) ->
 %%
 -spec delete(BlockValues :: block_state()) -> block_state().
 
-delete({Config, Inputs, Outputs, Private}) ->
-  % Release the GPIO pin?
-  {Config, Inputs, Outputs, Private}.
+delete({Config, Inputs, Outputs, _Private}) ->
+  % TODO: Release the GPIO pin?
+  {Config, Inputs, Outputs}.
 
 
 %% ====================================================================

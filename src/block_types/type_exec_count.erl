@@ -215,8 +215,8 @@ execute({Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(BlockValues :: block_state()) -> block_state().
 
-delete({Config, Inputs, Outputs, Private}) -> 
-  {Config, Inputs, Outputs, Private}.
+delete({Config, Inputs, Outputs, _Private}) -> 
+  {Config, Inputs, Outputs}.
 
 
 %% ====================================================================

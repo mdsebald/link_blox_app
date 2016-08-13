@@ -196,7 +196,7 @@ delete({Config, Inputs, Outputs, Private}) ->
     
     _ -> ok
   end,
-  {Config, Inputs, Outputs, Private}.
+  {Config, Inputs, Outputs}.
 
 
 %% ====================================================================
