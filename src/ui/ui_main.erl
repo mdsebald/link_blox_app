@@ -104,7 +104,7 @@ loop() ->
 % TODO: Add initial attrib values
 ui_create_block(Params) ->
   case check_num_params(Params, 2) of  
-    low -> io:format("Error: Enter block type and name~n");
+    low -> io:format("Enter block-type new-block-name~n");
 
     ok -> 
       [BlockTypeStr, BlockNameStr] = Params,
@@ -132,7 +132,7 @@ ui_create_block(Params) ->
 % TODO: Add initial attrib values
 ui_copy_block(Params) ->
   case check_num_params(Params, 2, 3) of  
-    low -> io:format("Error: Enter source-block-name <dest-node-name> dest-block-name~n");
+    low -> io:format("Enter source-block-name <dest-node-name> dest-block-name~n");
 
     ok ->
       case length(Params) of
@@ -172,7 +172,7 @@ ui_copy_block(Params) ->
 % TODO: Just copied from copy block command still needs to be finished
 ui_rename_block(Params) ->
   case check_num_params(Params, 2) of  
-    low -> io:format("Error: Enter source-block-name dest-block-name~n");
+    low -> io:format("Enter current-block-name new-block-name~n");
 
     ok ->
       [SrcBlockNameStr, DstBlockNameStr] = Params,
@@ -204,7 +204,7 @@ ui_rename_block(Params) ->
 % Process manual block execute command
 ui_execute_block(Params) ->
    case check_num_params(Params, 1) of  
-    low -> io:format("Error: Enter block name~n");
+    low -> io:format("Enter block name~n");
 
     ok -> 
       [BlockNameStr] = Params,
@@ -225,7 +225,7 @@ ui_delete_block(Params) ->
   % TODO: Add delete all command to delete all blocks at once
   % TODO: Ask the user if they really want to delete
    case check_num_params(Params, 1) of  
-    low -> io:format("Error: Enter block name~n");
+    low -> io:format("Enter block name~n");
 
     ok -> 
       [BlockNameStr] = Params,
@@ -246,7 +246,7 @@ ui_delete_block(Params) ->
 ui_disable_block(Params) ->
   case check_num_params(Params, 1) of
 
-    low -> io:format("Error: Enter block-name~n");
+    low -> io:format("Enter block-name~n");
     
     ok -> 
       [BlockNameStr] = Params,
@@ -270,7 +270,7 @@ ui_disable_block(Params) ->
 ui_enable_block(Params) ->
  case check_num_params(Params, 1) of
 
-    low -> io:format("Error: Enter block-name~n");
+    low -> io:format("Enter block-name~n");
     
     ok -> 
       [BlockNameStr] = Params,
@@ -294,7 +294,7 @@ ui_enable_block(Params) ->
 ui_freeze_block(Params) ->
 case check_num_params(Params, 1) of
 
-    low -> io:format("Error: Enter block-name~n");
+    low -> io:format("Enter block-name~n");
     
     ok -> 
       [BlockNameStr] = Params,
@@ -318,7 +318,7 @@ case check_num_params(Params, 1) of
 ui_thaw_block(Params) ->
 case check_num_params(Params, 1) of
 
-    low -> io:format("Error: Enter block-name~n");
+    low -> io:format("Enter block-name~n");
     
     ok -> 
       [BlockNameStr] = Params,
@@ -350,7 +350,7 @@ ui_status(Params) ->
 % Process the get values command
 ui_get_values(Params) ->
   case length(Params) of  
-    0 -> io:format("Error: Enter block-name [value-name]~n");
+    0 -> io:format("Enter block-name <value-name>~n");
     1 -> 
       [BlockNameStr] = Params,
 
@@ -419,7 +419,7 @@ ui_get_values(Params) ->
 ui_set_value(Params) ->
   case check_num_params(Params, 3) of
 
-    low -> io:format("Error: Enter block-name value-name value~n");
+    low -> io:format("Enter block-name value-name value~n");
     
     ok -> 
       [BlockNameStr, ValueIdStr, ValueStr] = Params,
@@ -454,7 +454,7 @@ ui_set_value(Params) ->
 % Process link blocks command
 ui_link_blocks(Params) ->
   case check_num_params(Params, 3, 5) of
-    low -> io:format("Error: Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
+    low -> io:format("Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
 
     ok ->
       % 1st parameter is block name
@@ -668,7 +668,7 @@ ui_nodes(_Params) ->
 ui_connect(Params) ->
   case check_num_params(Params, 1) of
     low ->
-      io:format("Error: Enter Node Name or local~n");
+      io:format("Enter node-name or local~n");
 
     ok ->
       case Params of
@@ -745,7 +745,7 @@ block_status([BlockName | RemainingBlockNames]) ->
 validate_block_name(Params) ->
   case check_num_params(Params, 1) of
     low ->
-      io:format("Error: enter block-name~n"),
+      io:format("Enter block-name~n"),
       error;
 
     ok ->
