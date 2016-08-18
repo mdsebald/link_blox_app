@@ -118,10 +118,28 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
             Inputs
           end
       end;
-      
-    %TODO: Handle other link types, i.e. links to other nodes      
-    UnhandledLink -> 
-      error_logger:error_msg("Unhandled Link Type: ~p~n", [UnhandledLink]),
+         
+    {NodeName, LinkBlockName, LinkValueId} -> 
+      case net_kernel:connect_node(NodeName) of
+        true ->
+          case linkblox_api:is_block_name(NodeName, LinkBlockName) of
+            true ->
+         
+            _ ->
+              error_logger:warning_msg("Linked Block: ~p Does not exist.~n", 
+                        [LinkBlockName]),
+
+              % Block 
+              case attrib_utils:set_value(Inputs, ValueId, empty) of
+                {ok, UpdatedInputs} -> UpdatedInputs;
+
+                _ -> Inputs % Set value failed, return Inputs, unchanged
+              end
+          end;  
+        _ -> 
+          error_logger:warning_msg("Unable to connect to node: ~p~n", [NodeName]),
+          Inputs % Unable to connect to node return Inputs, unchanged
+      end
       Inputs
   end.
 
