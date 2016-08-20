@@ -26,7 +26,7 @@
           get_block/1,
           execute/1, 
           exec_out_execute/1,
-          update/4, 
+          update/3, 
           init_configure/1, 
           configure/1, 
           reconfigure/2,
@@ -92,13 +92,12 @@ exec_out_execute(BlockName) ->
 
 
 %% Update this block's input value that is linked
-%% to the given output value i.e {BlockName, ValueName, Value} 
+%% to the given output value i.e {Node, BlockName, ValueId} 
 %% In other words, push the value from the output of one block 
 %% to the input(s) of the linked block
 %% i.e. Implement Data Flow
-%% TODO: Convert to a common Target Link: {NodeName, BlockName, ValueName} plus Value
-update(BlockName, FromBlockName, ValueId, Value) ->
-  gen_server:cast(BlockName, {update, FromBlockName, ValueId, Value}).
+update(BlockName, Link, Value) ->
+  gen_server:cast(BlockName, {update, Link, Value}).
 
 
 %% Perform initial configuration of the block.  
@@ -118,15 +117,14 @@ reconfigure(BlockName, BlockValues)->
   gen_server:cast(BlockName, {reconfigure, BlockValues}).
 
 
-%% Link the value 'ValueName' of this block to 'ToBlockName' 
-link(BlockName, ValueName, ToBlockName) ->
-  gen_server:call(BlockName, {link, ValueName, ToBlockName}).
+%% Link the output value: 'ValueId' of this block to 'ToBlockName' 
+link(BlockName, ValueId, ToBlockName) ->
+  gen_server:call(BlockName, {link, ValueId, ToBlockName}).
 
 
-  
-%% Unlink the value 'ValueName' of this block from the calling block 
-unlink(BlockName, ValueName, ToBlockName) ->
-  gen_server:cast(BlockName, {unlink, ValueName, ToBlockName}).
+%% Unlink the output value: 'ValueId' of this block from BlockName 
+unlink(BlockName, ValueId, BlockName) ->
+  gen_server:cast(BlockName, {unlink, ValueId, BlockName}).
 
 
 %% ====================================================================
@@ -266,7 +264,7 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
 %% ===================================================================== 
 handle_call({set_link, InputValueId, Link}, _From, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
-
+  % TODO: Need to unlink existing link before setting new link
   case attrib_utils:set_link(Inputs, InputValueId, Link) of
     {ok, Inputs1} ->
       BlockName = config_utils:name(Config),
@@ -287,13 +285,13 @@ handle_call({set_link, InputValueId, Link}, _From, BlockValues) ->
 
 
 %% =====================================================================
-%% Link the value 'ValueName' of this block to the block 'ToBlockName'
+%% Link the output value 'ValueId' of this block to the block 'ToBlockName'
 %% =====================================================================
 handle_call({link, ValueId, ToBlockName}, _From, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 
-  %% Add the block 'ToBlockName' to the output 'ValueName's list of block references
+  %% Add the block 'ToBlockName' to the output 'ValueId's list of block references
   NewOutputs = link_utils:add_ref(Outputs, ValueId, ToBlockName),
 
   % Send the current value of this output to the block 'ToBlockName'
@@ -363,17 +361,18 @@ handle_cast(exec_out_execute, BlockValues) ->
 %% ====================================================================
 %% Update this block's input value(s) with the block value received in this message
 %% ====================================================================
-handle_cast({update, FromBlockName, ValueId, Value}, BlockValues) ->
+handle_cast({update, Link, Value}, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 
   % Update the block input(s), that are linked this value, with the new Value
-  NewInputs = link_utils:update_linked_input_values(Inputs, {FromBlockName, ValueId}, Value),
+  NewInputs = link_utils:update_linked_input_values(Inputs, Link, Value),
 
   % Execute the block because input values have changed
   NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
  
   {noreply, NewBlockValues};
+
 
 %% =====================================================================
 %% Initial block configuration
@@ -429,14 +428,14 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 
 
 %% =====================================================================
-%% Unlink the value 'ValueName' of this block to the block 'ToBlockName'
+%% Unlink the output value 'ValueId' of this block from 'BlockName'
 %% =====================================================================
-handle_cast({unlink, ValueName, ToBlockName}, BlockValues) ->
+handle_cast({unlink, ValueId, BlockName}, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 
   %% remove the block 'ToBlockName' from the output 'ValueName's list of linked blocks
-  NewOutputs = link_utils:delete_ref(Outputs, ValueName, ToBlockName),
+  NewOutputs = link_utils:delete_ref(Outputs, ValueId, BlockName),
 
   {noreply, {Config, Inputs, NewOutputs, Private}};
 

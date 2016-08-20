@@ -30,6 +30,9 @@
           get_type_info/2,
           set_value/4,
           set_link/4,
+          link/4,
+          unlink/4,
+          update/4,
           execute_block/2,
           is_block_name/2, 
           is_block_type/2
@@ -60,6 +63,7 @@ create_block(Node, BlockType, BlockName, InitAttribs) ->
   gen_server:call({linkblox_api, Node}, 
                   {create_block, BlockType, BlockName, InitAttribs}).
 
+
 %% create a block from a set of existing block values
 -spec create_block(Node :: node(),
                    BlockDefn :: block_defn()) -> term().
@@ -67,6 +71,7 @@ create_block(Node, BlockType, BlockName, InitAttribs) ->
 create_block(Node, BlockDefn) ->
   gen_server:call({linkblox_api, Node}, 
                   {create_block, BlockDefn}).
+
 
 %% Create a copy of a block
 -spec copy_block(Node :: node(),
@@ -77,6 +82,7 @@ create_block(Node, BlockDefn) ->
 copy_block(Node, BlockName, BlockValues, InitAttribs) ->
   gen_server:call({linkblox_api, Node}, 
                   {copy_block, BlockName, BlockValues, InitAttribs}).
+
 
 %% delete a block
 -spec delete_block(Node :: node(),
@@ -125,6 +131,7 @@ get_types_info(Node) ->
 get_type_info(Node, BlockName) ->
   gen_server:call({linkblox_api, Node}, {get_type_info, BlockName}).
 
+
 %% Set a block value
 -spec set_value(Node :: node(),
                 BlockName :: block_name(),
@@ -135,15 +142,45 @@ set_value(Node, BlockName, ValueId, Value) ->
   gen_server:call({linkblox_api, Node}, {set_value, BlockName, ValueId, Value}).
 
 
-
 %% Link block input to a block output
 -spec set_link(Node :: node(),
-                  BlockName :: block_name(),
-                  InputValueId :: value_id(),
-                  Link :: input_link()) -> term().
+               BlockName :: block_name(),
+               InputValueId :: value_id(),
+               Link :: input_link()) -> term().
 
 set_link(Node, BlockName, InputValueId, Link) ->
   gen_server:call({linkblox_api, Node}, {set_link, BlockName, InputValueId, Link}).
+
+
+%% Link the value 'ValueId' of this block to 'ToBlockName' 
+-spec link(Node :: node(),
+           BlockName :: block_name(),
+           ValueId :: value_id(),
+           ToBlockName :: block_name() | {node(), block_name()}) -> term().
+
+link(Node, BlockName, ValueId, ToBlockName) ->
+  gen_server:call({linkblox_api, Node}, {link, BlockName, ValueId, ToBlockName}).
+
+
+%% Unlink the output value: LinkBlockName : LinkValueId from BlockName 
+-spec unlink(Node :: node(),
+             LinkBlockName :: block_name(),
+             LinkValueId :: value_id(),
+             BlockName :: block_name() | {node(), block_name()}) -> term().
+
+unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
+  gen_server:call({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, BlockName}).
+
+
+%% Update the input value(s) on this block, 
+%% linked to the FromBlockName: ValueId 
+-spec update(Node :: node(),
+             BlockName :: block_name(),
+             Link :: input_link(),
+             NewValue :: attr_value()) -> term().
+
+update(Node, BlockName, Link, NewValue) ->
+  gen_server:call({linkblox_api, Node}, {update, BlockName, Link, NewValue}).
 
 
 %% Execute the block
@@ -228,7 +265,7 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
   case lists:member(BlockType, block_types:block_type_names()) of
     true ->
       BlockModule = block_types:block_type_to_module(BlockType),
-      case valid_block_name(BlockName) of
+      case block_utils:is_block(BlockName) of
         false ->
           BlockDefn = BlockModule:create(BlockName, "Default Comment"),
           case block_supervisor:create_block(BlockDefn) of
@@ -257,7 +294,7 @@ handle_call({create_block, BlockDefn}, _From, State) ->
       % Check if this block type exists on this node
       case lists:member(BlockModule, block_types:block_type_modules()) of
         true ->
-          case valid_block_name(BlockName) of
+          case block_utils:is_block(BlockName) of
             false ->
               case block_supervisor:create_block(BlockDefn) of
                 {ok, _Pid} -> 
@@ -292,7 +329,7 @@ handle_call({copy_block, BlockName, BlockValues, _InitAttribs}, _From, State) ->
           case lists:member(BlockModule, block_types:block_type_modules()) of
             true ->
               % Make sure the block name is not already used
-              case valid_block_name(BlockName) of
+              case block_utils:is_block(BlockName) of
                 false ->
                   % Create the block, but ignore the default values
                   BlockModule:create(BlockName, "Default Comment"),
@@ -323,7 +360,7 @@ handle_call({copy_block, BlockName, BlockValues, _InitAttribs}, _From, State) ->
 %% Delete a block
 %% =====================================================================    
 handle_call({delete_block, BlockName}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true ->
       case block_supervisor:delete_block(BlockName) of
         ok -> 
@@ -341,7 +378,7 @@ handle_call({delete_block, BlockName}, _From, State) ->
 %% Get all block values
 %% =====================================================================    
 handle_call({get_block, BlockName}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true ->
       {Config, Inputs, Outputs, _Private} = block_server:get_block(BlockName),
       % Strip private values,
@@ -356,7 +393,7 @@ handle_call({get_block, BlockName}, _From, State) ->
 %% Get a block value
 %% =====================================================================    
 handle_call({get_value, BlockName, ValueId}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true ->
       case block_server:get_value(BlockName, ValueId) of
         {ok, CurrentValue} ->
@@ -410,7 +447,7 @@ handle_call({get_type_info, BlockName}, _From, State) ->
 %% Set a block value 
 %% =====================================================================    
 handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true ->
       case read_only_attrib(ValueId) of
         false ->
@@ -425,10 +462,10 @@ handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
 
 
 %% =====================================================================
-%% Link block input to a block output 
+%% Set the link of the given input value to the given link value
 %% =====================================================================    
 handle_call({set_link, BlockName, InputValueId, Link}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true ->
       Result = block_server:set_link(BlockName, InputValueId, Link);
 
@@ -439,10 +476,52 @@ handle_call({set_link, BlockName, InputValueId, Link}, _From, State) ->
 
 
 %% =====================================================================
+%% Link block input to a block output 
+%% =====================================================================    
+handle_call({link, BlockName, ValueId, ToBlockName}, _From, State) ->
+  case block_utils:is_block(BlockName) of
+    true ->
+      Result = block_server:link(BlockName, ValueId, ToBlockName);
+
+    _ ->
+      Result = {error, block_not_found}
+  end,
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Unlink block input from block output 
+%% =====================================================================    
+handle_call({unlink, LinkBlockName, LinkValueId, BlockName}, _From, State) ->
+  case block_utils:is_block(LinkBlockName) of
+    true ->
+      Result = block_server:unlink(LinkBlockName, LinkValueId, BlockName);
+
+    _ ->
+      Result = {error, block_not_found}
+  end,
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Update block input value(s) linked to the given block output value 
+%% =====================================================================    
+handle_call({update, BlockName, Link, NewValue}, _From, State) ->
+  case block_utils:is_block(BlockName) of
+    true ->
+      Result = block_server:update(BlockName, Link, NewValue);
+
+    _ ->
+      Result = {error, block_not_found}
+  end,
+  {reply, Result, State};
+
+
+%% =====================================================================
 %% Execute block
 %% =====================================================================    
 handle_call({execute_block, BlockName}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true ->
       block_server:execute(BlockName),
       Result = ok;
@@ -456,7 +535,7 @@ handle_call({execute_block, BlockName}, _From, State) ->
 %% Is BlockNameStr a valid block name?
 %% =====================================================================    
 handle_call({is_block_name, BlockName}, _From, State) ->
-  case valid_block_name(BlockName) of
+  case block_utils:is_block(BlockName) of
     true-> 
       Result = true;
     _ ->
@@ -554,14 +633,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-%%
-%% Is the BlockName a valid block name?
-%%
--spec valid_block_name(BlockName :: block_name())-> boolean().
-
-valid_block_name(BlockName)->
-  lists:member(BlockName, block_supervisor:block_names()).
 
 
 %%

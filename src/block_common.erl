@@ -1,6 +1,6 @@
 %%%
 %%% @doc 
-%%% Block functions common to all block types 
+%%% Block functionality common to all block types 
 %%%
 %%% @end
 %%%
@@ -401,8 +401,23 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
   % One update message to the same block, 
   % will update all inputs linked to this output
   DedupedRefs = sets:to_list(sets:from_list(Refs)),
-  lists:map(fun(Ref) -> 
-            block_server:update(Ref, FromBlockName, ValueId, NewValue) 
+  lists:map(fun(Ref) ->
+              case Ref of
+                {NodeName, BlockName} ->
+                  % If the reference includes a node name
+                  % Include the self node in the link.
+                  % The block input linked to this value is on another node
+                  % so we need to include the self node to match the link
+                  % in the input value
+                  Link = {node(), FromBlockName, ValueId},
+                  linkblox_api:update(NodeName, BlockName, Link, NewValue);
+
+                BlockName ->
+                  % Reference is to a block on the same node
+                  % link is just block_name : value_id
+                  Link = {FromBlockName, ValueId},
+                  block_server:update(BlockName, Link, NewValue)
+              end
             end, 
             DedupedRefs),
   ok.

@@ -14,12 +14,22 @@
 %% ====================================================================
 
 -export([
+          is_block/1,
           sleep/1,
           char_to_segments/2
 ]). 
 
+%%
+%% Is BlockName a valid block?
+%%
+-spec is_block(BlockName :: block_name())-> boolean().
 
+is_block(BlockName)->
+  lists:member(BlockName, block_supervisor:block_names()).
+
+%%
 %% common delay function
+%%
 -spec sleep(T :: pos_integer()) -> ok.
 
 sleep(T) ->

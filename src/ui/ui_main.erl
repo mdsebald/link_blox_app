@@ -78,6 +78,7 @@ loop() ->
         "get"       -> ui_get_values(Params);
         "set"       -> ui_set_value(Params);
         "link"      -> ui_link_blocks(Params);
+        "unlink"    -> ui_unlink_blocks(Params);
         "status"    -> ui_status(Params);
         "types"     -> ui_block_types(Params);
         "valid"     -> validate_block_name(Params);
@@ -455,6 +456,47 @@ ui_set_value(Params) ->
 ui_link_blocks(Params) ->
   case check_num_params(Params, 3, 5) of
     low -> io:format("Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
+
+    ok ->
+      % 1st parameter is block name
+      InputBlockNameStr = lists:nth(1, Params),
+      InputBlockName = list_to_atom(InputBlockNameStr),
+
+      % 2nd parameter is the input value ID
+      InputValueIdStr = lists:nth(2, Params),
+      case attrib_utils:str_to_value_id(InputValueIdStr) of
+        {ok, InputValueId} ->
+
+          % The remaining params form the Link
+          LinkParams = lists:nthtail(2, Params),
+          case parse_link(LinkParams) of
+            {ok, Link} ->
+              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
+                {error, Reason} ->
+                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~p~n", 
+                          [Reason, InputBlockNameStr, InputValueIdStr, Link]);
+                ok ->
+                  io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
+                              [InputBlockNameStr, InputValueIdStr, Link])
+              end;
+            {error, Reason} ->
+              io:format("Error: ~p Converting ~p to a Link~n", 
+                           [Reason, LinkParams])
+          end;
+        {error, Reason} ->
+          io:format("Error: ~p Converting ~s to Input Value ID~n", 
+                                        [Reason, InputValueIdStr])
+      end;
+
+    high -> io:format("Error: Too many parameters~n")
+  end.
+
+
+% Process unlink blocks command
+% TODO: Not finished
+ui_unlink_blocks(Params) ->
+  case check_num_params(Params, 2) of
+    low -> io:format("Enter input-block-name input-value-name~n");
 
     ok ->
       % 1st parameter is block name

@@ -84,63 +84,113 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
     ?EMPTY_LINK ->
       % Input is not linked to another block, nothing to do
       Inputs;
+        
+    {_LinkValueId} ->
+      % Input is linked to an output of its own block  
+      % TODO need to link to output without using messages or we will have deadlock?
+      Inputs;
       
     {LinkBlockName, LinkValueId} ->
-      case whereis(LinkBlockName) of
-        undefined  ->
-          % Log warning, user may have misspelled the Linked block name
-          error_logger:warning_msg("Linked Block: ~p Does not exist.~n", 
-                        [LinkBlockName]),
-
-          % If linked block is not running, input value should be empty
-          case attrib_utils:set_value(Inputs, ValueId, empty) of
-            {ok, UpdatedInputs} -> UpdatedInputs;
-
-            _ -> Inputs % Set value failed, return Inputs, unchanged
-          end;
-
-        _Pid  ->
-          % Linked block is running,
+      % Input is linked to the output of another block on this node
+      case block_utils:is_block(LinkBlockName) of
+        true ->
+          % Linked block exists,
           % if the block input value is empty, 
           if Value == empty ->
             % send a link message to the linked block, get current linked value back
             UpdatedValue = block_server:link(LinkBlockName, LinkValueId, BlockName),
             
-            {ok, UpdatedInputs} = 
-                      attrib_utils:set_value(Inputs, ValueId, UpdatedValue),
             
-            error_logger:info_msg("Block Input: ~p:~p Linked to Block Output: ~p:~p~n", 
+            case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
+              {ok, UpdatedInputs} -> 
+                error_logger:info_msg("Block Input: ~p:~p Linked to Block Output: ~p:~p~n", 
                         [BlockName, ValueId, LinkBlockName, LinkValueId]),
                         
-            UpdatedInputs;
+                UpdatedInputs;
+
+              _ ->
+                % Set value failed, return Inputs, unchanged
+                Inputs 
+            end;
+
           true ->
             % Value is not empty, link must already be established, nothing to do
             Inputs
+          end;
+
+        _ ->
+          % Log warning, block doesn't exist 
+          % or user may have misspelled the Linked block name
+          error_logger:warning_msg("Linked Block: ~p Does not exist.~n", 
+                        [LinkBlockName]),
+
+          % If linked block does not exist, input value should be empty
+          case attrib_utils:set_value(Inputs, ValueId, empty) of
+            {ok, UpdatedInputs} -> 
+              UpdatedInputs;
+
+            _ ->
+              % Set value failed, return Inputs, unchanged
+              Inputs
           end
       end;
          
-    {NodeName, LinkBlockName, LinkValueId} -> 
+    {NodeName, LinkBlockName, LinkValueId} ->
+      % Input is linked the output of a block on another node 
       case net_kernel:connect_node(NodeName) of
         true ->
+          % Connected to remote node
           case linkblox_api:is_block_name(NodeName, LinkBlockName) of
             true ->
+              % Linked block exists,
+
+              case Value of
+                empty ->
+                  % block input value is empty, 
+                  % send a link message to the linked block, get current linked value back
+                  UpdatedValue = linkblox_api:link(NodeName, LinkBlockName, LinkValueId, {node(), BlockName}),
+            
+                  case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
+                    {ok, UpdatedInputs} -> 
+                      error_logger:info_msg("Block Input: ~p:~p Linked to Block Output: ~p:~p:~p~n", 
+                                  [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
+                      UpdatedInputs;
+
+                    _ ->
+                      % Set value failed, return Inputs, unchanged
+                      Inputs 
+                  end;
+
+                _ ->
+                  % Value is not empty, link must already be established, nothing to do
+                  Inputs
+              end;
          
             _ ->
-              error_logger:warning_msg("Linked Block: ~p Does not exist.~n", 
-                        [LinkBlockName]),
+              % Log warning, block doesn't exist 
+              % or user may have misspelled the Linked block name
+              error_logger:warning_msg("Linked Block: ~p:~p Does not exist.~n", 
+                        [NodeName, LinkBlockName]),
 
-              % Block 
+              % If linked block does not exist, input value should be empty
               case attrib_utils:set_value(Inputs, ValueId, empty) of
-                {ok, UpdatedInputs} -> UpdatedInputs;
+                {ok, UpdatedInputs} -> 
+                  UpdatedInputs;
 
-                _ -> Inputs % Set value failed, return Inputs, unchanged
+                _ ->
+                  % Set value failed, return Inputs, unchanged
+                  Inputs 
               end
           end;  
         _ -> 
+          % Unable to connect to node, return Inputs unchanged
           error_logger:warning_msg("Unable to connect to node: ~p~n", [NodeName]),
-          Inputs % Unable to connect to node return Inputs, unchanged
-      end
-      Inputs
+          Inputs 
+      end;
+    _ ->
+      % Urecognized link return Inputs, unchanged
+      error_logger:error_msg("Error: Unrecognized link: ~p~n", [Link]),
+      Inputs 
   end.
 
 
@@ -192,26 +242,57 @@ unlink_array_input(BlockName, ValueName, [ArrayValue | RemainingArrayValues]) ->
 unlink_input(BlockName, ValueName, Link) ->
 
   case Link of
-    % Input is not linked, do nothing
-    ?EMPTY_LINK -> ok;
+    ?EMPTY_LINK ->
+      % Input is not linked, do nothing
+      ok;
+
+    {_LinkValueId} ->
+      % TODO: Handle reference to self block
+      ok;  
        
     {LinkBlockName, LinkValueId} ->
-      case whereis(LinkBlockName) of
-        undefined  ->
-          error_logger:warning_msg("unlink_input(): Linked Block: ~p Does not exist.~n", 
-                                    [LinkBlockName]),
-          ok;
-        _Pid ->
-          % Linked block is running
+      % Input is linked to the output of another block on this node
+      case block_utils:is_block(LinkBlockName) of
+        true ->
+          block_server:unlink(LinkBlockName, LinkValueId, BlockName),
           error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p~n", 
                             [BlockName, ValueName, LinkBlockName, LinkValueId]),
-          block_server:unlink(LinkBlockName, LinkValueId, BlockName),
+          ok;
+
+        _ ->
+          error_logger:warning_msg("unlink_input(): Linked Block: ~p Does not exist.~n", 
+                                    [LinkBlockName]),
           ok
       end;
 
-    %TODO: Handle other link types, i.e. links to other nodes      
-    UnhandledLink -> 
-      error_logger:error_msg("unlink_input(): Unhandled Link Type: ~p~n", [UnhandledLink]),
+    {NodeName, LinkBlockName, LinkValueId} ->
+      % Input is linked the output of a block on another node 
+      case net_kernel:connect_node(NodeName) of
+        true ->
+           % Connected to remote node
+          case linkblox_api:is_block_name(NodeName, LinkBlockName) of
+            true ->
+              % Linked block exists,
+              linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, BlockName),
+              error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p:~p~n", 
+                            [BlockName, ValueName, NodeName, LinkBlockName, LinkValueId]),
+              ok;
+
+            _ ->
+              error_logger:warning_msg("unlink_input(): Linked Block: ~p:~p Does not exist.~n", 
+                                    [NodeName, LinkBlockName]),
+              ok
+          end;
+
+        _ -> 
+          % Unable to connect to node, do nothing
+          error_logger:warning_msg("Unable to connect to node: ~p~n", [NodeName]),
+          ok
+      end;
+
+    _ ->
+      % Urecognized link, nothing to do
+      error_logger:error_msg("Error: Unrecognized link: ~p~n", [Link]),
       ok
   end.
 
@@ -269,7 +350,7 @@ unlink_output(BlockName, ValueName, Refs) ->
 
 %%
 %% Add 'ToBlockName' to the list of referenced blocks 
-%% in the ValueName output attribute
+%% in the ValueId output attribute
 %%
 -spec add_ref(Outputs :: list(output_attr()), 
               ValueId :: value_id(), 
@@ -323,7 +404,7 @@ add_ref(Outputs, ValueId, ToBlockName) ->
 %%
 -spec delete_ref(Outputs :: list(output_attr()), 
                  ValueId :: value_id(), 
-                 ToBlockName :: block_name()) -> list(output_attr()).
+                 ToBlockName :: block_name() | {node(), block_name()}) -> list(output_attr()).
 
 delete_ref(Outputs, ValueId, ToBlockName) ->
 
