@@ -3,18 +3,15 @@
 %               Comments marked "INSTRUCTIONS:" may be deleted 
 
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type:  Identity
+%%% Description:  Input value matches output value
 %%%               
 %%% @end 
 
--module(type_template).  % INSTRUCTIONS: Modify to match new module name
-                         % INSTRUCTIONS: Add module name to the list of 
-                         %  block module names in the block_types module
+-module(type_identity).  
 
 -author("Your Name").
 
- % INSTRUCTIONS: Adjust path to hrl file as needed
 -include("../block_state.hrl"). 
 
 %% ====================================================================
@@ -24,14 +21,9 @@
 -export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
 
 
-% INSTRUCTIONS: Major.Minor.Patch, 
-%   Major version change implies a breaking change, 
-%   i.e. Block module code is not compatible with a 
-%   block definition created with block code with a different major revison 
 version() -> "0.1.0".
 
-% INSTRUCTIONS String describing block function
-description() -> "Short description of block function".
+description() -> "Output value is identical to input value".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -44,10 +36,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      % INTRUCTIONS: Insert block type specific config attribute tuples here
-      % Config attribute tuples consist of a value name and a value
-      % Example: {gpio_pin, {0}}
-      % Config values are set once on block creation and never modified.                   
+                  
     ]). 
 
 
@@ -57,11 +46,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      % INTRUCTIONS: Insert block type specific input attribute tuples here
-      % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, {100, ?EMPTY_LINK}}
-      % Array Example: {inputs, [{empty, ?EMPTY_LINK}]}
-      % Inputs may be fixed values, or linked to a block output value 
+      {input, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -71,12 +56,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      % INTRUCTIONS: Insert block type specific output attribute tuples here
-      % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, {not_active, []}}
-      % Array Example: {digit, [{not_active, []}]}  
+
     ]). 
 
 
@@ -129,14 +109,16 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-    
-  % Perform block type specific initializations here
-  % Add and intialize private attributes here
-  Outputs1 = Outputs,
-  Private1 = Private,
+ 
+  case attrib_utils:get_value(Inputs, input) of
+    {ok, InputVal} ->
+      Outputs1 = output_utils:set_value_status(Outputs, InputVal, initialed);
+    {error, _Reason} ->
+      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
+  end,
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %%
@@ -146,14 +128,15 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % INSTRUCTIONS: Perform block type specific actions here, 
-  % read input value(s) calculate new output value(s)
-  % set block output status value
-  Outputs1 = Outputs,
-  Private1 = Private,
+  case attrib_utils:get_value(Inputs, input) of
+    {ok, InputVal} ->
+      Outputs1 = output_utils:set_value_normal(Outputs, InputVal);
+    {error, _Reason} ->
+      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
+  end,
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -162,12 +145,6 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
-  % INSTRUCTIONS: Perform any block type specific delete functionality here
-  % Return block definition, (Block state - Private values)
-  % in case calling function wants to reuse them.
-  %
-  % Private values are created in the block initialization routine
-  % So they should be deleted here
   
   {Config, Inputs, Outputs}.
 

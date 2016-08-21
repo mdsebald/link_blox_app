@@ -34,6 +34,7 @@ block_type_modules() ->
     type_gpio_di,
     type_gpio_do,
     type_ht16k33_4digit_led,
+    type_identity,
     type_int_to_7seg,
     type_mcp9808_temp,
     type_n_select,
@@ -123,15 +124,18 @@ block_type_names_test() ->
 
 ExpectedResult = 
   [
+    bme280_env_sensor,
     exec_count,
+    float_to_7seg,
     gpio_di,
     gpio_do,
     ht16k33_4digit_led,
+    identity,
     int_to_7seg,
     mcp9808_temp,
+    n_select,
     one_digit_7seg,
     rotary_encoder,
-    seven_seg_decoder,
     toggle
   ],  
 
