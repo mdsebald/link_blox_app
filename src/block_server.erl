@@ -122,9 +122,9 @@ link(BlockName, ValueId, ToBlockName) ->
   gen_server:call(BlockName, {link, ValueId, ToBlockName}).
 
 
-%% Unlink the output value: 'ValueId' of this block from BlockName 
-unlink(BlockName, ValueId, BlockName) ->
-  gen_server:cast(BlockName, {unlink, ValueId, BlockName}).
+%% Unlink the output value: 'ValueId' of this block from ToBlockName 
+unlink(BlockName, ValueId, ToBlockName) ->
+  gen_server:cast(BlockName, {unlink, ValueId, ToBlockName}).
 
 
 %% ====================================================================
@@ -264,16 +264,19 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
 %% ===================================================================== 
 handle_call({set_link, InputValueId, Link}, _From, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
-  % TODO: Need to unlink existing link before setting new link
-  case attrib_utils:set_link(Inputs, InputValueId, Link) of
+ 
+  BlockName = config_utils:name(Config),
+  case link_utils:set_link(BlockName, Inputs, InputValueId, Link) of
     {ok, Inputs1} ->
-      BlockName = config_utils:name(Config),
+
       % Attempt to get the current value from the link
       % set_link() always defaults the input value to 'empty'
       % so don't need to call get_value() to get the current input value
       Inputs2 = link_utils:evaluate_link(BlockName, InputValueId, empty,
                                          Link, Inputs1),
-      NewBlockValues = {Config, Inputs2, Outputs, Private},
+
+      % Execute the block because input value may have changed
+      NewBlockValues = update_block({Config, Inputs2, Outputs, Private}),
       Result = ok;
 
     {error, Reason} ->
@@ -430,12 +433,12 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 %% =====================================================================
 %% Unlink the output value 'ValueId' of this block from 'BlockName'
 %% =====================================================================
-handle_cast({unlink, ValueId, BlockName}, BlockValues) ->
+handle_cast({unlink, ValueId, ToBlockName}, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 
-  %% remove the block 'ToBlockName' from the output 'ValueName's list of linked blocks
-  NewOutputs = link_utils:delete_ref(Outputs, ValueId, BlockName),
+  %% Remove ToBlockName from the output ValueId's list of linked blocks
+  NewOutputs = link_utils:delete_ref(Outputs, ValueId, ToBlockName),
 
   {noreply, {Config, Inputs, NewOutputs, Private}};
 

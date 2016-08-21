@@ -405,7 +405,7 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
               case Ref of
                 {NodeName, BlockName} ->
                   % If the reference includes a node name
-                  % Include the self node in the link.
+                  % Include the self node in the source Link.
                   % The block input linked to this value is on another node
                   % so we need to include the self node to match the link
                   % in the input value
@@ -414,7 +414,7 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
 
                 BlockName ->
                   % Reference is to a block on the same node
-                  % link is just block_name : value_id
+                  % Source reference is just block_name : value_id
                   Link = {FromBlockName, ValueId},
                   block_server:update(BlockName, Link, NewValue)
               end

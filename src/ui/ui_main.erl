@@ -493,10 +493,9 @@ ui_link_blocks(Params) ->
 
 
 % Process unlink blocks command
-% TODO: Not finished
 ui_unlink_blocks(Params) ->
   case check_num_params(Params, 2) of
-    low -> io:format("Enter input-block-name input-value-name~n");
+    low -> io:format("Enter block-name input-value-name~n");
 
     ok ->
       % 1st parameter is block name
@@ -507,23 +506,16 @@ ui_unlink_blocks(Params) ->
       InputValueIdStr = lists:nth(2, Params),
       case attrib_utils:str_to_value_id(InputValueIdStr) of
         {ok, InputValueId} ->
-
-          % The remaining params form the Link
-          LinkParams = lists:nthtail(2, Params),
-          case parse_link(LinkParams) of
-            {ok, Link} ->
-              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
-                {error, Reason} ->
-                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~p~n", 
-                          [Reason, InputBlockNameStr, InputValueIdStr, Link]);
-                ok ->
-                  io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
-                              [InputBlockNameStr, InputValueIdStr, Link])
-              end;
+          % Set the input value link to an empty link: {}
+          case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, {}) of
             {error, Reason} ->
-              io:format("Error: ~p Converting ~p to a Link~n", 
-                           [Reason, LinkParams])
+              io:format("Error: ~p Unlinking Input: ~s:~s~n", 
+                          [Reason, InputBlockNameStr, InputValueIdStr]);
+              ok ->
+                io:format("Block Input: ~s:~s Unlinked~n", 
+                            [InputBlockNameStr, InputValueIdStr])
           end;
+      
         {error, Reason} ->
           io:format("Error: ~p Converting ~s to Input Value ID~n", 
                                         [Reason, InputValueIdStr])
@@ -958,7 +950,7 @@ parse_value_boolean_false_test() ->
 
 %   Test string good
 parse_value_string_good_test() ->
-  ExpectedResult = "TestString",
+  ExpectedResult = 'TestString',
   ValueStr = "TestString",
   Result = parse_value(ValueStr),
   ?assertEqual(ExpectedResult, Result).

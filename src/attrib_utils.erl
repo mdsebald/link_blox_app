@@ -18,7 +18,6 @@
           get_value_any/2,
           set_value/3, 
           set_values/2,
-          set_link/3,
           is_attribute/2,
           is_attribute_type/2,
           update_attribute_list/2, 
@@ -179,44 +178,6 @@ set_value(Attributes, ValueId, NewValue)->
             {error, invalid_index}
           end;
         _InvalidValue -> {error, invalid_value}
-      end
-  end.
-
-
-%%
-%% Set the link in an input attribute ValueId
-%% List of attributes must be Inputs
-%%
--spec set_link(InputAttributes :: list(input_attr()), 
-               InputValueId :: value_id(), 
-               Link :: input_link()) -> {ok, list(input_attr())} | attrib_errors().
-              
-set_link(InputAttributes, InputValueId, Link)->
-  case get_attribute(InputAttributes, InputValueId) of
-    {error, not_found} -> 
-      {error, not_found};
-    
-    % Non-array Input value
-    {ok, {InputValueName, {_OldValue, _OldLink}}} ->
-      % Default the input value to 'empty'  
-      NewAttribute = {InputValueName, {empty, Link}},
-      {ok, replace_attribute(InputAttributes, InputValueName, NewAttribute)};
-      
-    % Assume this is an array value
-    {ok, {InputValueName, ArrayValue}} ->
-      case InputValueId of 
-        % if this is an array value, the InputValueName from get_attribute()
-        % will match InputValueName in the ValueId tuple
-        {InputValueName, ArrayIndex} ->
-          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
-            NewArrayValue = replace_array_value(ArrayValue, ArrayIndex, {empty, Link}),
-            {ok, replace_attribute(InputAttributes, InputValueName, 
-                                        {InputValueName, NewArrayValue})};
-          true ->
-            {error, invalid_index}
-          end;
-        _InvalidValue -> 
-          {error, invalid_value}
       end
   end.
 
@@ -558,51 +519,6 @@ get_value_config_array_negative_index_test() ->
   Result = get_value(Attributes, {ValueName, ArrayIndex}),
   ?assertEqual(ExpectedResult, Result).
 
-% ====================================================================
-% Test set_link()
-% 
-%   Test set_link() non-array input ok
-set_link_non_array_ok_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = number_in,
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {number_in, {empty, {node_name, link_block, link_output}}},
-  
-  {ok, NewInputAttribs} = set_link(InputAttribs, InputValueId, Link),
-  {ok, Result} = get_attribute(NewInputAttribs, InputValueId), 
-  ?assertEqual(ExpectedResult, Result).
-
-% Test set_link() non-array input ok
-set_link_non_array_bad_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = invalid_input_name,
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {error, not_found},
-  
-  Result = set_link(InputAttribs, InputValueId, Link),
-  ?assertEqual(ExpectedResult, Result).
-
-  %   Test set_link() array input ok
-set_link_array_ok_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = {integer_array_in, 3},
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {integer_array_in, [{234,{}}, {456,{}}, 
-                                     {empty,{node_name, link_block, link_output}}]},
-  
-  {ok, NewInputAttribs} = set_link(InputAttribs, InputValueId, Link),
-  {ok, Result} = get_attribute(NewInputAttribs, InputValueId), 
-  ?assertEqual(ExpectedResult, Result).
-
-% Test set_link() array input bad
-set_link_array_bad_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = {bool_array_in, 0}, % valid input name, invalid index
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {error, invalid_index},
-  
-  Result = set_link(InputAttribs, InputValueId, Link),
-  ?assertEqual(ExpectedResult, Result).
 
 % ====================================================================
 % Test is_attribute(), 

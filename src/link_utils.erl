@@ -13,6 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([
+          set_link/4,
           link_blocks/2,
           evaluate_link/5, 
           unlink_inputs/2,
@@ -23,6 +24,49 @@
           delete_ref/3,
           update_linked_input_values/3
 ]).
+
+
+%%
+%% Set the Link in input attribute: ValueId
+%%
+-spec set_link(BlockName :: block_name(),
+               Inputs :: list(input_attr()), 
+               ValueId :: value_id(), 
+               Link :: input_link()) -> {ok, list(input_attr())} | attrib_errors().
+              
+set_link(BlockName, Inputs, ValueId, Link)->
+  case attrib_utils:get_attribute(Inputs, ValueId) of
+    {error, not_found} -> 
+      {error, not_found};
+    
+    % Non-array Input value
+    {ok, {ValueName, {_OldValue, OldLink}}} ->
+      % Unlink current link on this input (if any)
+      unlink_input(BlockName, ValueName, OldLink),
+
+      % Default the input value to 'empty'  
+      NewAttribute = {ValueName, {empty, Link}},
+      NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, NewAttribute),
+      {ok, NewInputs};
+      
+    % Assume this is an array value
+    {ok, {ValueName, ArrayValue}} ->
+      case ValueId of 
+        % if this is an array value, the ValueName from get_attribute()
+        % will match ValueName in the ValueId tuple
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            NewArrayValue = attrib_utils:replace_array_value(ArrayValue, ArrayIndex, {empty, Link}),
+            NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, 
+                                                       {ValueName, NewArrayValue}),
+            {ok, NewInputs};
+          true ->
+            {error, invalid_index}
+          end;
+        _InvalidValue -> 
+          {error, invalid_value}
+      end
+  end.
 
 
 %%
@@ -50,6 +94,7 @@ link_blocks(BlockName, [Input | RemainingInputs], UpdatedInputs) ->
           process_array_input(BlockName, ValueName, 1, ArrayValues, UpdatedInputs)
   end,                 
   link_blocks(BlockName, RemainingInputs, NewUpdatedInputs).
+
 
 %%
 %%  Check the link on each value of an input array value
@@ -273,7 +318,7 @@ unlink_input(BlockName, ValueName, Link) ->
           case linkblox_api:is_block_name(NodeName, LinkBlockName) of
             true ->
               % Linked block exists,
-              linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, BlockName),
+              linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName}),
               error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p:~p~n", 
                             [BlockName, ValueName, NodeName, LinkBlockName, LinkValueId]),
               ok;
@@ -354,7 +399,7 @@ unlink_output(BlockName, ValueName, Refs) ->
 %%
 -spec add_ref(Outputs :: list(output_attr()), 
               ValueId :: value_id(), 
-              ToBlockName :: block_name()) -> list(output_attr()).
+              ToBlockName :: block_name() | {node(), block_name()}) -> list(output_attr()).
 
 add_ref(Outputs, ValueId, ToBlockName) ->
 
@@ -400,7 +445,7 @@ add_ref(Outputs, ValueId, ToBlockName) ->
 
 %%
 %% Delete 'ToBlockName' reference from the list of linked blocks 
-%% in the ValueName output attribute
+%% in the ValueId output attribute
 %%
 -spec delete_ref(Outputs :: list(output_attr()), 
                  ValueId :: value_id(), 
@@ -498,3 +543,61 @@ update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
       end
     end,
     ArrayValues).
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% ====================================================================
+% Test set_link()
+% 
+%   Test set_link() non-array input ok
+set_link_non_array_ok_test() ->
+  InputAttribs = test_data:attrib_utils_input_attribs1(),
+  InputValueId = number_in,
+  Link = {node_name, link_block, link_output},
+  ExpectedResult = {number_in, {empty, {node_name, link_block, link_output}}},
+  
+  {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
+  {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
+  ?assertEqual(ExpectedResult, Result).
+
+% Test set_link() non-array input ok
+set_link_non_array_bad_test() ->
+  InputAttribs = test_data:attrib_utils_input_attribs1(),
+  InputValueId = invalid_input_name,
+  Link = {node_name, link_block, link_output},
+  ExpectedResult = {error, not_found},
+  
+  Result = set_link(unit_test, InputAttribs, InputValueId, Link),
+  ?assertEqual(ExpectedResult, Result).
+
+  %   Test set_link() array input ok
+set_link_array_ok_test() ->
+  InputAttribs = test_data:attrib_utils_input_attribs1(),
+  InputValueId = {integer_array_in, 3},
+  Link = {node_name, link_block, link_output},
+  ExpectedResult = {integer_array_in, [{234,{}}, {456,{}}, 
+                                     {empty,{node_name, link_block, link_output}}]},
+  
+  {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
+  {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
+  ?assertEqual(ExpectedResult, Result).
+
+% Test set_link() array input bad
+set_link_array_bad_test() ->
+  InputAttribs = test_data:attrib_utils_input_attribs1(),
+  InputValueId = {bool_array_in, 0}, % valid input name, invalid index
+  Link = {node_name, link_block, link_output},
+  ExpectedResult = {error, invalid_index},
+  
+  Result = set_link(unit_test, InputAttribs, InputValueId, Link),
+  ?assertEqual(ExpectedResult, Result).
+
+
+
+-endif.

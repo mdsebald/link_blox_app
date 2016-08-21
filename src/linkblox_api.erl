@@ -169,7 +169,7 @@ link(Node, BlockName, ValueId, ToBlockName) ->
              BlockName :: block_name() | {node(), block_name()}) -> term().
 
 unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
-  gen_server:call({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, BlockName}).
+  gen_server:cast({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, BlockName}).
 
 
 %% Update the input value(s) on this block, 
@@ -180,7 +180,7 @@ unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
              NewValue :: attr_value()) -> term().
 
 update(Node, BlockName, Link, NewValue) ->
-  gen_server:call({linkblox_api, Node}, {update, BlockName, Link, NewValue}).
+  gen_server:cast({linkblox_api, Node}, {update, BlockName, Link, NewValue}).
 
 
 %% Execute the block
@@ -490,34 +490,6 @@ handle_call({link, BlockName, ValueId, ToBlockName}, _From, State) ->
 
 
 %% =====================================================================
-%% Unlink block input from block output 
-%% =====================================================================    
-handle_call({unlink, LinkBlockName, LinkValueId, BlockName}, _From, State) ->
-  case block_utils:is_block(LinkBlockName) of
-    true ->
-      Result = block_server:unlink(LinkBlockName, LinkValueId, BlockName);
-
-    _ ->
-      Result = {error, block_not_found}
-  end,
-  {reply, Result, State};
-
-
-%% =====================================================================
-%% Update block input value(s) linked to the given block output value 
-%% =====================================================================    
-handle_call({update, BlockName, Link, NewValue}, _From, State) ->
-  case block_utils:is_block(BlockName) of
-    true ->
-      Result = block_server:update(BlockName, Link, NewValue);
-
-    _ ->
-      Result = {error, block_not_found}
-  end,
-  {reply, Result, State};
-
-
-%% =====================================================================
 %% Execute block
 %% =====================================================================    
 handle_call({execute_block, BlockName}, _From, State) ->
@@ -572,6 +544,37 @@ handle_call(Request, From, State) ->
   NewState :: term(),
   Timeout :: non_neg_integer() | infinity,
   Reason :: term().
+
+
+%% =====================================================================
+%% Update block input value(s) linked to the given block output value 
+%% =====================================================================    
+handle_cast({update, BlockName, Link, NewValue}, State) ->
+  case block_utils:is_block(BlockName) of
+    true ->
+      block_server:update(BlockName, Link, NewValue);
+
+    _ ->
+      error_logger:warning_msg("linkblox_api: Recieved update for unknown block: ~p~n", 
+                            [BlockName])
+  end,
+  {noreply, State};
+
+
+%% =====================================================================
+%% Unlink block input from block output 
+%% =====================================================================  
+handle_cast({unlink, LinkBlockName, LinkValueId, ToBlockName}, State) ->
+  case block_utils:is_block(LinkBlockName) of
+    true ->
+      block_server:unlink(LinkBlockName, LinkValueId, ToBlockName);
+
+    _ ->
+      error_logger:warning_msg("linkblox_api: Recieved unlink for unknown block: ~p~n", 
+                            [LinkBlockName])
+  end,
+  {noreply, State};
+
 
 %% =====================================================================
 %% Unknown Cast message

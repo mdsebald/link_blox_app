@@ -128,9 +128,9 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
   % TODO: Check for expected term match, before creating child spec 
 
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
-  
+  BlockType = block_types:block_type_name(BlockModule),
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
-                        [BlockName, BlockModule, Version]),
+                        [BlockName, BlockType, Version]),
 
   BlockSpec = #{id => BlockName, restart => transient,
               start => {block_server, start, [BlockValues]}},
