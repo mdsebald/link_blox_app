@@ -11,3 +11,5 @@ branches:
 before_script:
 - chmod +x relhelper.sh
 - chmod +x relx
+- export "PATH+=:/home/travis/build/mdsebald/LinkBlox"
+- echo $PATH
