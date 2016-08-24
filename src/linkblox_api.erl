@@ -268,7 +268,7 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
       case block_utils:is_block(BlockName) of
         false ->
           BlockDefn = BlockModule:create(BlockName, "Default Comment"),
-          case block_supervisor:create_block(BlockDefn) of
+          case block_supervisor:start_block(BlockDefn) of
             {ok, _Pid} -> 
               Result = ok;
             {error, Reason} -> 
@@ -296,7 +296,7 @@ handle_call({create_block, BlockDefn}, _From, State) ->
         true ->
           case block_utils:is_block(BlockName) of
             false ->
-              case block_supervisor:create_block(BlockDefn) of
+              case block_supervisor:start_block(BlockDefn) of
                 {ok, _Pid} -> 
                   Result = ok;
                 {error, Reason} -> 
@@ -335,8 +335,11 @@ handle_call({copy_block, BlockName, BlockValues, _InitAttribs}, _From, State) ->
                   BlockModule:create(BlockName, "Default Comment"),
                   % Change the name in the copied block values, to the new block name
                   {ok, NewConfig} = attrib_utils:set_value(Config, block_name, BlockName),
-                  % Start the new block with the set of copied values, only the block name config value is changed
-                  case block_supervisor:create_block({NewConfig, Inputs, Outputs}) of
+                  % Set all linked input values to empty. 
+                  % This forces the creation of references to the new block's linked inputs  
+                  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
+                  % Start the new block with the set of copied values,  
+                  case block_supervisor:start_block({NewConfig, EmptyInputs, Outputs}) of
                     {ok, _Pid} -> 
                       Result = ok;
                     {error, Reason} -> 
