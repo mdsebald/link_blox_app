@@ -15,16 +15,21 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start_link/1, create_block/1, delete_block/1]).
--export([block_names/0, block_processes/0]).
+-export([
+          start_link/1, 
+          start_block/1, 
+          delete_block/1,
+          block_names/0, 
+          block_processes/0
+]).
 
 start_link(BlockValuesFile) ->
   supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
     
 %%
-%%  Create a block
+%%  Start a block
 %%    
-create_block(BlockValues) ->
+start_block(BlockValues) ->
   [BlockSpec] = create_block_specs([BlockValues]),                    
   supervisor:start_child(?MODULE, BlockSpec).
    
