@@ -1,5 +1,5 @@
 {application, 'LinkBlox',
- [{description, "An Erlang IoT Application"},
+ [{description, "Build IoT Devices by Creating and Linking Blocks of Functionality"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, {'LinkBlox_app', ["LinkBloxConfig"]}},
@@ -11,7 +11,7 @@
   {env,[]},
   {modules, []},
 
-  {contributors, []},
-  {licenses, []},
-  {links, []}
+  {maintainers, ["Mark Sebald"]},
+  {licenses, ["MIT"]},
+  {links, ["Github", "https://github.com/mdsebald/LinkBlox"]}
  ]}.
