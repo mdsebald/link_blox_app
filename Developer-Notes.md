@@ -63,4 +63,6 @@ System.put_env("ERL_INTERFACE_INCLUDE_DIR", Path.join(erl_interface_dir, "includ
 ```
 to: nerves_system_br/nerves_env.exs file.  Similar change as back in January 2016, to nerves-env.sh file.
 
+Needed to copy relx to folder in path
+
 
