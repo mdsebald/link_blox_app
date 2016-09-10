@@ -49,3 +49,18 @@ Needed to chmod +x "/home/pi/LinkBlox/deps/erlang_ale/priv/erlang-ale" after reb
 
 eaccess error when attempting to spawn the application to access gpio pins.  Don't remember having to do this before
 
+10-Sep-2016
+
+Trying nerves build again
+
+Needed to add:
+
+'''Elixir
+# erlang.mk naming
+System.put_env("ERTS_INCLUDE_DIR", "#{erts_dir}/include")
+System.put_env("ERL_INTERFACE_LIB_DIR", Path.join(erl_interface_dir, "lib"))
+System.put_env("ERL_INTERFACE_INCLUDE_DIR", Path.join(erl_interface_dir, "include"))
+'''
+to nerves_system_br/nerves_env.exs files
+
+
