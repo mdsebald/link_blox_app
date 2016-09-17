@@ -54,7 +54,7 @@ loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get_node()) ++ ">",
   Raw1 = io:get_line(Prompt),
-  Raw2 = string:strip(Raw1, right, 10), % Remove new line char
+  Raw2 = string:strip(Raw1, right, $\n), % Remove new line char
   Raw3 = string:strip(Raw2), % Remove leading and trailing whitespace
     
   % Split up the string into command and parameter words
