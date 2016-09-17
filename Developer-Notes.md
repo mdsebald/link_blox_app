@@ -41,9 +41,11 @@ Use -n flag to preview which files will be synched.
 
 Error running rebar:  rebar.config references ./relhelper.sh  sript.  Error: could not find ./relhelper.sh  
 
-Cause: relhelper.sh had DOS line endings.  Needed to switch to unix line endings used this:
+Cause: relhelper.sh had DOS line endings.  Needed to switch to unix line endings see this:
 
  http://stackoverflow.com/questions/2920416/configure-bin-shm-bad-interpreter
+
+ Use this command: sed -i 's/\r//' relhelper.sh
 
 Needed to chmod +x "/home/pi/LinkBlox/deps/erlang_ale/priv/erlang-ale" after rebuilding from scratch erlang_ale
 
