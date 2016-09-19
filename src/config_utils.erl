@@ -22,6 +22,7 @@
           get_integer_range/4, 
           get_float/2, 
           get_boolean/2,
+          get_string/2,
           get_value/3, 
           resize_attribute_array_value/4,
           log_error/3
@@ -175,6 +176,18 @@ get_float(Config, ValueName) ->
 
 get_boolean(Config, ValueName) ->
   CheckType = fun is_boolean/1,
+  get_value(Config, ValueName, CheckType).
+
+
+%%
+%% Get a string configuration value and check for errors
+%%
+-spec get_string(Config :: list(config_attr()), 
+                ValueName :: value_name()) -> string_config_value().
+
+get_string(Config, ValueName) ->
+  % TODO: no is_string() function in Erlang, but strings are lists, do further checking?
+  CheckType = fun is_list/1,  
   get_value(Config, ValueName, CheckType).
 
 

@@ -40,6 +40,7 @@ block_type_modules() ->
     type_n_select,
     type_one_digit_7seg,
     type_rotary_encoder,
+    type_rpi_led,
     type_toggle
   ].  
     
@@ -136,6 +137,7 @@ ExpectedResult =
     n_select,
     one_digit_7seg,
     rotary_encoder,
+    rpi_led,
     toggle
   ],  
 

@@ -106,6 +106,7 @@
 
 -type boolean_config_value() :: {ok, boolean()} | config_errors().
                       
+-type string_config_value() :: {ok, string()} | config_errors().
 
                       
 %%

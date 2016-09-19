@@ -17,9 +17,24 @@
 %% ====================================================================
 -export([create_demo_config/0]).
 
- 
- % Save this demo configuration, in case a config file is not available to load.
- create_demo_config() ->
+% Load this demo configuration, in case default LinkBloxConfig file is not available.
+create_demo_config() ->
+
+  GreenLed = type_rpi_led:create(green_led, "On-Board Green LED",
+                                 [],  % Default Config values are good 
+                                 [{disable, {false, ?EMPTY_LINK}},
+                                  {input, {empty, {toggle, value}}}]
+                                ),
+  Toggle = type_toggle:create(toggle, "Toggle LED on / off",
+                              [],  % Default Config values are good 
+                              [{disable, {false, ?EMPTY_LINK}},
+                               {exec_interval, {250, ?EMPTY_LINK}}]
+                               ),
+  [GreenLed, Toggle].
+
+
+ % Don't use this demo_config, relies too much on I2C harware.
+ create_demo_config1() ->
     Test7Seg = type_int_to_7seg:create(test_7seg, "Testing Seven Segment Decoder",
                                  [
                                      {num_of_digits, {4}}
