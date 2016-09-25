@@ -731,10 +731,6 @@ connect_to_node(Node) ->
   end.
 
 
-% Process the help command
-ui_help(_Params) ->
-  io:format("Not Implemented~n").
-
 %%
 %% Display status off each running block
 %%
@@ -819,6 +815,139 @@ ui_block_types(_Params) ->
   io:format("~n").
 
 
+%%
+%% Process the help command
+%%
+ui_help(Params) ->
+  case check_num_params(Params, 0, 1) of
+    ok ->
+      case length(Params) of  
+        0 ->
+          io:format("~n     LinkBlox Help~n~n"),
+          io:format("create <block type name> <new block name>~n"),
+          io:format("copy <source block name> <dest block name>~n"),
+          io:format("rename <current block name> <new block name>~n"),
+          io:format("execute <block name>~n"),
+          io:format("delete <block name>~n"),
+          io:format("disable <block name>~n"),
+          io:format("enable <block name>~n"),
+          io:format("freeze <block name>~n"),
+          io:format("thaw <block name>~n"),
+          io:format("get <block name>~n"),
+          io:format("set <block name> <attribute name> <value>~n"),
+          io:format("link <block name> <input name> <block name> <output name>~n"),
+          io:format("unlink <block name> <input name>~n"),
+          io:format("status~n"),
+          io:format("types~n"),
+          io:format("valid <block name>~n"),
+          io:format("load <file name> | blank~n"),
+          io:format("save <file name> | blank~n"),
+          io:format("node~n"),
+          io:format("nodes~n"),
+          io:format("connect <node name>~n"),
+          io:format("help - Display this screen~n");
+        1 ->
+          % Use the entered parameter as the command Name
+          case Params of
+            ["create"]    -> ui_create_block_help();
+            ["copy"]      -> ui_copy_block_help();
+            ["rename"]    -> ui_rename_block_help();
+            ["execute"]   -> ui_execute_block_help();
+            ["delete"]    -> ui_delete_block_help();
+            ["disable"]   -> ui_disable_block_help();
+            ["enable"]    -> ui_enable_block_help();
+            ["freeze"]    -> ui_freeze_block_help();
+            ["thaw"]      -> ui_thaw_block_help();
+            ["get"]       -> ui_get_values_help();
+            ["set"]       -> ui_set_value_help();
+            ["link"]      -> ui_link_blocks_help();
+            ["unlink"]    -> ui_unlink_blocks_help();
+            ["status"]    -> ui_status_help();
+            ["types"]     -> ui_block_types_help();
+            ["valid"]     -> validate_block_name_help();
+            ["load"]      -> ui_load_blocks_help();
+            ["save"]      -> ui_save_blocks_help();
+            ["node"]      -> ui_node_help();
+            ["nodes"]     -> ui_nodes_help();
+            ["connect"]   -> ui_connect_help();
+            ["help"]      -> ui_help_help();
+            UnknownCmd    ->
+                io:format("No help for: ~s", [UnknownCmd])
+          end
+      end;
+    high ->
+      io:format("Error: Too many parameters~n"),
+      error
+  end.
+
+ui_create_block_help() ->
+  io:format("~nCreate a new block with default values").
+
+ui_copy_block_help() ->
+  io:format("TODO: Insert copy help text here~n").
+  
+ui_rename_block_help() ->
+  io:format("TODO: Insert rename help text here~n").
+  
+ui_execute_block_help() ->
+  io:format("TODO: Insert execute help text here~n").
+  
+ui_delete_block_help() ->
+  io:format("TODO: Insert delete help text here~n").
+  
+ui_disable_block_help() ->
+  io:format("TODO: Insert disable help text here~n").
+  
+ui_enable_block_help() ->
+  io:format("TODO: Insert enable help text here~n").
+  
+ui_freeze_block_help() ->
+  io:format("TODO: Insert freeze help text here~n").
+  
+ui_thaw_block_help() ->
+  io:format("TODO: Insert thaw help text here~n").
+  
+ui_get_values_help() ->
+  io:format("TODO: Insert get help text here~n").
+  
+ui_set_value_help() ->
+  io:format("TODO: Insert set help text here~n").
+  
+ui_link_blocks_help() ->
+  io:format("TODO: Insert link help text here~n").
+  
+ui_unlink_blocks_help() ->
+  io:format("TODO: Insert unlink help text here~n").
+  
+ui_status_help() ->
+  io:format("TODO: Insert status help text here~n").
+
+ui_block_types_help() ->
+  io:format("TODO: Insert types help text here~n").
+  
+validate_block_name_help() ->
+  io:format("TODO: Insert validate help text here~n").
+  
+ui_load_blocks_help() ->
+  io:format("TODO: Insert load help text here~n").
+  
+ui_save_blocks_help() ->
+  io:format("TODO: Insert save help text here~n").
+  
+ui_node_help() ->
+  io:format("TODO: Insert node help text here~n").
+  
+ui_nodes_help() ->
+  io:format("TODO: Insert nodes help text here~n").
+  
+ui_connect_help() ->
+  io:format("TODO: Insert connect help text here~n").
+  
+ui_help_help() ->
+  io:format("TODO: Insert help help text here~n").
+  
+
+  
 %%
 %% Check the number of parameters in the param list
 %%
