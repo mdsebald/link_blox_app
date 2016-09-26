@@ -54,7 +54,9 @@ loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get_node()) ++ ">",
   Raw1 = io:get_line(Prompt),
-  Raw2 = string:strip(Raw1, right, $\n), % Remove new line char
+  % This call is failing with function clause error in nerves environment.  Swith to substr() 
+  % string:strip(Raw1, right, $\n), % Remove new line char
+  Raw2 = string:substr(Raw1, 1, string:len(Raw1) - 1), 
   Raw3 = string:strip(Raw2), % Remove leading and trailing whitespace
     
   % Split up the string into command and parameter words
@@ -872,7 +874,7 @@ ui_help(Params) ->
             ["connect"]   -> ui_connect_help();
             ["help"]      -> ui_help_help();
             UnknownCmd    ->
-                io:format("No help for: ~s", [UnknownCmd])
+                io:format("No help for: ~s~n", [UnknownCmd])
           end
       end;
     high ->
@@ -881,7 +883,7 @@ ui_help(Params) ->
   end.
 
 ui_create_block_help() ->
-  io:format("~nCreate a new block with default values").
+  io:format("~nCreate a new block with default values~n").
 
 ui_copy_block_help() ->
   io:format("TODO: Insert copy help text here~n").
