@@ -53,11 +53,15 @@ set_node(Node) ->
 loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get_node()) ++ ">",
-  Raw1 = io:get_line(Prompt),
-  % This call is failing with function clause error in nerves environment.  Swith to substr() 
-  % string:strip(Raw1, right, $\n), % Remove new line char
-  Raw2 = string:substr(Raw1, 1, string:len(Raw1) - 1), 
-  Raw3 = string:strip(Raw2), % Remove leading and trailing whitespace
+
+  % In nerves env.  Input string looks like its inside a list, so flatten it
+  Raw1 = lists:flatten(io:get_line(Prompt)),
+  
+  % Remove new line char
+  Raw2 = string:strip(Raw1, right, $\n),
+
+  % Remove leading and trailing whitespace
+  Raw3 = string:strip(Raw2), 
     
   % Split up the string into command and parameter words
   CmdAndParams = string:tokens(Raw3, " "),  
