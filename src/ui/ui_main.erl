@@ -53,15 +53,20 @@ set_node(Node) ->
 loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get_node()) ++ ">",
-
-  % In nerves env.  Input string looks like its inside a list, so flatten it
-  Raw1 = lists:flatten(io:get_line(Prompt)),
   
-  % Remove new line char
-  Raw2 = string:strip(Raw1, right, $\n),
+  Raw1 = io:get_line(Prompt),
 
-  % Remove leading and trailing whitespace
-  Raw3 = string:strip(Raw2), 
+  % In nerves env.  input string looks like its inside a list, so flatten it
+  case io_lib:char_list(Raw1) of
+    true  ->  Raw2  = Raw1;
+    false -> [Raw2] = Raw1
+  end, 
+
+  io:format("Entered: ~p~n", [Raw2]), 
+
+  % Remove new line char from the end, 
+  % and leading and trailing whitespace
+  Raw3 = string:strip(string:strip(Raw2, right, $\n)), 
     
   % Split up the string into command and parameter words
   CmdAndParams = string:tokens(Raw3, " "),  
