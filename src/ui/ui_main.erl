@@ -56,18 +56,11 @@ loop() ->
   
   Raw1 = io:get_line(Prompt),
 
-  io:format("Entered: ~p~n", [Raw1]), 
-
-  % In nerves env.  input string looks like its inside a list, so flatten it
-  case io_lib:char_list(Raw1) of
-    true  ->  Raw2  = Raw1;
-    false -> 
-      case is_binary(Raw1) of
-        true  -> Raw2 = erlang:binary_to_list(Raw1);
-        false -> 
-          io:format("Don't know what we got: ~p~n", [Raw1]),
-          Raw2 = ""
-      end
+  % In nerves environment, get_line() returns a binary.
+  % Convert it to a string
+  case is_binary(Raw1) of
+    true  -> Raw2 = erlang:binary_to_list(Raw1);
+    false -> Raw2  = Raw1 
   end, 
 
   % Remove new line char from the end, 
