@@ -97,6 +97,7 @@ loop() ->
         "node"      -> ui_node(Params);
         "nodes"     -> ui_nodes(Params);
         "connect"   -> ui_connect(Params);
+        "hosts"     -> ui_hosts(Params);
         "help"      -> ui_help(Params);
             
         _Unknown    -> io:format("Error: Unknown command: ~p~n", [Raw3])
@@ -826,6 +827,24 @@ ui_block_types(_Params) ->
 
 
 %%
+%% Print out the /etc/hosts file
+%%
+ui_hosts(_Params) ->
+    {ok, Device} = file:open("/etc/hosts", [read]),
+    try get_all_lines(Device)
+      after file:close(Device)
+    end.
+
+get_all_lines(Device) ->
+    case io:get_line(Device, "") of
+        eof  -> [];
+        Line ->
+          io:format("~s", [Line]),
+          get_all_lines(Device)
+    end.
+
+
+%%
 %% Process the help command
 %%
 ui_help(Params) ->
@@ -855,6 +874,7 @@ ui_help(Params) ->
           io:format("node~n"),
           io:format("nodes~n"),
           io:format("connect <node name>~n"),
+          io:format("hosts~n"),
           io:format("help - Display this screen~n");
         1 ->
           % Use the entered parameter as the command Name
@@ -880,6 +900,7 @@ ui_help(Params) ->
             ["node"]      -> ui_node_help();
             ["nodes"]     -> ui_nodes_help();
             ["connect"]   -> ui_connect_help();
+            ["hosts"]     -> ui_hosts_help();
             ["help"]      -> ui_help_help();
             UnknownCmd    ->
                 io:format("No help for: ~s~n", [UnknownCmd])
@@ -952,6 +973,9 @@ ui_nodes_help() ->
   
 ui_connect_help() ->
   io:format("TODO: Insert connect help text here~n").
+
+ui_hosts_help() ->
+  io:format("Display the contents of the /etc/hosts file~n").
   
 ui_help_help() ->
   io:format("TODO: Insert help help text here~n").
