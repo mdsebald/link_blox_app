@@ -19,8 +19,7 @@
 
 version() -> "0.1.0".
 
-% INSTRUCTIONS String describing block function
-description() -> "Short description of block function".
+description() -> "Control Raspi on-board LED".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
