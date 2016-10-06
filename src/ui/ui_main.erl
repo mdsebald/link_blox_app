@@ -53,22 +53,9 @@ set_node(Node) ->
 loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get_node()) ++ ">",
-  
-  Raw1 = io:get_line(Prompt),
-
-  % In nerves environment, get_line() returns a binary.
-  % Convert it to a string
-  case is_binary(Raw1) of
-    true  -> Raw2 = erlang:binary_to_list(Raw1);
-    false -> Raw2  = Raw1 
-  end, 
-
-  % Remove new line char from the end, 
-  % and leading and trailing whitespace
-  Raw3 = string:strip(string:strip(Raw2, right, $\n)), 
     
   % Split up the string into command and parameter words
-  CmdAndParams = string:tokens(Raw3, " "),  
+  CmdAndParams = string:tokens(get_input(Prompt), " "),  
     
   if 0 < length(CmdAndParams) ->
     [Cmd | Params] = CmdAndParams,
@@ -100,7 +87,7 @@ loop() ->
         "hosts"     -> ui_hosts(Params);
         "help"      -> ui_help(Params);
             
-        _Unknown    -> io:format("Error: Unknown command: ~p~n", [Raw3])
+        Unknown    -> io:format("Error: Unknown command: ~p~n", [Unknown])
       end,
       loop();  % processed command keep looping
 
@@ -573,7 +560,7 @@ ui_load_blocks(Params) ->
       case length(Params) of  
         0 -> 
           io:format("Enter file name, or press <Enter> for default: 'LinkBloxConfig': "),
-          case get_input() of
+          case get_input("") of
                   [] -> FileName = "LinkBloxConfig";
             FileName -> FileName
           end;
@@ -619,7 +606,7 @@ ui_save_blocks(Params) ->
       case length(Params) of  
         0 -> 
           io:format("Enter file name, or press <Enter> for default: 'LinkBloxConfig': "),
-          case get_input() of
+          case get_input("") of
                   [] -> FileName = "LinkBloxConfig";
             FileName -> FileName
           end;
@@ -1041,23 +1028,31 @@ parse_value(ValueStr) ->
   % Get input, return 'true' if first char is 'Y' or 'y'
   %
   get_yes() ->
-    case lists:nth(1, get_input()) of
+    case lists:nth(1, get_input("")) of
       $Y -> true;
       $y -> true;
       _  -> false
     end.
+
 
   %
   % Get user input, 
   % minus new line char, leading whitespace, 
   % and trailing whitespace
   %
-  get_input() ->
-    Raw1 = io:get_line(""),
+  get_input(Prompt) ->
+    Raw1 = io:get_line(Prompt),
+
+    % In nerves environment, get_line() returns a binary.
+    % Convert it to a string
+    case is_binary(Raw1) of
+      true  -> Raw2 = erlang:binary_to_list(Raw1);
+      false -> Raw2  = Raw1 
+    end, 
     % Remove new line char
-    Raw2 = string:strip(Raw1, right, 10),
+    Raw3 = string:strip(Raw2, right, 10),
     % Remove leading and trailing whitespace
-    string:strip(Raw2).
+    string:strip(Raw3).
 
 %% ====================================================================
 %% Tests
