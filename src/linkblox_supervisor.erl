@@ -49,6 +49,11 @@ init(BlockValuesFile) ->
   % TODO: Is there a better way to do this?  Should this be controled by a config value?
   spawn(ui_main, init, []),
 
+  % Start the SSH CLI UI
+  % TODO: Should be configurable, start, not needed on embedded devices,
+  %       Used because we get a nice shell UI experience, (i.e command history, etc)
+  ui_ssh_cli:listen(1111, [{system_dir, "/home/pi/ssh"}]),
+
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 
                     restart => transient,

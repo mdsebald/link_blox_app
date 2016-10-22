@@ -15,6 +15,7 @@
 %% UI functions
 %% ====================================================================
 -export([init/0]).
+-export([ui_status/1, ui_connect/1]).
 
 %%
 %% Initialize node, before entering the UI loop
@@ -44,6 +45,7 @@ get_node() ->
 %% Set the node this UI is connected to
 %%
 set_node(Node) ->
+  put(curr_node, Node), % Temporary, helps with ssh cli for now
   ets:insert(node_store, {curr_node, Node}).
 
 
