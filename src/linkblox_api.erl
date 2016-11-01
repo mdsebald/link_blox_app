@@ -558,7 +558,7 @@ handle_cast({update, BlockName, Link, NewValue}, State) ->
       block_server:update(BlockName, Link, NewValue);
 
     _ ->
-      error_logger:warning_msg("linkblox_api: Recieved update for unknown block: ~p~n", 
+      error_logger:warning_msg("linkblox_api: Received update for unknown block: ~p~n", 
                             [BlockName])
   end,
   {noreply, State};
