@@ -54,8 +54,9 @@ init(BlockValuesFile) ->
   %       SSH port number,
   %       system_dir,
   %       Dont' start on embedded (Nerves build) devices.
-  %       Used because we get a nice shell UI experience, (i.e command history, etc)
-  ui_ssh_clix:listen(1111, [{system_dir, "/home/vagrant/ssh_host"}]),
+  %       Used because we get a nice shell UI experience, 
+  %       (i.e command history, line editing, tab completion, etc)
+  ui_ssh_cli:start(1111, [{system_dir, "/home/vagrant/ssh_host"}]),
 
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 
