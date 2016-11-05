@@ -47,7 +47,8 @@ init(BlockValuesFile) ->
   
   % Start the UI loop,
   % TODO: Is there a better way to do this?  Should this be controled by a config value?
-  spawn(ui_main, init, []),
+  % TODO: Don't start local UI.  Work through SSH CLI, for now
+  %  spawn(ui_main, init, []),
 
   % Start the SSH CLI UI
   % TODO: Should be configurable,
