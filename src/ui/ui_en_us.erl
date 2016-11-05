@@ -6,7 +6,7 @@
 %%%
 %%% @end
 
--module(ui_eng_us).
+-module(ui_en_us).
 
 -author("Mark Sebald").
 
@@ -20,7 +20,7 @@
 %%
 cmd_map() ->
   [
-    {"create",    cmd_create_block      "<block type name> <new block name>"},
+    {"create",    cmd_create_block,     "<block type name> <new block name>"},
     {"copy",      cmd_copy_block,       "<source block name> <dest block name>"},
     {"rename",    cmd_rename_block,     "<current block name> <new block name>"},
     {"execute",   cmd_execute_block,    "<block name>"},
