@@ -16,7 +16,7 @@
 %% ====================================================================
 -export([start/1, start/2]).
 
-% Functions must be exported in order to be invoked via the apply() BIF
+% Functions must be exported in order to be invoked via Module:Function(Args)
 -export([
           ui_create_block/1,
           ui_copy_block/1,
@@ -40,6 +40,7 @@
           ui_nodes/1,
           ui_connect/1,
           ui_hosts/1,
+          ui_exit/1,
           ui_help/1
         ]).
 
@@ -99,17 +100,15 @@ eval_cli(Line) ->
   case string:tokens(Line, " \n") of
 	  [] -> [];
 	  [Command | Params] ->
-	    case cmd_str_to_cmd_atom(Command) of
+	    case cmd_string_to_cmd_atom(Command) of
         unknown_cmd ->
-          io:format("~p Unknown command~n", [Command]);
+          io:format("~p Unknown command string~n", [Command]);
         CmdAtom ->
           case cmd_atom_to_function(CmdAtom) of
             unknown_cmd ->
               io:format("~p Unknown command atom~n", [CmdAtom]);
 
             {Module, Function} ->
-              io:format("Args: ~p~n", [Params]),
-             
 		          case catch Module:Function(Params) of
 			          {'EXIT', Error} ->
 			            {error, Error}; % wrong_number_of_arguments};
@@ -125,7 +124,7 @@ eval_cli(Line) ->
 %% Translate a command string to an atom
 %% This indirection allows command mapping using different languages,
 %%
-cmd_str_to_cmd_atom(Command) ->
+cmd_string_to_cmd_atom(Command) ->
   case lists:keysearch(Command, 1, ui_en_us:cmd_string_map()) of
 	  {value, {_, CmdAtom, _}} -> CmdAtom;
 	  false -> unknown_cmd
@@ -144,32 +143,35 @@ cmd_atom_to_function(CmdAtom) ->
 
 %%
 %% Map command atom to command module and function
+%% Specify the Module here, in case we want to break out
+%%  UI functions into separate modules.
 %%
 cmd_atom_map() ->  
   [
-    {cmd_create_block,     ui_ssh_cli,  ui_create_block},
-    {cmd_copy_block,       ui_ssh_cli,  ui_copy_block},
-    {cmd_rename_block,     ui_ssh_cli,  ui_rename_block},
-    {cmd_execute_block,    ui_ssh_cli,  ui_execute_block},
-    {cmd_delete_block,     ui_ssh_cli,  ui_delete_block},
-    {cmd_disable_block,    ui_ssh_cli,  ui_disable_block},
-    {cmd_enable_block,     ui_ssh_cli,  ui_enable_block},
-    {cmd_freeze_block,     ui_ssh_cli,  ui_freeze_block},
-    {cmd_thaw_block,       ui_ssh_cli,  ui_thaw_block},
-    {cmd_get_values,       ui_ssh_cli,  ui_get_values},
-    {cmd_set_value,        ui_ssh_cli,  ui_set_value},
-    {cmd_link_blocks,      ui_ssh_cli,  ui_link_blocks},
-    {cmd_unlink_blocks,    ui_ssh_cli,  ui_unlink_blocks},
-    {cmd_status,           ui_ssh_cli,  ui_status},
-    {cmd_block_types,      ui_ssh_cli,  ui_block_types},
-    {cmd_valid_block_name, ui_ssh_cli,  ui_valid_block_name},
-    {cmd_load_blocks,      ui_ssh_cli,  ui_load_blocks},
-    {cmd_save_blocks,      ui_ssh_cli,  ui_save_blocks},
-    {cmd_node,             ui_ssh_cli,  ui_node},
-    {cmd_nodes,            ui_ssh_cli,  ui_nodes},
-    {cmd_connect,          ui_ssh_cli,  ui_connect},
-    {cmd_hosts,            ui_ssh_cli,  ui_hosts},
-    {cmd_help,             ui_ssh_cli,  ui_help}
+    {cmd_create_block,     ?MODULE,  ui_create_block},
+    {cmd_copy_block,       ?MODULE,  ui_copy_block},
+    {cmd_rename_block,     ?MODULE,  ui_rename_block},
+    {cmd_execute_block,    ?MODULE,  ui_execute_block},
+    {cmd_delete_block,     ?MODULE,  ui_delete_block},
+    {cmd_disable_block,    ?MODULE,  ui_disable_block},
+    {cmd_enable_block,     ?MODULE,  ui_enable_block},
+    {cmd_freeze_block,     ?MODULE,  ui_freeze_block},
+    {cmd_thaw_block,       ?MODULE,  ui_thaw_block},
+    {cmd_get_values,       ?MODULE,  ui_get_values},
+    {cmd_set_value,        ?MODULE,  ui_set_value},
+    {cmd_link_blocks,      ?MODULE,  ui_link_blocks},
+    {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks},
+    {cmd_status,           ?MODULE,  ui_status},
+    {cmd_block_types,      ?MODULE,  ui_block_types},
+    {cmd_valid_block_name, ?MODULE,  ui_valid_block_name},
+    {cmd_load_blocks,      ?MODULE,  ui_load_blocks},
+    {cmd_save_blocks,      ?MODULE,  ui_save_blocks},
+    {cmd_node,             ?MODULE,  ui_node},
+    {cmd_nodes,            ?MODULE,  ui_nodes},
+    {cmd_connect,          ?MODULE,  ui_connect},
+    {cmd_hosts,            ?MODULE,  ui_hosts},
+    {cmd_exit,             ?MODULE,  ui_exit},
+    {cmd_help,             ?MODULE,  ui_help}
   ].
 
 
@@ -974,6 +976,11 @@ get_all_lines(Device) ->
           get_all_lines(Device)
     end.
 
+%%
+%% Exit UI
+%%
+ui_exit(_Params) ->
+  done.
 
 %%
 %% Process the help command
@@ -984,29 +991,14 @@ ui_help(Params) ->
       case length(Params) of  
         0 ->
           io:format("~n     LinkBlox Help~n~n"),
-          io:format("create <block type name> <new block name>~n"),
-          io:format("copy <source block name> <dest block name>~n"),
-          io:format("rename <current block name> <new block name>~n"),
-          io:format("execute <block name>~n"),
-          io:format("delete <block name>~n"),
-          io:format("disable <block name>~n"),
-          io:format("enable <block name>~n"),
-          io:format("freeze <block name>~n"),
-          io:format("thaw <block name>~n"),
-          io:format("get <block name>~n"),
-          io:format("set <block name> <attribute name> <value>~n"),
-          io:format("link <block name> <input name> <block name> <output name>~n"),
-          io:format("unlink <block name> <input name>~n"),
-          io:format("status~n"),
-          io:format("types~n"),
-          io:format("valid <block name>~n"),
-          io:format("load <file name> | blank~n"),
-          io:format("save <file name> | blank~n"),
-          io:format("node~n"),
-          io:format("nodes~n"),
-          io:format("connect <node name>~n"),
-          io:format("hosts~n"),
-          io:format("help - Display this screen~n");
+
+          CmdList = ui_en_us:cmd_string_map(),
+
+          lists:map(fun(Cmd) -> 
+                      {CmdStr, _CmdAtom, CmdParamStr} = Cmd,
+                      io:format("~s ~s~n", [CmdStr, CmdParamStr])
+                    end,
+                    CmdList);
         1 ->
           % Use the entered parameter as the command Name
           case Params of

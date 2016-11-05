@@ -42,6 +42,7 @@ cmd_string_map() ->
     {"nodes",     cmd_nodes,            ""},
     {"connect",   cmd_connect,          "<node name>"},
     {"hosts",     cmd_hosts,            ""},
+    {"exit",      cmd_exit,             ""},
     {"help",      cmd_help,             "display help screen"}
   ].
 
