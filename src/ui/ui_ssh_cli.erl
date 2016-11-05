@@ -15,7 +15,33 @@
 %% UI functions
 %% ====================================================================
 -export([start/1, start/2]).
--export([loop/0]).
+
+% Functions must be exported in order to be invoked via the apply() BIF
+-export([
+          ui_create_block/1,
+          ui_copy_block/1,
+          ui_rename_block/1,
+          ui_execute_block/1,
+          ui_delete_block/1,
+          ui_disable_block/1,
+          ui_enable_block/1,
+          ui_freeze_block/1,
+          ui_thaw_block/1,
+          ui_get_values/1,
+          ui_set_value/1,
+          ui_link_blocks/1,
+          ui_unlink_blocks/1,
+          ui_status/1,
+          ui_block_types/1,
+          ui_valid_block_name/1,
+          ui_load_blocks/1,
+          ui_save_blocks/1,
+          ui_node/1,
+          ui_nodes/1,
+          ui_connect/1,
+          ui_hosts/1,
+          ui_help/1
+        ]).
 
 
 %%
@@ -100,7 +126,7 @@ eval_cli(Line) ->
 %% This indirection allows command mapping using different languages,
 %%
 cmd_str_to_cmd_atom(Command) ->
-  case lists:keysearch(Command, 1, ui_en_us:cmd_map()) of
+  case lists:keysearch(Command, 1, ui_en_us:cmd_string_map()) of
 	  {value, {_, CmdAtom, _}} -> CmdAtom;
 	  false -> unknown_cmd
   end.
@@ -246,7 +272,7 @@ loop() ->
         "unlink"    -> ui_unlink_blocks(Params);
         "status"    -> ui_status(Params);
         "types"     -> ui_block_types(Params);
-        "valid"     -> valid_block_name(Params);
+        "valid"     -> ui_valid_block_name(Params);
         "load"      -> ui_load_blocks(Params);
         "save"      -> ui_save_blocks(Params);
         "node"      -> ui_node(Params);
@@ -940,7 +966,7 @@ block_status([BlockName | RemainingBlockNames]) ->
 
 
 % validate Params is one valid block name
-valid_block_name(Params) ->
+ui_valid_block_name(Params) ->
   case check_num_params(Params, 1) of
     low ->
       io:format("Enter block-name~n"),

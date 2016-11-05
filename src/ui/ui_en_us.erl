@@ -11,14 +11,14 @@
 -author("Mark Sebald").
 
 -export([
-          cmd_map/0
+          cmd_string_map/0
         ]).
 
 
 %%
 %% map string to ui command atom
 %%
-cmd_map() ->
+cmd_string_map() ->
   [
     {"create",    cmd_create_block,     "<block type name> <new block name>"},
     {"copy",      cmd_copy_block,       "<source block name> <dest block name>"},
