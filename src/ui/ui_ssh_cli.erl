@@ -84,7 +84,7 @@ eval_cli(Line) ->
             {Module, Function} ->
               io:format("Args: ~p~n", [Args]),
              
-		          case catch apply(Module, Function, [Args]) of
+		          case catch apply(Module, Function, Args) of
 			          {'EXIT', Error} ->
 			            {error, Error}; % wrong_number_of_arguments};
 			          Result ->
