@@ -98,7 +98,7 @@ shell_loop() ->
 eval_cli(Line) ->
   case string:tokens(Line, " \n") of
 	  [] -> [];
-	  [Command | Args] ->
+	  [Command | Params] ->
 	    case cmd_str_to_cmd_atom(Command) of
         unknown_cmd ->
           io:format("~p Unknown command~n", [Command]);
@@ -108,9 +108,9 @@ eval_cli(Line) ->
               io:format("~p Unknown command atom~n", [CmdAtom]);
 
             {Module, Function} ->
-              io:format("Args: ~p~n", [Args]),
+              io:format("Args: ~p~n", [Params]),
              
-		          case catch apply(Module, Function, Args) of
+		          case catch Module:Function(Params) of
 			          {'EXIT', Error} ->
 			            {error, Error}; % wrong_number_of_arguments};
 			          Result ->
@@ -240,58 +240,6 @@ get_node() ->
 set_node(Node) ->
   put(curr_node, Node). 
 
-
-%%
-%%  UI input loop
-%%
-loop() ->
-  % use the current node for the UI prompt
-  Prompt = atom_to_list(get_node()) ++ ">",
-    
-  % Split up the string into command and parameter words
-  CmdAndParams = string:tokens(get_input(Prompt), " "),  
-    
-  if 0 < length(CmdAndParams) ->
-    [Cmd | Params] = CmdAndParams,
-    CmdLcase = string:to_lower(Cmd),
-        
-    if CmdLcase /= "exit" ->
-      case CmdLcase of
-        "create"    -> ui_create_block(Params);
-        "copy"      -> ui_copy_block(Params);
-        "rename"    -> ui_rename_block(Params);
-        "execute"   -> ui_execute_block(Params);
-        "delete"    -> ui_delete_block(Params);
-        "disable"   -> ui_disable_block(Params);
-        "enable"    -> ui_enable_block(Params);
-        "freeze"    -> ui_freeze_block(Params);
-        "thaw"      -> ui_thaw_block(Params);
-        "get"       -> ui_get_values(Params);
-        "set"       -> ui_set_value(Params);
-        "link"      -> ui_link_blocks(Params);
-        "unlink"    -> ui_unlink_blocks(Params);
-        "status"    -> ui_status(Params);
-        "types"     -> ui_block_types(Params);
-        "valid"     -> ui_valid_block_name(Params);
-        "load"      -> ui_load_blocks(Params);
-        "save"      -> ui_save_blocks(Params);
-        "node"      -> ui_node(Params);
-        "nodes"     -> ui_nodes(Params);
-        "connect"   -> ui_connect(Params);
-        "hosts"     -> ui_hosts(Params);
-        "help"      -> ui_help(Params);
-            
-        Unknown    -> io:format("Error: Unknown command: ~p~n", [Unknown])
-      end,
-      loop();  % processed command keep looping
-
-    true -> % user entered "exit", stop looping
-      ok
-    end;
-  true -> % user just hit "Enter", keep looping 
-    loop()
-  end.
-  
 
 % Process block create command
 % TODO: Add initial attrib values
