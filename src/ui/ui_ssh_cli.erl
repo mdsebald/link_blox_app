@@ -27,21 +27,21 @@ listen(Port, Options) ->
 %% our_routines
 our_routines() ->
     [
-     {"exit", cli_exit,      "            exit application"},
-     {"factors", cli_factors,"<int>       prime factors of <int>"},
-     {"gcd", cli_gcd,        "<int> <int> greatest common divisor"},
-     {"help", cli_help,      "            help text"},
-     {"lcm", cli_lcm,        "<int> <int> least common multiplier"},
-     {"prime", cli_prime,    "<int>       check for primality"},
-     {"primes", cli_primes,  "<int>       print all primes up to <int>"},
-     {"rho", cli_rho,        "<int>       prime factors using rho's alg."},
-     {"user", cli_user,      "            print name of user"},
-     {"host", cli_host,      "            print host addr"},
-     {"self", cli_self,      "            print my pid"},
-     {"nodes", cli_nodes,    "            print connected nodes"},
-     {"node", cli_node,      "            print the local node"},
-     {"connect", cli_connect, "<node>      connect to <node>"},
-     {"status", cli_status,  "            display block status"}
+     {"exit",    ui_ssh_cli, cli_exit,    "            exit application"},
+     {"factors", ui_ssh_cli, cli_factors, "<int>       prime factors of <int>"},
+     {"gcd",     ui_ssh_cli, cli_gcd,     "<int> <int> greatest common divisor"},
+     {"help",    ui_ssh_cli, cli_help,    "            help text"},
+     {"lcm",     ui_ssh_cli, cli_lcm,     "<int> <int> least common multiplier"},
+     {"prime",   ui_ssh_cli, cli_prime,   "<int>       check for primality"},
+     {"primes",  ui_ssh_cli, cli_primes,  "<int>       print all primes up to <int>"},
+     {"rho",     ui_ssh_cli, cli_rho,     "<int>       prime factors using rho's alg."},
+     {"user",    ui_ssh_cli, cli_user,    "            print name of user"},
+     {"host",    ui_ssh_cli, cli_host,    "            print host addr"},
+     {"self",    ui_ssh_cli, cli_self,    "            print my pid"},
+     {"nodes",   ui_ssh_cli, cli_nodes,   "            print connected nodes"},
+     {"node",    ui_ssh_cli, cli_node,    "            print the local node"},
+     {"connect", ui_ssh_cli, cli_connect, "<node>      connect to <node>"},
+     {"status",  ui_ssh_cli, cli_status,  "            display block status"}
     ].
 
 %% (we could of course generate this from module_info() something like this)
@@ -114,7 +114,7 @@ start_our_shell(User, Peer) ->
   
   spawn(fun() ->
 	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
-    io:format("~n   W E L C O M E  T O  L i n k B l o x  S S H  C L I !~n~n"),
+    io:format("~n   W E L C O M E  T O  L i n k B l o x !~n~n"),
 		io:format("Enter command\n"),
 		put(user, User),
 		put(peer_name, Peer),
@@ -129,7 +129,7 @@ our_shell_loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get(curr_node)) ++ "> ",
   % Read
-  Line = io:get_line(Prompt),
+  Line = ui_main:get_input(Prompt), %io:get_line(Prompt),
   % Eval
   Result = eval_cli(Line),
   % Print
@@ -141,24 +141,20 @@ our_shell_loop() ->
 	    our_shell_loop()
     end.
 
-%%% translate a command to a function
-command_to_function(Command) ->
-    case lists:keysearch(Command, 1, our_routines()) of
-	{value, {_, Proc, _}} -> 
-	    Proc;
-	false -> 
-	    unknown_cli
-    end.
+
 
 %%% evaluate a command line
 eval_cli(Line) ->
   case string:tokens(Line, " \n") of
 	  [] -> [];
-	  [Command | ArgStrings] ->
-	    Proc = command_to_function(Command),
-	    case fix_args(ArgStrings) of
-		    {ok, Args} ->
-		      case catch apply(?MODULE, Proc, Args) of
+	  [Command | Args] ->
+	    case command_to_function(Command) of
+        unknown_cmd ->
+          io:format("~p Unknown command~n", Command);
+        {Module, Function} ->
+          io:format("Args: ~p~n", [Args]),
+          % Old UI functions expecting Args are in one list, 
+		      case catch apply(Module, Function, [Args]) of
 			      {'EXIT', Error} ->
 			        {error, Error}; % wrong_number_of_arguments};
 			      Result ->
@@ -169,9 +165,16 @@ eval_cli(Line) ->
 	    end
     end.
 
+%%% translate a command to a function
+command_to_function(Command) ->
+  case lists:keysearch(Command, 1, our_routines()) of
+	  {value, {_, Module, Function, _}} -> {Module, Function};
+	  false -> unknown_cmd
+  end.
+
 %%% make command arguments to integers
-fix_args(ArgStrings) ->
-  {ok, ArgStrings}.
+%fix_args(ArgStrings) ->
+  %{ok, ArgStrings}.
   %case catch [list_to_integer(A) || A <- ArgStrings] of
 	%  {'EXIT', _} ->
 	%    {error, only_integer_arguments};
@@ -224,8 +227,9 @@ cli_nodes() ->
   io:format( "Nodes: ~p~n", [[node() | nodes()]]).
 
 % Connect ui to another node
-cli_connect(Node) ->
-  ui_main:ui_connect(Node).
+cli_connect(Args) ->
+  io:format("Connect Args: ~p~n", [Args]),
+  ui_main:ui_connect(Args).
 
 
 
@@ -233,7 +237,7 @@ help_str(L) ->
     help_str(L, []).
 help_str([], Acc) ->
     lists:sort(Acc);
-help_str([{CommandName, _, HelpS} | Rest], Acc) ->
+help_str([{CommandName,_, _, HelpS} | Rest], Acc) ->
     C = string:left(CommandName, 10),
     help_str(Rest, [[C, " ", HelpS, $\n] | Acc]).
 

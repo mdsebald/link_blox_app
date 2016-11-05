@@ -1,10 +1,10 @@
+%%% @doc
+%%% 
+%%% SSH CLI for LinkBlox app.
 %%%
-%%% @doc 
-%%% User Interface for LinkBlox app.
 %%% @end
-%%%
 
--module(ui_main).
+-module(ui_ssh_clix).
 
 -author("Mark Sebald").
 
@@ -14,23 +14,114 @@
 %% ====================================================================
 %% UI functions
 %% ====================================================================
--export([init/0]).
--export([loop/0]).
-%-export([get_input/1, ui_status/1, ui_connect/1]).
+-export([listen/1, listen/2]).
+
+
+listen(Port) ->
+    listen(Port, []).
+
+listen(Port, Options) ->
+    error_logger:info_msg("Starting SSH CLI User Interface on port: ~p ~n", [Port]),
+    crypto:start(),
+    ssh:start(),
+    ssh:daemon(any, Port, [{shell, fun(U, H) -> start_our_shell(U, H) end} | Options]).
+
+
+common_prefix([C | R1], [C | R2], Acc) ->
+    common_prefix(R1, R2, [C | Acc]);
+common_prefix(_, _, Acc) ->
+    lists:reverse(Acc).
+
+%% longest prefix in a list, given a prefix
+longest_prefix(List, Prefix) ->
+    case [A || {A, _, _} <- List, lists:prefix(Prefix, A)] of
+	[] ->
+	    {none, List};
+	[S | Rest] ->
+	    NewPrefix0 =
+		lists:foldl(fun(A, P) ->
+				    common_prefix(A, P, [])
+			    end, S, Rest),
+	    NewPrefix = nthtail(length(Prefix), NewPrefix0),
+	    {prefix, NewPrefix, [S | Rest]}
+    end.			
+
+%%% our expand function (called when the user presses TAB)
+%%% input: a reversed list with the row to left of the cursor
+%%% output: {yes|no, Expansion, ListofPossibleMatches}
+%%% where the atom no yields a beep
+%%% Expansion is a string inserted at the cursor
+%%% List... is a list that will be printed
+%%% Here we beep on prefixes that don't match and when the command
+%%% filled in
+expand([$  | _]) ->
+    {no, "", []};
+expand(RevBefore) ->    
+    Before = lists:reverse(RevBefore),
+    case longest_prefix(our_routines(), Before) of
+	{prefix, P, [_]} ->
+	    {yes, P ++ " ", []};
+	{prefix, "", M} ->
+	    {yes, "", M};
+	{prefix, P, _M} ->
+	    {yes, P, []};
+	{none, _M} ->
+	    {no, "", []}
+    end.
+
+start_our_shell(User, Peer) ->
+  spawn(fun() ->
+	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
+    io:format("~n   W E L C O M E  T O  L i n k B l o x !~n~n"),
+		io:format("Enter command\n"),
+		put(user, User),
+		put(peer_name, Peer),
+    % default current node to local node
+    set_node(node()),
+		loop()
+	end).
+
+
+%%% nthtail as in lists, but no badarg if n > the length of list
+nthtail(0, A) -> A;
+nthtail(N, [_ | A]) -> nthtail(N-1, A);
+nthtail(_, _) -> [].
+
+
+%% TODO: Copied from ssh sample cli.  Update to match current UI
+our_routines() ->
+    [
+     {"exit",    ui_ssh_cli, cli_exit,    "            exit application"},
+     {"factors", ui_ssh_cli, cli_factors, "<int>       prime factors of <int>"},
+     {"gcd",     ui_ssh_cli, cli_gcd,     "<int> <int> greatest common divisor"},
+     {"help",    ui_ssh_cli, cli_help,    "            help text"},
+     {"lcm",     ui_ssh_cli, cli_lcm,     "<int> <int> least common multiplier"},
+     {"prime",   ui_ssh_cli, cli_prime,   "<int>       check for primality"},
+     {"primes",  ui_ssh_cli, cli_primes,  "<int>       print all primes up to <int>"},
+     {"rho",     ui_ssh_cli, cli_rho,     "<int>       prime factors using rho's alg."},
+     {"user",    ui_ssh_cli, cli_user,    "            print name of user"},
+     {"host",    ui_ssh_cli, cli_host,    "            print host addr"},
+     {"self",    ui_ssh_cli, cli_self,    "            print my pid"},
+     {"nodes",   ui_ssh_cli, cli_nodes,   "            print connected nodes"},
+     {"node",    ui_ssh_cli, cli_node,    "            print the local node"},
+     {"connect", ui_ssh_cli, cli_connect, "<node>      connect to <node>"},
+     {"status",  ui_ssh_cli, cli_status,  "            display block status"}
+    ].
+
 
 %%
 %% Initialize node, before entering the UI loop
 %%
-init() ->
+%init() ->
   % setup ets store for current node
-  ets:new(node_store, [set, named_table]),
+  %ets:new(node_store, [set, named_table]),
   % default node to local node
-  set_node(node()),
+  %set_node(node()),
 
-  io:format("~n   W E L C O M E  T O  L i n k B l o x !~n~n"),
+  %io:format("~n   W E L C O M E  T O  L i n k B l o x !~n~n"),
 
   % enter UI loop, and never return
-  loop().
+  %loop().
 
 
 %%
@@ -38,16 +129,17 @@ init() ->
 %%
 % TODO: Check if node exists before sending
 get_node() ->
-  [{curr_node, Node}] = ets:lookup(node_store, curr_node),
-  Node.
+  get(curr_node).
+  %[{curr_node, Node}] = ets:lookup(node_store, curr_node),
+  %Node.
 
 
 %%
 %% Set the node this UI is connected to
 %%
 set_node(Node) ->
-  put(curr_node, Node), % Temporary, helps with ssh cli for now
-  ets:insert(node_store, {curr_node, Node}).
+  put(curr_node, Node). % Temporary, helps with ssh cli for now
+  % ets:insert(node_store, {curr_node, Node}).
 
 
 %%
@@ -129,6 +221,7 @@ ui_create_block(Params) ->
 
     high -> io:format("Error: Too many parameters~n")
   end.    
+
 
 % Process block copy command
 % TODO: Add initial attrib values

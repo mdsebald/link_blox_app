@@ -50,9 +50,12 @@ init(BlockValuesFile) ->
   spawn(ui_main, init, []),
 
   % Start the SSH CLI UI
-  % TODO: Should be configurable, start, not needed on embedded devices,
+  % TODO: Should be configurable,
+  %       SSH port number,
+  %       system_dir,
+  %       Dont' start on embedded (Nerves build) devices.
   %       Used because we get a nice shell UI experience, (i.e command history, etc)
-  ui_ssh_cli:listen(1111, [{system_dir, "/home/pi/ssh"}]),
+  ui_ssh_clix:listen(1111, [{system_dir, "/home/vagrant/ssh_host"}]),
 
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 
