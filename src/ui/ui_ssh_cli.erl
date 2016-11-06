@@ -18,30 +18,30 @@
 
 % Functions must be exported in order to be invoked via Module:Function(Args)
 -export([
-          ui_create_block/1,
-          ui_copy_block/1,
-          ui_rename_block/1,
-          ui_execute_block/1,
-          ui_delete_block/1,
-          ui_disable_block/1,
-          ui_enable_block/1,
-          ui_freeze_block/1,
-          ui_thaw_block/1,
-          ui_get_values/1,
-          ui_set_value/1,
-          ui_link_blocks/1,
-          ui_unlink_blocks/1,
-          ui_status/1,
-          ui_block_types/1,
-          ui_valid_block_name/1,
-          ui_load_blocks/1,
-          ui_save_blocks/1,
-          ui_node/1,
-          ui_nodes/1,
-          ui_connect/1,
-          ui_hosts/1,
-          ui_exit/1,
-          ui_help/1
+          ui_create_block/1,    ui_create_block_help/0,
+          ui_copy_block/1,      ui_copy_block_help/0,
+          ui_rename_block/1,    ui_rename_block_help/0,
+          ui_execute_block/1,   ui_execute_block_help/0,
+          ui_delete_block/1,    ui_delete_block_help/0,
+          ui_disable_block/1,   ui_disable_block_help/0,
+          ui_enable_block/1,    ui_enable_block_help/0,
+          ui_freeze_block/1,    ui_freeze_block_help/0,
+          ui_thaw_block/1,      ui_thaw_block_help/0,
+          ui_get_values/1,      ui_get_values_help/0,
+          ui_set_value/1,       ui_set_value_help/0,
+          ui_link_blocks/1,     ui_link_blocks_help/0,
+          ui_unlink_blocks/1,   ui_unlink_blocks_help/0,
+          ui_status/1,          ui_status_help/0,
+          ui_block_types/1,     ui_block_types_help/0,
+          ui_valid_block_name/1, ui_valid_block_name_help/0,
+          ui_load_blocks/1,     ui_load_blocks_help/0,
+          ui_save_blocks/1,     ui_save_blocks_help/0,
+          ui_node/1,            ui_node_help/0,
+          ui_nodes/1,           ui_nodes_help/0,
+          ui_connect/1,         ui_connect_help/0,
+          ui_hosts/1,           ui_hosts_help/0,
+          ui_exit/1,            ui_exit_help/0,
+          ui_help/1,            ui_help_help/0
         ]).
 
 
@@ -136,7 +136,16 @@ cmd_string_to_cmd_atom(Command) ->
 %%
 cmd_atom_to_function(CmdAtom) ->
   case lists:keysearch(CmdAtom, 1, cmd_atom_map()) of
-	  {value, {_, Module, Function}} -> {Module, Function};
+	  {value, {_, Module, Function, _HelpFunction}} -> {Module, Function};
+	  false -> unknown_cmd
+  end.
+
+%%
+%% Translate command atom to command module and help function
+%%
+cmd_atom_to_help_function(CmdAtom) ->
+  case lists:keysearch(CmdAtom, 1, cmd_atom_map()) of
+	  {value, {_, Module, _Function, HelpFunction}} -> {Module, HelpFunction};
 	  false -> unknown_cmd
   end.
 
@@ -148,30 +157,30 @@ cmd_atom_to_function(CmdAtom) ->
 %%
 cmd_atom_map() ->  
   [
-    {cmd_create_block,     ?MODULE,  ui_create_block},
-    {cmd_copy_block,       ?MODULE,  ui_copy_block},
-    {cmd_rename_block,     ?MODULE,  ui_rename_block},
-    {cmd_execute_block,    ?MODULE,  ui_execute_block},
-    {cmd_delete_block,     ?MODULE,  ui_delete_block},
-    {cmd_disable_block,    ?MODULE,  ui_disable_block},
-    {cmd_enable_block,     ?MODULE,  ui_enable_block},
-    {cmd_freeze_block,     ?MODULE,  ui_freeze_block},
-    {cmd_thaw_block,       ?MODULE,  ui_thaw_block},
-    {cmd_get_values,       ?MODULE,  ui_get_values},
-    {cmd_set_value,        ?MODULE,  ui_set_value},
-    {cmd_link_blocks,      ?MODULE,  ui_link_blocks},
-    {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks},
-    {cmd_status,           ?MODULE,  ui_status},
-    {cmd_block_types,      ?MODULE,  ui_block_types},
-    {cmd_valid_block_name, ?MODULE,  ui_valid_block_name},
-    {cmd_load_blocks,      ?MODULE,  ui_load_blocks},
-    {cmd_save_blocks,      ?MODULE,  ui_save_blocks},
-    {cmd_node,             ?MODULE,  ui_node},
-    {cmd_nodes,            ?MODULE,  ui_nodes},
-    {cmd_connect,          ?MODULE,  ui_connect},
-    {cmd_hosts,            ?MODULE,  ui_hosts},
-    {cmd_exit,             ?MODULE,  ui_exit},
-    {cmd_help,             ?MODULE,  ui_help}
+    {cmd_create_block,     ?MODULE,  ui_create_block,   ui_create_block_help},
+    {cmd_copy_block,       ?MODULE,  ui_copy_block,     ui_copy_block_help},
+    {cmd_rename_block,     ?MODULE,  ui_rename_block,   ui_rename_block_help},
+    {cmd_execute_block,    ?MODULE,  ui_execute_block,  ui_execute_block_help},
+    {cmd_delete_block,     ?MODULE,  ui_delete_block,   ui_delete_block_help},
+    {cmd_disable_block,    ?MODULE,  ui_disable_block,  ui_disable_block_help},
+    {cmd_enable_block,     ?MODULE,  ui_enable_block,   ui_enable_block_help},
+    {cmd_freeze_block,     ?MODULE,  ui_freeze_block,   ui_freeze_block_help},
+    {cmd_thaw_block,       ?MODULE,  ui_thaw_block,     ui_thaw_block_help},
+    {cmd_get_values,       ?MODULE,  ui_get_values,     ui_get_values_help},
+    {cmd_set_value,        ?MODULE,  ui_set_value,      ui_set_value_help},
+    {cmd_link_blocks,      ?MODULE,  ui_link_blocks,    ui_link_blocks_help},
+    {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks,  ui_unlink_blocks_help},
+    {cmd_status,           ?MODULE,  ui_status,         ui_status_help},
+    {cmd_block_types,      ?MODULE,  ui_block_types,    ui_block_types_help},
+    {cmd_valid_block_name, ?MODULE,  ui_valid_block_name, ui_valid_block_name_help},
+    {cmd_load_blocks,      ?MODULE,  ui_load_blocks,    ui_load_blocks_help},
+    {cmd_save_blocks,      ?MODULE,  ui_save_blocks,    ui_save_blocks_help},
+    {cmd_node,             ?MODULE,  ui_node,           ui_node_help},
+    {cmd_nodes,            ?MODULE,  ui_nodes,          ui_nodes_help},
+    {cmd_connect,          ?MODULE,  ui_connect,        ui_connect_help},
+    {cmd_hosts,            ?MODULE,  ui_hosts,          ui_hosts_help},
+    {cmd_exit,             ?MODULE,  ui_exit,           ui_exit_help},
+    {cmd_help,             ?MODULE,  ui_help,           ui_help_help}
   ].
 
 
@@ -185,39 +194,35 @@ cmd_atom_map() ->
 %%% filled in
 
 expand([$  | _]) ->
-    {no, "", []};
+  {no, "", []};
 expand(RevBefore) ->    
-    Before = lists:reverse(RevBefore),
-    case longest_prefix(ui_en_us:cmd_map(), Before) of
-	{prefix, P, [_]} ->
-	    {yes, P ++ " ", []};
-	{prefix, "", M} ->
-	    {yes, "", M};
-	{prefix, P, _M} ->
-	    {yes, P, []};
-	{none, _M} ->
-	    {no, "", []}
+  Before = lists:reverse(RevBefore),
+    case longest_prefix(ui_en_us:cmd_string_map(), Before) of
+	    {prefix, P, [_]} -> {yes, P ++ " ", []};
+	    {prefix, "", M}  -> {yes, "", M};
+	    {prefix, P, _M}  -> {yes, P, []};
+	    {none, _M}       -> {no, "", []}
     end.
 
 %% longest prefix in a list, given a prefix
 longest_prefix(List, Prefix) ->
-    case [A || {A, _, _} <- List, lists:prefix(Prefix, A)] of
-	[] ->
+  case [A || {A, _, _} <- List, lists:prefix(Prefix, A)] of
+	  [] ->
 	    {none, List};
-	[S | Rest] ->
+	  [S | Rest] ->
 	    NewPrefix0 =
-		lists:foldl(fun(A, P) ->
-				    common_prefix(A, P, [])
-			    end, S, Rest),
+		    lists:foldl(fun(A, P) ->
+				              common_prefix(A, P, [])
+			              end, S, Rest),
 	    NewPrefix = nthtail(length(Prefix), NewPrefix0),
 	    {prefix, NewPrefix, [S | Rest]}
     end.			
 
 
 common_prefix([C | R1], [C | R2], Acc) ->
-    common_prefix(R1, R2, [C | Acc]);
+  common_prefix(R1, R2, [C | Acc]);
 common_prefix(_, _, Acc) ->
-    lists:reverse(Acc).
+  lists:reverse(Acc).
 
 %% 
 %% same as lists:nthtail(), but no badarg if n > the length of list
@@ -843,7 +848,6 @@ ui_nodes(_Params) ->
 
 % Connect to another node
 ui_connect(Params) ->
-  io:format("ui_connect Params: ~p~n", [Params]),
   case check_num_params(Params, 1) of
     low ->
       io:format("Enter node-name or local~n");
@@ -988,12 +992,11 @@ ui_exit(_Params) ->
 ui_help(Params) ->
   case check_num_params(Params, 0, 1) of
     ok ->
+      
+      CmdList = ui_en_us:cmd_string_map(),
       case length(Params) of  
         0 ->
           io:format("~n     LinkBlox Help~n~n"),
-
-          CmdList = ui_en_us:cmd_string_map(),
-
           lists:map(fun(Cmd) -> 
                       {CmdStr, _CmdAtom, CmdParamStr} = Cmd,
                       io:format("~s ~s~n", [CmdStr, CmdParamStr])
@@ -1001,32 +1004,14 @@ ui_help(Params) ->
                     CmdList);
         1 ->
           % Use the entered parameter as the command Name
-          case Params of
-            ["create"]    -> ui_create_block_help();
-            ["copy"]      -> ui_copy_block_help();
-            ["rename"]    -> ui_rename_block_help();
-            ["execute"]   -> ui_execute_block_help();
-            ["delete"]    -> ui_delete_block_help();
-            ["disable"]   -> ui_disable_block_help();
-            ["enable"]    -> ui_enable_block_help();
-            ["freeze"]    -> ui_freeze_block_help();
-            ["thaw"]      -> ui_thaw_block_help();
-            ["get"]       -> ui_get_values_help();
-            ["set"]       -> ui_set_value_help();
-            ["link"]      -> ui_link_blocks_help();
-            ["unlink"]    -> ui_unlink_blocks_help();
-            ["status"]    -> ui_status_help();
-            ["types"]     -> ui_block_types_help();
-            ["valid"]     -> validate_block_name_help();
-            ["load"]      -> ui_load_blocks_help();
-            ["save"]      -> ui_save_blocks_help();
-            ["node"]      -> ui_node_help();
-            ["nodes"]     -> ui_nodes_help();
-            ["connect"]   -> ui_connect_help();
-            ["hosts"]     -> ui_hosts_help();
-            ["help"]      -> ui_help_help();
-            UnknownCmd    ->
-                io:format("No help for: ~s~n", [UnknownCmd])
+          [CmdHelp] = Params,
+          CmdAtom = cmd_string_to_cmd_atom(CmdHelp),
+          case cmd_atom_to_help_function(CmdAtom) of
+            {Module, HelpFunction} -> 
+              Module:HelpFunction();
+ 
+            unknown_cmd ->
+                io:format("No help for: ~s~n", [CmdHelp])
           end
       end;
     high ->
@@ -1078,9 +1063,9 @@ ui_status_help() ->
 
 ui_block_types_help() ->
   io:format("TODO: Insert types help text here~n").
-  
-validate_block_name_help() ->
-  io:format("TODO: Insert validate help text here~n").
+
+ui_valid_block_name_help() ->
+  io:format("TODO: Insert validate block name help text here~n").
   
 ui_load_blocks_help() ->
   io:format("TODO: Insert load help text here~n").
@@ -1099,11 +1084,13 @@ ui_connect_help() ->
 
 ui_hosts_help() ->
   io:format("Display the contents of the /etc/hosts file~n").
-  
-ui_help_help() ->
-  io:format("TODO: Insert help help text here~n").
-  
 
+ui_exit_help() ->
+   io:format("Exit the UI~n").
+
+ui_help_help() ->
+  io:format("Display the contents of the help screen").
+  
   
 %%
 %% Check the number of parameters in the param list
