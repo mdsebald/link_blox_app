@@ -79,12 +79,10 @@ start_shell(User, Peer) ->
 shell_loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(get(curr_node)) ++ "> ",
-  % Read
+  % read user input
   Line = get_input(Prompt),
-  % Eval
-  Result = eval_cli(Line),
-  % Print
-  io:format("--> ~p\n", [Result]),
+
+  Result = eval_input(Line),
   case Result of
 	  done -> 
 	    exit(normal);
@@ -96,7 +94,7 @@ shell_loop() ->
 %% 
 %% Evaluate user input
 %%
-eval_cli(Line) ->
+eval_input(Line) ->
   case string:tokens(Line, " \n") of
 	  [] -> [];
 	  [Command | Params] ->
@@ -1007,11 +1005,11 @@ ui_help(Params) ->
           [CmdHelp] = Params,
           CmdAtom = cmd_string_to_cmd_atom(CmdHelp),
           case cmd_atom_to_help_function(CmdAtom) of
-            {Module, HelpFunction} -> 
-              Module:HelpFunction();
- 
             unknown_cmd ->
-                io:format("No help for: ~s~n", [CmdHelp])
+              io:format("No help for: ~s~n", [CmdHelp]);
+
+            {Module, HelpFunction} -> 
+              Module:HelpFunction()
           end
       end;
     high ->
@@ -1089,7 +1087,7 @@ ui_exit_help() ->
    io:format("Exit the UI~n").
 
 ui_help_help() ->
-  io:format("Display the contents of the help screen").
+  io:format("Display the contents of the help screen~n").
   
   
 %%
