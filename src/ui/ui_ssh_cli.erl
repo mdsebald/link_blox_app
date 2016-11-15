@@ -619,7 +619,7 @@ ui_link_blocks(Params) ->
             {ok, Link} ->
               case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
                 {error, Reason} ->
-                  io:format("Error: ~p Linking Input: ~s:~s to Ouput: ~p~n", 
+                  io:format("Error: ~p Linking Input: ~s:~s to Output: ~p~n", 
                           [Reason, InputBlockNameStr, InputValueIdStr, Link]);
                 ok ->
                   io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
