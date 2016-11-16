@@ -747,8 +747,7 @@ create_blocks(BlockDefnList) ->
 
 % Process the save blocks command
 ui_save_blocks(Params) ->
-  %% Write the block values to a configuration file
-  % TODO:  Add LinkBlox specific header to config file
+  % Write the block values to a configuration file
   case check_num_params(Params, 0, 1) of
     ok ->
       case length(Params) of  
@@ -763,6 +762,22 @@ ui_save_blocks(Params) ->
           FileName = Params
       end,
 
+      io:format("This will overwrite ~s if the file exists. OK to continue? (Y/N): ", [FileName]),
+      case get_yes() of
+        true ->
+          case linkblox_api:save_blocks(get_node(), FileName) of
+            ok ->
+              io:format("Block config file: ~s saved~n", [FileName]);
+
+            {error, Reason} ->
+              io:format("Error: ~p saving block conifg file: ~s~n", [Reason, FileName])
+          end;
+        _ -> ok
+      end;
+    high -> io:format("Error: Too many parameters~n")
+  end.
+
+-ifdef(CUT_IT_OUT).
       BlockValuesList = block_values(),
             
       Clean = fun(BlockValues) -> clean_block_values(BlockValues) end,
@@ -793,9 +808,6 @@ ui_save_blocks(Params) ->
           io:format("Error: ~p saving block config file: ~s~n", [Reason, FileName])
       end;
  
-    high -> io:format("Error: Too many parameters~n")
-  end.
-
     
 % Clean block values of linked Input and calculated Output values,
 % to make the block values suitable for saving to a file 
@@ -835,6 +847,7 @@ block_values(BlockNames, BlockValuesList) ->
       block_values(RemainingBlockNames, BlockValuesList)
   end.
 
+-endif.
 
 % Execute Erlang BIF node()
 ui_node(_Params) ->

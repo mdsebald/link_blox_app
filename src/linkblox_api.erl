@@ -32,6 +32,7 @@
           set_link/4,
           link/4,
           unlink/4,
+          save_blocks/2,
           update/4,
           execute_block/2,
           is_block_name/2, 
@@ -84,7 +85,7 @@ copy_block(Node, BlockName, BlockValues, InitAttribs) ->
                   {copy_block, BlockName, BlockValues, InitAttribs}).
 
 
-%% delete a block
+%% Delete a block
 -spec delete_block(Node :: node(),
                    BlockName :: block_name()) -> term().
 
@@ -170,6 +171,14 @@ link(Node, BlockName, ValueId, ToBlockName) ->
 
 unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
   gen_server:cast({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, BlockName}).
+
+
+%% Save the current created blocks on this node, to FileName on this node 
+-spec save_blocks(Node :: node(),
+                  FileName :: string()) -> term().
+ 
+save_blocks(Node, FileName) ->
+  gen_server:cast({linkblox_api, Node}, {save_blocks, FileName}).
 
 
 %% Update the input value(s) on this block, 
@@ -528,6 +537,31 @@ handle_call({is_block_type, BlockType}, _From, State) ->
 
 
 %% =====================================================================
+%% Save current blocks on this node to a file
+%% ===================================================================== 
+   
+handle_call({save_blocks, FileName}, _From, State) ->
+  BlockValuesList = block_values(),
+  
+  Clean = fun(BlockValues) -> clean_block_values(BlockValues) end,
+  CleanedBlockValuesList = lists:map(Clean, BlockValuesList),
+  
+  Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
+  Text = lists:map(Format, CleanedBlockValuesList),
+
+   % TODO:  Add LinkBlox specific header to config file, checksum        
+  case file:write_file(FileName, Text) of
+    ok ->
+      Result = ok;
+
+    {error, Reason} -> 
+      error_logger:error_msg(" ~p saving block conifg file: ~s~n", [Reason, FileName]),
+      Result = {error, Reason}
+  end,
+  {reply, Result, State};
+
+
+%% =====================================================================
 %% Unknown Call message
 %% =====================================================================      
 handle_call(Request, From, State) ->
@@ -639,6 +673,34 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%%
+%% Clean block values of linked Input and calculated Output values,
+%% to make the block values suitable for saving to a file 
+%%
+clean_block_values({Config, Inputs, Outputs}) ->
+  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
+  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
+  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
+ 
+  % Cleaned block values
+  {Config, EmptyInputs, EmptyOutputs1}.
+
+
+%%
+%% Get the list of block values for all of the blocks currently created
+%%
+block_values() ->
+  block_values(block_supervisor:block_names(), []).
+    
+block_values([], BlockValuesList) -> 
+  BlockValuesList;
+ 
+block_values(BlockNames, BlockValuesList) ->
+  [BlockName | RemainingBlockNames] = BlockNames,
+  {Config, Inputs, Outputs, _Private} = block_server:get_block(BlockName),
+  BlockValues = {Config, Inputs, Outputs},
+  block_values(RemainingBlockNames, [BlockValues | BlockValuesList]).
 
 
 %%
