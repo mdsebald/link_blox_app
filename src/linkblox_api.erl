@@ -178,7 +178,7 @@ unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
                   FileName :: string()) -> term().
  
 save_blocks(Node, FileName) ->
-  gen_server:cast({linkblox_api, Node}, {save_blocks, FileName}).
+  gen_server:call({linkblox_api, Node}, {save_blocks, FileName}).
 
 
 %% Update the input value(s) on this block, 
