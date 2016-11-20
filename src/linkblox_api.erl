@@ -32,7 +32,9 @@
           set_link/4,
           link/4,
           unlink/4,
+          get_blocks/1,
           save_blocks/2,
+          save_blocks/3,
           update/4,
           execute_block/2,
           is_block_name/2, 
@@ -173,6 +175,13 @@ unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
   gen_server:cast({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, BlockName}).
 
 
+%% Get all of the current created blocks on this node 
+-spec get_blocks(Node :: node()) -> term().
+ 
+get_blocks(Node) ->
+  gen_server:call({linkblox_api, Node}, get_blocks).
+
+
 %% Save the current created blocks on this node, to FileName on this node 
 -spec save_blocks(Node :: node(),
                   FileName :: string()) -> term().
@@ -180,6 +189,14 @@ unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
 save_blocks(Node, FileName) ->
   gen_server:call({linkblox_api, Node}, {save_blocks, FileName}).
 
+
+%% Save the Block Data, to FileName on this node 
+-spec save_blocks(Node :: node(),
+                  FileName :: string(),
+                  BlockData :: tuple()) -> term().
+ 
+save_blocks(Node, FileName, BlockData) ->
+  gen_server:call({linkblox_api, Node}, {save_blocks, FileName, BlockData}).
 
 %% Update the input value(s) on this block, 
 %% linked to the FromBlockName: ValueId 
@@ -537,27 +554,30 @@ handle_call({is_block_type, BlockType}, _From, State) ->
 
 
 %% =====================================================================
-%% Save current blocks on this node to a file
+%% Get current values for all of the blocks on this node
+%% ===================================================================== 
+   
+handle_call(get_blocks, _From, State) ->
+  Result = block_utils:get_blocks_to_save(),
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Save current values for all of the blocks on this node,
+%%  to a file on this node.
 %% ===================================================================== 
    
 handle_call({save_blocks, FileName}, _From, State) ->
-  BlockValuesList = block_values(),
-  
-  Clean = fun(BlockValues) -> clean_block_values(BlockValues) end,
-  CleanedBlockValuesList = lists:map(Clean, BlockValuesList),
-  
-  Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
-  Text = lists:map(Format, CleanedBlockValuesList),
+  BlockData = block_utils:get_blocks_to_save(),
+  Result = block_utils:save_blocks_to_file(FileName, BlockData),
+  {reply, Result, State};
 
-   % TODO:  Add LinkBlox specific header to config file, checksum        
-  case file:write_file(FileName, Text) of
-    ok ->
-      Result = ok;
-
-    {error, Reason} -> 
-      error_logger:error_msg(" ~p saving block conifg file: ~s~n", [Reason, FileName]),
-      Result = {error, Reason}
-  end,
+%% =====================================================================
+%% Save the Block Data to a file on this node.
+%% ===================================================================== 
+   
+handle_call({save_blocks, FileName, BlockData}, _From, State) ->
+  Result = block_utils:save_blocks_to_file(FileName, BlockData),
   {reply, Result, State};
 
 
@@ -673,34 +693,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-%%
-%% Clean block values of linked Input and calculated Output values,
-%% to make the block values suitable for saving to a file 
-%%
-clean_block_values({Config, Inputs, Outputs}) ->
-  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
-  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
-  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
- 
-  % Cleaned block values
-  {Config, EmptyInputs, EmptyOutputs1}.
-
-
-%%
-%% Get the list of block values for all of the blocks currently created
-%%
-block_values() ->
-  block_values(block_supervisor:block_names(), []).
-    
-block_values([], BlockValuesList) -> 
-  BlockValuesList;
- 
-block_values(BlockNames, BlockValuesList) ->
-  [BlockName | RemainingBlockNames] = BlockNames,
-  {Config, Inputs, Outputs, _Private} = block_server:get_block(BlockName),
-  BlockValues = {Config, Inputs, Outputs},
-  block_values(RemainingBlockNames, [BlockValues | BlockValuesList]).
 
 
 %%

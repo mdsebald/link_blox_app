@@ -97,26 +97,21 @@ block_processes() ->
 init(BlockValuesFile) ->
   error_logger:info_msg("Starting LinkBlox Block supervisor~n"),
 
-  % file:consult() turns a text file into a set of Erlang terms
-  case file:consult(BlockValuesFile) of
+  case block_utils:load_blocks_from_file(BlockValuesFile) of
     {ok, BlockValuesList} ->
-      error_logger:info_msg("Loading block Values config file: ~p~n", [BlockValuesFile]),
-
       % TODO: Check for good, "ok" return value
       BlockSpecs = create_block_specs(BlockValuesList),
       
       SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
       {ok, {SupFlags, BlockSpecs}};
       
-    {error, Reason} ->
-      error_logger:error_msg("~p error, reading block config file: ~p~n", [Reason, BlockValuesFile]),
+    {error, _Reason} ->
       error_logger:error_msg("Loading Demo config... ~n"),
 
       BlockSpecs = create_block_specs(demo_config:create_demo_config()),
              
       SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
-            
-    {ok, {SupFlags, BlockSpecs}}
+      {ok, {SupFlags, BlockSpecs}}
   end.
 
 
