@@ -44,20 +44,8 @@ start_link(BlockValuesFile) ->
   Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
-  
-  % Start the UI loop,
-  % TODO: Is there a better way to do this?  Should this be controled by a config value?
-  % TODO: Don't start local UI.  Work through SSH CLI, for now
-  %  spawn(ui_main, init, []),
 
-  % Start the SSH CLI UI
-  % TODO: Should be configurable,
-  %       SSH port number,
-  %       system_dir,
-  %       Dont' start on embedded (Nerves build) devices.
-  %       Used because we get a nice shell UI experience, 
-  %       (i.e command history, line editing, tab completion, etc)
-  ui_ssh_cli:start(1111, [{system_dir, "/home/vagrant/ssh_host"}]),
+  start_programing_interface(),
 
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 
@@ -79,3 +67,22 @@ init(BlockValuesFile) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+-ifdef(STANDALONE).
+
+% If this is the Nerves embedded version, 
+% don't start the SSH command line interface
+start_programing_interface() -> ok.
+
+-else.
+
+% Hosted version, start up the SSH command line interface
+start_programing_interface() ->
+  % TODO: Should be configurable,
+  %       SSH port number,
+  %       system_dir,
+  %       Used because we get a nice shell UI experience, 
+  %       (i.e command history, line editing, tab completion, etc)
+  ui_ssh_cli:start(1111, [{system_dir, "/home/vagrant/ssh_host"}]).
+
+-endif.
