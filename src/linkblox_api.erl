@@ -312,7 +312,7 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
       case block_utils:is_block(BlockName) of
         false ->
           BlockDefn = BlockModule:create(BlockName, "Default Comment"),
-          Result = block_utils:create_block(BlockDefn),
+          Result = block_utils:create_block(BlockDefn);
         _ ->
           Result = {error, block_exists}
       end;
