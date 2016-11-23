@@ -34,7 +34,6 @@ cmd_string_map() ->
     {"link",      cmd_link_blocks,      "<block name> <input name> <block name> <output name>"},
     {"unlink",    cmd_unlink_blocks,    "<block name> <input name>"},
     {"status",    cmd_status,           ""},
-    {"types",     cmd_block_types,      ""},
     {"valid",     cmd_valid_block_name, "<block name>"},
     {"load",      cmd_load_blocks,      "<file name> | blank"},
     {"save",      cmd_save_blocks,      "<file name> | blank"},

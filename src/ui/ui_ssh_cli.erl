@@ -32,7 +32,6 @@
           ui_link_blocks/1,     ui_link_blocks_help/0,
           ui_unlink_blocks/1,   ui_unlink_blocks_help/0,
           ui_status/1,          ui_status_help/0,
-          ui_block_types/1,     ui_block_types_help/0,
           ui_valid_block_name/1, ui_valid_block_name_help/0,
           ui_load_blocks/1,     ui_load_blocks_help/0,
           ui_save_blocks/1,     ui_save_blocks_help/0,
@@ -87,6 +86,8 @@ shell_loop() ->
 	  done -> 
 	    exit(normal);
 	  _ -> 
+      % Put and extra blank line after each command
+      io:format("~n"),
 	    shell_loop()
     end.
 
@@ -95,6 +96,7 @@ shell_loop() ->
 %% Evaluate user input
 %%
 eval_input(Line) ->
+  % TODO:  Need to treat words enclosed by quotes as one parameter
   case string:tokens(Line, " \n") of
 	  [] -> [];
 	  [Command | Params] ->
@@ -115,7 +117,7 @@ eval_input(Line) ->
 		          end
           end
 	    end
-    end.
+  end.
 
 
 %% 
@@ -169,7 +171,6 @@ cmd_atom_map() ->
     {cmd_link_blocks,      ?MODULE,  ui_link_blocks,    ui_link_blocks_help},
     {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks,  ui_unlink_blocks_help},
     {cmd_status,           ?MODULE,  ui_status,         ui_status_help},
-    {cmd_block_types,      ?MODULE,  ui_block_types,    ui_block_types_help},
     {cmd_valid_block_name, ?MODULE,  ui_valid_block_name, ui_valid_block_name_help},
     {cmd_load_blocks,      ?MODULE,  ui_load_blocks,    ui_load_blocks_help},
     {cmd_save_blocks,      ?MODULE,  ui_save_blocks,    ui_save_blocks_help},
@@ -505,25 +506,28 @@ ui_get_values(Params) ->
         "blocks" ->  % Just get the list of block names
           BlockNames = linkblox_api:get_block_names(get_node()),
           io:format("~n"),
-          lists:map(fun(BlockName) -> io:format("  ~p~n", [BlockName]) end, BlockNames),
-          io:format("~n");
+          lists:map(fun(BlockName) -> io:format("  ~p~n", [BlockName]) end, BlockNames);
 
         "types" ->  % Just get the list of block types information
           TypesInfo = linkblox_api:get_types_info(get_node()),
-          io:format("~n"),
-          io:format("Block Type Name   Version   Description~n"),
-          io:format("---------------- --------- ----------------------------------------~n"),
-          lists:map(fun(TypeInfo) ->
-                      {TypeName, Version, Description} = TypeInfo, 
-                      io:format("~s, ~s, ~s~n", [TypeName, Version, Description]) end, 
-                      TypesInfo),
-          io:format("~n");
+          % Print the list of type names version
+          io:fwrite("~n~-16s ~-8s ~-60s~n", 
+                      ["Block Type", "Version", "Description"]),
+          io:fwrite("~16c ~8c ~60c~n", [$-, $-, $-] ), 
+   
+          lists:map(fun({TypeName, Version, Description}) -> 
+                    io:fwrite("~-16s ~-8s ~-60s~n", 
+                              [string:left(TypeName, 16), 
+                               string:left(Version, 8),
+                               string:left(Description, 60)]) end, 
+                              TypesInfo),
+          TypesInfo = linkblox_api:get_types_info(get_node());
 
        _ ->
           BlockName = list_to_atom(BlockNameStr),
           case linkblox_api:get_block(get_node(), BlockName) of
             {ok, BlockValues} -> 
-              io:format("~n~p~n", [BlockValues]);
+              format_block_values(BlockValues);
             {error, block_not_found} -> 
               io:format("Error: Block ~s does not exist~n", [BlockNameStr]);
             Unknown ->
@@ -560,8 +564,57 @@ ui_get_values(Params) ->
 
     _ -> io:format("Error: Too many parameters~n")
   end.    
- 
- 
+
+
+%%
+%% Display the block values in a readable format
+%%
+format_block_values(BlockValues) ->
+  FormatAttribute = fun(BlockValue) -> format_attribute(BlockValue) end,
+
+  case BlockValues of
+    {Config, Inputs, Outputs} ->
+      io:format("Config:~n"),
+      lists:map(FormatAttribute, Config),
+
+      io:format("Inputs:~n"),
+      lists:map(FormatAttribute, Inputs),
+
+      io:format("Ouptuts:~n"),
+      lists:map(FormatAttribute, Outputs);
+
+    _ ->
+      io:format("Invalid Block Values. Unable to display. ~n")
+  end.
+
+
+%%
+%% format an attribute name and value into a displayable string
+%%
+format_attribute(BlockValue) ->
+  case BlockValue of
+    {ValueId, {Value}} ->
+      io:format("  ~p:  ~p~n", [ValueId, Value]);
+
+    {ValueId, {Value, LinkOrRefs}} ->
+      case LinkOrRefs of
+        {OutAttribName} ->
+          io:format("  ~p:  ~p  Link: ~p~n", [ValueId, Value, OutAttribName]);
+        {BlockName, OutAttribName} ->
+          io:format("  ~p:  ~p  Link: ~p:~p~n", [ValueId, Value, BlockName, OutAttribName]);
+        {NodeName, BlockName, OutAttribName} ->
+          io:format("  ~p:  ~p  Link: ~p:~p:~p~n", [ValueId, Value, NodeName, BlockName, OutAttribName]);
+        References ->
+          io:format("  ~p:  ~p  Refs: ~p~n", [ValueId, Value, References])
+      end;
+
+    {ValueName, ArrayValues} ->
+      io:format("  ~p:  ", [ValueName]),
+      % TODO: List each array value separately
+      io:format("~p~n", [ArrayValues])
+  end.
+
+
 % Process the set value command
 ui_set_value(Params) ->
   case check_num_params(Params, 3) of
@@ -717,32 +770,19 @@ ui_load_blocks(Params) ->
           FileName = Params
       end,
       
-      % file:consult() turns the contents of a text file into Erlang terms
-      case file:consult(FileName) of
-        {ok, BlockDefnList} ->
-          create_blocks(BlockDefnList);
+      case linkblox_api:load_blocks_from_file(get_node(), FileName) of
+        ok ->
+          io:format("Block config file: ~s loaded~n", [FileName]);
+
         {error, Reason} ->
-          io:format("Error: ~p loading block config file: ~p~n", [Reason, FileName])
+          io:format("Error: ~p loading block conifg file: ~s~n", [Reason, FileName])
       end;
 
     high -> io:format("Error: Too many parameters~n")
   end.
 
+% TODO: Create command to get block data from one node and load it on another node
 
-% Create blocks from a list of block definitions
-create_blocks([]) -> ok;
-
-create_blocks(BlockDefnList) ->
-  [BlockDefn | RemainingBlockDefnList] = BlockDefnList,
-  {Config, _Inputs, _Outputs} = BlockDefn,
-  BlockName = config_utils:name(Config),
-  case linkblox_api:create_block(get_node(), BlockDefn) of
-    ok -> 
-      io:format("Block ~p Created on node: ~p~n", [BlockName, get_node()]);
-    {error, Reason} -> 
-      io:format("Error: ~p creating block ~p on node: ~p ~n", [Reason, BlockName, get_node()])
-  end,
-  create_blocks(RemainingBlockDefnList).    
 
 
 % Process the save blocks command
@@ -777,85 +817,16 @@ ui_save_blocks(Params) ->
     high -> io:format("Error: Too many parameters~n")
   end.
 
--ifdef(CUT_IT_OUT).
-      BlockValuesList = block_values(),
-            
-      Clean = fun(BlockValues) -> clean_block_values(BlockValues) end,
-
-      CleanedBlockValuesList = lists:map(Clean, BlockValuesList),
-
-      Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
-      Text = lists:map(Format, CleanedBlockValuesList),
-            
-      case file:write_file(FileName, Text, [exclusive]) of
-        ok -> 
-          io:format("Block config file: ~s saved~n", [FileName]);
-
-        {error, eexist} ->
-          io:format("Error: ~s exists. Overwrite? (Y/N): ", [FileName]),
-          case get_yes() of
-            true ->
-              case file:write_file(FileName, Text) of
-                ok ->
-                  io:format("Block config file: ~s saved~n", [FileName]);
-
-                {error, Reason} ->
-                  io:format("Error: ~p saving block conifg file: ~s~n", [Reason, FileName])
-              end;
-            _ -> ok
-          end;
-        {error, Reason} ->
-          io:format("Error: ~p saving block config file: ~s~n", [Reason, FileName])
-      end;
- 
-    
-% Clean block values of linked Input and calculated Output values,
-% to make the block values suitable for saving to a file 
-
-clean_block_values({Config, Inputs, Outputs}) ->
-
-  % At this point the Block Values are on the local node
-  % so it is OK to call the local utility functions without
-  % going through the linkblox_api.  
-  % This also means the file will be saved on the local node
-  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
-  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
-  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
- 
-  % Cleaned block values
-  {Config, EmptyInputs, EmptyOutputs1}.
-
-
-%%
-%% Get the list of block values for all of the blocks currently running
-%% linkblox_api:get_block() does not return Private values
-%%
-block_values() ->
-  block_values(linkblox_api:get_block_names(get_node()), []).
-    
-block_values([], BlockValuesList) -> 
-  BlockValuesList;
- 
-block_values(BlockNames, BlockValuesList) ->
-  [BlockName | RemainingBlockNames] = BlockNames,
-  case linkblox_api:get_block(get_node(), BlockName) of
-    {ok, BlockValues} ->
-      block_values(RemainingBlockNames, [BlockValues | BlockValuesList]);
-
-    {error, Reason} -> 
-      io:format("Error: ~p getting block: ~p~n", [Reason, BlockName]),
-      block_values(RemainingBlockNames, BlockValuesList)
-  end.
-
--endif.
 
 % Execute Erlang BIF node()
 ui_node(_Params) ->
   io:format( "Node: ~p~n", [node()]).
 
+
 % Execute Erlang BIF nodes()
 ui_nodes(_Params) ->  
   io:format( "Nodes: ~p~n", [[node() | nodes()]]).
+
 
 % Connect to another node
 ui_connect(Params) ->
@@ -955,26 +926,6 @@ ui_valid_block_name(Params) ->
 
 
 %%
-%% Get list of the block type names and versions
-%%
-ui_block_types(_Params) ->
-  BlockTypes = block_types:block_types_info(),
-   
-  % Print the list of type names version
-  io:fwrite("~n~-16s ~-8s ~-60s~n", 
-              ["Block Type", "Version", "Description"]),
-  io:fwrite("~16c ~8c ~60c~n", [$-, $-, $-] ), 
-   
-  lists:map(fun({TypeName, Version, Description}) -> 
-            io:fwrite("~-16s ~-8s ~-60s~n", 
-                      [string:left(TypeName, 16), 
-                       string:left(Version, 8),
-                       string:left(Description, 60)]) end, 
-                      BlockTypes),
-  io:format("~n").
-
-
-%%
 %% Print out the /etc/hosts file
 %%
 ui_hosts(_Params) ->
@@ -1071,9 +1022,6 @@ ui_unlink_blocks_help() ->
   
 ui_status_help() ->
   io:format("TODO: Insert status help text here~n").
-
-ui_block_types_help() ->
-  io:format("TODO: Insert types help text here~n").
 
 ui_valid_block_name_help() ->
   io:format("TODO: Insert validate block name help text here~n").

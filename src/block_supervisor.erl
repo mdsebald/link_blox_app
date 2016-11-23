@@ -97,7 +97,7 @@ block_processes() ->
 init(BlockValuesFile) ->
   error_logger:info_msg("Starting LinkBlox Block supervisor~n"),
 
-  case block_utils:load_blocks_from_file(BlockValuesFile) of
+  case block_utils:get_blocks_from_file(BlockValuesFile) of
     {ok, BlockValuesList} ->
       % TODO: Check for good, "ok" return value
       BlockSpecs = create_block_specs(BlockValuesList),

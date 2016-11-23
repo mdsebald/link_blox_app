@@ -35,6 +35,8 @@
           get_blocks/1,
           save_blocks/2,
           save_blocks/3,
+          load_block_file/2,
+          load_block_data/2,
           update/4,
           execute_block/2,
           is_block_name/2, 
@@ -79,12 +81,12 @@ create_block(Node, BlockDefn) ->
 %% Create a copy of a block
 -spec copy_block(Node :: node(),
                  BlockName :: block_name(),
-                 BlockValues :: block_defn(),
+                 BlockDefn :: block_defn(),
                  InitAttribs :: list()) -> term().
 
-copy_block(Node, BlockName, BlockValues, InitAttribs) ->
+copy_block(Node, BlockName, BlockDefn, InitAttribs) ->
   gen_server:call({linkblox_api, Node}, 
-                  {copy_block, BlockName, BlockValues, InitAttribs}).
+                  {copy_block, BlockName, BlockDefn, InitAttribs}).
 
 
 %% Delete a block
@@ -193,10 +195,26 @@ save_blocks(Node, FileName) ->
 %% Save the Block Data, to FileName on this node 
 -spec save_blocks(Node :: node(),
                   FileName :: string(),
-                  BlockData :: tuple()) -> term().
+                  BlockData :: term()) -> term().
  
 save_blocks(Node, FileName, BlockData) ->
   gen_server:call({linkblox_api, Node}, {save_blocks, FileName, BlockData}).
+
+
+%% Load the blocks stored in FileName on this node  
+-spec load_block_file(Node :: node(),
+                      FileName :: string()) -> term().
+ 
+load_block_file(Node, FileName) ->
+  gen_server:call({linkblox_api, Node}, {load_block_file, FileName}).
+
+
+%% Load this Block Data onto this node 
+-spec load_block_data(Node :: node(),
+                      BlockData :: term()) -> term().
+ 
+load_block_data(Node, BlockData) ->
+  gen_server:call({linkblox_api, Node}, {load_block_data, BlockData}).
 
 %% Update the input value(s) on this block, 
 %% linked to the FromBlockName: ValueId 
@@ -284,7 +302,7 @@ handle_call(stop, _From, State) ->
   {stop, normal, ok, State};
 
 %% =====================================================================
-%% Create a block
+%% Create a block from block type and block name
 %% =====================================================================    
 % TODO: Set initial attribute values
 handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
@@ -294,12 +312,7 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
       case block_utils:is_block(BlockName) of
         false ->
           BlockDefn = BlockModule:create(BlockName, "Default Comment"),
-          case block_supervisor:start_block(BlockDefn) of
-            {ok, _Pid} -> 
-              Result = ok;
-            {error, Reason} -> 
-              Result = {error, Reason}
-          end;
+          Result = block_utils:create_block(BlockDefn),
         _ ->
           Result = {error, block_exists}
       end;
@@ -313,30 +326,7 @@ handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
 %% Create a block from a set of existing block values
 %% =====================================================================    
 handle_call({create_block, BlockDefn}, _From, State) ->
-  case BlockDefn of
-    {Config, _Inputs, _Outputs} ->
-      % TODO: Check the BlockDefn version against the local block module code version
-      {BlockName, BlockModule, _Version} = config_utils:name_module_version(Config),
-      % Check if this block type exists on this node
-      case lists:member(BlockModule, block_types:block_type_modules()) of
-        true ->
-          case block_utils:is_block(BlockName) of
-            false ->
-              case block_supervisor:start_block(BlockDefn) of
-                {ok, _Pid} -> 
-                  Result = ok;
-                {error, Reason} -> 
-                  Result = {error, Reason}
-              end;
-            _ ->
-              Result = {error, block_exists}
-          end;
-        _ ->
-          Result = {error, invalid_block_type}
-      end;
-    _ ->
-      Result = {error, invalid_block_defn}
-  end,
+  Result = block_utils:create_block(BlockDefn),
   {reply, Result, State};
 
 
@@ -578,6 +568,24 @@ handle_call({save_blocks, FileName}, _From, State) ->
    
 handle_call({save_blocks, FileName, BlockData}, _From, State) ->
   Result = block_utils:save_blocks_to_file(FileName, BlockData),
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Load the block data in Filename, on this node, onto this node
+%% ===================================================================== 
+   
+handle_call({load_block_file, FileName}, _From, State) ->
+  Result = block_utils:load_blocks_from_file(FileName),
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Load the Block Data onto this node.
+%% ===================================================================== 
+   
+handle_call({load_block_data, BlockData}, _From, State) ->
+  Result = block_utils:load_blocks(BlockData),
   {reply, Result, State};
 
 

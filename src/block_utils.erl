@@ -19,7 +19,10 @@
           char_to_segments/2,
           get_blocks_to_save/0,
           save_blocks_to_file/2,
-          load_blocks_from_file/1
+          load_blocks_from_file/1,
+          create_blocks/1,
+          create_block/1,
+          get_blocks_from_file/1
 ]). 
 
 %%
@@ -95,15 +98,13 @@ get_blocks_to_save() ->
   lists:map(Format, CleanedBlockValuesList).
 
 
-
-
 -ifdef(STANDALONE).
 % Embedded version, load or save file in "/root" partition
--define(CONFIG_FOLDER, "/root/LinkBlox/").
+-define(CONFIG_FOLDER, "/root/").
 
 -else.
 % Hosted version, load or save file in the default app folder
-% TODO: Look at options for manipulating file name in the Eralna filename library
+% TODO: Look at options for manipulating file name in the Erlang filename library
 -define(CONFIG_FOLDER, "").
 
 -endif.
@@ -123,39 +124,103 @@ save_blocks_to_file(FileName, BlockData) ->
       case file:write_file(FileName, BlockData) of
         ok ->
           error_logger:info_msg("Block config saved to file: ~s~n", [TargetFileName]),
-          Result = ok;
+          ok;
 
         {error, Reason} -> 
           error_logger:error_msg(" ~p saving block config file: ~s~n", [Reason, TargetFileName]),
-          Result = {error, Reason}
+          {error, Reason}
       end;
     {error, Reason} ->
       error_logger:error_msg(" ~p saving block config file: ~s~n", [Reason, TargetFileName]),
-      Result = {error, Reason}
-  end,
-  Result.
+      {error, Reason}
+  end.
 
 
 %%
-%% Load the formatted list of block values from a file
-%% Used to create blocks on startup
+%% Load the blocks in Filename, on this node, onto this node
+%%
+-spec load_blocks_from_file(FileName :: string) -> ok | {error, atom()}.
+
+load_blocks_from_file(FileName) ->
+  case get_blocks_from_file(FileName) of
+    {ok, BlockDefnList} ->
+      create_blocks(BlockDefnList),
+      ok;
+    {error, Reason} ->
+      {error, Reason}
+  end.
+
+
+%%
+%% Get the formatted list of block values from a file
 %%
 % TODO: Check header and checksum, when implemented
 
--spec load_blocks_from_file(FileName :: string()) -> {ok, term()} | {error, atom()}.
+-spec get_blocks_from_file(FileName :: string()) -> {ok, term()} | {error, atom()}.
 
-load_blocks_from_file(FileName) ->
+get_blocks_from_file(FileName) ->
   TargetFileName = ?CONFIG_FOLDER ++ FileName,
 
   % file:consult() turns a text file into a set of Erlang terms
   case file:consult(TargetFileName) of
-    {ok, BlockValuesList} ->
-      error_logger:info_msg("Loading block Values config file: ~p~n", [TargetFileName]),
-      {ok, BlockValuesList};
+    {ok, BlockDefnList} ->
+      error_logger:info_msg("Opening block Values config file: ~p~n", [TargetFileName]),
+      {ok, BlockDefnList};
  
     {error, Reason} ->
       error_logger:error_msg("~p error, reading block config file: ~p~n", [Reason, TargetFileName]),
       {error, Reason}
+  end.
+
+%%
+%% Create blocks from a list of block values
+%%
+-spec create_blocks(BlockDefnList :: list(block_defn())) -> ok.
+
+create_blocks([]) -> ok;
+
+create_blocks(BlockDefnList) ->
+  [BlockDefn | RemainingBlockDefnList] = BlockDefnList,
+  {Config, _Inputs, _Outputs} = BlockDefn,
+  BlockName = config_utils:name(Config),
+  case create_block(BlockDefn) of
+    ok -> 
+      error_logger:info_msg("Block ~p Created~n", [BlockName]);
+    {error, Reason} -> 
+      error_logger:error_msg("Error: ~p creating block ~p~n", [Reason, BlockName])
+  end,
+  create_blocks(RemainingBlockDefnList). 
+
+
+%%
+%% Create a block from the given BlockDefn
+%%
+-spec create_block(BlockDefn :: block_defn()) -> ok | {error, atom()}.
+
+create_block(BlockDefn) ->
+  case BlockDefn of
+    {Config, _Inputs, _Outputs} ->
+      % TODO: Check the BlockDefn version against the local block module code version
+      {BlockName, BlockModule, _Version} = config_utils:name_module_version(Config),
+      % Check if this block type, exists on this node
+      case lists:member(BlockModule, block_types:block_type_modules()) of
+        true ->
+          case block_utils:is_block(BlockName) of
+            false ->
+              case block_supervisor:start_block(BlockDefn) of
+                {ok, _Pid} -> 
+                  ok;
+                {error, Reason} -> 
+                  {error, Reason}
+              end;
+            _ ->
+              {error, block_exists}
+          end;
+        _ ->
+          {error, invalid_block_type}
+      end;
+    _ ->
+      {error, invalid_block_values}
   end.
 
 
