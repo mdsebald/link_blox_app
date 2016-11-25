@@ -566,9 +566,7 @@ ui_get_values(Params) ->
   end.    
 
 
-%%
-%% Display the block values in a readable format
-%%
+% Display the block values in a readable format
 format_block_values(BlockValues) ->
   FormatAttribute = fun(BlockValue) -> format_attribute(BlockValue) end,
 
@@ -580,7 +578,7 @@ format_block_values(BlockValues) ->
       io:format("Inputs:~n"),
       lists:map(FormatAttribute, Inputs),
 
-      io:format("Ouptuts:~n"),
+      io:format("Outputs:~n"),
       lists:map(FormatAttribute, Outputs);
 
     _ ->
@@ -588,31 +586,110 @@ format_block_values(BlockValues) ->
   end.
 
 
-%%
-%% format an attribute name and value into a displayable string
-%%
+% format an attribute name and value into a displayable string
 format_attribute(BlockValue) ->
   case BlockValue of
     {ValueId, {Value}} ->
-      io:format("  ~p:  ~p~n", [ValueId, Value]);
+      format_value_id_value(ValueId, Value),
+      format_newline();
 
     {ValueId, {Value, LinkOrRefs}} ->
       case LinkOrRefs of
+        {} ->
+          format_value_id_value(ValueId, Value),
+          format_newline();
+
+        [] ->
+          format_value_id_value(ValueId, Value),
+          format_newline();
+
         {OutAttribName} ->
-          io:format("  ~p:  ~p  Link: ~p~n", [ValueId, Value, OutAttribName]);
+          format_value_id_value(ValueId, Value),
+          io:format("  Link: ~p", [OutAttribName]),
+          format_newline();
+
         {BlockName, OutAttribName} ->
-          io:format("  ~p:  ~p  Link: ~p:~p~n", [ValueId, Value, BlockName, OutAttribName]);
+          format_value_id_value(ValueId, Value),
+          io:format("  Link: ~p:~p", [BlockName, OutAttribName]),
+          format_newline();
+
         {NodeName, BlockName, OutAttribName} ->
-          io:format("  ~p:  ~p  Link: ~p:~p:~p~n", [ValueId, Value, NodeName, BlockName, OutAttribName]);
+          format_value_id_value(ValueId, Value),
+          io:format("  Link: ~p:~p:~p", [NodeName, BlockName, OutAttribName]),
+          format_newline();
+
         References ->
-          io:format("  ~p:  ~p  Refs: ~p~n", [ValueId, Value, References])
+          format_value_id_value(ValueId, Value),
+          io:format("  Refs: ~p", [References]),
+          format_newline()
       end;
 
     {ValueName, ArrayValues} ->
-      io:format("  ~p:  ", [ValueName]),
-      % TODO: List each array value separately
-      io:format("~p~n", [ArrayValues])
+      format_array_values(ValueName, 1, ArrayValues)
   end.
+
+
+% Format one Value ID and value
+format_value_id_value(ValueId, Value) ->
+  % TODO: pick specific value ids for special formatting, (i.e. last_exec)
+  io:format("  ~p:  ~p", [ValueId, Value]).
+
+
+% Format a value by itself
+format_value(Value) ->
+  io:format("  ~p", [Value]).
+
+
+% Format new line
+format_newline() ->
+  io:format("~n").
+
+
+% Format array values
+format_array_values(_ValueName, _Index, []) ->
+  ok;
+
+format_array_values(ValueName, Index, ArrayValues) ->
+  io:format(" ~p[~w]:", [ValueName, Index]),
+  [ArrayValue | RemainingArrayValues] = ArrayValues,
+
+  case ArrayValue of
+    {Value} ->
+      format_value(Value),
+      format_newline();
+
+    {Value, LinkOrRefs}->
+      case LinkOrRefs of
+        {} ->
+          format_value(Value),
+          format_newline();
+
+        [] ->
+          format_value(Value),
+          format_newline();
+
+        {OutAttribName} ->
+          format_value(Value),
+          io:format("  Link: ~p", [OutAttribName]),
+          format_newline();
+
+        {BlockName, OutAttribName} ->
+          format_value(Value),
+          io:format("  Link: ~p:~p", [BlockName, OutAttribName]),
+          format_newline();
+
+        {NodeName, BlockName, OutAttribName} ->
+          format_value(Value),
+          io:format("  Link: ~p:~p:~p", [NodeName, BlockName, OutAttribName]),
+          format_newline();
+
+        References ->
+          format_value(Value),
+          io:format("  Refs: ~p", [References]),
+          format_newline()
+      end
+  end,
+  format_array_values(ValueName, (Index + 1), RemainingArrayValues). 
 
 
 % Process the set value command
