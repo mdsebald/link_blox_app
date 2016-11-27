@@ -631,8 +631,12 @@ format_attribute(BlockValue) ->
 
 % Format one Value ID and value
 format_value_id_value(ValueId, Value) ->
-  % TODO: pick specific value ids for special formatting, (i.e. last_exec)
-  io:format("  ~p:  ~p", [ValueId, Value]).
+  case ValueId of
+    last_exec ->
+      io:format("  ~p:  ~s", [ValueId, format_last_exec(Value)]);
+    _ ->
+      io:format("  ~p:  ~p", [ValueId, Value])
+  end.
 
 
 % Format a value by itself
@@ -645,12 +649,25 @@ format_newline() ->
   io:format("~n").
 
 
+% Format last_exec value
+format_last_exec(Value) ->
+  case Value of 
+    not_active ->
+      "not_active";
+    {Hour, Minute, Second, Micro} ->
+      io_lib:format("~2w:~2..0w:~2..0w.~6..0w", 
+                    [Hour,Minute,Second,Micro]);
+    _ ->
+      "undef last_exec val"
+  end.  
+
+
 % Format array values
 format_array_values(_ValueName, _Index, []) ->
   ok;
 
 format_array_values(ValueName, Index, ArrayValues) ->
-  io:format(" ~p[~w]:", [ValueName, Index]),
+  io:format("  ~p[~w]:", [ValueName, Index]),
   [ArrayValue | RemainingArrayValues] = ArrayValues,
 
   case ArrayValue of
