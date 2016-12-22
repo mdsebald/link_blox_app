@@ -297,7 +297,7 @@ delete({Config, Inputs, Outputs, Private}) ->
                       I2cAddr :: integer()) -> {ok, pid()} | {error, atom()}.
                       
 init_led_driver(I2cDevice, I2cAddr) ->
-   case i2c:start_link(I2cDevice, (I2cAddr)) of
+   case i2c:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       i2c:write(I2cRef, <<?DISPLAY_OSCILLATOR_ON>>),
       i2c:write(I2cRef, <<?DISPLAY_BLANK>>),
