@@ -86,13 +86,13 @@ create(BlockName, Description, InitConfig, InitInputs) ->
              InitInputs :: list(input_attr()), 
              InitOutputs :: list()) -> block_defn().
 
-create(BlockName, Description, InitConfig, InitInputs, InitOutputs)->
+create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
-  %% Update Default Config, Input, Output, and Private attribute values 
-  %% with the initial values passed into this function.
-  %%
-  %% If any of the intial attributes do not already exist in the 
-  %% default attribute lists, merge_attribute_lists() will create them.
+  % Update Default Config, Input, Output, and Private attribute values 
+  % with the initial values passed into this function.
+  %
+  % If any of the intial attributes do not already exist in the 
+  % default attribute lists, merge_attribute_lists() will create them.
      
   Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
   Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
