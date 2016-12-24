@@ -36,11 +36,8 @@ default_configs(BlockName, Description) ->
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {i2c_device, {"i2c-1"}},
-      {i2c_addr, {16#3F}},
-      {num_cols, {20}},
-      {num_rows, {4}},
-      {num_segments, {4}},
-      {segment_lengths, [{20}, {20}, {20}, {20}]}
+      {i2c_addr, {16#27}},
+      {display_size, {twentyXfour}}  % sixteenXtwo, handle 20 col by 4 line, and 16 col by 2 line displays
     ]). 
 
 
@@ -50,10 +47,11 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display_on, {true, ?EMPTY_LINK}},
-      {backlight_on, {true, ?EMPTY_LINK}},
+      {display, {true, ?EMPTY_LINK}},
+      {cursor, {true, ?EMPTY_LINK}},
       {blink_cursor, {true, ?EMPTY_LINK}},
-      {segments, [{"Segment 1", ?EMPTY_LINK}, {"Segment 2", ?EMPTY_LINK},{"Segment 3", ?EMPTY_LINK},{"Segment 4", ?EMPTY_LINK}]}
+      {backlight, {false, ?EMPTY_LINK}},
+      {input, {"Hello World", ?EMPTY_LINK}}
     ]). 
 
 
@@ -130,6 +128,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	    
   case init_lcd_driver(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
+      update_lcd_control(I2cRef, Inputs),
       Status = initialed,
       Value = 0, 
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef);
@@ -155,14 +154,18 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % INSTRUCTIONS: Perform block type specific actions here, 
-  % read input value(s) calculate new output value(s)
-  % set block output status value
-  Outputs1 = Outputs,
-  Private1 = Private,
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
+
+  Backlight = update_lcd_control(I2cRef, Inputs),
+
+  write_data(I2cRef, Backlight, $X),
+
+  Status = normal,
+  Value = $X, 
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -212,9 +215,12 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %
 % Display Control Command params
 %
--define(DISPLAY_ON, 16#04). % D: off = 0
--define(CURSOR_ON, 16#02). % C: off = 0
--define(BLINK_CURSOR_ON, 16#01). % B: off = 0
+-define(BLINK_CURSOR_ON, 16#01).
+-define(BLINK_CURSOR_OFF, 16#00).
+-define(CURSOR_ON, 16#02). 
+-define(CURSOR_OFF, 16#00).
+-define(DISPLAY_ON, 16#04).
+-define(DISPLAY_OFF, 16#00).
 
 %
 % Function Set Command params
@@ -224,27 +230,27 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -define(FONT_5X10, 16#04). % F: 5X8 dots = 0
 
 
-
 %
 % This code assumes the I2C Port Expander is wired to LCD Controller as follows:
 %
 %      Port  
 % Expander Output: db7  db6  db5  db4  db3  db2  db1  db0
-% ------------------|----|----|----|---------|----|----|            
-%     HD44780       V    V    V    V         V    V    V
-% LCD Controller   db7  db6  db5  db4       EN   R/W   RS 
+% ------------------|----|----|----|----|----|----|----|            
+%     HD44780       V    V    V    V    V    V    V    V
+% LCD Controller   db7  db6  db5  db4  bklt  EN  R/W   RS 
 % 
 % EN (Enable) must be set high (1) and then low (0) to write a value to the LCD
 %   This requires 2 sequential writes of the same data.
 % R/W must be set low (0) to write values and high (1) to read values from the LCD
 % RS set low (0) for commands and high (1) for data (i.e. characters to display)
 %
+
+-define(RS_DATA, 16#01). % RS Command = 0
+-define(RW_READ, 16#02). % R/~W Write = 0
 -define(ENABLE_SET, 16#04).
 -define(ENABLE_CLR, 16#FB).
--define(RS_COMMAND, 16#00).
--define(RS_DATA, 16#01).
--define(RW_READ, 16#02).
--define(RW_WRITE, 16#00).
+-define(BACKLIGHT_ON, 16#08).  
+-define(BACKLIGHT_OFF, 16#00).
 
 
 %%
@@ -258,27 +264,31 @@ init_lcd_driver(I2cDevice, I2cAddr) ->
     {ok, I2cRef} ->
       
       % Reset the LCD, get its attention
-      write_command_high(I2cRef, 16#30),
+      write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
       block_utils:sleep(5),
-      write_command_high(I2cRef, 16#30),
+
+      write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
       block_utils:sleep(1),
-      write_command_high(I2cRef, 16#30),
+
+      write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
       block_utils:sleep(1),
-      write_command_high(I2cRef, ?FUNCTION_SET),
+
+      write_command_high(I2cRef, ?BACKLIGHT_OFF, ?FUNCTION_SET),
       block_utils:sleep(1),
+
       % The LCD display should be reset and in 4 bit mode now
       % From this point use normal command and write data functions
 
       % Set Num of lines, Font, and keep Data Length 4 bits
-      function_set(I2cRef, (?NUM_LINES_2)),
+      function_set(I2cRef, ?BACKLIGHT_OFF, (?NUM_LINES_2)),
 
       % Turn the display off
-      display_control(I2cRef, ?NO_PARAMS),
+      display_control(I2cRef, ?BACKLIGHT_OFF, ?NO_PARAMS),
 
        % Clear the screen
-      clear(I2cRef),
+      clear(I2cRef, ?BACKLIGHT_OFF),
 
-      entry_mode_set(I2cRef, (?INCREMENT)),
+      entry_mode_set(I2cRef, ?BACKLIGHT_OFF, (?INCREMENT)),
 
       {ok, I2cRef};
       
@@ -287,54 +297,91 @@ init_lcd_driver(I2cDevice, I2cAddr) ->
   end.
 
 
-clear(I2cRef) ->
-  write_command(I2cRef, ?CLEAR_DISPLAY, ?NO_PARAMS).
+%%
+%% Read control inputs and update the LCD control
+%%
+update_lcd_control(I2cRef, Inputs) ->
+
+  case input_utils:get_boolean(Inputs, display) of
+    {ok, true} -> Display = ?DISPLAY_ON;
+            _  -> Display = ?DISPLAY_OFF
+  end,
+
+  case input_utils:get_boolean(Inputs, cursor) of
+    {ok, true} -> Cursor = ?CURSOR_ON;
+            _  -> Cursor = ?CURSOR_OFF
+  end,
+
+  case input_utils:get_boolean(Inputs, blink_cursor) of
+    {ok, true} -> BlinkCursor = ?BLINK_CURSOR_ON;
+            _  -> BlinkCursor = ?BLINK_CURSOR_OFF
+  end,
+ 
+  case input_utils:get_boolean(Inputs, backlight) of
+    {ok, true} -> Backlight = ?BACKLIGHT_ON;
+            _  -> Backlight = ?BACKLIGHT_OFF
+  end,
+
+  display_control(I2cRef, Backlight, ((Display bor Cursor) bor BlinkCursor)).
 
 
-return_home(I2cRef) ->
-  write_command(I2cRef, ?RETURN_HOME, ?NO_PARAMS).
+
+clear(I2cRef, Backlight) ->
+  write_command(I2cRef, Backlight, ?CLEAR_DISPLAY, ?NO_PARAMS).
 
 
-function_set(I2cRef, Params) ->
-  write_command(I2cRef, ?FUNCTION_SET, Params).
+return_home(I2cRef, Backlight) ->
+  write_command(I2cRef, Backlight, ?RETURN_HOME, ?NO_PARAMS).
 
 
-display_control(I2cRef, Params) ->
-  write_command(I2cRef, ?DISPLAY_CONTROL, Params).
-
-entry_mode_set(I2cRef, Params) ->
-  write_command(I2cRef, ?ENTRY_MODE_SET, Params).
+function_set(I2cRef, Backlight, Params) ->
+  write_command(I2cRef, Backlight, ?FUNCTION_SET, Params).
 
 
-write_command(I2cRef, Command, Params) ->
+display_control(I2cRef, Backlight, Params) ->
+  write_command(I2cRef, Backlight, ?DISPLAY_CONTROL, Params).
+
+
+entry_mode_set(I2cRef, Backlight, Params) ->
+  write_command(I2cRef, Backlight, ?ENTRY_MODE_SET, Params).
+
+
+write_command(I2cRef, Backlight, Command, Params) ->
   CmdAndParams = (Command bor Params),
   % Always operate in 4 bit mode when using an I2C interface
   % Write high nibble (bits 7-4) first, then low nibble (bits 3-0)
-  write_command_high(I2cRef, CmdAndParams),
-  write_command_low(I2cRef, CmdAndParams).
+  write_command_high(I2cRef, Backlight, CmdAndParams),
+  write_command_low(I2cRef, Backlight, CmdAndParams).
 
 
 % write high half of command byte value, R/W = 0, RS = 0
-write_command_high(I2cRef, Value) ->
-  HighValue = (Value band 16#F0),
+write_command_high(I2cRef, Backlight, Value) ->
+  HighValue = ((Value band 16#F0) bor Backlight),
   write_value(I2cRef, HighValue).
 
 
 % write low half of command byte value, R/W = 0, RS = 0
-write_command_low(I2cRef, Value) ->
-  LowValue = (Value bsl 4),
+write_command_low(I2cRef, Backlight, Value) ->
+  LowValue = ((Value bsl 4) bor Backlight),
   write_value(I2cRef, LowValue).
 
 
+write_data(I2cRef, Backlight, Data) ->
+  % Always operate in 4 bit mode when using an I2C interface
+  % Write high nibble (bits 7-4) first, then low nibble (bits 3-0)
+  write_data_high(I2cRef, Backlight, Data),
+  write_data_low(I2cRef, Backlight, Data).
+
+
 % write high half of data byte value, R/W = 0, RS = 1
-write_data_high(I2cRef, Value) ->
-  HighValue = ((Value band 16#F0) bor ?RS_DATA),
+write_data_high(I2cRef, Backlight, Value) ->
+  HighValue = (((Value band 16#F0) bor Backlight) bor ?RS_DATA),
   write_value(I2cRef, HighValue).
 
 
 % write low half of data byte value, R/W = 0, RS = 1
-write_data_low(I2cRef, Value) ->
-  LowValue = ((Value bsl 4) bor ?RS_DATA),
+write_data_low(I2cRef, Backlight, Value) ->
+  LowValue = (((Value bsl 4) bor Backlight) bor ?RS_DATA),
   write_value(I2cRef, LowValue).
 
 
@@ -342,7 +389,7 @@ write_value(I2cRef, Value) ->
   % Toggle Enable pin high
   ValueEnableSet = (Value bor ?ENABLE_SET),
   i2c:write(I2cRef, <<ValueEnableSet>>),
-  % Toggle enable pin low, don't change the 4 data bits
+  % Toggle enable pin low, don't change the 4 data bits, Backlight, RS, or R/~W lines
   ValueEnableClr = (Value band ?ENABLE_CLR),
   i2c:write(I2cRef, <<ValueEnableClr>>).
 
