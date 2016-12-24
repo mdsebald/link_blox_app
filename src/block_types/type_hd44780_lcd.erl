@@ -158,10 +158,10 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   Backlight = update_lcd_control(I2cRef, Inputs),
 
-  write_data(I2cRef, Backlight, $X),
+  write_data(I2cRef, Backlight, 65),
 
   Status = normal,
-  Value = $X, 
+  Value = $A, 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
