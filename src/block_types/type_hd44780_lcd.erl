@@ -322,7 +322,8 @@ update_lcd_control(I2cRef, Inputs) ->
             _  -> Backlight = ?BACKLIGHT_OFF
   end,
 
-  display_control(I2cRef, Backlight, ((Display bor Cursor) bor BlinkCursor)).
+  display_control(I2cRef, Backlight, ((Display bor Cursor) bor BlinkCursor)),
+  Backlight.
 
 
 
