@@ -126,8 +126,6 @@ initialize({Config, Inputs, Outputs, Private}) ->
   case init_lcd_driver(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       update_lcd_control(I2cRef, Inputs),
-      Status = initialed,
-      Value = 0, 
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
 
       case config_utils:get_integer_range(Config, num_of_inputs, 1, 80) of
@@ -142,7 +140,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                   start_cols, NumOfInputs, {1}),
 
           Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  inputs, NumOfInputs, {"Input", ?EMPTY_LINK});
+                                  inputs, NumOfInputs, {"Input", ?EMPTY_LINK}),
+          Status = initialed,
+          Value = 0;
 
         {error, Reason} ->
           Inputs1 = Inputs,
@@ -403,10 +403,10 @@ update_lcd_data(I2cRef, Backlight, Config, Inputs, InputNum) ->
               input_utils:log_error(Config, inputs, Reason)
           end;
         {error, Reason} ->
-          input_utils:log_error(Config, start_cols, Reason)
+          config_utils:log_error(Config, start_cols, Reason)
       end;
     {error, Reason} ->
-      input_utils:log_error(Config, start_rows, Reason)
+      config_utils:log_error(Config, start_rows, Reason)
   end.
 
 
