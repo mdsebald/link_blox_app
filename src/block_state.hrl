@@ -93,6 +93,8 @@
 
 -type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
 
+-type string_input_value() :: {ok, string()} | {ok, not_active} | input_errors().
+
 
 % Used to read block configuration values
        
