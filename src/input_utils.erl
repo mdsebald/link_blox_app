@@ -18,6 +18,7 @@
           get_integer_range/4, 
           get_float/2, 
           get_boolean/2,
+          get_string/2,
           get_value/3, 
           check_boolean_input/1, 
           resize_attribute_array_value/5,
@@ -94,6 +95,17 @@ get_boolean(Inputs, ValueId) ->
 
 
 %%
+%% Get a string input value and check for errors
+%%
+-spec get_string(Inputs :: list(input_attr()), 
+                 ValueId :: value_id()) -> string_input_value().
+
+get_string(Inputs, ValueId) ->
+  CheckType = fun block_utils:is_string/1,
+  get_value(Inputs, ValueId, CheckType).
+
+
+%%
 %% Generic get input value, check for errors.
 %%
 -spec get_value(Inputs :: list(input_attr()),
@@ -152,7 +164,8 @@ check_value(Value, Link, CheckType) ->
         false -> {error, bad_type}
       end
   end.
-  
+
+
 %
 % Check the value of the disable or freeze control value input
 %
@@ -164,7 +177,8 @@ check_boolean_input(Value) ->
     empty      -> not_active;
     _Error     -> error
   end.
- 
+
+
 %%
 %% Resize an array value in the Inputs attribute list
 %% to match the target quantity
