@@ -15,6 +15,7 @@
 
 -export([
           is_block/1,
+          is_string/1,
           sleep/1,
           char_to_segments/2,
           get_blocks_to_save/0,
@@ -28,10 +29,23 @@
 %%
 %% Is BlockName a valid block?
 %%
--spec is_block(BlockName :: block_name())-> boolean().
+-spec is_block(BlockName :: block_name()) -> boolean().
 
 is_block(BlockName)->
   lists:member(BlockName, block_supervisor:block_names()).
+
+
+%%
+%% Is list a printable string?
+%%
+-spec is_string(List :: list()) -> boolean().
+
+is_string(List) when is_list(List) -> lists:all(fun isprint/1, List);
+is_string(_) -> false.
+
+isprint(X) when X >= 32, X < 127 -> true;
+isprint(_) -> false.
+
 
 %%
 %% common delay function
