@@ -37,7 +37,9 @@ default_configs(BlockName, Description) ->
     [
       {i2c_device, {"i2c-1"}},
       {i2c_addr, {16#27}},
-      {display_size, {twentyXfour}}  % sixteenXtwo, handle 20 col by 4 line, and 16 col by 2 line displays
+      {num_of_inputs, {1}},
+      {start_rows, [{1}]},
+      {start_cols, [{1}]}
     ]). 
 
 
@@ -48,10 +50,11 @@ default_inputs() ->
     block_common:inputs(),
     [
       {display, {true, ?EMPTY_LINK}},
+      {clear, {false, ?EMPTY_LINK}},
       {cursor, {true, ?EMPTY_LINK}},
       {blink_cursor, {true, ?EMPTY_LINK}},
-      {backlight, {false, ?EMPTY_LINK}},
-      {input, {"Hello World", ?EMPTY_LINK}}
+      {backlight, {true, ?EMPTY_LINK}},
+      {inputs, [{"Input", ?EMPTY_LINK}]}
     ]). 
 
 
@@ -61,12 +64,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      % INTRUCTIONS: Insert block type specific output attribute tuples here
-      % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, {not_active, []}}
-      % Array Example: {digit, [{not_active, []}]}  
     ]). 
 
 
@@ -131,20 +128,42 @@ initialize({Config, Inputs, Outputs, Private}) ->
       update_lcd_control(I2cRef, Inputs),
       Status = initialed,
       Value = 0, 
-      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef);
+      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
+
+      case config_utils:get_integer_range(Config, num_of_inputs, 1, 80) of
+        {ok, NumOfInputs} ->      
+          % Create N inputs
+          BlockName = config_utils:name(Config),
+
+          Config1 = config_utils:resize_attribute_array_value(Config, 
+                                  start_rows, NumOfInputs, {1}),
+
+          Config2 = config_utils:resize_attribute_array_value(Config1, 
+                                  start_cols, NumOfInputs, {1}),
+
+          Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
+                                  inputs, NumOfInputs, {"Input", ?EMPTY_LINK});
+
+        {error, Reason} ->
+          Inputs1 = Inputs,
+          Config2 = Config,
+          {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason)
+      end;
       
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitializing LCD driver, I2C Address: ~p~n", 
                               [Reason, I2cAddr]),
       Status = proc_error,
       Value = not_active,
-      Private2 = Private1
-    end,
-   
+      Private2 = Private1,
+      Config2 = Config,
+      Inputs1 = Inputs
+  end,
+
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private2}.
+  {Config2, Inputs1, Outputs1, Private2}.
 
 
 %%
@@ -158,10 +177,11 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   Backlight = update_lcd_control(I2cRef, Inputs),
 
-  write_data(I2cRef, Backlight, 65),
+  {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
 
-  Status = normal,
-  Value = $A, 
+  InputNum = NumOfInputs,
+  {Value, Status} = update_lcd_data(I2cRef, Backlight, Config, Inputs, InputNum),
+   
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
@@ -209,25 +229,43 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %
 % Entry Mode Set command params
 %
--define(INCREMENT, 16#01).  % DECREMENT = 0
--define(SHIFT, 16#02).  % No shift = 0
+-define(INCREMENT, 16#01).
+-define(DECREMENT, 16#00).
+
+-define(SHIFT, 16#02). 
+-define(NO_SHIFT, 16#00). 
 
 %
 % Display Control Command params
 %
 -define(BLINK_CURSOR_ON, 16#01).
 -define(BLINK_CURSOR_OFF, 16#00).
+
 -define(CURSOR_ON, 16#02). 
 -define(CURSOR_OFF, 16#00).
+
 -define(DISPLAY_ON, 16#04).
 -define(DISPLAY_OFF, 16#00).
 
 %
 % Function Set Command params
 %
--define(DATA_LEN_8BITS, 16#10). % DL: 4 bits = 0
--define(NUM_LINES_2, 16#08). % N: 1 line = 0
--define(FONT_5X10, 16#04). % F: 5X8 dots = 0
+-define(DATA_LEN_8BITS, 16#10).
+-define(DATA_LEN_4BITS, 16#00).
+
+-define(NUM_LINES_2, 16#08).
+-define(NUM_LINES_1, 16#00).
+
+-define(FONT_5X10, 16#04).
+-define(FONT_5X8, 16#00).
+
+%
+% Set data address (i.e. cursor location) params
+%
+-define(LINE_1, 16#00).
+-define(LINE_2, 16#40).
+-define(LINE_3, 16#14).
+-define(LINE_4, 16#54).
 
 
 %
@@ -245,10 +283,15 @@ delete({Config, Inputs, Outputs, _Private}) ->
 % RS set low (0) for commands and high (1) for data (i.e. characters to display)
 %
 
--define(RS_DATA, 16#01). % RS Command = 0
--define(RW_READ, 16#02). % R/~W Write = 0
+-define(RS_DATA, 16#01).
+-define(RS_COMMAND, 16#00).
+
+-define(RW_READ, 16#02).
+-define(RW_WRITE, 16#00).
+
 -define(ENABLE_SET, 16#04).
 -define(ENABLE_CLR, 16#FB).
+
 -define(BACKLIGHT_ON, 16#08).  
 -define(BACKLIGHT_OFF, 16#00).
 
@@ -276,19 +319,16 @@ init_lcd_driver(I2cDevice, I2cAddr) ->
       write_command_high(I2cRef, ?BACKLIGHT_OFF, ?FUNCTION_SET),
       block_utils:sleep(1),
 
-      % The LCD display should be reset and in 4 bit mode now
+      % The display should be reset and in 4 bit mode now
       % From this point use normal command and write data functions
 
-      % Set Num of lines, Font, and keep Data Length 4 bits
-      function_set(I2cRef, ?BACKLIGHT_OFF, (?NUM_LINES_2)),
+      set_display_function(I2cRef, ?BACKLIGHT_OFF, (?NUM_LINES_2 bor ?FONT_5X8 bor ?DATA_LEN_4BITS) ),
 
-      % Turn the display off
-      display_control(I2cRef, ?BACKLIGHT_OFF, ?NO_PARAMS),
+      set_display_control(I2cRef, ?BACKLIGHT_OFF, ?DISPLAY_OFF),
 
-       % Clear the screen
-      clear(I2cRef, ?BACKLIGHT_OFF),
+      clear_display(I2cRef, ?BACKLIGHT_OFF),
 
-      entry_mode_set(I2cRef, ?BACKLIGHT_OFF, (?INCREMENT)),
+      set_entry_mode(I2cRef, ?BACKLIGHT_OFF, ?INCREMENT),
 
       {ok, I2cRef};
       
@@ -322,12 +362,55 @@ update_lcd_control(I2cRef, Inputs) ->
             _  -> Backlight = ?BACKLIGHT_OFF
   end,
 
-  display_control(I2cRef, Backlight, ((Display bor Cursor) bor BlinkCursor)),
+  set_display_control(I2cRef, Backlight, (Display bor Cursor bor BlinkCursor)),
+
+  % While the clear input is True, clear the display
+  case input_utils:get_boolean(Inputs, clear) of
+    {ok, true} -> clear_display(I2cRef, Backlight);
+            _  -> ok 
+  end,
   Backlight.
 
 
+%%
+%% Read input string(s) and update LCD
+%%
 
-clear(I2cRef, Backlight) ->
+update_lcd_data(I2cRef, Backlight, Config, Inputs, InputNum) ->
+  case config_utils:get_integer_range(Config, {start_rows, InputNum}, 1, 4) of
+    {ok, StartRow} ->
+
+      case config_utils:get_integer_range(Config, {start_cols, InputNum}, 1, 20) of
+        {ok, StartCol} ->
+
+          case input_utils:get_string(Inputs, {inputs, InputNum}) of
+            {ok, InputStr} ->
+              case StartRow of
+                1 -> RowAddr = ?LINE_1;
+                2 -> RowAddr = ?LINE_2;
+                3 -> RowAddr = ?LINE_3;
+                4 -> RowAddr = ?LINE_4
+              end,
+
+              RowColAddr = RowAddr + (StartCol - 1),
+              set_data_addr(I2cRef, Backlight, RowColAddr),
+              lists:map(fun(Char) -> write_data(I2cRef, Backlight, Char) end, InputStr),
+              
+              Status = normal,
+              {InputStr, Status};
+
+            {error, Reason} ->
+              input_utils:log_error(Config, inputs, Reason)
+          end;
+        {error, Reason} ->
+          input_utils:log_error(Config, start_cols, Reason)
+      end;
+    {error, Reason} ->
+      input_utils:log_error(Config, start_rows, Reason)
+  end.
+
+
+clear_display(I2cRef, Backlight) ->
   write_command(I2cRef, Backlight, ?CLEAR_DISPLAY, ?NO_PARAMS).
 
 
@@ -335,16 +418,20 @@ return_home(I2cRef, Backlight) ->
   write_command(I2cRef, Backlight, ?RETURN_HOME, ?NO_PARAMS).
 
 
-function_set(I2cRef, Backlight, Params) ->
+set_display_function(I2cRef, Backlight, Params) ->
   write_command(I2cRef, Backlight, ?FUNCTION_SET, Params).
 
 
-display_control(I2cRef, Backlight, Params) ->
+set_display_control(I2cRef, Backlight, Params) ->
   write_command(I2cRef, Backlight, ?DISPLAY_CONTROL, Params).
 
 
-entry_mode_set(I2cRef, Backlight, Params) ->
+set_entry_mode(I2cRef, Backlight, Params) ->
   write_command(I2cRef, Backlight, ?ENTRY_MODE_SET, Params).
+
+
+set_data_addr(I2cRef, Backlight, Params) ->
+  write_command(I2cRef, Backlight, ?SET_DDRAM_ADDR, Params).
 
 
 write_command(I2cRef, Backlight, Command, Params) ->
