@@ -120,24 +120,24 @@ name_module_version(Config) ->
 %% Get configuration value of any type and check for errors.
 %%
 -spec get_any_type(Config :: list(config_attr()),
-                   ValueName :: value_name()) -> generic_config_value().
+                   ValueId :: value_id()) -> generic_config_value().
 
-get_any_type(Config, ValueName) ->
+get_any_type(Config, ValueId) ->
   % Return true for every value
   CheckType = fun(_Value) -> true end,
-  get_value(Config, ValueName, CheckType).
+  get_value(Config, ValueId, CheckType).
 
 %%
 %% Get an integer configuration value and check for errors.
 %%
 -spec get_integer_range(Config :: list(config_attr()), 
-                        ValueName :: value_name(),
+                        ValueId :: value_id(),
                         Min :: integer(),
                         Max :: integer()) -> integer_config_value().
 
-get_integer_range(Config, ValueName, Min, Max) ->
+get_integer_range(Config, ValueId, Min, Max) ->
   CheckType = fun is_integer/1,
-  case get_value(Config, ValueName, CheckType) of
+  case get_value(Config, ValueId, CheckType) of
     {error, Reason} -> 
       {error, Reason};
     {ok, Value} ->
@@ -150,67 +150,87 @@ get_integer_range(Config, ValueName, Min, Max) ->
        
 
 -spec get_integer(Config :: list(config_attr()), 
-                  ValueName :: value_name()) -> integer_config_value().
+                  ValueId :: value_id()) -> integer_config_value().
 
-get_integer(Config, ValueName) ->
+get_integer(Config, ValueId) ->
   CheckType = fun is_integer/1,
-  get_value(Config, ValueName, CheckType).
+  get_value(Config, ValueId, CheckType).
 
 
 %%
 %% Get a floating point configuration value and check for errors.
 %%
 -spec get_float(Config :: list(config_attr()), 
-                ValueName :: value_name()) -> float_config_value().
+                ValueId :: value_id()) -> float_config_value().
 
-get_float(Config, ValueName) ->
+get_float(Config, ValueId) ->
   CheckType = fun is_float/1,
-  get_value(Config, ValueName, CheckType).
+  get_value(Config, ValueId, CheckType).
   
   
 %%
 %% Get a boolean configuration value and check for errors
 %%
 -spec get_boolean(Config :: list(config_attr()), 
-                  ValueName :: value_name()) -> boolean_config_value().
+                  ValueId :: value_id()) -> boolean_config_value().
 
-get_boolean(Config, ValueName) ->
+get_boolean(Config, ValueId) ->
   CheckType = fun is_boolean/1,
-  get_value(Config, ValueName, CheckType).
+  get_value(Config, ValueId, CheckType).
 
 
 %%
 %% Get a string configuration value and check for errors
 %%
 -spec get_string(Config :: list(config_attr()), 
-                ValueName :: value_name()) -> string_config_value().
+                ValueId :: value_id()) -> string_config_value().
 
-get_string(Config, ValueName) ->
-  % TODO: no is_string() function in Erlang, but strings are lists, do further checking?
-  CheckType = fun is_list/1,  
-  get_value(Config, ValueName, CheckType).
+get_string(Config, ValueId) ->
+  CheckType = fun block_utils:is_string/1,  
+  get_value(Config, ValueId, CheckType).
 
 
 %%
 %% Generic get configuration value, check for errors.
 %%
 -spec get_value(Config :: list(config_attr()),
-                ValueName :: value_name(),
+                ValueId :: value_id(),
                 CheckType :: fun()) -> term().
                 
-get_value(Config, ValueName, CheckType) ->
-  case attrib_utils:get_attribute(Config, ValueName) of
+get_value(Config, ValueId, CheckType) ->
+   % get the whole attribute, not just the value
+  case attrib_utils:get_attribute(Config, ValueId) of
     {error, not_found}  -> {error, not_found};
     
-    {ok, {ValueName, {Value}}} ->
+    % If this is a non-array value, check it
+    {ok, {_ValueName, {Value}}} ->
       case CheckType(Value) of
         true  -> {ok, Value};
         false -> {error, bad_type}   
       end;
-    % Attribute value was not a config value  
-    _ -> {error, not_config}
-  end.
 
+    % if this is an array value, check the index, and get the nth element
+    {ok, {ValueName, ArrayValue}} ->
+      % if this is an array value, the ValueName from get_attribute()
+      % will match ValueName in the ValueId tuple
+      case ValueId of
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            {Value} = lists:nth(ArrayIndex, ArrayValue),
+            case CheckType(Value) of
+              true  -> {ok, Value};
+              false -> {error, bad_type}   
+            end;
+          true->  % array index is out of bounds
+            {error, invalid_index}
+          end;
+        _ -> {error, invalid_value}
+      end;
+       
+    % Attribute value was not a config value  
+    _ -> {error, not_config}   
+  end.
+ 
 
 %%
 %% Resize an array value in the Config attribute list
