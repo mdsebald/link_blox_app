@@ -117,7 +117,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % Crate the private attributes needed
+  % Create the private attributes needed
   Private1 = attrib_utils:merge_attribute_lists(Private, 
               [
                 {i2c_ref, {empty}},
