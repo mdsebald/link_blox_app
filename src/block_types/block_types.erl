@@ -131,7 +131,7 @@ ExpectedResult =
     bme280_env_sensor,
     exec_count,
     float_to_7seg,
-    type_float_to_str,
+    float_to_str,
     gpio_di,
     gpio_do,
     hd44780_lcd,
