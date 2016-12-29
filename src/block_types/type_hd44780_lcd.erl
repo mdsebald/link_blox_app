@@ -175,12 +175,18 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
 
-  Backlight = update_lcd_control(I2cRef, Inputs),
+  case update_lcd_control(I2cRef, Inputs) of
+    % Clear screen input is off
+    {false, Backlight} ->
+      {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
 
-  {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
+      {Value, Status} = update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs);
 
-  InputNum = NumOfInputs,
-  {Value, Status} = update_lcd_data(I2cRef, Backlight, Config, Inputs, InputNum),
+    % Clear screen input is on, don't write anything to screen  
+    {true, _} ->
+      Value = "",
+      Status = normal
+  end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
@@ -193,14 +199,17 @@ execute({Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, _Private}) -> 
-  % INSTRUCTIONS: Perform any block type specific delete functionality here
-  % Return block definition, (Block state - Private values)
-  % in case calling function wants to reuse them.
-  %
-  % Private values are created in the block initialization routine
-  % So they should be deleted here
-  
+delete({Config, Inputs, Outputs, Private}) -> 
+ 
+  case attrib_utils:get_value(Private, i2c_ref) of
+    {ok, I2cRef} ->
+      shutdown_lcd(I2cRef),
+
+      % Close the I2C Channel
+      i2c:stop(I2cRef);
+
+    _ -> ok
+  end,
   {Config, Inputs, Outputs}.
 
 
@@ -229,10 +238,10 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %
 % Entry Mode Set command params
 %
--define(INCREMENT, 16#01).
+-define(INCREMENT, 16#02).
 -define(DECREMENT, 16#00).
 
--define(SHIFT, 16#02). 
+-define(SHIFT, 16#01). 
 -define(NO_SHIFT, 16#00). 
 
 %
@@ -338,6 +347,15 @@ init_lcd_driver(I2cDevice, I2cAddr) ->
 
 
 %%
+%% Shutdown LCD
+%%
+shutdown_lcd(I2cRef) ->
+  % Clear the display and turn it off
+  clear_display(I2cRef, ?BACKLIGHT_OFF),
+  set_display_control(I2cRef, ?BACKLIGHT_OFF, ?DISPLAY_OFF).
+
+
+%%
 %% Read control inputs and update the LCD control
 %%
 update_lcd_control(I2cRef, Inputs) ->
@@ -366,17 +384,25 @@ update_lcd_control(I2cRef, Inputs) ->
 
   % While the clear input is True, clear the display
   case input_utils:get_boolean(Inputs, clear) of
-    {ok, true} -> clear_display(I2cRef, Backlight);
-            _  -> ok 
+    {ok, true} -> clear_display(I2cRef, Backlight),
+                  ClearScr = true;
+
+            _  -> ClearScr = false
   end,
-  Backlight.
+  {ClearScr, Backlight}.
 
 
 %%
 %% Read input string(s) and update LCD
 %%
 
-update_lcd_data(I2cRef, Backlight, Config, Inputs, InputNum) ->
+update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs) ->
+  update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, 1, "", normal).
+
+update_lcd_data(_I2cRef, _Backlight, _Config, _Inputs, 0, _InputNum, Value, Status) ->
+  {Value, Status};
+
+update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, InputNum, Value, _Status) ->
   case config_utils:get_integer_range(Config, {start_rows, InputNum}, 1, 4) of
     {ok, StartRow} ->
 
@@ -396,17 +422,26 @@ update_lcd_data(I2cRef, Backlight, Config, Inputs, InputNum) ->
               set_data_addr(I2cRef, Backlight, RowColAddr),
               lists:map(fun(Char) -> write_data(I2cRef, Backlight, Char) end, InputStr),
               
-              Status = normal,
-              {InputStr, Status};
+              NewValue = Value ++ " " ++ InputStr,
+              NewStatus = normal;
 
             {error, Reason} ->
-              input_utils:log_error(Config, inputs, Reason)
+              {NewValue, NewStatus} = input_utils:log_error(Config, inputs, Reason)
           end;
         {error, Reason} ->
-          config_utils:log_error(Config, start_cols, Reason)
+          {NewValue, NewStatus} = config_utils:log_error(Config, start_cols, Reason)
       end;
     {error, Reason} ->
-      config_utils:log_error(Config, start_rows, Reason)
+      {NewValue, NewStatus} = config_utils:log_error(Config, start_rows, Reason)
+  end,
+  
+  case NewStatus of
+    normal ->
+      update_lcd_data(I2cRef, Backlight, Config, Inputs, 
+                  (NumOfInputs - 1), (InputNum + 1), NewValue, normal);
+
+    _ -> % Error reading config or input value, terminate writing to display
+      update_lcd_data(I2cRef, Backlight, Config, Inputs, 0, 0, NewValue, NewStatus)
   end.
 
 
