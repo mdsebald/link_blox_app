@@ -115,18 +115,19 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 initialize({Config, Inputs, Outputs, Private}) ->
   % Check the config values
   case config_utils:get_integer_range(Config, num_of_digits, 2, 99) of
-    {error, Reason} ->
-      Outputs1 = Outputs,
-      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason);
-       
     {ok, NumOfDigits} ->
       % Create a digit output for each digit
       BlockName = config_utils:name(Config),
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
                                        digit, NumOfDigits, {not_active, []}),
       Value = not_active,
-      Status = initialed                   
+      Status = initialed;
+
+    {error, Reason} ->
+      Outputs1 = Outputs,
+      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason)          
   end,
+
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
   
   % This is the block state
