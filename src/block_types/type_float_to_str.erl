@@ -37,8 +37,8 @@ default_configs(BlockName, Description) ->
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {left_justify, {false}},
-      {field_width, {not_active}},
-      {precision, {not_active}}
+      {field_width, {0}},
+      {precision, {0}}
     ]). 
 
 
@@ -48,7 +48,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-
+      {input, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -114,10 +114,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
   case config_utils:get_boolean(Config, left_justify) of
     {ok, LeftJustify} ->
 
-      case config_utils:get_integer_range(Config, field_width, 1, 100) of
+      case config_utils:get_integer_range(Config, field_width, 0, 120) of
         {ok, FieldWidth} ->
 
-          case config_utils:get_integer_range(Config, precision, 1, 100) of
+          case config_utils:get_integer_range(Config, precision, 0, 120) of
             {ok, Precision} ->
               FormatStr = build_format_str(LeftJustify, FieldWidth, Precision),
               Private1 = attrib_utils:add_attribute(Private, {format_str, {FormatStr}}),
@@ -204,15 +204,15 @@ add_left_justified(LeftJustify, FormatStr) ->
   end.
 
 add_field_width(FieldWidth, FormatStr) ->
-  case is_integer(FieldWidth) of
-    true -> io_lib:format("~s~w.", [FormatStr, FieldWidth]);
-    false -> FormatStr ++ "."
+  case FieldWidth of
+    0 -> FormatStr ++ ".";
+    _ -> io_lib:format("~s~w.", [FormatStr, FieldWidth])
   end.
 
 add_precision(Precision, FormatStr) ->
-  case is_integer(Precision) of
-    true -> io_lib:format("~s~w", [FormatStr, Precision]);
-    false -> FormatStr
+  case Precision of
+    0 -> FormatStr;
+    _ -> io_lib:format("~s~w", [FormatStr, Precision])
   end.
 
 
