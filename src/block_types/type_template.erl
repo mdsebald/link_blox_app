@@ -47,7 +47,8 @@ default_configs(BlockName, Description) ->
       % INTRUCTIONS: Insert block type specific config attribute tuples here
       % Config attribute tuples consist of a value name and a value
       % Example: {gpio_pin, {0}}
-      % Config values are set once on block creation and never modified.                   
+      % Array Example: {start_rows, [{1}, {2}]}
+      % The block is (re) initialized, when any config value is modified.                   
     ]). 
 
 
