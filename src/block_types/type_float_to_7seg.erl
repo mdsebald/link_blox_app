@@ -221,6 +221,13 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
+%
+% Format the input number given the number of digits and desired precision
+%
+-spec format_number(InValue :: float(),
+                    NumOfDigits :: integer(),
+                    Inputs :: list(input_attr())) -> {ok, list(byte()), integer()} | {error, atom()}.
+
 format_number(InValue, NumOfDigits, Inputs) ->
 
   if ((-1.0 < InValue) andalso (InValue < 1.0)) ->
@@ -337,10 +344,10 @@ digits_to_display(InValue, Precision, IsNegative, IsLessThanOne) ->
   end.
 
 
-%%
-%% Replace the element at Position in the List, with Element
-%% Lists are indexed from 1
-%%
+%
+% Replace the element at Position in the List, with Element
+% Lists are indexed from 1
+%
 -spec list_replace(List :: list(),
                    Element :: term(),
                    Position :: pos_integer()) -> list(). 

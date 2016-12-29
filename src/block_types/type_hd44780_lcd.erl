@@ -125,7 +125,6 @@ initialize({Config, Inputs, Outputs, Private}) ->
 	    
   case init_lcd_driver(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
-      update_lcd_control(I2cRef, Inputs),
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
 
       case config_utils:get_integer_range(Config, num_of_inputs, 1, 80) of
