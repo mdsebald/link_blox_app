@@ -194,7 +194,7 @@ delete({Config, Inputs, Outputs, _Private}) ->
 build_format_str(LeftJustify, FieldWidth, Precision) ->
   add_precision(Precision, 
     add_field_width(FieldWidth, 
-      add_left_justified(LeftJustify, "~~"))) ++ "f".
+      add_left_justified(LeftJustify, "\~"))) ++ "f".
 
       
 add_left_justified(LeftJustify, FormatStr) ->
@@ -206,13 +206,13 @@ add_left_justified(LeftJustify, FormatStr) ->
 add_field_width(FieldWidth, FormatStr) ->
   case FieldWidth of
     0 -> FormatStr ++ ".";
-    _ -> io_lib:format("~s~w.", [FormatStr, FieldWidth])
+    _ -> lists:flatten(io_lib:format("~s~b.", [FormatStr, FieldWidth]))
   end.
 
 add_precision(Precision, FormatStr) ->
   case Precision of
     0 -> FormatStr;
-    _ -> io_lib:format("~s~w", [FormatStr, Precision])
+    _ -> lists:flatten(io_lib:format("~s~b", [FormatStr, Precision]))
   end.
 
 
