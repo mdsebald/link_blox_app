@@ -157,10 +157,10 @@ execute({Config, Inputs, Outputs, Private}) ->
     {ok, not_active} ->
       Value = not_active,
       Status = normal;
-      
+
     {ok, InputValue} ->
       {ok, FormatStr} = attrib_utils:get_value(Private, format_str),
-      Value = io_lib:format(FormatStr, [InputValue]),
+      Value = lists:flatten(io_lib:format(FormatStr, [InputValue])),
       Status = normal;
 
     {error, Reason} ->
