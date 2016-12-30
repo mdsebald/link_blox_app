@@ -348,8 +348,7 @@ update_blocks(FromBlockName,
         update_linked_inputs(FromBlockName, ValueName, NewValue, Refs);
       true -> 
         ok % else do nothing
-      end,
-      update_blocks(FromBlockName, CurrentOutputs, NewOutputs);
+      end;
       
     % Array value output
     {ValueName, CurrentArrayValues} ->
