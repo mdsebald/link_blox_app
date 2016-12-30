@@ -37,9 +37,11 @@ default_configs(BlockName, Description) ->
     [
       {i2c_device, {"i2c-1"}},
       {i2c_addr, {16#27}},
+      {not_active_str, {"--------------------"}},
       {num_of_inputs, {1}},
       {start_rows, [{1}]},
-      {start_cols, [{1}]}
+      {start_cols, [{1}]},
+      {field_widths, [{80}]}
     ]). 
 
 
@@ -138,6 +140,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Config2 = config_utils:resize_attribute_array_value(Config1, 
                                   start_cols, NumOfInputs, {1}),
 
+          Config3 = config_utils:resize_attribute_array_value(Config2, 
+                                  field_widths, NumOfInputs, {80}),
+
           Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
                                   inputs, NumOfInputs, {"Input", ?EMPTY_LINK}),
           Status = initialed,
@@ -145,7 +150,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
         {error, Reason} ->
           Inputs1 = Inputs,
-          Config2 = Config,
+          Config3 = Config,
           {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason)
       end;
       
@@ -155,14 +160,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Status = proc_error,
       Value = not_active,
       Private2 = Private1,
-      Config2 = Config,
+      Config3 = Config,
       Inputs1 = Inputs
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config2, Inputs1, Outputs1, Private2}.
+  {Config3, Inputs1, Outputs1, Private2}.
 
 
 %%
@@ -275,6 +280,12 @@ delete({Config, Inputs, Outputs, Private}) ->
 -define(LINE_3, 16#14).
 -define(LINE_4, 16#54).
 
+%
+%  Display maximums
+%
+-define(MAX_ROWS, 4).
+-define(MAX_COLUMNS, 20).
+-define(MAX_CHARS, 80).
 
 %
 % This code assumes the I2C Port Expander is wired to LCD Controller as follows:
@@ -304,9 +315,9 @@ delete({Config, Inputs, Outputs, Private}) ->
 -define(BACKLIGHT_OFF, 16#00).
 
 
-%%
-%% Initialize the LCD driver 
-%%
+%
+% Initialize the LCD driver 
+%
 -spec init_lcd_driver(I2cDevice :: string(),
                       I2cAddr :: integer()) -> {ok, pid()} | {error, atom()}.
                       
@@ -345,18 +356,18 @@ init_lcd_driver(I2cDevice, I2cAddr) ->
   end.
 
 
-%%
-%% Shutdown LCD
-%%
+%
+% Shutdown LCD
+%
 shutdown_lcd(I2cRef) ->
   % Clear the display and turn it off
   clear_display(I2cRef, ?BACKLIGHT_OFF),
   set_display_control(I2cRef, ?BACKLIGHT_OFF, ?DISPLAY_OFF).
 
 
-%%
-%% Read control inputs and update the LCD control
-%%
+%
+% Read control inputs and update the LCD control
+%
 update_lcd_control(I2cRef, Inputs) ->
 
   case input_utils:get_boolean(Inputs, display) of
@@ -391,9 +402,9 @@ update_lcd_control(I2cRef, Inputs) ->
   {ClearScr, Backlight}.
 
 
-%%
-%% Read input string(s) and update LCD
-%%
+%
+% Read input string(s) and update LCD
+%
 
 update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs) ->
   update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, 1, "", normal).
@@ -402,30 +413,33 @@ update_lcd_data(_I2cRef, _Backlight, _Config, _Inputs, 0, _InputNum, Value, Stat
   {Value, Status};
 
 update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, InputNum, Value, _Status) ->
-  case config_utils:get_integer_range(Config, {start_rows, InputNum}, 1, 4) of
+  case config_utils:get_integer_range(Config, {start_rows, InputNum}, 1, ?MAX_ROWS) of
     {ok, StartRow} ->
 
-      case config_utils:get_integer_range(Config, {start_cols, InputNum}, 1, 20) of
+      case config_utils:get_integer_range(Config, {start_cols, InputNum}, 1, ?MAX_COLUMNS) of
         {ok, StartCol} ->
 
-          case input_utils:get_string(Inputs, {inputs, InputNum}) of
-            {ok, InputStr} ->
-              case StartRow of
-                1 -> RowAddr = ?LINE_1;
-                2 -> RowAddr = ?LINE_2;
-                3 -> RowAddr = ?LINE_3;
-                4 -> RowAddr = ?LINE_4
-              end,
+          case config_utils:get_integer_range(Config, {field_widths, InputNum}, 1, ?MAX_CHARS) of
+            {ok, FieldWidth} ->
 
-              RowColAddr = RowAddr + (StartCol - 1),
-              set_data_addr(I2cRef, Backlight, RowColAddr),
-              lists:map(fun(Char) -> write_data(I2cRef, Backlight, Char) end, InputStr),
-              
-              NewValue = Value ++ " " ++ InputStr,
-              NewStatus = normal;
+              case input_utils:get_string(Inputs, {inputs, InputNum}) of
+                {ok, not_active} -> 
+                  % Input is not_active, display config not active string value
+                  {ok, InputStr} = config_utils:get_string(Config, not_active_str),
+                  DisplayedStr = display_str(I2cRef, Backlight, StartRow, StartCol, FieldWidth, InputStr),                
+                  NewValue = Value ++ DisplayedStr,
+                  NewStatus = normal;
 
+                {ok, InputStr} -> 
+                  DisplayedStr = display_str(I2cRef, Backlight, StartRow, StartCol, FieldWidth, InputStr),                
+                  NewValue = Value ++ DisplayedStr,
+                  NewStatus = normal;
+
+                {error, Reason} ->
+                  {NewValue, NewStatus} = input_utils:log_error(Config, inputs, Reason)
+              end;
             {error, Reason} ->
-              {NewValue, NewStatus} = input_utils:log_error(Config, inputs, Reason)
+              {NewValue, NewStatus} = config_utils:log_error(Config, field_widths, Reason)
           end;
         {error, Reason} ->
           {NewValue, NewStatus} = config_utils:log_error(Config, start_cols, Reason)
@@ -442,6 +456,33 @@ update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, InputNum, Value,
     _ -> % Error reading config or input value, terminate writing to display
       update_lcd_data(I2cRef, Backlight, Config, Inputs, 0, 0, NewValue, NewStatus)
   end.
+
+
+%
+% Write the Input string to the display
+%
+-spec display_str(I2cRef :: pid(),
+                  Backlight :: boolean(),
+                  StartRow :: integer(),
+                  StartCol :: integer(),
+                  FieldWidth :: integer(),
+                  InputStr :: string()) -> string().
+
+display_str(I2cRef, Backlight, StartRow, StartCol, FieldWidth, InputStr) ->
+  case StartRow of
+    1 -> RowAddr = ?LINE_1;
+    2 -> RowAddr = ?LINE_2;
+    3 -> RowAddr = ?LINE_3;
+    4 -> RowAddr = ?LINE_4
+  end,
+
+  RowColAddr = RowAddr + (StartCol - 1),
+  set_data_addr(I2cRef, Backlight, RowColAddr),
+
+  % Clip or Pad string with spaces to fill field width
+  DisplayStr = string:left(InputStr, FieldWidth),
+  lists:map(fun(Char) -> write_data(I2cRef, Backlight, Char) end, DisplayStr),
+  DisplayStr.
 
 
 clear_display(I2cRef, Backlight) ->
