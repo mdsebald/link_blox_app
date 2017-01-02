@@ -96,8 +96,7 @@ shell_loop() ->
 %% Evaluate user input
 %%
 eval_input(Line) ->
-  % TODO:  Need to treat words enclosed by quotes as one parameter
-  case string:tokens(Line, " \n") of
+  case tokenize_line(Line) of
 	  [] -> [];
 	  [Command | Params] ->
 	    case cmd_string_to_cmd_atom(Command) of
@@ -119,6 +118,14 @@ eval_input(Line) ->
 	    end
   end.
 
+
+%%
+%% Tokenize comand line input
+%% Treat quoted string as a single parameter,   
+%%
+tokenize_line(Line) ->
+  re:split(Line, ["\s\"|\"\s"], [{return,list}]).
+ 
 
 %% 
 %% Translate a command string to an atom
@@ -183,18 +190,18 @@ cmd_atom_map() ->
   ].
 
 
-%%% our expand function (called when the user presses TAB)
-%%% input: a reversed list with the row to left of the cursor
-%%% output: {yes|no, Expansion, ListofPossibleMatches}
-%%% where the atom no yields a beep
-%%% Expansion is a string inserted at the cursor
-%%% List... is a list that will be printed
-%%% Here we beep on prefixes that don't match and when the command
-%%% filled in
-
+%%
+%% Expand function (called when the user presses TAB)
+%% input: a reversed list with the row to left of the cursor
+%% output: {yes|no, Expansion, ListofPossibleMatches}
+%% where the atom no yields a beep
+%% Expansion is a string inserted at the cursor
+%% List... is a list that will be printed
+%% Beep on prefixes that don't match and when the command filled in
+%%
 expand([$  | _]) ->
   {no, "", []};
-expand(RevBefore) ->    
+expand(RevBefore) ->
   Before = lists:reverse(RevBefore),
     case longest_prefix(ui_en_us:cmd_string_map(), Before) of
 	    {prefix, P, [_]} -> {yes, P ++ " ", []};
@@ -231,7 +238,6 @@ nthtail(N, [_ | A]) -> nthtail(N-1, A);
 nthtail(_, _)       -> [].
 
 
-
 %%
 %% Get the current node this UI is connected to
 %%
@@ -250,15 +256,21 @@ set_node(Node) ->
 % Process block create command
 % TODO: Add initial attrib values
 ui_create_block(Params) ->
-  case check_num_params(Params, 2) of  
-    low -> io:format("Enter block-type new-block-name~n");
+  case check_num_params(Params, 2, 3) of  
+    low -> io:format("Enter block-type new-block-name <description>~n");
 
-    ok -> 
-      [BlockTypeStr, BlockNameStr] = Params,
-
+    ok ->
+      case length(Params) of
+        2 ->
+          [BlockTypeStr, BlockNameStr] = Params,
+          Description = "";
+        3 ->
+          [BlockTypeStr, BlockNameStr, Description] = Params
+      end,
+    
       BlockType = list_to_atom(BlockTypeStr),
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:create_block(get_node(), BlockType, BlockName, []) of
+      case linkblox_api:create_block(get_node(), BlockType, BlockName, Description) of
         ok ->
           io:format("Block ~s:~s Created~n", [BlockTypeStr, BlockNameStr]);
 

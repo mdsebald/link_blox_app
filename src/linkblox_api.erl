@@ -62,11 +62,11 @@ stop(Node) ->
 -spec create_block(Node :: node(),
                    BlockType :: type_name(),
                    BlockName :: block_name(),
-                   InitAttribs :: list()) -> term().
+                   Description :: string()) -> term().
 
-create_block(Node, BlockType, BlockName, InitAttribs) ->
+create_block(Node, BlockType, BlockName, Description) ->
   gen_server:call({linkblox_api, Node}, 
-                  {create_block, BlockType, BlockName, InitAttribs}).
+                  {create_block, BlockType, BlockName, Description}).
 
 
 %% create a block from a set of existing block values
@@ -304,14 +304,13 @@ handle_call(stop, _From, State) ->
 %% =====================================================================
 %% Create a block from block type and block name
 %% =====================================================================    
-% TODO: Set initial attribute values
-handle_call({create_block, BlockType, BlockName, _InitAttribs}, _From, State) ->
+handle_call({create_block, BlockType, BlockName, Description}, _From, State) ->
   case lists:member(BlockType, block_types:block_type_names()) of
     true ->
       BlockModule = block_types:block_type_to_module(BlockType),
       case block_utils:is_block(BlockName) of
         false ->
-          BlockDefn = BlockModule:create(BlockName, "Default Comment"),
+          BlockDefn = BlockModule:create(BlockName, Description),
           Result = block_utils:create_block(BlockDefn);
         _ ->
           Result = {error, block_exists}
