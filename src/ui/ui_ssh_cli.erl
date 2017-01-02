@@ -121,10 +121,12 @@ eval_input(Line) ->
 
 %%
 %% Tokenize comand line input
-%% Treat quoted string as a single parameter,   
 %%
 tokenize_line(Line) ->
-  re:split(Line, ["\s\"|\"\s"], [{return,list}]).
+  % TODO: keep words in quotes together in one parameter
+  % re:split(Line, ["\s\"|\"\s"], [{return,list}]).
+  string:tokens(Line, " ").
+
  
 
 %% 
