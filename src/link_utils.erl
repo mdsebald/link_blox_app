@@ -141,7 +141,8 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
         true ->
           % Linked block exists,
           % if the block input value is empty, 
-          if Value == empty ->
+        case Value of
+          empty ->
             % send a link message to the linked block, get current linked value back
             UpdatedValue = block_server:link(LinkBlockName, LinkValueId, BlockName),
             
@@ -158,7 +159,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
                 Inputs 
             end;
 
-          true ->
+          _ ->
             % Value is not empty, link must already be established, nothing to do
             Inputs
           end;
