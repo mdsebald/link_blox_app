@@ -46,6 +46,9 @@ start_link(BlockValuesFile) ->
 init(BlockValuesFile) ->
 
   start_programing_interface(),
+  
+  % Listen for nodes connecting an disconnecting
+  node_watcher:start(),
 
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 
