@@ -61,13 +61,16 @@ start(Port, Options) ->
 %%
 start_shell(User, Peer) ->
   spawn(fun() ->
+    % Default language to English US for now
+    % TODO: Make language module a config parameter
+    lang(ui_en_us),
 	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
-    io:format("~n   W E L C O M E  T O  L i n k B l o x !~n~n"),
-		io:format("Enter command\n"),
+    format_out(welcome_str),
+		format_out(enter_command_str),
 		put(user, User),
 		put(peer_name, Peer),
     % default current node to local node
-    set_node(node()),
+    curr_node(node()),
 		shell_loop()
 	end).
 
@@ -77,7 +80,7 @@ start_shell(User, Peer) ->
 %%
 shell_loop() ->
   % use the current node for the UI prompt
-  Prompt = atom_to_list(get(curr_node)) ++ "> ",
+  Prompt = atom_to_list(curr_node()) ++ "> ",
   % read user input
   Line = get_input(Prompt),
 
@@ -96,45 +99,137 @@ shell_loop() ->
 %% Evaluate user input
 %%
 eval_input(Line) ->
-  case tokenize_line(Line) of
-	  [] -> [];
-	  [Command | Params] ->
+  case parse_cli_params(Line) of
+    {ok, []} -> [];
+    {ok, [Command | Params]} ->
 	    case cmd_string_to_cmd_atom(Command) of
         unknown_cmd ->
-          io:format("~p Unknown command string~n", [Command]);
+          format_out(unk_cmd_str, [Command]);
         CmdAtom ->
           case cmd_atom_to_function(CmdAtom) of
             unknown_cmd ->
-              io:format("~p Unknown command atom~n", [CmdAtom]);
+              format_out(unk_cmd_atom, [CmdAtom]);
 
             {Module, Function} ->
 		          case catch Module:Function(Params) of
 			          {'EXIT', Error} ->
-			            {error, Error}; % wrong_number_of_arguments};
+			            {error, Error}; % wrong_number_of_arguments
 			          Result ->
 			            Result
 		          end
           end
-	    end
+	    end;
+    {error, _Params} ->
+      format_out(err_parsing_cmd_line, [Line])
   end.
 
 
-%%
-%% Tokenize comand line input
-%%
-tokenize_line(Line) ->
-  % TODO: keep words in quotes together in one parameter
-  % re:split(Line, ["\s\"|\"\s"], [{return,list}]).
-  string:tokens(Line, " ").
+parse_cli_params(Line) ->
+  % Split command line into words, based on spaces
+  CmdLineWords = string:tokens(Line, " "),
+  parse_cli_params(CmdLineWords, [], "").
 
- 
+% Normal parsing completed
+parse_cli_params([], Params, "") -> 
+  {ok, lists:reverse(Params)};
+
+% Error: Reached end of command line without a matching closing quote
+parse_cli_params([], Params, _QuotedStr) -> 
+  {error, lists:reverse(Params)};
+
+% Process command line words when not inside a quoted string
+parse_cli_params([Word | RemWords], Params, "") ->
+  case is_open_and_close_quoted(Word) of
+    true  ->
+      QuotedStr = close_quoted_str(open_quoted_str(Word)),
+      parse_cli_params(RemWords, [QuotedStr | Params], "");
+    false ->
+      case is_open_quoted(Word) of
+        true  -> 
+          QuotedStr = open_quoted_str(Word),
+          parse_cli_params(RemWords, Params, QuotedStr);
+        false ->
+          case is_close_quoted(Word) of
+            true -> % closing quote before opening quote is detected, force error
+              parse_cli_params([], [Word, Params], Word);
+            false -> % just a plain unquoted word, add to list of parsed words
+              parse_cli_params(RemWords, [Word | Params], "")
+          end
+      end
+  end;
+
+% Process command line words when in a quoted string
+parse_cli_params([Word | RemWords], Params, QuotedStr) ->
+  case is_open_and_close_quoted(Word) of
+    true  -> % Quoted word inside quoted string, 
+             % let higher functions determine if this is an error
+      SubQuotedStr = close_quoted_str(open_quoted_str(Word)),       
+      NewQuotedStr = add_to_quoted_str(QuotedStr, SubQuotedStr),
+      parse_cli_params(RemWords, Params, NewQuotedStr);
+    false ->
+      case is_open_quoted(Word) of
+        true  -> % second opening quote before closing quote detectd, force error
+          NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
+          parse_cli_params([], [NewQuotedStr | Params], NewQuotedStr);
+        false ->
+          case is_close_quoted(Word) of
+            true  ->
+              NewQuotedStr = close_quoted_str(QuotedStr, Word),
+              parse_cli_params(RemWords, [NewQuotedStr | Params], "");
+            false -> % just a plain unquoted word, add to quoted string
+              NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
+              parse_cli_params(RemWords, Params, NewQuotedStr)
+          end
+      end
+  end.
+
+is_open_and_close_quoted(Word) -> (is_open_quoted(Word) andalso is_close_quoted(Word)).
+
+is_open_quoted(Word) -> lists:prefix([$"], Word).
+
+is_close_quoted(Word) -> lists:suffix([$"], Word).
+
+open_quoted_str(Word) -> 
+  [$" | WordMinusQuote] = Word, 
+  WordMinusQuote.
+
+add_to_quoted_str(QuotedStr, Word) -> QuotedStr ++ " " ++ Word.
+
+close_quoted_str(QuotedStr, Word) -> 
+  WordMinusQuote = close_quoted_str(Word),
+  add_to_quoted_str(QuotedStr, WordMinusQuote).
+
+close_quoted_str(Word) -> 
+  [$" | RevWordMinusQuote] = lists:reverse(Word),
+  lists:reverse(RevWordMinusQuote).
+
+
+%
+% Get user input, 
+% minus new line char, leading whitespace, 
+% and trailing whitespace
+%
+get_input(Prompt) ->
+  Raw1 = io:get_line(Prompt),
+
+  % In nerves environment, get_line() returns a binary.
+  % Convert it to a string
+  case is_binary(Raw1) of
+    true  -> Raw2 = erlang:binary_to_list(Raw1);
+    false -> Raw2  = Raw1 
+  end, 
+  % Remove new line char
+  Raw3 = string:strip(Raw2, right, 10),
+  % Remove leading and trailing whitespace
+  string:strip(Raw3).
+
 
 %% 
 %% Translate a command string to an atom
 %% This indirection allows command mapping using different languages,
 %%
 cmd_string_to_cmd_atom(Command) ->
-  case lists:keysearch(Command, 1, ui_en_us:cmd_string_map()) of
+  case lists:keysearch(Command, 1, (lang()):cmd_string_map()) of
 	  {value, {_, CmdAtom, _}} -> CmdAtom;
 	  false -> unknown_cmd
   end.
@@ -241,18 +336,34 @@ nthtail(_, _)       -> [].
 
 
 %%
-%% Get the current node this UI is connected to
+%% Get and set the current node this UI is connected to
 %%
 % TODO: Check if node exists before sending cmd to the node
-get_node() ->
+curr_node() ->
   get(curr_node).
 
+curr_node(Node) ->
+  put(curr_node, Node).
+
 
 %%
-%% Set the node this UI is connected to
+%% Get and Set language module used in the UI
 %%
-set_node(Node) ->
-  put(curr_node, Node). 
+lang() ->
+  get(lang_mod).
+
+lang(LangMod) ->
+  put(lang_mod, LangMod).
+
+
+%%
+%% Look up output strings in the current language module
+%%
+format_out(StringId) ->
+  (lang()):format_out(StringId).
+
+format_out(StringId, Args) ->
+  (lang()):format_out(StringId, Args).
 
 
 % Process block create command
@@ -265,28 +376,28 @@ ui_create_block(Params) ->
       case length(Params) of
         2 ->
           [BlockTypeStr, BlockNameStr] = Params,
-          Description = "";
+          Description = "Description";
         3 ->
           [BlockTypeStr, BlockNameStr, Description] = Params
       end,
     
       BlockType = list_to_atom(BlockTypeStr),
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:create_block(get_node(), BlockType, BlockName, Description) of
+      case linkblox_api:create_block(curr_node(), BlockType, BlockName, Description) of
         ok ->
-          io:format("Block ~s:~s Created~n", [BlockTypeStr, BlockNameStr]);
+          format_out(block_type_created, [BlockTypeStr, BlockNameStr]);
 
         {error, invalid_block_type} ->
-          io:format("Error: Block type ~s is not a valid block type~n", [BlockTypeStr]);
+          format_out(err_invalid_block_type, [BlockTypeStr]);
 
         {error, block_exists} ->
-          io:format("Error: Block ~s already exists~n", [BlockNameStr]);
+          format_out(err_block_already_exists, [BlockNameStr]);
         
         {error, Reason} -> 
-          io:format("Error: ~p creating block ~s:~s ~n", [Reason, BlockTypeStr, BlockNameStr])
+          format_out(err_creating_block_type, [Reason, BlockTypeStr, BlockNameStr])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.    
 
 
@@ -300,7 +411,7 @@ ui_copy_block(Params) ->
       case length(Params) of
         2 ->
           [SrcBlockNameStr, DstBlockNameStr] = Params,
-          DstNode = get_node();
+          DstNode = curr_node();
         3 ->
           [SrcBlockNameStr, DstNodeStr, DstBlockNameStr] = Params,
           DstNode = list_to_atom(DstNodeStr)
@@ -308,25 +419,25 @@ ui_copy_block(Params) ->
 
       SrcBlockName = list_to_atom(SrcBlockNameStr),
       % Always get source block values from the current node
-      case linkblox_api:get_block(get_node(), SrcBlockName) of
+      case linkblox_api:get_block(curr_node(), SrcBlockName) of
         {ok, SrcBlockValues} ->
           DstBlockName = list_to_atom(DstBlockNameStr),
           case linkblox_api:copy_block(DstNode, DstBlockName, SrcBlockValues, []) of
             ok ->
-              io:format("Dest Block ~s Created~n", [DstBlockNameStr]);
+              format_out(dest_block_created, [DstBlockNameStr]);
 
             {error, block_exists} ->
-              io:format("Error: Dest Block ~s already exists~n", [DstBlockNameStr]);
+              format_out(err_dest_block_already_exists, [DstBlockNameStr]);
       
             {error, Reason} -> 
-              io:format("Error: ~p creating block ~s ~n",  [Reason, DstBlockNameStr])
+              format_out(err_creating_block,  [Reason, DstBlockNameStr])
           end;
 
         {error, block_not_found} ->
-          io:format("Error: Source Block ~s does not exists~n", [SrcBlockNameStr])
+          format_out(err_source_block_does_not_exist, [SrcBlockNameStr])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.    
 
 
@@ -341,44 +452,44 @@ ui_rename_block(Params) ->
 
       SrcBlockName = list_to_atom(SrcBlockNameStr),
       % Always get source block values from the current node
-      case linkblox_api:get_block(get_node(), SrcBlockName) of
+      case linkblox_api:get_block(curr_node(), SrcBlockName) of
         {ok, SrcBlockValues} ->
           DstBlockName = list_to_atom(DstBlockNameStr),
-          case linkblox_api:copy_block(get_node(), DstBlockName, SrcBlockValues, []) of
+          case linkblox_api:copy_block(curr_node(), DstBlockName, SrcBlockValues, []) of
             ok ->
-              io:format("Dest Block ~s Created~n", [DstBlockNameStr]);
+              format_out(dest_block_created, [DstBlockNameStr]);
 
             {error, block_exists} ->
-              io:format("Error: Dest Block ~s already exists~n", [DstBlockNameStr]);
+              format_out(err_dest_block_already_exists, [DstBlockNameStr]);
       
             {error, Reason} -> 
-              io:format("Error: ~p creating block ~s ~n",  [Reason, DstBlockNameStr])
+              format_out(err_creating_block, [Reason, DstBlockNameStr])
           end;
 
         {error, block_not_found} ->
-          io:format("Error: Source Block ~s does not exists~n", [SrcBlockNameStr])
+          format_out(err_source_block_does_not_exist, [SrcBlockNameStr])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.    
 
 
 % Process manual block execute command
 ui_execute_block(Params) ->
    case check_num_params(Params, 1) of  
-    low -> io:format("Enter block name~n");
+    low -> format_out(enter_block_name);
 
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:execute_block(get_node(), BlockName) of
+      case linkblox_api:execute_block(curr_node(), BlockName) of
         ok -> 
           ok;
         {error, block_not_found} ->
-          io:format("Error: block ~s not found~n", [BlockNameStr])  
+          format_out(err_block_not_found, [BlockNameStr])  
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 
@@ -387,20 +498,23 @@ ui_delete_block(Params) ->
   % TODO: Add delete all command to delete all blocks at once
   % TODO: Ask the user if they really want to delete
    case check_num_params(Params, 1) of  
-    low -> io:format("Enter block name~n");
+    low -> format_out(enter_block_name);
 
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),  
-      case linkblox_api:delete_block(get_node(), BlockName) of
+      case linkblox_api:delete_block(curr_node(), BlockName) of
         ok -> 
-          io:format("~p Deleted~n", [BlockNameStr]);
-            
+          format_out(block_deleted, [BlockNameStr]);
+
+        {error, block_not_found} ->
+          format_out(err_block_not_found,  [BlockNameStr]);
+   
         {error, Reason} ->
-          io:format("Error: ~p deleting ~p~n", [Reason, BlockNameStr]) 
+          format_out(err_deleting_block, [Reason, BlockNameStr]) 
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
     
     
@@ -408,23 +522,23 @@ ui_delete_block(Params) ->
 ui_disable_block(Params) ->
   case check_num_params(Params, 1) of
 
-    low -> io:format("Enter block-name~n");
+    low -> format_out(enter_block_name);
     
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(get_node(), BlockName, disable, true) of
+      case linkblox_api:set_value(curr_node(), BlockName, disable, true) of
         ok ->
-          io:format("~s Disabled~n", [BlockNameStr]);
+          format_out(block_disabled, [BlockNameStr]);
 
         {error, block_not_found} ->
-          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+          format_out(err_block_not_found,  [BlockNameStr]);
 
         {error, Reason} ->
-          io:format("Error: ~p Disabling: ~s~n",  [Reason, BlockNameStr]) 
+          format_out(err_disabling_block,  [Reason, BlockNameStr]) 
       end;
  
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 
@@ -432,23 +546,23 @@ ui_disable_block(Params) ->
 ui_enable_block(Params) ->
  case check_num_params(Params, 1) of
 
-    low -> io:format("Enter block-name~n");
+    low -> format_out(enter_block_name);
     
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(get_node(), BlockName, disable, false) of
+      case linkblox_api:set_value(curr_node(), BlockName, disable, false) of
         ok ->
-          io:format("~s Enabled~n", [BlockNameStr]);
+          format_out(block_enabled, [BlockNameStr]);
 
         {error, block_not_found} ->
-          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+          format_out(err_block_not_found,  [BlockNameStr]);
 
         {error, Reason} ->
-          io:format("Error: ~p Enabling: ~s~n",  [Reason, BlockNameStr]) 
+          format_out(err_enabling_block,  [Reason, BlockNameStr]) 
       end;
  
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
     
     
@@ -456,23 +570,23 @@ ui_enable_block(Params) ->
 ui_freeze_block(Params) ->
 case check_num_params(Params, 1) of
 
-    low -> io:format("Enter block-name~n");
+    low -> format_out(enter_block_name);
     
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(get_node(), BlockName, freeze, true) of
+      case linkblox_api:set_value(curr_node(), BlockName, freeze, true) of
         ok ->
-          io:format("~s Frozen~n", [BlockNameStr]);
+          format_out(block_frozen, [BlockNameStr]);
 
         {error, block_not_found} ->
-          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+          format_out(err_block_not_found,  [BlockNameStr]);
 
         {error, Reason} ->
-          io:format("Error: ~p Freezing: ~s~n",  [Reason, BlockNameStr]) 
+          format_out(err_freezing_block,  [Reason, BlockNameStr]) 
       end;
  
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
     
@@ -480,23 +594,23 @@ case check_num_params(Params, 1) of
 ui_thaw_block(Params) ->
 case check_num_params(Params, 1) of
 
-    low -> io:format("Enter block-name~n");
+    low -> format_out(enter_block_name);
     
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(get_node(), BlockName, freeze, false) of
+      case linkblox_api:set_value(curr_node(), BlockName, freeze, false) of
         ok ->
-          io:format("~s Thawed~n", [BlockNameStr]);
+          format_out(block_thawed, [BlockNameStr]);
 
         {error, block_not_found} ->
-          io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+          format_out(err_block_not_found,  [BlockNameStr]);
 
         {error, Reason} ->
-          io:format("Error: ~p Thawing: ~s~n",  [Reason, BlockNameStr]) 
+          format_out(err_thawing_block,  [Reason, BlockNameStr]) 
       end;
  
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 
@@ -505,7 +619,7 @@ ui_status(Params) ->
   case check_num_params(Params, 0) of  
     ok -> block_status();
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
  
  
@@ -518,12 +632,12 @@ ui_get_values(Params) ->
 
       case BlockNameStr of
         "blocks" ->  % Just get the list of block names
-          BlockNames = linkblox_api:get_block_names(get_node()),
+          BlockNames = linkblox_api:get_block_names(curr_node()),
           io:format("~n"),
           lists:map(fun(BlockName) -> io:format("  ~p~n", [BlockName]) end, BlockNames);
 
         "types" ->  % Just get the list of block types information
-          TypesInfo = linkblox_api:get_types_info(get_node()),
+          TypesInfo = linkblox_api:get_types_info(curr_node()),
           % Print the list of type names version
           io:fwrite("~n~-16s ~-8s ~-60s~n", 
                       ["Block Type", "Version", "Description"]),
@@ -535,48 +649,58 @@ ui_get_values(Params) ->
                                string:left(Version, 8),
                                string:left(Description, 60)]) end, 
                               TypesInfo),
-          TypesInfo = linkblox_api:get_types_info(get_node());
+          TypesInfo = linkblox_api:get_types_info(curr_node());
 
        _ ->
           BlockName = list_to_atom(BlockNameStr),
-          case linkblox_api:get_block(get_node(), BlockName) of
+          case linkblox_api:get_block(curr_node(), BlockName) of
             {ok, BlockValues} -> 
               format_block_values(BlockValues);
             {error, block_not_found} -> 
-              io:format("Error: Block ~s does not exist~n", [BlockNameStr]);
+              format_out(err_block_not_found, [BlockNameStr]);
             Unknown ->
-              io:format("Error: Unkown result from linkblox_api:get_block(): ~p~n", Unknown)
+              format_out(err_unk_result_from_linkblox_api_get_block, [Unknown])
           end
         end;
 
     2 -> 
-      [BlockNameStr, ValueIdStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
-      case attrib_utils:str_to_value_id(ValueIdStr) of
-        {ok, ValueId} ->
-          case linkblox_api:get_value(get_node(), BlockName, ValueId) of
-            {ok, CurrentValue} ->
-              io:format("~n   ~p~n", [CurrentValue]);
-          
-            {error, block_not_found} ->
-              io:format("Error: Block ~s does not exist~n", [BlockNameStr]);
-
-            {error, value_not_found} ->
-              io:format("Error: ~s is not a value of block: ~s~n", 
-                         [ValueIdStr, BlockNameStr]);
-            {error, Reason} ->
-              io:format("Error: ~p retrieving value: ~s:~s~n", 
-                           [Reason, BlockNameStr, ValueIdStr]);
-
+      case Params of
+        [BlockNameStr, "raw"] ->
+          % Display the unformated tuple and list values
+          BlockName = list_to_atom(BlockNameStr),
+          case linkblox_api:get_block(curr_node(), BlockName) of
+            {ok, BlockValues} -> 
+              io:format("~n~p~n", [BlockValues]);
+            {error, block_not_found} -> 
+              format_out(err_block_not_found, [BlockNameStr]);
             Unknown ->
-              io:format("Error: Unkown result from linkblox_api:get_value(): ~p~n", 
-                         [Unknown]) 
+              format_out(err_unk_result_from_linkblox_api_get_block, [Unknown])
           end;
-        {error, invalid} ->
-          io:format("Error: Invalid Value Id string: ~s~n", [ValueIdStr])
-      end;
 
-    _ -> io:format("Error: Too many parameters~n")
+        [BlockNameStr, ValueIdStr] ->
+          BlockName = list_to_atom(BlockNameStr),
+          case attrib_utils:str_to_value_id(ValueIdStr) of
+            {ok, ValueId} ->
+              case linkblox_api:get_value(curr_node(), BlockName, ValueId) of
+                {ok, CurrentValue} ->
+                  io:format("~n   ~p~n", [CurrentValue]);
+              
+                {error, block_not_found} ->
+                  format_out(err_block_not_found, [BlockNameStr]);
+
+                {error, value_not_found} ->
+                  format_out(err_invalid_value_id, [ValueIdStr, BlockNameStr]);
+                {error, Reason} ->
+                  format_out(err_retrieving_value, [Reason, BlockNameStr, ValueIdStr]);
+
+                Unknown ->
+                  format_out(err_unk_result_from_linkblox_api_get_value, [Unknown]) 
+              end;
+            {error, invalid} ->
+              format_out(err_invalid_value_id_str, [ValueIdStr])
+          end
+      end;
+    _ -> format_out(err_too_many_params)
   end.    
 
 
@@ -586,17 +710,17 @@ format_block_values(BlockValues) ->
 
   case BlockValues of
     {Config, Inputs, Outputs} ->
-      io:format("Config:~n"),
+      format_out(config_str),
       lists:map(FormatAttribute, Config),
 
-      io:format("Inputs:~n"),
+      format_out(inputs_str),
       lists:map(FormatAttribute, Inputs),
 
-      io:format("Outputs:~n"),
+      format_out(outputs_str),
       lists:map(FormatAttribute, Outputs);
 
     _ ->
-      io:format("Invalid Block Values. Unable to display. ~n")
+      format_out(inv_block_values)
   end.
 
 
@@ -619,22 +743,22 @@ format_attribute(BlockValue) ->
 
         {OutAttribName} ->
           format_value_id_value(ValueId, Value),
-          io:format("  Link: ~p", [OutAttribName]),
+          format_out(self_link_str, [OutAttribName]),
           format_newline();
 
         {BlockName, OutAttribName} ->
           format_value_id_value(ValueId, Value),
-          io:format("  Link: ~p:~p", [BlockName, OutAttribName]),
+          format_out(block_link_str, [BlockName, OutAttribName]),
           format_newline();
 
         {NodeName, BlockName, OutAttribName} ->
           format_value_id_value(ValueId, Value),
-          io:format("  Link: ~p:~p:~p", [NodeName, BlockName, OutAttribName]),
+          format_out(node_link_str, [NodeName, BlockName, OutAttribName]),
           format_newline();
 
         References ->
           format_value_id_value(ValueId, Value),
-          io:format("  Refs: ~p", [References]),
+          format_out(reference_str, [References]),
           format_newline()
       end;
 
@@ -701,22 +825,22 @@ format_array_values(ValueName, Index, ArrayValues) ->
 
         {OutAttribName} ->
           format_value(Value),
-          io:format("  Link: ~p", [OutAttribName]),
+          format_out(self_link_str, [OutAttribName]),
           format_newline();
 
         {BlockName, OutAttribName} ->
           format_value(Value),
-          io:format("  Link: ~p:~p", [BlockName, OutAttribName]),
+          format_out(block_link_str, [BlockName, OutAttribName]),
           format_newline();
 
         {NodeName, BlockName, OutAttribName} ->
           format_value(Value),
-          io:format("  Link: ~p:~p:~p", [NodeName, BlockName, OutAttribName]),
+          format_out(node_link_str, [NodeName, BlockName, OutAttribName]),
           format_newline();
 
         References ->
           format_value(Value),
-          io:format("  Refs: ~p", [References]),
+          format_out(reference_str, [References]),
           format_newline()
       end
   end,
@@ -736,26 +860,25 @@ ui_set_value(Params) ->
       case attrib_utils:str_to_value_id(ValueIdStr) of
         {ok, ValueId} ->
           Value = parse_value(ValueStr),
-          case linkblox_api:set_value(get_node(), BlockName, ValueId, Value) of
+          case linkblox_api:set_value(curr_node(), BlockName, ValueId, Value) of
             ok ->
-              io:format("~s:~s Set to: ~s~n", [BlockNameStr, ValueIdStr, ValueStr]);
+              format_out(block_value_set_to_str, [BlockNameStr, ValueIdStr, ValueStr]);
 
             {error, block_not_found} ->
-              io:format("Error: Block: ~s does not exist~n",  [BlockNameStr]);
+              format_out(err_block_not_found,  [BlockNameStr]);
 
             {error, not_found} ->
-              io:format("Error: Attribute: ~s does not exist~n",  [ValueIdStr]);
+              format_out(err_block_value_not_found,  [ValueIdStr]);
 
             {error, Reason} ->
-              io:format("Error: ~p Setting: ~s:~s to ~s~n",  
-                         [Reason, BlockNameStr, ValueIdStr, ValueStr]) 
+              format_out(err_setting_block_value, [Reason, BlockNameStr, ValueIdStr, ValueStr]) 
           end;
             
         {error, invalid} ->
-          io:format("Error: Invalid Value Id string: ~s~n", [ValueIdStr])
+          format_out(err_invalid_value_id_str, [ValueIdStr])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.    
 
 
@@ -778,24 +901,22 @@ ui_link_blocks(Params) ->
           LinkParams = lists:nthtail(2, Params),
           case parse_link(LinkParams) of
             {ok, Link} ->
-              case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, Link) of
+              case linkblox_api:set_link(curr_node(), InputBlockName, InputValueId, Link) of
                 {error, Reason} ->
-                  io:format("Error: ~p Linking Input: ~s:~s to Output: ~p~n", 
+                  format_out(err_linking_input_to_output, 
                           [Reason, InputBlockNameStr, InputValueIdStr, Link]);
                 ok ->
-                  io:format("Block Input: ~s:~s Linked to Block Output: ~p~n", 
+                  format_out(block_input_linked_to_block_output, 
                               [InputBlockNameStr, InputValueIdStr, Link])
               end;
             {error, Reason} ->
-              io:format("Error: ~p Converting ~p to a Link~n", 
-                           [Reason, LinkParams])
+              format_out(err_converting_to_link, [Reason, LinkParams])
           end;
         {error, Reason} ->
-          io:format("Error: ~p Converting ~s to Input Value ID~n", 
-                                        [Reason, InputValueIdStr])
+          format_out(err_converting_to_input_value_id, [Reason, InputValueIdStr])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 
@@ -814,21 +935,18 @@ ui_unlink_blocks(Params) ->
       case attrib_utils:str_to_value_id(InputValueIdStr) of
         {ok, InputValueId} ->
           % Set the input value link to an empty link: {}
-          case linkblox_api:set_link(get_node(), InputBlockName, InputValueId, {}) of
+          case linkblox_api:set_link(curr_node(), InputBlockName, InputValueId, {}) of
             {error, Reason} ->
-              io:format("Error: ~p Unlinking Input: ~s:~s~n", 
-                          [Reason, InputBlockNameStr, InputValueIdStr]);
+              format_out(err_unlinking_input, [Reason, InputBlockNameStr, InputValueIdStr]);
               ok ->
-                io:format("Block Input: ~s:~s Unlinked~n", 
-                            [InputBlockNameStr, InputValueIdStr])
+                format_out(block_input_unlinked, [InputBlockNameStr, InputValueIdStr])
           end;
       
         {error, Reason} ->
-          io:format("Error: ~p Converting ~s to Input Value ID~n", 
-                                        [Reason, InputValueIdStr])
+          format_out(err_converting_to_input_value_id, [Reason, InputValueIdStr])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 
@@ -868,7 +986,7 @@ ui_load_blocks(Params) ->
     ok ->
       case length(Params) of  
         0 -> 
-          io:format("Enter file name, or press <Enter> for default: 'LinkBloxConfig': "),
+          format_out(enter_config_file_name),
           case get_input("") of
                   [] -> FileName = "LinkBloxConfig";
             FileName -> FileName
@@ -878,15 +996,15 @@ ui_load_blocks(Params) ->
           FileName = Params
       end,
       
-      case linkblox_api:load_blocks_from_file(get_node(), FileName) of
+      case linkblox_api:load_blocks_from_file(curr_node(), FileName) of
         ok ->
-          io:format("Block config file: ~s loaded~n", [FileName]);
+          format_out(block_config_file_loaded, [FileName]);
 
         {error, Reason} ->
-          io:format("Error: ~p loading block conifg file: ~s~n", [Reason, FileName])
+          format_out(err_loading_block_config_file, [Reason, FileName])
       end;
 
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 % TODO: Create command to get block data from one node and load it on another node
@@ -900,7 +1018,7 @@ ui_save_blocks(Params) ->
     ok ->
       case length(Params) of  
         0 -> 
-          io:format("Enter file name, or press <Enter> for default: 'LinkBloxConfig': "),
+          format_out(enter_config_file_name),
           case get_input("") of
                   [] -> FileName = "LinkBloxConfig";
             FileName -> FileName
@@ -910,42 +1028,42 @@ ui_save_blocks(Params) ->
           FileName = Params
       end,
 
-      io:format("This will overwrite ~s if the file exists. OK to continue? (Y/N): ", [FileName]),
+      format_out(config_file_overwrite_warning, [FileName]),
       case get_yes() of
         true ->
-          case linkblox_api:save_blocks(get_node(), FileName) of
+          case linkblox_api:save_blocks(curr_node(), FileName) of
             ok ->
-              io:format("Block config file: ~s saved~n", [FileName]);
+              format_out(block_config_file_saved, [FileName]);
 
             {error, Reason} ->
-              io:format("Error: ~p saving block conifg file: ~s~n", [Reason, FileName])
+              format_out(err_saving_block_config_file, [Reason, FileName])
           end;
         _ -> ok
       end;
-    high -> io:format("Error: Too many parameters~n")
+    high -> format_out(err_too_many_params)
   end.
 
 
 % Execute Erlang BIF node()
 ui_node(_Params) ->
-  io:format( "Node: ~p~n", [node()]).
+  format_out(node_prompt_str, [node()]).
 
 
 % Execute Erlang BIF nodes()
 ui_nodes(_Params) ->  
-  io:format( "Nodes: ~p~n", [[node() | nodes()]]).
+  format_out(nodes_prompt_str, [[node() | nodes()]]).
 
 
 % Connect to another node
 ui_connect(Params) ->
   case check_num_params(Params, 1) of
     low ->
-      io:format("Enter node-name or local~n");
+      format_out(enter_node_name);
 
     ok ->
       case Params of
         ["local"] ->  % Just connect to the local node
-          io:format("Connecting to local node~n"),
+          format_out(connecting_to_local_node),
           connect_to_node(node());
 
         [NodeStr] ->   
@@ -953,7 +1071,7 @@ ui_connect(Params) ->
           connect_to_node(Node)
       end;
     high ->
-      io:format("Error: Too many parameters~n"),
+      format_out(err_too_many_params),
       error
   end.
 
@@ -961,11 +1079,11 @@ ui_connect(Params) ->
 connect_to_node(Node) ->
   case net_kernel:connect_node(Node) of
     true -> 
-      set_node(Node),
-      io:format("Connected to node: ~p~n", [Node]);
+      curr_node(Node),
+      format_out(connected_to_node, [Node]);
 
     _ ->
-      io:format("Unable to connect to node: ~p~n", [Node])
+      format_out(unable_to_connect_to_node, [Node])
   end.
 
 
@@ -976,7 +1094,7 @@ block_status() ->
   io:fwrite("~n~-16s ~-16s ~-12s ~-12s ~-12s ~-15s~n", 
             ["Block Type", "Block Name", "Output", "Status", "Exec Method", "Last Exec"]),
   io:fwrite("~16c ~16c ~12c ~12c ~12c ~15c~n", [$-, $-, $-, $-, $-, $-] ), 
-  block_status(linkblox_api:get_block_names(get_node())).
+  block_status(linkblox_api:get_block_names(curr_node())).
     
 block_status([]) ->
   io:format("~n"), 
@@ -984,14 +1102,14 @@ block_status([]) ->
 
 block_status([BlockName | RemainingBlockNames]) ->
   {BlockTypeStr, _Version, _Description} = 
-        linkblox_api:get_type_info(get_node(), BlockName),
+        linkblox_api:get_type_info(curr_node(), BlockName),
 
   % TODO: Create get_values() API call, get multiple values in one call 
-  {ok, Value} = linkblox_api:get_value(get_node(), BlockName, value),
-  {ok, Status} = linkblox_api:get_value(get_node(), BlockName, status),
-  {ok, ExecMethod} = linkblox_api:get_value(get_node(), BlockName, exec_method),
+  {ok, Value} = linkblox_api:get_value(curr_node(), BlockName, value),
+  {ok, Status} = linkblox_api:get_value(curr_node(), BlockName, status),
+  {ok, ExecMethod} = linkblox_api:get_value(curr_node(), BlockName, exec_method),
   
-  case linkblox_api:get_value(get_node(), BlockName, last_exec) of 
+  case linkblox_api:get_value(curr_node(), BlockName, last_exec) of 
     {ok, not_active} ->
       LastExecuted = "not_active";
     {ok, {Hour, Minute, Second, Micro}} ->
@@ -1013,22 +1131,22 @@ block_status([BlockName | RemainingBlockNames]) ->
 ui_valid_block_name(Params) ->
   case check_num_params(Params, 1) of
     low ->
-      io:format("Enter block-name~n"),
+      format_out(enter_block_name),
       error;
 
     ok ->
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
       % check if block name is an existing block
-      case linkblox_api:is_block_name(get_node(), BlockName) of
+      case linkblox_api:is_block_name(curr_node(), BlockName) of
         true  -> 
-          io:format("Block: ~s exists~n", [BlockNameStr]);
+          format_out(block_exists, [BlockNameStr]);
         false ->
-          io:format("Block ~p does not exist~n", [BlockNameStr])
+          format_out(block_does_not_exist, [BlockNameStr])
       end;
  
     high ->
-      io:format("Error: Too many parameters~n"),
+      format_out(err_too_many_params),
       error
   end.
 
@@ -1085,7 +1203,7 @@ ui_help(Params) ->
           end
       end;
     high ->
-      io:format("Error: Too many parameters~n"),
+      format_out(err_too_many_params),
       error
   end.
 
@@ -1226,27 +1344,7 @@ parse_value(ValueStr) ->
     end.
 
 
-  %
-  % Get user input, 
-  % minus new line char, leading whitespace, 
-  % and trailing whitespace
-  %
-  get_input(Prompt) ->
-    Raw1 = io:get_line(Prompt),
-
-    % In nerves environment, get_line() returns a binary.
-    % Convert it to a string
-    case is_binary(Raw1) of
-      true  -> Raw2 = erlang:binary_to_list(Raw1);
-      false -> Raw2  = Raw1 
-    end, 
-    % Remove new line char
-    Raw3 = string:strip(Raw2, right, 10),
-    % Remove leading and trailing whitespace
-    string:strip(Raw3).
-
-
-
+  
 
 %% ====================================================================
 %% Tests
