@@ -168,7 +168,7 @@ get_output_value(Config, Inputs) ->
       BlockName = config_utils:name(Config),
       error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
                                [BlockName, Reason]),
-      {not_active, input_error}
+      {not_active, input_err}
   end.
 
 %% ====================================================================

@@ -193,7 +193,7 @@ execute({Config, Inputs, Outputs, Private}) ->
                                [BlockName, Other]),
       LedValue = DefaultValue, % TODO: Set pin to default value or input? 
       Value = not_active,
-      Status = input_error
+      Status = input_err
   end,
   set_led_value(LedId, LedValue, InvertOutput),
  
