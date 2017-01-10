@@ -389,11 +389,8 @@ handle_cast(init_configure, BlockValues) ->
   % because you can't call block_supervisor:block_names()
   % (i.e.supervisor:which_child()) from the init() function 
   % of a child process. 
-  BlockNames = block_supervisor:block_names(),
-  Configure = fun(EachBlock) ->
-                block_server:configure(EachBlock)
-              end,
-  lists:foreach(Configure, BlockNames),
+  block_common:configure_all_blocks(),
+  
   {noreply, BlockValues};
 
 

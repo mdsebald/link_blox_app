@@ -21,7 +21,8 @@
           execute/2,
           initialize/1,
           delete/1,
-          update_linked_inputs/4
+          update_linked_inputs/4,
+          configure_all_blocks/0
 ]).
 
 %%
@@ -140,7 +141,6 @@ initialize({Config, Inputs, Outputs}) ->
 
 %%
 %% Common block execute function
-%% TODO: Don't execute block when status is in error,
 %%
 -spec execute(BlockValues :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
@@ -225,9 +225,10 @@ ok_to_execute(BlockStatus, ExecMethod) ->
     % always execute the block on a manual command
     manual -> true;
 
-    % if input value changed, allow block to execute if normal, or some kind of input error
+    % if input value changed, allow block to execute if normal, disabled, frozen, or some kind of input error
+    % The changed input value could have enabled, thawed, or otherwise fixed the input value error
     input_cos ->
-      case lists:member(BlockStatus, [input_err, no_input, initialed, normal]) of
+      case lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]) of
         true -> true;
         false -> false
       end;
@@ -475,6 +476,19 @@ delete({Config, Inputs, Outputs, Private}) ->
   % Perform block type specific delete actions
   BlockModule:delete({Config, EmptyInputs, EmptyOutputs1, Private}).
 
+
+%%
+%% Send a configure message to each block on this node
+%%
+-spec configure_all_blocks() -> ok.
+
+configure_all_blocks() ->
+  BlockNames = block_supervisor:block_names(),
+  Configure = fun(EachBlock) ->
+                block_server:configure(EachBlock)
+              end,
+  lists:foreach(Configure, BlockNames).
+  
 
 %% ====================================================================
 %% Internal functions
