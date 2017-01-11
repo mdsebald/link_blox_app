@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/mdsebald/LinkBlox.png?branch=master)](https://travis-ci.org/mdsebald/LinkBlox)
 
-LinkBlox is an Erlang application that can either be run on Linux[^1], or built using the Nerves project[^2] to create standalone embedded systems.  See [Nerves](nerves-project.org "Nerves Project").
+LinkBlox is an Erlang application that can either be run on Linux[^1], or built using the Nerves project[^2] to create standalone embedded systems.  See [Nerves](http://nerves-project.org/ "Nerves Project").
 
 The purpose of LinkBlox is to abstract away programming complexity into discrete blocks of functionality that can be created and linked to other blocks to create a device with desired functionality.
 
