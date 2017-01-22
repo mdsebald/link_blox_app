@@ -135,10 +135,7 @@ get_value(Inputs, ValueId, CheckType) ->
             {error, invalid_index}
           end;
         _ -> {error, invalid_value}
-      end;
-       
-    % Attribute value was not an input value  
-    _ -> {error, not_input}    
+      end
   end.
 
 %% Check the value and link for both non-array and array values

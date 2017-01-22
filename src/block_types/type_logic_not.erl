@@ -158,7 +158,6 @@ get_output_value(Config, Inputs) ->
     {ok, Input} ->
       % Set Output Value to NOT input value
       case Input of
-        empty ->      {not_active, no_input};
         not_active -> {not_active, normal};
         true ->       {false, normal};
         false ->      {true, normal}

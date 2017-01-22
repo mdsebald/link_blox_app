@@ -58,7 +58,7 @@ default_inputs() ->
     ]). 
 
 
--spec default_outputs() -> list().
+-spec default_outputs() -> list(output_attr()).
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -173,7 +173,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 {error, Reason} ->
                   error_logger:error_msg("Error: ~p Reading sensor~n", 
                               [Reason]),
-                  Status = proc_error,
+                  Status = proc_err,
                   Value = not_active,
                   Temp = not_active,
                   Press = not_active,
@@ -203,7 +203,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
                               [Reason, I2cAddr]),
-      Status = proc_error,
+      Status = proc_err,
       Value = not_active,
       Temp = not_active,
       Press = not_active,
@@ -252,7 +252,7 @@ execute({Config, Inputs, Outputs, Private}) ->
         {error, Reason} ->
           error_logger:error_msg("Error: ~p Reading sensor forced mode~n", 
                                   [Reason]),
-          Status = proc_error,
+          Status = proc_err,
           Value = not_active,
           Temp = not_active,
           Press = not_active,
@@ -269,7 +269,7 @@ execute({Config, Inputs, Outputs, Private}) ->
         {error, Reason} ->
           error_logger:error_msg("Error: ~p Reading sensor~n", 
                                   [Reason]),
-          Status = proc_error,
+          Status = proc_err,
           Value = not_active,
           Temp = not_active,
           Press = not_active,
@@ -291,7 +291,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%  
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
@@ -382,7 +382,7 @@ delete({Config, Inputs, Outputs, Private}) ->
 % Configure the sensor
 %
 -spec configure_sensor(I2cRef :: pid(),
-                       Config :: list(config_attr())) -> {ok, binary()} | {error, atom()}.
+                       Config :: list(config_attr())) -> {ok, byte()} | {error, atom()}.
 
 configure_sensor(I2cRef, Config) -> 
   case reset_sensor(I2cRef) of
@@ -477,7 +477,7 @@ set_humid_mode(I2cRef, Config) ->
 % Set Temperature sensor mode, Pressure sensor mode, and Read mode
 %
 -spec set_temp_press_read_modes(I2cRef :: pid(), 
-                                 Config :: list(config_attr())) -> {ok, binary()} | {error, atom()}.
+                                Config :: list(config_attr())) -> {ok, byte()} | {error, atom()}.
 
 set_temp_press_read_modes(I2cRef, Config) ->
   
@@ -513,7 +513,7 @@ set_temp_press_read_modes(I2cRef, Config) ->
 %
 % Get standby time from config values, and convert to sensor bit format
 %
--spec get_standby_time(Config :: list(config_attr())) -> byte() | {error, atom()}.
+-spec get_standby_time(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_standby_time(Config) ->
   case attrib_utils:get_value(Config, standby_time) of
@@ -536,7 +536,7 @@ get_standby_time(Config) ->
 %
 % Get filter coefficient from config values, and convert to sensor bit format
 %
--spec get_filter_coeff(Config :: list(config_attr())) -> byte() | {error, atom()}.
+-spec get_filter_coeff(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_filter_coeff(Config) ->
   case attrib_utils:get_value(Config, filter_coeff) of
@@ -556,7 +556,7 @@ get_filter_coeff(Config) ->
 %
 % Get humidity sensor mode from config values, and convert to sensor bit format
 %
--spec get_humid_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+-spec get_humid_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_humid_mode(Config) ->
   case attrib_utils:get_value(Config, humid_mode) of
@@ -577,7 +577,7 @@ get_humid_mode(Config) ->
 %
 % Get temperature sensor mode from config values, and convert to sensor bit format
 %
--spec get_temp_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+-spec get_temp_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_temp_mode(Config) ->
   case attrib_utils:get_value(Config, temp_mode) of
@@ -598,7 +598,7 @@ get_temp_mode(Config) ->
 %
 % Get pressure sensor mode from config values, and convert to sensor bit format
 %
--spec get_press_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+-spec get_press_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_press_mode(Config) ->
   case attrib_utils:get_value(Config, press_mode) of
@@ -619,7 +619,7 @@ get_press_mode(Config) ->
 %
 % Get sensor read mode from config values, and convert to sensor bit format
 %
--spec get_read_mode(Config :: list(config_attr())) -> byte() | {error, atom()}.
+-spec get_read_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_read_mode(Config) ->
   case attrib_utils:get_value(Config, read_mode) of
@@ -640,7 +640,7 @@ get_read_mode(Config) ->
 % Get sensor calibration values
 %
 -spec get_calibration(I2cRef :: pid(),
-                      Private :: list(private_attr())) -> list(private_attr()).
+                      Private :: list(private_attr())) -> {ok, list(private_attr())} | {error, atom()}.
 
 get_calibration(I2cRef, Private) ->
   % Read the first set of calibration data
@@ -703,11 +703,8 @@ get_calibration(I2cRef, Private) ->
                  {dig_H4, Dig_H4},
                  {dig_H5, Dig_H5},
                  {dig_H6, Dig_H6}
-               ]);
-
-        _ -> {error, data_match}
-      end;
-    _ ->  {error, data_match}  
+               ])
+      end
   end.
   
   
@@ -716,7 +713,7 @@ get_calibration(I2cRef, Private) ->
 % Read the sensor using forced mode.
 %
 -spec read_sensor_forced(I2cRef :: pid(),
-                  Private :: list(private_attr())) -> list() | {error, term()}.
+                  Private :: list(private_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
                    
 read_sensor_forced(I2cRef, Private) ->
 
@@ -741,32 +738,34 @@ read_sensor_forced(I2cRef, Private) ->
       {error, Reason}
   end.
 
-  %
-  % Wait for sensor to return to sleep mode
-  %
-  wait_for_sleep_mode(TotalWait, I2cRef) ->
-    MinDelay = 3,
+%
+% Wait for sensor to return to sleep mode
+%
+-spec wait_for_sleep_mode(pos_integer(), pid()) -> ok | {error, atom()}.
 
-    if (TotalWait > MinDelay) ->
-      block_utils:sleep(MinDelay),
+wait_for_sleep_mode(TotalWait, I2cRef) ->
+  MinDelay = 3,
 
-      case i2c:write_read(I2cRef, <<?CTRL_MEAS_REG>>, 1) of  
-        <<_TempPressMode:6, ReadMode:2>> ->
-      
-          case ReadMode of
-            ?SENSOR_MODE_SLEEP ->
-              % sensor is back in sleep mode ok to read
-              ok;
+  if (TotalWait > MinDelay) ->
+    block_utils:sleep(MinDelay),
 
-            _ -> 
-              % keep waiting
-              wait_for_sleep_mode(TotalWait - MinDelay, I2cRef)
-          end;
-        {error, Reason} -> {error, Reason}
-      end;
-    true -> 
-      {error, timeout}
-    end.
+    case i2c:write_read(I2cRef, <<?CTRL_MEAS_REG>>, 1) of  
+      <<_TempPressMode:6, ReadMode:2>> ->
+    
+        case ReadMode of
+          ?SENSOR_MODE_SLEEP ->
+            % sensor is back in sleep mode ok to read
+            ok;
+
+          _ -> 
+            % keep waiting
+            wait_for_sleep_mode(TotalWait - MinDelay, I2cRef)
+        end;
+      {error, Reason} -> {error, Reason}
+    end;
+  true -> 
+    {error, timeout}
+  end.
     
     
 %
@@ -775,7 +774,7 @@ read_sensor_forced(I2cRef, Private) ->
 % We are just reading the last values.
 %
 -spec read_sensor(I2cRef :: pid(),
-                  Private :: list(private_attr())) -> list() | {error, term()}.
+                  Private :: list(private_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
                    
 read_sensor(I2cRef, Private) ->
 

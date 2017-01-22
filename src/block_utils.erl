@@ -20,6 +20,7 @@
           char_to_segments/2,
           get_blocks_to_save/0,
           save_blocks_to_file/2,
+          load_blocks/1,
           load_blocks_from_file/1,
           create_blocks/1,
           create_block/1,
@@ -151,9 +152,19 @@ save_blocks_to_file(FileName, BlockData) ->
 
 
 %%
+%% Load the blocks definitions onto this node
+%%
+-spec load_blocks(BlockDefnList :: list(block_defn())) -> ok.
+
+load_blocks(BlockDefnList) ->
+  create_blocks(BlockDefnList),
+  ok.
+
+
+%%
 %% Load the blocks in Filename, on this node, onto this node
 %%
--spec load_blocks_from_file(FileName :: string) -> ok | {error, atom()}.
+-spec load_blocks_from_file(FileName :: string()) -> ok | {error, atom()}.
 
 load_blocks_from_file(FileName) ->
   case get_blocks_from_file(FileName) of
@@ -264,7 +275,7 @@ block_values(BlockNames, BlockValuesList) ->
 %%
 clean_block_values({Config, Inputs, Outputs}) ->
   EmptyInputs = link_utils:empty_linked_inputs(Inputs),
-  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
+  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, no_input),
   EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
  
   % Cleaned block values

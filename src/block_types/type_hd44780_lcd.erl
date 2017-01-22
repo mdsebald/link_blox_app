@@ -157,7 +157,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitializing LCD driver, I2C Address: ~p~n", 
                               [Reason, I2cAddr]),
-      Status = proc_error,
+      Status = proc_err,
       Value = not_active,
       Private2 = Private1,
       Config3 = Config,
@@ -462,10 +462,10 @@ update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, InputNum, Value,
 % Write the Input string to the display
 %
 -spec display_str(I2cRef :: pid(),
-                  Backlight :: boolean(),
-                  StartRow :: integer(),
-                  StartCol :: integer(),
-                  FieldWidth :: integer(),
+                  Backlight :: byte(),
+                  StartRow :: pos_integer(),
+                  StartCol :: pos_integer(),
+                  FieldWidth :: pos_integer(),
                   InputStr :: string()) -> string().
 
 display_str(I2cRef, Backlight, StartRow, StartCol, FieldWidth, InputStr) ->

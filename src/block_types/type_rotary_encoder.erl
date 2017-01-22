@@ -54,7 +54,7 @@ default_inputs() ->
     ]). 
 
 
--spec default_outputs() -> list().
+-spec default_outputs() -> list(output_attr()).
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -235,7 +235,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%  
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
   {Config, Inputs, Outputs}.
@@ -248,14 +248,14 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 -spec log_gpio_error(Config :: list(), 
                      Reason :: atom(), 
-                     PinNumber :: integer()) -> {not_active, proc_error}.
+                     PinNumber :: integer()) -> {not_active, proc_err}.
 
 log_gpio_error(Config, Reason, PinNumber) ->
   BlockName = config_utils:name(Config),
   error_logger:error_msg("~p Error: ~p intitiating GPIO pin; ~p~n", 
                               [BlockName, Reason, PinNumber]),
   
-  {not_active, proc_error}.
+  {not_active, proc_err}.
 
 
 % TODO: Create common GPIO helper module

@@ -27,13 +27,13 @@
 
 -type attribute() :: config_attr() | input_attr() | output_attr() | private_attr().
 
--type config_attr() :: {value_name(), config_value() | config_value_array()}.
+-type config_attr() :: {value_id(), config_value() | config_value_array()}.
                         
- -type input_attr() :: {value_name(), input_value() | input_value_array()}.
+-type input_attr() :: {value_id(), input_value() | input_value_array()}.
 
- -type output_attr() :: {value_name(), output_value() | output_value_array()}.                 
+-type output_attr() :: {value_id(), output_value() | output_value_array()}.                 
 
--type private_attr() :: {value_name(), private_value() | private_value_array()}.
+-type private_attr() :: {value_id(), private_value() | private_value_array()}.
 
 
 -type value_name() :: atom().
@@ -73,8 +73,8 @@
 
 -type link_refs() :: list(block_name() | {node(), block_name}).
 
--type value() :: empty | not_active | integer() | float() | boolean() | 
-                 string() | tuple() | list() | reference().
+-type value() :: atom() | integer() | float() | boolean() | 
+                 string() | tuple() | list() | reference() | pid().
 
 -type attrib_errors() :: {error, not_found | invalid_value | invalid_index }.
                           

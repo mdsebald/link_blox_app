@@ -225,10 +225,7 @@ get_value(Config, ValueId, CheckType) ->
             {error, invalid_index}
           end;
         _ -> {error, invalid_value}
-      end;
-       
-    % Attribute value was not a config value  
-    _ -> {error, not_config}   
+      end
   end.
  
 

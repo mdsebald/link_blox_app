@@ -52,7 +52,7 @@ default_inputs() ->
     ]). 
 
 
--spec default_outputs() -> list().
+-spec default_outputs() -> list(output_attr()).
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -211,7 +211,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
   {Config, Inputs, Outputs}.

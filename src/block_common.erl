@@ -96,7 +96,8 @@ inputs() ->
 %% Common Output Attributes
 %% Block output values are modified upon block execution
 %%
--spec outputs() -> list(output_attr).
+-spec outputs() -> list(output_attr()).
+
 outputs() ->
   [
     % Blocks with the 'exec_in' input linked to this output
@@ -295,8 +296,8 @@ cancel_timer(TimerRef) ->
 %%
 %% Set timer to execute the block on expiration  
 %% 
--spec set_timer(BlockName :: atom(),
-                ExecuteInterval :: integer()) -> 
+-spec set_timer(BlockName :: block_name(),
+                ExecuteInterval :: pos_integer()) -> 
                 reference().
 
 set_timer(BlockName, ExecuteInterval) ->
@@ -306,8 +307,8 @@ set_timer(BlockName, ExecuteInterval) ->
 %%
 %% Track execute method, time and count
 %%
--spec update_execute_track(Outputs :: list(attribute()), 
-                           ExecMethod :: atom()) -> list(attribute()).
+-spec update_execute_track(Outputs :: list(output_attr()), 
+                           ExecMethod :: exec_method()) -> list(output_attr()).
 
 update_execute_track(Outputs, ExecMethod) ->
 

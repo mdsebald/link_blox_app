@@ -49,7 +49,7 @@ default_inputs() ->
     ]). 
 
 
--spec default_outputs() -> list().
+-spec default_outputs() -> list(output_attr()).
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -123,20 +123,20 @@ initialize({Config, Inputs, Outputs, Private}) ->
   
       % Read the ambient temperature
       case read_ambient(I2cRef, DegF, Offset) of
-        {error, Reason} ->
+       {ok, Value} ->
+          Status = initialed;
+
+       {error, Reason} ->
           error_logger:error_msg("Error: ~p Reading temperature sensor~n", 
                               [Reason]),
-          Status = proc_error,
-          Value = not_active;
-          
-       Value ->
-          Status = initialed
-      end;
+          Status = proc_err,
+          Value = not_active
+       end;
       
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
                               [Reason, I2cAddr]),
-      Status = proc_error,
+      Status = proc_err,
       Value = not_active,
       Private2 = Private1
   end,	
@@ -167,15 +167,15 @@ execute({Config, Inputs, Outputs, Private}) ->
   
   % Read the ambient temperature
   case read_ambient(I2cRef, DegF, Offset) of
+    {ok, Value} ->
+      Status = normal;
+
     {error, Reason} ->
       error_logger:error_msg("Error: ~p Reading temperature sensor~n", 
                               [Reason]),
-      Status = proc_error,
-      Value = not_active;
-  
-    Value ->
-      Status = normal
-  end,
+      Status = proc_err,
+      Value = not_active
+   end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
@@ -186,7 +186,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
@@ -214,7 +214,7 @@ delete({Config, Inputs, Outputs, Private}) ->
 %
 -spec read_ambient(I2cRef :: pid(),
                    DegF :: boolean(),
-                   Offset :: float()) -> float() | {error, term()}.
+                   Offset :: float()) -> {ok, float()} | {error, atom()}.
                    
 read_ambient(I2cRef, DegF, Offset) ->
 
@@ -239,7 +239,8 @@ read_ambient(I2cRef, DegF, Offset) ->
       end,
 
       case DegF of
-        true  -> ((TempDegC * 9) / 5 + 32) + Offset;
-        false -> TempDegC + Offset
-      end
+        true  -> Temp = ((TempDegC * 9) / 5 + 32);
+        false -> Temp = TempDegC
+      end,
+      {ok, Temp + Offset}
   end.

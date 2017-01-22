@@ -367,8 +367,8 @@ empty_linked_inputs(Inputs) ->
 %%
 %% Set the value of each linked input in ArrayValues, to empty
 %%
--spec empty_array_values(ArrayValues :: list(attr_value_array())) -> 
-                          list(attr_value_array()).
+-spec empty_array_values(ArrayValues :: list({value(), input_link()})) -> 
+                          list({value(), input_link()}).
                                 
 empty_array_values(ArrayValues) ->
   lists:map(

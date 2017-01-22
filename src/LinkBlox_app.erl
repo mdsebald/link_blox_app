@@ -26,9 +26,7 @@
 %% start/2
 %% ====================================================================
 -spec start(Type :: normal | {takeover, Node} | {failover, Node}, Args :: term()) ->
-  {ok, Pid :: pid()}
-  | {ok, Pid :: pid(), State :: term()}
-  | {error, Reason :: term()}.
+  {ok, Pid :: pid()} | {error, Reason :: term()}.
 
 start(normal, BlockValuesFile) ->
   case linkblox_supervisor:start_link(BlockValuesFile) of
@@ -45,7 +43,7 @@ start(normal, BlockValuesFile) ->
 %% ====================================================================
 %% stop/1
 %% ====================================================================
--spec stop(State :: term()) ->  Any :: term().
+-spec stop(State :: term()) ->  ok.
 
 stop(_State) ->
   ok.

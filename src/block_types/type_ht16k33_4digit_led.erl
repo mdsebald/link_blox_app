@@ -127,7 +127,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       error_logger:error_msg("Error: ~p intitializing LED driver, I2C Address: ~p~n", 
                               [Reason, I2cAddr]),
-      Status = proc_error,
+      Status = proc_err,
       Value = not_active,
       Private2 = Private1
     end,
@@ -247,7 +247,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) -> 
   case attrib_utils:get_value(Private, i2c_ref) of
@@ -315,7 +315,7 @@ init_led_driver(I2cDevice, I2cAddr) ->
 %%
 %% Shutdown the LED driver
 %% 
--spec shutdown_led_driver(I2cRef :: pid()) -> term().
+-spec shutdown_led_driver(I2cRef :: pid()) -> ok | {error, atom()}.
 
 shutdown_led_driver(I2cRef) ->
   clear(I2cRef),
@@ -326,7 +326,7 @@ shutdown_led_driver(I2cRef) ->
 %%
 %% Clear the display and buffer
 %%
--spec clear(I2cRef :: pid()) -> term().
+-spec clear(I2cRef :: pid()) -> ok | {error, atom()}.
 
 clear(I2cRef) ->
   % 2 digits, colon, and 2 digits, requrires 10 bytes of buffer storage
@@ -343,7 +343,7 @@ clear(I2cRef) ->
 %%
 -spec set_blink_rate(I2cRef :: pid(),
                      DisplayState :: boolean(), 
-                     BlinkRate :: integer()) -> term().
+                     BlinkRate :: integer()) -> ok | {error, atom()}.
 
 set_blink_rate(I2cRef, DisplayState, BlinkRate) ->
   case DisplayState of
@@ -357,7 +357,7 @@ set_blink_rate(I2cRef, DisplayState, BlinkRate) ->
 %% Set the brightness level
 %%
 -spec set_brightness(I2cRef :: pid(),
-                     Brightness :: integer()) -> term().
+                     Brightness :: integer()) -> ok | {error, atom()}.
 
 set_brightness(I2cRef, Brightness) ->
   i2c:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor Brightness)>>).
@@ -366,7 +366,7 @@ set_brightness(I2cRef, Brightness) ->
 %% Set the the colon segment state
 %%
 -spec set_colon(I2cRef :: pid(),
-                ColonState :: boolean()) -> term().
+                ColonState :: boolean()) -> ok | {error, atom()}.
 
 set_colon(I2cRef, ColonState) ->
   case ColonState of
@@ -385,7 +385,7 @@ set_colon(I2cRef, ColonState) ->
 %%
 -spec write_segments(I2cRef :: pid(),
                      Digit :: integer(),
-                     Segments :: byte()) -> term().
+                     Segments :: byte()) -> ok | {error, atom()}.
 
 write_segments(I2cRef, Digit, Segments) ->
   BufferAddress = lists:nth(Digit, [16#00, 16#02, 16#06, 16#08]),

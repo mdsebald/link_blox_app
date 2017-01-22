@@ -53,7 +53,7 @@ default_inputs() ->
      ]). 
 
 
--spec default_outputs() -> list().
+-spec default_outputs() -> list(output_attr()).
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -186,7 +186,7 @@ execute({Config, Inputs, Outputs, Private}) ->
             NegOverflow = false
           end;
       
-        {error, Reason} ->
+        {error, Reason, false} ->
           {Value, Status} = input_utils:log_error(Config, precision, Reason),
           Digits7Seg = lists:duplicate(NumOfDigits, not_active),
           PosOverflow = not_active,
@@ -212,7 +212,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
   {Config, Inputs, Outputs}.
@@ -227,7 +227,8 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %
 -spec format_number(InValue :: float(),
                     NumOfDigits :: integer(),
-                    Inputs :: list(input_attr())) -> {ok, list(byte()), integer()} | {error, atom()}.
+                    Inputs :: list(input_attr())) -> 
+                       {ok, list(byte()), integer()} | {error, too_big | input_errors(), boolean()}.
 
 format_number(InValue, NumOfDigits, Inputs) ->
 
@@ -270,7 +271,7 @@ format_number(InValue, NumOfDigits, Inputs) ->
         {ok, DigitsToDisp, Precision}
       end;
 
-    {error, Reason} -> {error, Reason}
+    {error, Reason} -> {error, Reason, false}
   end.
 
 
@@ -280,7 +281,7 @@ format_number(InValue, NumOfDigits, Inputs) ->
 %
 -spec max_precision(InValue :: float(),
                     NumOfDigits :: pos_integer(),
-                    Precision :: pos_integer(),
+                    Precision :: non_neg_integer(),
                     IsNegative :: boolean(),
                     IsLessThanOne :: boolean()) -> {ok, list(), pos_integer()} |
                                                    {error, too_big, boolean()}. 
@@ -316,7 +317,7 @@ max_precision(InValue, NumOfDigits, Precision, IsNegative, IsLessThanOne) ->
 % Add the minus sign and leading zero where appropriate
 %
 -spec digits_to_display(InValue :: float(),
-                        Precision :: pos_integer(),
+                        Precision :: non_neg_integer(),
                         IsNegative :: boolean(),
                         IsLessThanOne :: boolean()) -> list().
 

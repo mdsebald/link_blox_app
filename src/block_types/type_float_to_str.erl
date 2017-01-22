@@ -193,7 +193,7 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %
 -spec build_format_str(LeftJustify :: boolean(),
                        FieldWidth :: integer(),
-                       Precision :: integer()) -> {ok, string()} | {error, atom()}.
+                       Precision :: integer()) -> string().
 
 build_format_str(LeftJustify, FieldWidth, Precision) ->
   add_precision(Precision, 
