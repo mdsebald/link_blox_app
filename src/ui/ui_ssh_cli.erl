@@ -82,7 +82,7 @@ shell_loop() ->
   % use the current node for the UI prompt
   Prompt = atom_to_list(curr_node()) ++ "> ",
   % read user input
-  Line = get_input(Prompt),
+  Line = ui_utils:get_input(Prompt),
 
   Result = eval_input(Line),
   case Result of
@@ -99,7 +99,7 @@ shell_loop() ->
 %% Evaluate user input
 %%
 eval_input(Line) ->
-  case parse_cli_params(Line) of
+  case ui_utils:parse_cli_params(Line) of
     {ok, []} -> [];
     {ok, [Command | Params]} ->
 	    case cmd_string_to_cmd_atom(Command) of
@@ -122,106 +122,6 @@ eval_input(Line) ->
     {error, _Params} ->
       format_out(err_parsing_cmd_line, [Line])
   end.
-
-
-parse_cli_params(Line) ->
-  % Split command line into words, based on spaces
-  CmdLineWords = string:tokens(Line, " "),
-  parse_cli_params(CmdLineWords, [], "").
-
-% Normal parsing completed
-parse_cli_params([], Params, "") -> 
-  {ok, lists:reverse(Params)};
-
-% Error: Reached end of command line without a matching closing quote
-parse_cli_params([], Params, _QuotedStr) -> 
-  {error, lists:reverse(Params)};
-
-% Process command line words when not inside a quoted string
-parse_cli_params([Word | RemWords], Params, "") ->
-  case is_open_and_close_quoted(Word) of
-    true  ->
-      QuotedStr = close_quoted_str(open_quoted_str(Word)),
-      parse_cli_params(RemWords, [QuotedStr | Params], "");
-    false ->
-      case is_open_quoted(Word) of
-        true  -> 
-          QuotedStr = open_quoted_str(Word),
-          parse_cli_params(RemWords, Params, QuotedStr);
-        false ->
-          case is_close_quoted(Word) of
-            true -> % closing quote before opening quote is detected, force error
-              parse_cli_params([], [Word, Params], Word);
-            false -> % just a plain unquoted word, add to list of parsed words
-              parse_cli_params(RemWords, [Word | Params], "")
-          end
-      end
-  end;
-
-% Process command line words when in a quoted string
-parse_cli_params([Word | RemWords], Params, QuotedStr) ->
-  case is_open_and_close_quoted(Word) of
-    true  -> % Quoted word inside quoted string, 
-             % let higher functions determine if this is an error
-      SubQuotedStr = close_quoted_str(open_quoted_str(Word)),       
-      NewQuotedStr = add_to_quoted_str(QuotedStr, SubQuotedStr),
-      parse_cli_params(RemWords, Params, NewQuotedStr);
-    false ->
-      case is_open_quoted(Word) of
-        true  -> % second opening quote before closing quote detectd, force error
-          NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
-          parse_cli_params([], [NewQuotedStr | Params], NewQuotedStr);
-        false ->
-          case is_close_quoted(Word) of
-            true  ->
-              NewQuotedStr = close_quoted_str(QuotedStr, Word),
-              parse_cli_params(RemWords, [NewQuotedStr | Params], "");
-            false -> % just a plain unquoted word, add to quoted string
-              NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
-              parse_cli_params(RemWords, Params, NewQuotedStr)
-          end
-      end
-  end.
-
-is_open_and_close_quoted(Word) -> (is_open_quoted(Word) andalso is_close_quoted(Word)).
-
-is_open_quoted(Word) -> lists:prefix([$"], Word).
-
-is_close_quoted(Word) -> lists:suffix([$"], Word).
-
-open_quoted_str(Word) -> 
-  [$" | WordMinusQuote] = Word, 
-  WordMinusQuote.
-
-add_to_quoted_str(QuotedStr, Word) -> QuotedStr ++ " " ++ Word.
-
-close_quoted_str(QuotedStr, Word) -> 
-  WordMinusQuote = close_quoted_str(Word),
-  add_to_quoted_str(QuotedStr, WordMinusQuote).
-
-close_quoted_str(Word) -> 
-  [$" | RevWordMinusQuote] = lists:reverse(Word),
-  lists:reverse(RevWordMinusQuote).
-
-
-%
-% Get user input, 
-% minus new line char, leading whitespace, 
-% and trailing whitespace
-%
-get_input(Prompt) ->
-  Raw1 = io:get_line(Prompt),
-
-  % In nerves environment, get_line() returns a binary.
-  % Convert it to a string
-  case is_binary(Raw1) of
-    true  -> Raw2 = erlang:binary_to_list(Raw1);
-    false -> Raw2  = Raw1 
-  end, 
-  % Remove new line char
-  Raw3 = string:strip(Raw2, right, 10),
-  % Remove leading and trailing whitespace
-  string:strip(Raw3).
 
 
 %% 
@@ -859,7 +759,7 @@ ui_set_value(Params) ->
       BlockName = list_to_atom(BlockNameStr),
       case attrib_utils:str_to_value_id(ValueIdStr) of
         {ok, ValueId} ->
-          Value = parse_value(ValueStr),
+          Value = ui_utils:parse_value(ValueStr),
           case linkblox_api:set_value(curr_node(), BlockName, ValueId, Value) of
             ok ->
               format_out(block_value_set_to_str, [BlockNameStr, ValueIdStr, ValueStr]);
@@ -987,7 +887,7 @@ ui_load_blocks(Params) ->
       case length(Params) of  
         0 -> 
           format_out(enter_config_file_name),
-          case get_input("") of
+          case ui_utils:get_input("") of
                   [] -> FileName = "LinkBloxConfig";
             FileName -> FileName
           end;
@@ -996,7 +896,7 @@ ui_load_blocks(Params) ->
           FileName = Params
       end,
       
-      case linkblox_api:load_blocks_from_file(curr_node(), FileName) of
+      case linkblox_api:load_block_file(curr_node(), FileName) of
         ok ->
           format_out(block_config_file_loaded, [FileName]);
 
@@ -1019,7 +919,7 @@ ui_save_blocks(Params) ->
       case length(Params) of  
         0 -> 
           format_out(enter_config_file_name),
-          case get_input("") of
+          case ui_utils:get_input("") of
                   [] -> FileName = "LinkBloxConfig";
             FileName -> FileName
           end;
@@ -1029,7 +929,7 @@ ui_save_blocks(Params) ->
       end,
 
       format_out(config_file_overwrite_warning, [FileName]),
-      case get_yes() of
+      case ui_utils:get_yes() of
         true ->
           case linkblox_api:save_blocks(curr_node(), FileName) of
             ok ->
@@ -1300,52 +1200,7 @@ check_num_params(Params, Low, High) ->
       end
   end.
 
-
-%%
-%% Naive parse value function, i.e. take a stab at the value type
-%%
-parse_value(ValueStr) ->
-  case ((lists:nth(1,ValueStr) == $") andalso
-      (lists:last(ValueStr)  == $")) of
-    true ->
-      % ValueStr is surrounded by quotes
-      % Remove the quotes and use the bare string
-      [_FirstQuote | RemString] = ValueStr,
-      lists:droplast(RemString);
-
-    false ->
-      case string:to_float(ValueStr) of
-        {Float, []}       -> Float;
-
-        {error, no_float} ->
-
-          case string:to_integer(ValueStr) of
-            {Integer, []}     -> Integer;
-            
-            {error, no_integer} ->
-              % just turn the input into an atom
-              list_to_atom(ValueStr);
-
-            {_Integer, _Rest} -> ValueStr 
-          end;
-
-        {_Float, _Rest}   -> ValueStr
-      end
-  end.
-
-  %
-  % Get input, return 'true' if first char is 'Y' or 'y'
-  %
-  get_yes() ->
-    case lists:nth(1, get_input("")) of
-      $Y -> true;
-      $y -> true;
-      _  -> false
-    end.
-
-
   
-
 %% ====================================================================
 %% Tests
 %% ====================================================================
@@ -1353,57 +1208,6 @@ parse_value(ValueStr) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% ====================================================================
-% Test parse_value()
-% 
-%   Test float good
-parse_value_float_good_test() ->
-  ExpectedResult = 12.345,
-  ValueStr = "12.345",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
-
-%   Test float bad
-parse_value_float_bad_test() ->
-  ExpectedResult = "12.345crap",
-  ValueStr = "12.345crap",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
-
-%   Test integer good
-parse_value_integer_good_test() ->
-  ExpectedResult = 12345,
-  ValueStr = "12345",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
-
-%   Test integer bad
-parse_value_integer_bad_test() ->
-  ExpectedResult = "12345crap",
-  ValueStr = "12345crap",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
-
-%   Test boolean true
-parse_value_boolean_true_test() ->
-  ExpectedResult = true,
-  ValueStr = "true",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
-
-%   Test boolean false
-parse_value_boolean_false_test() ->
-  ExpectedResult = false,
-  ValueStr = "false",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
-
-%   Test string good
-parse_value_string_good_test() ->
-  ExpectedResult = 'TestString',
-  ValueStr = "TestString",
-  Result = parse_value(ValueStr),
-  ?assertEqual(ExpectedResult, Result).
 
 % ====================================================================
 

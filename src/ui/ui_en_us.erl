@@ -23,7 +23,7 @@
 %%
 %% Map string to ui command atom
 %%
--spec cmd_string_map() -> ok.
+-spec cmd_string_map() -> list({string(), atom(), string()}).
 
 cmd_string_map() ->
   [
