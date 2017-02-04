@@ -46,6 +46,7 @@ start_link(BlockValuesFile) ->
 init(BlockValuesFile) ->
 
   start_programing_interface(),
+  error_logger:info_msg("Host name: ~p~n", [net_adm:localhost()]),
   
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
