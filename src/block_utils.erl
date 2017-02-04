@@ -114,8 +114,8 @@ get_blocks_to_save() ->
 
 
 -ifdef(STANDALONE).
-% Embedded version, load or save file in "/root" partition
--define(CONFIG_FOLDER, "/root/").
+% Embedded version, load or save file in "\root" folder
+-define(CONFIG_FOLDER, "\\root\\").
 
 -else.
 % Hosted version, load or save file in the default app folder
@@ -136,7 +136,7 @@ save_blocks_to_file(FileName, BlockData) ->
   TargetFileName = ?CONFIG_FOLDER ++ FileName,
   case filelib:ensure_dir(TargetFileName) of
     ok ->       
-      case file:write_file(FileName, BlockData) of
+      case file:write_file(TargetFileName, BlockData) of
         ok ->
           error_logger:info_msg("Block config saved to file: ~s~n", [TargetFileName]),
           ok;
@@ -146,7 +146,7 @@ save_blocks_to_file(FileName, BlockData) ->
           {error, Reason}
       end;
     {error, Reason} ->
-      error_logger:error_msg(" ~p saving block config file: ~s~n", [Reason, TargetFileName]),
+      error_logger:error_msg(" ~p no directory, saving block config file: ~s~n", [Reason, TargetFileName]),
       {error, Reason}
   end.
 
