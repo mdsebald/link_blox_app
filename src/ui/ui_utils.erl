@@ -99,7 +99,8 @@ parse_cli_params(Line) ->
 parse_cli_params([], Params, "") -> 
   {ok, lists:reverse(Params)};
 
-% Error: Reached end of command line without a matching closing quote
+% Error: Open quote without a matching closing quote, or
+%        Close quote before open quote
 parse_cli_params([], Params, _QuotedStr) -> 
   {error, lists:reverse(Params)};
 
@@ -107,13 +108,13 @@ parse_cli_params([], Params, _QuotedStr) ->
 parse_cli_params([Word | RemWords], Params, "") ->
   case is_open_and_close_quoted(Word) of
     true  ->
-      QuotedStr = end_quoted_str(begin_quoted_str(Word)),
-      parse_cli_params(RemWords, [QuotedStr | Params], "");
+       % QuotedStr = end_quoted_str(begin_quoted_str(Word)),
+      parse_cli_params(RemWords, [Word | Params], "");
     false ->
       case is_open_quoted(Word) of
         true  -> 
-          QuotedStr = begin_quoted_str(Word),
-          parse_cli_params(RemWords, Params, QuotedStr);
+          % QuotedStr = begin_quoted_str(Word),
+          parse_cli_params(RemWords, Params, Word);
         false ->
           case is_close_quoted(Word) of
             true -> % closing quote before opening quote is detected, force error
@@ -129,20 +130,20 @@ parse_cli_params([Word | RemWords], Params, QuotedStr) ->
   case is_open_and_close_quoted(Word) of
     true  -> % Quoted word inside quoted string, 
              % let higher functions determine if this is an error
-      SubQuotedStr = end_quoted_str(begin_quoted_str(Word)),       
-      NewQuotedStr = add_to_quoted_str(QuotedStr, SubQuotedStr),
+      % SubQuotedStr = end_quoted_str(begin_quoted_str(Word)),       
+      NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
       parse_cli_params(RemWords, Params, NewQuotedStr);
     false ->
       case is_open_quoted(Word) of
-        true  -> % second opening quote before closing quote detectd, force error
+        true  -> % second opening quote before closing quote detected, force error
           NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
           parse_cli_params([], [NewQuotedStr | Params], NewQuotedStr);
         false ->
           case is_close_quoted(Word) of
-            true  ->
-              NewQuotedStr = end_quoted_str(QuotedStr, Word),
+            true  -> % finished this quoted string
+              NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
               parse_cli_params(RemWords, [NewQuotedStr | Params], "");
-            false -> % just a plain unquoted word, add to quoted string
+            false -> % just a plain unquoted word
               NewQuotedStr = add_to_quoted_str(QuotedStr, Word),
               parse_cli_params(RemWords, Params, NewQuotedStr)
           end
@@ -154,16 +155,6 @@ is_open_and_close_quoted(Word) -> (is_open_quoted(Word) andalso is_close_quoted(
 is_open_quoted(Word) -> lists:prefix([$"], Word).
 
 is_close_quoted(Word) -> lists:suffix([$"], Word).
-
-begin_quoted_str(Word) -> 
-  [$" | WordMinusQuote] = Word, 
-  WordMinusQuote.
-
-end_quoted_str(QuotedStr, Word) -> 
-  WordMinusQuote = end_quoted_str(Word),
-  add_to_quoted_str(QuotedStr, WordMinusQuote).
-
-end_quoted_str(Word) -> lists:droplast(Word).
   
 add_to_quoted_str(QuotedStr, Word) -> QuotedStr ++ " " ++ Word.
 
@@ -264,14 +255,14 @@ parse_cli_params_three_params_whitespace_no_quotes_test() ->
 % Test three params, one param quoted string
 parse_cli_params_three_params_one_param_quoted_test() ->
   Line = "Test \"One Two Three\" Four",
-  ExpectedResult = {ok, ["Test", "One Two Three", "Four"]},
+  ExpectedResult = {ok, ["Test", "\"One Two Three\"", "Four"]},
   Result = parse_cli_params(Line),
   ?assertEqual(ExpectedResult, Result).
 
 % Test embedded quoted word in embedded quoted string
 parse_cli_params_embedded_quoted_word_in_quoted_string_test() ->
   Line = "Test \"One \"Two\" Three\" Four",
-  ExpectedResult = {ok, ["Test", "One Two Three", "Four"]},
+  ExpectedResult = {ok, ["Test", "\"One \"Two\" Three\"", "Four"]},
   Result = parse_cli_params(Line),
   ?assertEqual(ExpectedResult, Result).
 
@@ -286,6 +277,13 @@ parse_cli_params_two_params_missing_close_quote_test() ->
 parse_cli_params_two_params_missing_open_quote_test() ->
   Line = "Test One Two\"",
   ExpectedResult = {error, ["Test", "One", "Two\""]},
+  Result = parse_cli_params(Line),
+  ?assertEqual(ExpectedResult, Result).
+
+% Test two params, both strings
+parse_cli_params_two_string_params_test() ->
+  Line = "\"Test One\" \"Two Three\"",
+  ExpectedResult = {ok, ["\"Test One\"", "\"Two Three\""]},
   Result = parse_cli_params(Line),
   ?assertEqual(ExpectedResult, Result).
 

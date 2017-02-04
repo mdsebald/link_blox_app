@@ -278,7 +278,8 @@ ui_create_block(Params) ->
           [BlockTypeStr, BlockNameStr] = Params,
           Description = "Description";
         3 ->
-          [BlockTypeStr, BlockNameStr, Description] = Params
+          [BlockTypeStr, BlockNameStr, DescriptionStr] = Params,
+          Description = ui_utils:parse_value(DescriptionStr)
       end,
     
       BlockType = list_to_atom(BlockTypeStr),
