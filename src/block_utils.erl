@@ -114,8 +114,8 @@ get_blocks_to_save() ->
 
 
 -ifdef(STANDALONE).
-% Embedded version, load or save file in "\root" folder
--define(CONFIG_FOLDER, "\\root\\").
+% Embedded version, load or save file in "/root" folder
+-define(CONFIG_FOLDER, "/root/").
 
 -else.
 % Hosted version, load or save file in the default app folder
