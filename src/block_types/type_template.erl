@@ -9,9 +9,7 @@
 %%% @end 
 
 -module(type_template).  % INSTRUCTIONS: Modify to match new module name
-                         % INSTRUCTIONS: Add module name to the list of 
-                         %  block module names in the block_types module
-
+  
 -author("Your Name").
 
  % INSTRUCTIONS: Adjust path to hrl file as needed

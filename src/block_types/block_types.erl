@@ -18,36 +18,18 @@
 
 
 %%
-%%  Add each block type module name to this functions
-%%  Allows UI to retrieve block type name strings, version, and description
-%%  For consistency add new block types in alphabetical order 
-%%  by type name string.
-%%  Do not add the "template" block type
+%%  Create a list of all possible block types
+%%  by searching for all file names with 
+%%  the pattern "type_*.beam in the code path".
+%%  Thanks to:  alind.io
 %%
 -spec block_type_modules() -> list(module()).
-
+    
 block_type_modules() ->
-  [
-    type_bme280_env_sensor,
-    type_exec_count,
-    type_float_to_7seg,
-    type_float_to_str,
-    type_gpio_di,
-    type_gpio_do,
-    type_hd44780_lcd,
-    type_ht16k33_4digit_led,
-    type_identity,
-    type_int_to_7seg,
-    type_logic_not,
-    type_mcp9808_temp,
-    type_n_select,
-    type_one_digit_7seg,
-    type_rotary_encoder,
-    type_rpi_led,
-    type_toggle
-  ].  
-    
-    
+  [list_to_atom(filename:basename(F, ".beam")) || P <- code:get_path(), 
+    F <- filelib:wildcard("type_*.beam", P)].
+
+
 %%
 %%  Get the block module for the given block type string
 %% 
@@ -118,36 +100,6 @@ block_type_name_test() ->
   ExpectedResult = test_module,
 
   Result = block_type_name(Module),
-  ?assertEqual(ExpectedResult, Result).
-% ====================================================================
-
-% ====================================================================
-% Test block_type_names()
-%  
-block_type_names_test() ->
-
-ExpectedResult = 
-  [
-    bme280_env_sensor,
-    exec_count,
-    float_to_7seg,
-    float_to_str,
-    gpio_di,
-    gpio_do,
-    hd44780_lcd,
-    ht16k33_4digit_led,
-    identity,
-    int_to_7seg,
-    logic_not,
-    mcp9808_temp,
-    n_select,
-    one_digit_7seg,
-    rotary_encoder,
-    rpi_led,
-    toggle
-  ],  
-
-  Result = block_type_names(),
   ?assertEqual(ExpectedResult, Result).
 % ====================================================================
 
