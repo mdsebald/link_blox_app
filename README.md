@@ -49,7 +49,7 @@ Requires Erlang and relx to be installed to build
 
 
 <a name="fn01">1</a>: I'm assuming the code can be compiled and run on Windows or a Mac, but I haven't tried it myself.
-<a name="fn02">2</a>]: See my repo: [nerves_link_blox][1]
-<a name="fn03">3</a>: In practice, the block data tuple also contains a list of private block data.
 
-[1]: https://github.com/mdsebald/nerves_link_blox
+<a name="fn02">2</a>: See my repo: [nerves_link_blox]  https://github.com/mdsebald/nerves_link_blox
+
+<a name="fn03">3</a>: In practice, the block data tuple also contains a list of private block data.
