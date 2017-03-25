@@ -42,7 +42,7 @@ set_link(BlockName, Inputs, ValueId, Link)->
     % Non-array Input value
     {ok, {ValueName, {_OldValue, OldLink}}} ->
       % Unlink current link on this input (if any)
-      unlink_input(BlockName, ValueName, OldLink),
+      unlink_input(BlockName, ValueId, OldLink),
 
       % Default the input value to 'empty'  
       NewAttribute = {ValueName, {empty, Link}},
@@ -56,6 +56,8 @@ set_link(BlockName, Inputs, ValueId, Link)->
         % will match ValueName in the ValueId tuple
         {ValueName, ArrayIndex} ->
           if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            {_OldValue, OldLink} = lists:nth(ArrayIndex, ArrayValue),
+            unlink_input(BlockName, ValueId, OldLink),
             NewArrayValue = attrib_utils:replace_array_value(ArrayValue, ArrayIndex, {empty, Link}),
             NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, 
                                                        {ValueName, NewArrayValue}),
@@ -144,7 +146,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
         case Value of
           empty ->
             % send a link message to the linked block, get current linked value back
-            UpdatedValue = block_server:link(LinkBlockName, LinkValueId, BlockName),
+            UpdatedValue = block_server:link(LinkBlockName, LinkValueId, {BlockName, ValueId}),
             
             
             case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
@@ -194,7 +196,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
                 empty ->
                   % block input value is empty, 
                   % send a link message to the linked block, get current linked value back
-                  UpdatedValue = linkblox_api:link(NodeName, LinkBlockName, LinkValueId, {node(), BlockName}),
+                  UpdatedValue = linkblox_api:link(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
             
                   case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
                     {ok, UpdatedInputs} -> 
@@ -253,6 +255,7 @@ unlink_inputs(BlockName, [Input | RemainingInputs])->
   case Input of
     % Non-array value
     {ValueName, {_Value, Link}} ->
+      % Note ValueName == ValueId for non-arry values
       unlink_input(BlockName, ValueName, Link);
       
     % Array value  
@@ -270,22 +273,25 @@ unlink_inputs(BlockName, [Input | RemainingInputs])->
                          ValueName :: value_name(),
                          ArrayValues :: attr_value_array()) -> ok.
 
-unlink_array_input(_BlockName, _ValueName, []) -> ok;
-  
-unlink_array_input(BlockName, ValueName, [ArrayValue | RemainingArrayValues]) ->
-  {_Value, Link} = ArrayValue,
-  unlink_input(BlockName, ValueName, Link),
-  unlink_array_input(BlockName, ValueName, RemainingArrayValues).
+unlink_array_input(BlockName, ValueName, ArrayValues) ->
+  lists:foldl(fun(ArrayValue, Index) -> 
+                {_Value, Link} = ArrayValue,
+                % ValueName and Index form a ValueId
+                unlink_input(BlockName, {ValueName, Index}, Link),
+                Index+1 
+                end, 
+                1, ArrayValues),
+  ok.
 
   
 %%
 %% Unlink one input value link
 %%
 -spec unlink_input(BlockName :: block_name(),
-                   ValueName :: value_name(),
+                   ValueId :: value_id(),
                    Link :: input_link()) -> ok.  
   
-unlink_input(BlockName, ValueName, Link) ->
+unlink_input(BlockName, ValueId, Link) ->
 
   case Link of
     ?EMPTY_LINK ->
@@ -300,9 +306,9 @@ unlink_input(BlockName, ValueName, Link) ->
       % Input is linked to the output of another block on this node
       case block_utils:is_block(LinkBlockName) of
         true ->
-          block_server:unlink(LinkBlockName, LinkValueId, BlockName),
+          block_server:unlink(LinkBlockName, LinkValueId, {BlockName, ValueId}),
           error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p~n", 
-                            [BlockName, ValueName, LinkBlockName, LinkValueId]),
+                            [BlockName, ValueId, LinkBlockName, LinkValueId]),
           ok;
 
         _ ->
@@ -319,9 +325,9 @@ unlink_input(BlockName, ValueName, Link) ->
           case linkblox_api:is_block_name(NodeName, LinkBlockName) of
             true ->
               % Linked block exists,
-              linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName}),
+              linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
               error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p:~p~n", 
-                            [BlockName, ValueName, NodeName, LinkBlockName, LinkValueId]),
+                            [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
               ok;
 
             _ ->
@@ -395,14 +401,14 @@ unlink_output(BlockName, ValueName, Refs) ->
  
 
 %%
-%% Add 'ToBlockName' to the list of referenced blocks 
+%% Add Reference to the list of referenced block inputs 
 %% in the ValueId output attribute
 %%
 -spec add_ref(Outputs :: list(output_attr()), 
               ValueId :: value_id(), 
-              ToBlockName :: block_name() | {node(), block_name()}) -> list(output_attr()).
+              Reference :: link_ref()) -> list(output_attr()).
 
-add_ref(Outputs, ValueId, ToBlockName) ->
+add_ref(Outputs, ValueId, Reference) ->
 
   case attrib_utils:get_attribute(Outputs, ValueId) of
 
@@ -414,15 +420,18 @@ add_ref(Outputs, ValueId, ToBlockName) ->
       Outputs;
 
     % Non-array value
-    {ok, {ValueName, {Value, Refs}}} ->
+    {ok, {ValueName, {Value, References}}} ->
 
-      % add 'ToBlockName' to list of block references for this output
-      % ToBlockName can be added more than once, 
-      % if multiple inputs of the same block are linked to this output.
-      % Return updated Outputs list
-      NewRefs = [ToBlockName | Refs],
-      NewOutput = {ValueName, {Value, NewRefs}},
-      attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+      % Add Reference to list of block references for this output
+      % If not already added, Return updated Outputs list
+      case lists:member(Reference, References) of 
+        false ->
+          NewRefs = [Reference | References],
+          NewOutput = {ValueName, {Value, NewRefs}},
+          attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+        true ->
+          Outputs
+      end;
 
     % Array value
     {ok, {ValueName, ArrayValues}} ->
@@ -430,12 +439,19 @@ add_ref(Outputs, ValueId, ToBlockName) ->
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
       if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-        {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
-        NewRefs = [ToBlockName | Refs],
-        NewArrayValue = {Value, NewRefs},
-        NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
-        NewOutput = {ValueName, NewArrayValues}, 
-        attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+        {Value, References} = lists:nth(ArrayIndex, ArrayValues),
+        % Add Reference to list of block references for this output
+        % If not already added, Return updated Outputs list
+        case lists:member(Reference, References) of
+          false ->
+            NewRefs = [Reference | References],
+            NewArrayValue = {Value, NewRefs},
+            NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+            NewOutput = {ValueName, NewArrayValues}, 
+            attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+          true ->
+            Outputs
+        end;
       true ->
         error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
                              [ValueId]),
@@ -445,14 +461,14 @@ add_ref(Outputs, ValueId, ToBlockName) ->
 
 
 %%
-%% Delete 'ToBlockName' reference from the list of linked blocks 
+%% Delete Reference from the list of References to linked blocks 
 %% in the ValueId output attribute
 %%
 -spec delete_ref(Outputs :: list(output_attr()), 
                  ValueId :: value_id(), 
-                 ToBlockName :: block_name() | {node(), block_name()}) -> list(output_attr()).
+                 Reference :: link_ref()) -> list(output_attr()).
 
-delete_ref(Outputs, ValueId, ToBlockName) ->
+delete_ref(Outputs, ValueId, Reference) ->
 
   case attrib_utils:get_attribute(Outputs, ValueId) of
 
@@ -464,11 +480,9 @@ delete_ref(Outputs, ValueId, ToBlockName) ->
       Outputs;
 
     % Non-Array value
-    {ok, {ValueName, {Value, Refs}}} ->  
-      % Delete the 'ToBlockName' from the list of linked blocks, if it exists
-      % This deletes the first element matching ToBlockName, 
-      % ToBlockName could be in the list more than once
-      NewRefs = lists:delete(ToBlockName, Refs),
+    {ok, {ValueName, {Value, References}}} ->  
+      % Delete the Reference from the list of References to linked blocks, if it exists
+      NewRefs = lists:delete(Reference, References),
       NewOutput = {ValueName, {Value, NewRefs}},
       attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
 
@@ -478,11 +492,9 @@ delete_ref(Outputs, ValueId, ToBlockName) ->
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
       if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-        {Value, Refs} = lists:nth(ArrayIndex, ArrayValues),
-        % Delete the 'ToBlockName' from the list of linked blocks, if it exists
-        % This deletes the first element matching ToBlockName, 
-        % ToBlockName could be in the list more than once
-        NewRefs = lists:delete(ToBlockName, Refs),
+        {Value, References} = lists:nth(ArrayIndex, ArrayValues),
+        % Delete the Reference from the list of References to linked blocks, if it exists
+        NewRefs = lists:delete(Reference, References),
         NewArrayValue = {Value, NewRefs},
         NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
         NewOutput = {ValueName, NewArrayValues}, 

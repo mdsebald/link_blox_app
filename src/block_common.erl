@@ -398,29 +398,43 @@ check_array_values(FromBlockName, ValueName, ArrayIndex,
                            Refs :: link_refs()) -> ok.
                            
 update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
-  % Eliminate duplicate references, 
-  % One update message to the same block, 
-  % will update all inputs linked to this output
-  DedupedRefs = sets:to_list(sets:from_list(Refs)),
-  lists:map(fun(Ref) ->
-              case Ref of
-                {NodeName, BlockName} ->
-                  % If the reference includes a node name
-                  % Include the self node in the source Link.
-                  % The block input linked to this value is on another node
-                  % so we need to include the self node to match the link
-                  % in the input value
-                  Link = {node(), FromBlockName, ValueId},
-                  linkblox_api:update(NodeName, BlockName, Link, NewValue);
+ 
+  % Eliminate Value Ids from the references
+  % Only need (opt.) NodeName BlockName to update linked block input values
+  BlockRefs = lists:map(fun(Ref) -> 
+                          case Ref of
+                            {ToNodeName, ToBlockName, _ToValueId} -> 
+                              {ToNodeName, ToBlockName};
+                        
+                            {ToBlockName, _ToValueId} -> 
+                              ToBlockName
+                          end
+                        end, 
+                        Refs),
 
-                BlockName ->
-                  % Reference is to a block on the same node
-                  % Source reference is just block_name : value_id
-                  Link = {FromBlockName, ValueId},
-                  block_server:update(BlockName, Link, NewValue)
-              end
-            end, 
-            DedupedRefs),
+  % Eliminate duplicate (opt.) NodeName BlockName references, 
+  % One update message to a block, will update all of the linked block input values
+  DedupedBlockRefs = sets:to_list(sets:from_list(BlockRefs)),
+
+  lists:foreach(fun(Ref) ->
+                  case Ref of
+                    {ToNodeName, ToBlockName} ->
+                      % If the reference includes a node name
+                      % Include the self node in the source Link.
+                      % The block input linked to this value is on another node
+                      % so we need to include the self node to match the link
+                      % in the input value
+                      Link = {node(), FromBlockName, ValueId},
+                      linkblox_api:update(ToNodeName, ToBlockName, Link, NewValue);
+
+                    ToBlockName ->
+                      % Reference is to a block on the same node
+                      % Source reference is just block_name : value_id
+                      Link = {FromBlockName, ValueId},
+                      block_server:update(ToBlockName, Link, NewValue)
+                  end
+                end, 
+                DedupedBlockRefs),
   ok.
 
 

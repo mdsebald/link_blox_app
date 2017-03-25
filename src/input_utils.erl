@@ -189,13 +189,15 @@ check_boolean_input(Value) ->
                              
 resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, DefaultValue)->
   % Function to unlink the deleted array values if they are linked to an output value
-  DeleteExcess = fun (DeleteArrayValues) ->
-      lists:map(
-        fun(DeleteValue) -> 
+  DeleteExcess = fun(DeleteArrayValues) ->
+     lists:foldl(
+        fun(DeleteValue, Index) -> 
           {_Value, Link} = DeleteValue,
-          link_utils:unlink_input(BlockName, ArrayValueName, Link)
+          % ValueName and Index form a ValueId
+          link_utils:unlink_input(BlockName, {ArrayValueName, Index}, Link),
+          Index+1 
           end, 
-          DeleteArrayValues) end,
+          1, DeleteArrayValues) end,
           
   attrib_utils:resize_attribute_array_value(Inputs, ArrayValueName, TargQuant, 
                                               DefaultValue, DeleteExcess).

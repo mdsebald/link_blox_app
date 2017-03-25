@@ -171,10 +171,10 @@ link(Node, BlockName, ValueId, ToBlockName) ->
 -spec unlink(Node :: node(),
              LinkBlockName :: block_name(),
              LinkValueId :: value_id(),
-             BlockName :: block_name() | {node(), block_name()}) -> term().
+             Reference :: link_ref()) -> term().
 
-unlink(Node, LinkBlockName, LinkValueId, BlockName) ->
-  gen_server:cast({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, BlockName}).
+unlink(Node, LinkBlockName, LinkValueId, Reference) ->
+  gen_server:cast({linkblox_api, Node}, {unlink, LinkBlockName, LinkValueId, Reference}).
 
 
 %% Get all of the current created blocks on this node 
@@ -628,10 +628,10 @@ handle_cast({update, BlockName, Link, NewValue}, State) ->
 %% =====================================================================
 %% Unlink block input from block output 
 %% =====================================================================  
-handle_cast({unlink, LinkBlockName, LinkValueId, ToBlockName}, State) ->
+handle_cast({unlink, LinkBlockName, LinkValueId, Reference}, State) ->
   case block_utils:is_block(LinkBlockName) of
     true ->
-      block_server:unlink(LinkBlockName, LinkValueId, ToBlockName);
+      block_server:unlink(LinkBlockName, LinkValueId, Reference);
 
     _ ->
       error_logger:warning_msg("linkblox_api: Recieved unlink for unknown block: ~p~n", 

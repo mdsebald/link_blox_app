@@ -70,8 +70,8 @@
 -type value_id() :: value_name() |
                     {value_name(), ArrayIndex :: pos_integer()}.
                         
-
--type link_refs() :: list(block_name() | {node(), block_name}).
+-type link_ref() :: {block_name(), value_id()} | {node(), block_name(), value_id()}.
+-type link_refs() :: list(link_ref()).
 
 -type value() :: atom() | integer() | float() | boolean() | 
                  string() | tuple() | list() | reference() | pid().

@@ -117,14 +117,14 @@ reconfigure(BlockName, BlockValues)->
   gen_server:cast(BlockName, {reconfigure, BlockValues}).
 
 
-%% Link the output value: 'ValueId' of this block to 'ToBlockName' 
-link(BlockName, ValueId, ToBlockName) ->
-  gen_server:call(BlockName, {link, ValueId, ToBlockName}).
+%% Link the output value: 'ValueId' of this block to to the BlockName:InputValueId reference
+link(BlockName, ValueId, Reference) ->
+  gen_server:call(BlockName, {link, ValueId, Reference}).
 
 
-%% Unlink the output value: 'ValueId' of this block from ToBlockName 
-unlink(BlockName, ValueId, ToBlockName) ->
-  gen_server:cast(BlockName, {unlink, ValueId, ToBlockName}).
+%% Unlink the output value: 'ValueId' of this block from BlockName:InputValueId reference
+unlink(BlockName, ValueId, Reference) ->
+  gen_server:cast(BlockName, {unlink, ValueId, Reference}).
 
 
 %% ====================================================================
@@ -288,16 +288,16 @@ handle_call({set_link, InputValueId, Link}, _From, BlockValues) ->
 
 
 %% =====================================================================
-%% Link the output value 'ValueId' of this block to the block 'ToBlockName'
+%% Link the output value 'ValueId' of this block to the block Reference
 %% =====================================================================
-handle_call({link, ValueId, ToBlockName}, _From, BlockValues) ->
+handle_call({link, ValueId, Reference}, _From, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 
-  %% Add the block 'ToBlockName' to the output 'ValueId's list of block references
-  NewOutputs = link_utils:add_ref(Outputs, ValueId, ToBlockName),
+  %% Add the block Reference to the output 'ValueId's list of block references
+  NewOutputs = link_utils:add_ref(Outputs, ValueId, Reference),
 
-  % Send the current value of this output to the block 'ToBlockName'
+  % Send the current value of this output to the Reference
   case attrib_utils:get_value(NewOutputs, ValueId) of 
     {ok, Value} -> ok;
  
@@ -428,14 +428,14 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
 
 
 %% =====================================================================
-%% Unlink the output value 'ValueId' of this block from 'BlockName'
+%% Unlink the output value 'ValueId' of this block from 'BlockName:InputValueId' Reference
 %% =====================================================================
-handle_cast({unlink, ValueId, ToBlockName}, BlockValues) ->
+handle_cast({unlink, ValueId, Reference}, BlockValues) ->
 
   {Config, Inputs, Outputs, Private} = BlockValues,
 
-  %% Remove ToBlockName from the output ValueId's list of linked blocks
-  NewOutputs = link_utils:delete_ref(Outputs, ValueId, ToBlockName),
+  %% Remove Reference from the output ValueId's list of linked blocks References
+  NewOutputs = link_utils:delete_ref(Outputs, ValueId, Reference),
 
   {noreply, {Config, Inputs, NewOutputs, Private}};
 
@@ -467,20 +467,74 @@ handle_cast(Msg, BlockValues) ->
 %% Execute the block connected to this interrupt
 %% =====================================================================
 
-handle_info({gpio_interrupt, _Pin, _Condition}, CurrentBlockValues) ->
-  % io:format("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
-  NewBlockValues = block_common:execute(CurrentBlockValues, hardware),
+handle_info({gpio_interrupt, _Pin, _Condition}, BlockValues) ->
+  % error_logger:info_msg("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
+  NewBlockValues = block_common:execute(BlockValues, hardware),
   {noreply, NewBlockValues};
 
 
 %% =====================================================================
 %% Timer timeout from erlang:send_after() function
 %% Execute block with timer as the reason
-%% =====================================================================  
-handle_info(timer_execute, CurrentBlockValues) ->
-  NewBlockValues = block_common:execute(CurrentBlockValues, timer),
+%% =====================================================================
+
+handle_info(timer_execute, BlockValues) ->
+  NewBlockValues = block_common:execute(BlockValues, timer),
   {noreply, NewBlockValues};
-  
+
+
+%%======================================================================
+%% Process messages from emqttc (MQTT Related functionality)
+%%======================================================================
+
+%% =====================================================================
+%% MQTT Publish message from a subscribed to Topic.
+%% =====================================================================
+handle_info({publish, Topic, Payload}, BlockValues) ->
+    error_logger:info_msg("Message from ~s: ~p~n", [Topic, Payload]),
+    {Config, Inputs, Outputs, Private} = BlockValues,
+    case attrib_utils:set_values(Outputs, [{topic_pub, Topic}, {value, Payload}]) of
+      {ok, NewOutputs} ->
+        NewBlockValues = {Config, Inputs, NewOutputs, Private};
+
+      {error, Reason} ->
+        error_logger:error_msg("Error: ~p, Parsing publish message from MQTT broker~n", [Reason]),
+        NewBlockValues = BlockValues
+    end,
+    {noreply, NewBlockValues};
+
+%% =====================================================================
+%% MQTT Client connected message
+%% =====================================================================
+handle_info({mqttc, Client, connected}, BlockValues) ->
+    error_logger:info_msg("Client ~p is connected~n", [Client]),
+    {Config, Inputs, Outputs, Private} = BlockValues,
+    case attrib_utils:set_value(Outputs, connected, true) of
+      {ok, NewOutputs} ->
+        NewBlockValues = {Config, Inputs, NewOutputs, Private};
+
+      {error, Reason} ->
+        error_logger:error_msg("Error: ~p, Updating output on MQTT broker connect message~n", [Reason]),
+        NewBlockValues = BlockValues
+    end,
+    {noreply, NewBlockValues};
+
+%% =====================================================================
+%% MQTT Client disconnected message
+%% =====================================================================
+handle_info({mqttc, Client,  disconnected}, BlockValues) ->
+    error_logger:info_msg("Client ~p is disconnected~n", [Client]),
+    {Config, Inputs, Outputs, Private} = BlockValues,
+    case attrib_utils:set_values(Outputs, [{connected, false}, {value, not_active}]) of
+      {ok, NewOutputs} ->
+        NewBlockValues = {Config, Inputs, NewOutputs, Private};
+
+      {error, Reason} ->
+        error_logger:error_msg("Error: ~p, Updating outputs on MQTT broker disconnect message~n", [Reason]),
+        NewBlockValues = BlockValues
+    end,
+    {noreply, NewBlockValues};
+
 
 %% =====================================================================
 %% Unknown Info message
