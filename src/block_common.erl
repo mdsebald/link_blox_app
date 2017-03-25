@@ -441,7 +441,7 @@ update_execute(Outputs) ->
                   case Ref of
                     {ToNodeName, ToBlockName} ->
                       % Execute block on another node
-                      linkblox_api:execute(ToNodeName, ToBlockName, exec_out);
+                      linkblox_api:execute_block(ToNodeName, ToBlockName, exec_out);
                     
                     ToBlockName ->
                       block_server:execute(ToBlockName, exec_out) 
