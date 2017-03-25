@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/mdsebald/LinkBlox.png?branch=master)](https://travis-ci.org/mdsebald/LinkBlox)
 
-LinkBlox is an Erlang application that can either be run on Linux[^1], or built using the Nerves project[^2] to create standalone embedded systems.  See [Nerves](http://nerves-project.org/ "Nerves Project").
+LinkBlox is an Erlang application that can either be run on Linux<sup>[1](#fn01)</sup>, or built using the Nerves project<sup>[2](#fn02)</sup> to create standalone embedded systems.  See [Nerves](http://nerves-project.org/ "Nerves Project").
 
 The purpose of LinkBlox is to abstract away programming complexity into discrete blocks of functionality that can be created and linked to other blocks to create a device with desired functionality.
 
@@ -21,12 +21,12 @@ The code for each type of block is contained in an Erlang module.  The name of t
 - execute(): Read the block's input values, and update the block's output values. By default a block's execute funtion is called on an input value change (Data Flow).  Blocks may also be executed on a timer, or executed on command from another block (Control Flow).
 - delete(): Release resources used, and unlinks from any connected blocks.
 
-Block data is defined as a tuple of 3 lists:[^3]
- - Config: A list of value ID and value pair tuples. Config values are normally set at block creation.  Modifying block config values causes the block to be re-initialized.  Equivalent to deleting and recreating the block.
- - Inputs: A list of value ID, value, and link tuples. Inputs may be set to fixed values or "linked" to an output value of another block, or a block on another node.  A link is specified by a block name and output value ID. An optional node name, may be prefixed, to link to a block value on another LinkBlox node.
- - Outputs: A list of value ID, value, and reference tuples. Output values contain the results of the block execution.  The reference element of the output tuple contains the names of blocks (prefixed by node name if needed) that have input values linked to this block output.
+Block data is defined as a tuple of 3 lists:<sup>[3](#fn03)</sup>
+ - Config: A list of key ID value pair tuples. Config values are normally set at block creation.  Modifying block config values causes the block to be re-initialized.  Equivalent to deleting and recreating the block.
+ - Inputs: A list of key ID, value, and link tuples. Inputs may be set to fixed values or "linked" to an output value of another block, or a block on another node.  A link is specified by a block name and output value ID. An optional node name, may be prefixed, to link to a block value on another LinkBlox node.
+ - Outputs: A list of key ID, value, and reference tuples. Output values contain the results of the block execution.  The reference element of the output tuple contains the names of blocks (prefixed by node name if needed) that have input values linked to this block output.
  
- LinkBlox also allows arrays of Config, Inputs, and Outputs to be defined.  Arrays of attributes are specified by a value ID and an index, from 1 to the size of the array.
+ LinkBlox also allows arrays of Config, Inputs, and Outputs to be defined.  Arrays of attributes are specified by a key ID and an index, from 1 to the size of the array.
  
 #### Example Block Type ####
 
@@ -48,8 +48,8 @@ Clone this repo, on a Linux box, type make, and run the the resulting LinkBlox b
 Requires Erlang and relx to be installed to build
 
 
-[^1]: I'm assuming the code can be compiled and run on Windows or a Mac, but I haven't tried it myself.
-[^2]: See my repo: [nerves_link_blox][1]
-[^3]: In practice, the block data tuple also contains a list of private block data.
+<a name="fn01">1</a>: I'm assuming the code can be compiled and run on Windows or a Mac, but I haven't tried it myself.
 
-[1]: https://github.com/mdsebald/nerves_link_blox
+<a name="fn02">2</a>: See my repo: [nerves_link_blox]  https://github.com/mdsebald/nerves_link_blox
+
+<a name="fn03">3</a>: In practice, the block data tuple also contains a list of private block data.
