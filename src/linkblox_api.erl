@@ -38,7 +38,7 @@
           load_block_file/2,
           load_block_data/2,
           update/4,
-          execute_block/2,
+          execute_block/3,
           is_block_name/2, 
           is_block_type/2
 ]). 
@@ -229,10 +229,11 @@ update(Node, BlockName, Link, NewValue) ->
 
 %% Execute the block
 -spec execute_block(Node :: node(),
-                    BlockName :: block_name()) -> term().
+                    BlockName :: block_name(),
+                    Reason :: exec_method()) -> term().
 
-execute_block(Node, BlockName) ->
-  gen_server:call({linkblox_api, Node}, {execute_block, BlockName}).
+execute_block(Node, BlockName, Reason) ->
+  gen_server:call({linkblox_api, Node}, {execute_block, BlockName, Reason}).
 
 
 %% Is BlockName a valid block name?
@@ -510,10 +511,10 @@ handle_call({link, BlockName, ValueId, ToBlockName}, _From, State) ->
 %% =====================================================================
 %% Execute block
 %% =====================================================================    
-handle_call({execute_block, BlockName}, _From, State) ->
+handle_call({execute_block, BlockName, Reason}, _From, State) ->
   case block_utils:is_block(BlockName) of
     true ->
-      block_server:execute(BlockName),
+      block_server:execute(BlockName, Reason),
       Result = ok;
     _ ->
       Result = {error, block_not_found}

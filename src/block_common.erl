@@ -399,22 +399,11 @@ check_array_values(FromBlockName, ValueName, ArrayIndex,
                            
 update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
  
-  % Eliminate Value Ids from the references
-  % Only need (opt.) NodeName BlockName to update linked block input values
-  BlockRefs = lists:map(fun(Ref) -> 
-                          case Ref of
-                            {ToNodeName, ToBlockName, _ToValueId} -> 
-                              {ToNodeName, ToBlockName};
-                        
-                            {ToBlockName, _ToValueId} -> 
-                              ToBlockName
-                          end
-                        end, 
-                        Refs),
+  BlockNameRefs = get_block_name_refs(Refs),
 
   % Eliminate duplicate (opt.) NodeName BlockName references, 
   % One update message to a block, will update all of the linked block input values
-  DedupedBlockRefs = sets:to_list(sets:from_list(BlockRefs)),
+  DedupedBlockRefs = sets:to_list(sets:from_list(BlockNameRefs)),
 
   lists:foreach(fun(Ref) ->
                   case Ref of
@@ -434,8 +423,7 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
                       block_server:update(ToBlockName, Link, NewValue)
                   end
                 end, 
-                DedupedBlockRefs),
-  ok.
+                DedupedBlockRefs).
 
 
 %%    
@@ -446,10 +434,39 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
 
 update_execute(Outputs) ->
   {ok, {exec_out,  {_Value, Refs}}} = attrib_utils:get_attribute(Outputs, exec_out),
-  
-  lists:map(fun(Ref) -> block_server:exec_out_execute(Ref) end, Refs),
-  ok.
 
+  BlockNameRefs = get_block_name_refs(Refs),
+  
+  lists:foreach(fun(Ref) ->
+                  case Ref of
+                    {ToNodeName, ToBlockName} ->
+                      % Execute block on another node
+                      linkblox_api:execute(ToNodeName, ToBlockName, exec_out);
+                    
+                    ToBlockName ->
+                      block_server:execute(ToBlockName, exec_out) 
+                  end
+                end, 
+                BlockNameRefs).
+
+
+%%
+%% Eliminate Value Ids from the output references
+%% Only need (opt.) NodeName BlockName to update linked block input values
+%%
+-spec get_block_name_refs(Refs :: link_refs()) -> list(block_name() | {node(), block_name()}).
+
+get_block_name_refs(Refs) ->
+  lists:map(fun(Ref) -> 
+             case Ref of
+              {ToNodeName, ToBlockName, _ToValueId} -> 
+                {ToNodeName, ToBlockName};
+
+              {ToBlockName, _ToValueId} -> 
+                ToBlockName
+            end
+          end, 
+          Refs).
 
 %%
 %% Common block delete function, 

@@ -24,8 +24,7 @@
           set_link/3,
           override/2, 
           get_block/1,
-          execute/1, 
-          exec_out_execute/1,
+          execute/2, 
           update/3, 
           init_configure/1, 
           configure/1, 
@@ -81,15 +80,8 @@ get_block(BlockName) ->
 
 
 %% Execute the block 
-execute(BlockName) ->
-  gen_server:cast(BlockName, execute).
-
-
-%% This block's 'exec_in' is linked to an 'exec_out' output 
-%% i.e Implement Control Flow
-exec_out_execute(BlockName) ->
-  gen_server:cast(BlockName, exec_out_execute).
-
+execute(BlockName, Reason) ->
+  gen_server:cast(BlockName, {execute, Reason}).
 
 %% Update this block's input value that is linked
 %% to the given output value i.e {Node, BlockName, ValueId} 
@@ -344,20 +336,10 @@ handle_call(Request, From, BlockValues) ->
 %% Execute the block using the current set of Block values,
 %% This message is used to directly execute the block evaluate function, 
 %% ====================================================================
-handle_cast(execute, BlockValues) ->
+handle_cast({execute, Reason}, BlockValues) ->
 
   % Execute the block
-  NewBlockValues = block_common:execute(BlockValues, manual),
-  {noreply, NewBlockValues};
-
-
-%% ====================================================================
-%% Execute the block using the current set of Block values,
-%% This message is used to execute the block on command from another block,  
-%% ====================================================================
-handle_cast(exec_out_execute, BlockValues) ->
-  % Execute the block code
-  NewBlockValues = block_common:execute(BlockValues, exec_out),
+  NewBlockValues = block_common:execute(BlockValues, Reason),
   {noreply, NewBlockValues};
 
 

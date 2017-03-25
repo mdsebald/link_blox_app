@@ -383,7 +383,7 @@ ui_execute_block(Params) ->
     ok -> 
       [BlockNameStr] = Params,
       BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:execute_block(curr_node(), BlockName) of
+      case linkblox_api:execute_block(curr_node(), BlockName, manual) of
         ok -> 
           ok;
         {error, block_not_found} ->
