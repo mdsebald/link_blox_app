@@ -313,7 +313,7 @@ set_timer(BlockName, ExecuteInterval) ->
 update_execute_track(Outputs, ExecMethod) ->
 
   % Record method of execution
-  {ok, Outputs1} = attrib_utils:set_value(Outputs, exec_method, ExecMethod),
+  {ok, Outputs1} = attrib_utils:set_values(Outputs, [{exec_method, ExecMethod}, {exec_out, ExecMethod}]),
 
   % Record last executed timestamp
   TS = {_, _, Micro} = os:timestamp(),
