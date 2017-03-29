@@ -19,7 +19,7 @@
 
 version() -> "0.1.0".
 
-description() -> "Bosch BME280 - temperature, pressure, and humidity sensor with I2C interface".
+description() -> "Bosch temperature, pressure, and humidity sensor with I2C interface".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
