@@ -59,7 +59,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digit, [{not_active, []}]},  % Array attribute
+      {digits, [{not_active, []}]},  % Array attribute
       {pos_overflow, {not_active, []}},  % Insufficient digits to display positive value
       {neg_overflow, {not_active, []}}   % Insufficient digits to display negative value
     ]).

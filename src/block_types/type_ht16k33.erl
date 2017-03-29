@@ -46,11 +46,11 @@ default_inputs() ->
       {display_on, {true, ?EMPTY_LINK}},
       {blink_rate, {0, ?EMPTY_LINK}},
       {brightness, {0, ?EMPTY_LINK}},
-      {segs_digit_1, {16#FF, ?EMPTY_LINK}},
-      {segs_digit_2, {16#FF, ?EMPTY_LINK}},
+      {digit_segs_1, {16#FF, ?EMPTY_LINK}},
+      {digit_segs_2, {16#FF, ?EMPTY_LINK}},
       {colon, {true, ?EMPTY_LINK}},
-      {segs_digit_3, {16#FF, ?EMPTY_LINK}},
-      {segs_digit_4, {16#FF, ?EMPTY_LINK}}
+      {digit_segs_3, {16#FF, ?EMPTY_LINK}},
+      {digit_segs_4, {16#FF, ?EMPTY_LINK}}
     ]). 
 
 
