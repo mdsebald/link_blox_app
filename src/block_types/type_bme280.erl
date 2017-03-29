@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(type_bme280_env_sensor).  
+-module(type_bme280).  
 
 -author("Mark Sebald").
 
@@ -19,7 +19,7 @@
 
 version() -> "0.1.0".
 
-description() -> "BME280 - temperature, pressure, and humidity sensor with I2C interface".
+description() -> "Bosch BME280 - temperature, pressure, and humidity sensor with I2C interface".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -165,13 +165,24 @@ initialize({Config, Inputs, Outputs, Private}) ->
           case get_calibration(I2cRef, Private3) of
             {ok, Private4} -> 
               case read_sensor(I2cRef, Private4) of
-                {ok, Temp, Press, Humid} ->
-                  Status = initialed,
-                  Value = Temp,
-                  ok;
+                {ok, InitTemp, InitPress, InitHumid} ->
+                  case convert_readings(InitTemp, InitPress, InitHumid, Config) of
+                    {ok, Temp, Press, Humid} ->
+                      Status = initialed,
+                      Value = Temp,
+                      ok;
+                    {error, Reason} ->
+                      error_logger:error_msg("Error: ~p converting sensor values~n", 
+                              [Reason]),
+                      Status = config_err,
+                      Value = not_active,
+                      Temp = not_active,
+                      Press = not_active,
+                      Humid = not_active
+                  end;    
 
                 {error, Reason} ->
-                  error_logger:error_msg("Error: ~p Reading sensor~n", 
+                  error_logger:error_msg("Error: ~p reading sensor~n", 
                               [Reason]),
                   Status = proc_err,
                   Value = not_active,
@@ -244,13 +255,24 @@ execute({Config, Inputs, Outputs, Private}) ->
 
     {ok, forced} ->
       case read_sensor_forced(I2cRef, Private) of
-        {ok, Temp, Press, Humid} ->
-          Status = normal,
-          Value = Temp,
-          ok;
+        {ok, InitTemp, InitPress, InitHumid} ->
+          case convert_readings(InitTemp, InitPress, InitHumid, Config) of
+            {ok, Temp, Press, Humid} ->
+              Status = normal,
+              Value = Temp,
+              ok;
+            {error, Reason} ->
+              error_logger:error_msg("Error: ~p converting sensor values~n", 
+                                  [Reason]),
+              Status = config_err,
+              Value = not_active,
+              Temp = not_active,
+              Press = not_active,
+              Humid = not_active
+          end;
 
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p Reading sensor forced mode~n", 
+          error_logger:error_msg("Error: ~p reading sensor forced mode~n", 
                                   [Reason]),
           Status = proc_err,
           Value = not_active,
@@ -261,10 +283,21 @@ execute({Config, Inputs, Outputs, Private}) ->
 
     {ok, normal} -> 
       case read_sensor(I2cRef, Private) of
-        {ok, Temp, Press, Humid} ->
-          Status = normal,
-          Value = Temp,
-          ok;
+        {ok, InitTemp, InitPress, InitHumid} ->
+          case convert_readings(InitTemp, InitPress, InitHumid, Config) of
+            {ok, Temp, Press, Humid} ->
+              Status = normal,
+              Value = Temp,
+              ok;
+            {error, Reason} ->
+              error_logger:error_msg("Error: ~p converting sensor values~n", 
+                                  [Reason]),
+              Status = config_err,
+              Value = not_active,
+              Temp = not_active,
+              Press = not_active,
+              Humid = not_active
+          end;
 
         {error, Reason} ->
           error_logger:error_msg("Error: ~p Reading sensor~n", 
@@ -791,12 +824,114 @@ read_sensor(I2cRef, Private) ->
       Press = compensate_press(Adc_Press, T_fine, Private),
       Humid = compensate_humid(Adc_Humid, T_fine, Private),
 
-      % TODO: Read and use conversion and offset config values
-      TempDegF = ((Temp * 9)/ 5) + 32.0,
-      PressInchMerc = Press * 0.0002953,
-      {ok, TempDegF, PressInchMerc, Humid}
+      {ok, Temp, Press, Humid}
   end.
 
+
+%
+% Convert readings to desired units and add user configured offset values
+%
+-spec convert_readings(Temp :: float(),
+                       Press :: float(),
+                       Humid :: float(), 
+                       Config :: list(config_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
+                            
+convert_readings(Temp, Press, Humid, Config) ->
+  case convert_temp(Temp, Config) of
+    {ok, ConvTemp} ->
+
+      case convert_press(Press, Config) of
+        {ok, ConvPress} ->
+
+          case convert_humid(Humid, Config) of
+            {ok, ConvHumid} ->
+              {ok, ConvTemp, ConvPress, ConvHumid};
+            
+            {error, Reason} -> {error, Reason}
+          end;
+         {error, Reason} -> {error, Reason}
+      end;
+    {error, Reason} -> {error, Reason}
+  end.
+
+
+%
+% Apply units conversion and user defined offset to temperature reading
+% Temperature is originally calculated in Deg C.
+%
+-spec convert_temp(Temp :: float(),
+                   Config :: list(config_attr())) -> {ok, float()} | {error, atom()}.
+
+convert_temp(Temp, Config) ->
+  case config_utils:get_float(Config, temp_offset) of
+    {ok, TempOffset} ->
+
+      case config_utils:get_boolean(Config, deg_f) of
+        {ok, true} -> 
+          ConvTemp = (((Temp * 9) / 5) + 32.0) + TempOffset,
+          {ok, ConvTemp};
+        
+        {ok, false} -> 
+          ConvTemp = Temp + TempOffset,
+          {ok, ConvTemp};
+        
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p reading deg_f config value~n", [Reason]),
+          {error, Reason}
+      end;
+
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading temp_offset config value~n", [Reason]),
+      {error, Reason}
+  end.
+
+
+%
+% Apply units conversion and user defined offset to pressure reading
+% Pressure is originally calculated in Pa.
+%
+-spec convert_press(Press :: float(),
+                    Config :: list(config_attr())) -> {ok, float()} | {error, atom()}.
+
+convert_press(Press, Config) ->
+  case config_utils:get_float(Config, press_offset) of
+    {ok, PressOffset} ->
+
+      case config_utils:get_boolean(Config, inch_merc) of
+        {ok, true} -> 
+          ConvPress = (Press * 0.0002953) + PressOffset,
+          {ok, ConvPress};
+        
+        {ok, false} -> 
+          ConvPress = Press + PressOffset,
+          {ok, ConvPress};
+        
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p reading inch_merc config value~n", [Reason]),
+          {error, Reason}
+      end;
+
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading press_offset config value~n", [Reason]),
+      {error, Reason}
+  end.
+
+%
+% Apply user defined offset to humidity reading
+%
+-spec convert_humid(Humid :: float(),
+                    Config :: list(config_attr())) -> {ok, float()} | {error, atom()}.
+
+convert_humid(Humid, Config) ->
+  case config_utils:get_float(Config, humid_offset) of
+    {ok, HumidOffset} ->
+      ConvHumid = Humid + HumidOffset,
+      {ok, ConvHumid};
+
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p reading humid_offset config value~n", [Reason]),
+      {error, Reason}
+  end.
 
 %
 % Compensate the raw temperature sensor value 
