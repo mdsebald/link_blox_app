@@ -119,7 +119,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       % Create a digit output for each digit
       BlockName = config_utils:name(Config),
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                       digit, NumOfDigits, {not_active, []}),
+                                       digits, NumOfDigits, {not_active, []}),
       Value = not_active,
       Status = initialed;
 
@@ -202,7 +202,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
   {ok, Outputs1} = attrib_utils:set_value(Outputs, pos_overflow, PosOverflow),
   {ok, Outputs2} = attrib_utils:set_value(Outputs1, neg_overflow, NegOverflow),
-  Outputs3 = output_utils:set_array_value(Outputs2, digit, Digits7Seg),
+  Outputs3 = output_utils:set_array_value(Outputs2, digits, Digits7Seg),
   Outputs4 = output_utils:set_value_status(Outputs3, Value, Status),
 
   % Return updated block state
