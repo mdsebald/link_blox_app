@@ -57,7 +57,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digit, [{not_active, []}]}  % Array attribute 
+      {digits, [{not_active, []}]}  % Array attribute 
     ]).
 
 
@@ -144,7 +144,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
               % Create a digit output for each digit
               Outputs1 = 
                 output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                       digit, NumOfDigits, {not_active, []}),
+                                       digits, NumOfDigits, {not_active, []}),
               Value = not_active,
               Status = initialed
           end                    
@@ -207,7 +207,7 @@ execute({Config, Inputs, Outputs, Private}) ->
                    block_utils:char_to_segments(Digit, false) end, Digits)
   end,
   
-  Outputs1 = output_utils:set_array_value(Outputs, digit, Digits7Seg),
+  Outputs1 = output_utils:set_array_value(Outputs, digits, Digits7Seg),
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % Return updated block state
