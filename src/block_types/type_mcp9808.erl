@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(type_mcp9808_temp).  
+-module(type_mcp9808).  
 
 -author("Mark Sebald").
 
@@ -19,7 +19,7 @@
 
 version() -> "0.1.0".
 
-description() -> "MCP9808 precision temp sensor with I2C interface".
+description() -> "Precision temp sensor with I2C interface".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -127,7 +127,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Status = initialed;
 
        {error, Reason} ->
-          error_logger:error_msg("Error: ~p Reading temperature sensor~n", 
+          error_logger:error_msg("Error: ~p reading temperature sensor~n", 
                               [Reason]),
           Status = proc_err,
           Value = not_active
@@ -171,7 +171,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Status = normal;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p Reading temperature sensor~n", 
+      error_logger:error_msg("Error: ~p reading temperature sensor~n", 
                               [Reason]),
       Status = proc_err,
       Value = not_active

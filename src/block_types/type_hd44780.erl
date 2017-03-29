@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(type_hd44780_lcd).  
+-module(type_hd44780).  
 
 -author("Mark Sebald").
 
@@ -22,7 +22,7 @@
 %   block definition created with block code with a different major revison 
 version() -> "0.1.0".
 
-description() -> "HD44780 LCD display with I2C interface".
+description() -> "4 Row X 20 Col LCD display with I2C interface".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes

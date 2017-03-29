@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(type_ht16k33_4digit_led).  
+-module(type_ht16k33).  
 
 -author("Mark Sebald").
 
