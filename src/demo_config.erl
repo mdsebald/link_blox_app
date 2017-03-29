@@ -127,7 +127,7 @@ create_demo_config() ->
                                      {final_value, {3, ?EMPTY_LINK}}
                                  ]),
 
-    EnvSensor = type_bme280_env_sensor:create(env_sensor, "Temp, Press, Humid Sensor",
+    EnvSensor = type_bme280:create(env_sensor, "Temp, Press, Humid Sensor",
                                  [
 
                                  ], 
