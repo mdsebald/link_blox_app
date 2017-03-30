@@ -161,10 +161,10 @@ create_demo_config() ->
                                  ],
                                  [
                                     {disable, {false, ?EMPTY_LINK}},
-                                    {segs_digit_1, {empty, {decoder, {digit,1}}}},
-                                    {segs_digit_2, {empty, {decoder, {digit,2}}}},
-                                    {segs_digit_3, {empty, {decoder, {digit,3}}}},
-                                    {segs_digit_4, {empty, {decoder, {digit,4}}}},
+                                    {digit_segs_1, {empty, {decoder, {digits,1}}}},
+                                    {digit_segs_2, {empty, {decoder, {digits,2}}}},
+                                    {digit_segs_3, {empty, {decoder, {digits,3}}}},
+                                    {digit_segs_4, {empty, {decoder, {digits,4}}}},
                                     {colon, {false, ?EMPTY_LINK}}
                                  ]),
 

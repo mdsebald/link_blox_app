@@ -173,9 +173,9 @@ execute({Config, Inputs, Outputs, Private}) ->
             {ok, Brightness} ->
               set_brightness(I2cRef, Brightness),
               
-              case input_utils:get_integer(Inputs, segs_digit_1) of
+              case input_utils:get_integer(Inputs, digit_segs_1) of
                 {error, Reason} ->
-                  input_utils:log_error(Config, segs_digit_1, Reason),
+                  input_utils:log_error(Config, digit_segs_1, Reason),
                   Value = not_active, Status = input_err;
                   
                 {ok, not_active} -> 
@@ -184,9 +184,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                 {ok, Segments1} ->
                   write_segments(I2cRef, 1, Segments1),
                   
-                  case input_utils:get_integer(Inputs, segs_digit_2) of
+                  case input_utils:get_integer(Inputs, digit_segs_2) of
                     {error, Reason} ->
-                      input_utils:log_error(Config, segs_digit_2, Reason),
+                      input_utils:log_error(Config, digit_segs_2, Reason),
                       Value = not_active, Status = input_err;
                       
                     {ok, not_active} -> 
@@ -206,9 +206,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                         {ok, ColonState} ->
                           set_colon(I2cRef, ColonState),
                            
-                          case input_utils:get_integer(Inputs, segs_digit_3) of
+                          case input_utils:get_integer(Inputs, digit_segs_3) of
                             {error, Reason} ->
-                              input_utils:log_error(Config, segs_digit_3, Reason),
+                              input_utils:log_error(Config, digit_segs_3, Reason),
                               Value = not_active, Status = input_err;
                               
                             {ok, not_active} -> 
@@ -217,9 +217,9 @@ execute({Config, Inputs, Outputs, Private}) ->
                             {ok, Segments3} ->
                               write_segments(I2cRef, 3, Segments3),
                               
-                              case input_utils:get_integer(Inputs, segs_digit_4) of
+                              case input_utils:get_integer(Inputs, digit_segs_4) of
                                 {error, Reason} ->
-                                  input_utils:log_error(Config, segs_digit_4, Reason),
+                                  input_utils:log_error(Config, digit_segs_4, Reason),
                                   Value = not_active, Status = input_err;
                                   
                                 {ok, not_active} -> 

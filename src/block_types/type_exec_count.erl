@@ -110,6 +110,9 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
+  % TODO: Need to keep output value in between Initial and Final values, 
+  %  may need to make them config values
+
   {ok, InitialValue} = attrib_utils:get_value(Inputs, initial_value),
     
   % If the Initial input value is a fixed value integer, 
