@@ -161,14 +161,17 @@ execute({Config, Inputs, Outputs, Private}) ->
                         % Reset input is true, set output value to initial value,
                         Value = InitialValue, Status = normal, Carry = false;
                       true -> % Reset input is false or missing, 
-                              % increment/decrement counter value output                
-                        if (CurrentValue == FinalValue) ->
+                        % Check for counter rollover and reset output value to initial value
+                        % Need to compare current value with initial and final values each execution 
+                        % Because initial and final values are inputs that can change values
+                        if (((InitialValue =< FinalValue) andalso (FinalValue =< CurrentValue)) orelse
+                            ((CurrentValue =< FinalValue) andalso (FinalValue =< InitialValue))) ->
                           if is_boolean(Rollover) andalso Rollover -> 
                             Value = InitialValue, Status = normal, Carry = true;
 
                           true -> % Reset input is off and rollover config is off
                                   % Hold count value output at final value
-                            Value = CurrentValue, Status = normal, Carry = false 
+                            Value = FinalValue, Status = normal, Carry = false 
                           end;
 
                         true -> % Count has not reached final value, 
@@ -224,3 +227,22 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%% ====================================================================
+%% Unit Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+  
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+
+  BlockState = block_common:initialize(BlockDefn),
+
+  execute(BlockState),
+    
+  delete(BlockState).
+
+-endif.
