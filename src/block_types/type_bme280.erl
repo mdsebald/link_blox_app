@@ -151,7 +151,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
   {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
       
-  case i2c:start_link(I2cDevice, I2cAddr) of
+  case i2c_utils:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
       
@@ -329,7 +329,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
   case attrib_utils:get_value(Private, i2c_ref) of
-    {ok, I2cRef} -> i2c:stop(I2cRef);
+    {ok, _I2cRef} -> i2c_utils:stop();
 
     _ -> ok
   end,
@@ -447,8 +447,8 @@ configure_sensor(I2cRef, Config) ->
 % 
 -spec reset_sensor(I2cRef :: pid()) -> ok | {error, atom()}.
 
-reset_sensor(I2cRef) ->
-  case i2c:write(I2cRef, <<?RESET_REG, ?RESET_VALUE>>) of
+reset_sensor(_I2cRef) ->
+  case i2c_utils:write(<<?RESET_REG, ?RESET_VALUE>>) of
     ok -> 
       block_utils:sleep(50),  % delay after reset
       ok;
@@ -464,14 +464,14 @@ reset_sensor(I2cRef) ->
 -spec set_config_reg(I2cRef :: pid(), 
                      Config :: list(config_attr())) -> ok | {error, atom()}.
 
-set_config_reg(I2cRef, Config) ->
+set_config_reg(_I2cRef, Config) ->
   case get_standby_time(Config) of
     {ok, StandbyTime} ->
 
       case get_filter_coeff(Config) of
         {ok, FilterCoeff} ->
 
-          case i2c:write(I2cRef, <<?CONFIG_REG, StandbyTime:3, FilterCoeff:3, ?ENABLE_I2C:2>>) of
+          case i2c_utils:write(<<?CONFIG_REG, StandbyTime:3, FilterCoeff:3, ?ENABLE_I2C:2>>) of
             ok -> ok;
 
             {error, Reason} ->
@@ -491,11 +491,11 @@ set_config_reg(I2cRef, Config) ->
 -spec set_humid_mode(I2cRef :: pid(), 
                      Config :: list(config_attr())) -> ok | {error, atom()}.
 
-set_humid_mode(I2cRef, Config) ->
+set_humid_mode(_I2cRef, Config) ->
   case get_humid_mode(Config) of
     {ok, HumidMode} ->
 
-      case i2c:write(I2cRef, <<?CTRL_HUMID_REG, HumidMode>>) of
+      case i2c_utils:write(<<?CTRL_HUMID_REG, HumidMode>>) of
         ok -> ok;
 
         {error, Reason} ->
@@ -512,7 +512,7 @@ set_humid_mode(I2cRef, Config) ->
 -spec set_temp_press_read_modes(I2cRef :: pid(), 
                                 Config :: list(config_attr())) -> {ok, byte()} | {error, atom()}.
 
-set_temp_press_read_modes(I2cRef, Config) ->
+set_temp_press_read_modes(_I2cRef, Config) ->
   
   case get_temp_mode(Config) of
     {ok, TempMode} ->
@@ -524,7 +524,7 @@ set_temp_press_read_modes(I2cRef, Config) ->
             {ok, ReadMode} ->
 
               <<SensorMode>> = <<TempMode:3, PressMode:3, ReadMode:2>>,
-              case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
+              case i2c_utils:write(<<?CTRL_MEAS_REG, SensorMode>>) of
                 ok -> {ok, SensorMode};
 
                 {error, Reason} ->
@@ -675,9 +675,9 @@ get_read_mode(Config) ->
 -spec get_calibration(I2cRef :: pid(),
                       Private :: list(private_attr())) -> {ok, list(private_attr())} | {error, atom()}.
 
-get_calibration(I2cRef, Private) ->
+get_calibration(_I2cRef, Private) ->
   % Read the first set of calibration data
-  case i2c:write_read(I2cRef, <<?CALIB1_REG_BEGIN>>, ?CALIB1_LEN) of
+  case i2c_utils:write_read(<<?CALIB1_REG_BEGIN>>, ?CALIB1_LEN) of
     {error, Reason} -> {error, Reason};
   
     % Attempt to parse the first set of calibration data
@@ -698,7 +698,7 @@ get_calibration(I2cRef, Private) ->
       Dig_H1:1/unsigned-integer-unit:8>> ->     % 0xA1        | dig_H1 [7:0]          | unsigned char
       
       % Read the second set of calibration data
-      case i2c:write_read(I2cRef, <<?CALIB2_REG_BEGIN>>, ?CALIB2_LEN) of
+      case i2c_utils:write_read(<<?CALIB2_REG_BEGIN>>, ?CALIB2_LEN) of
         {error, Reason} -> {error, Reason};
   
         % Attempt to parse the second set of calibration data
@@ -754,7 +754,7 @@ read_sensor_forced(I2cRef, Private) ->
   % and wait for sensor to return to sleep mode before reading the value
   {ok, SensorMode} = attrib_utils:get_value(Private, sensor_mode),
 
-  case i2c:write(I2cRef, <<?CTRL_MEAS_REG, SensorMode>>) of
+  case i2c_utils:write(<<?CTRL_MEAS_REG, SensorMode>>) of
     ok -> 
 
       case wait_for_sleep_mode(?MAX_MEASUREMENT_TIME_MS, I2cRef) of
@@ -782,7 +782,7 @@ wait_for_sleep_mode(TotalWait, I2cRef) ->
   if (TotalWait > MinDelay) ->
     block_utils:sleep(MinDelay),
 
-    case i2c:write_read(I2cRef, <<?CTRL_MEAS_REG>>, 1) of  
+    case i2c_utils:write_read(<<?CTRL_MEAS_REG>>, 1) of  
       <<_TempPressMode:6, ReadMode:2>> ->
     
         case ReadMode of
@@ -809,14 +809,14 @@ wait_for_sleep_mode(TotalWait, I2cRef) ->
 -spec read_sensor(I2cRef :: pid(),
                   Private :: list(private_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
                    
-read_sensor(I2cRef, Private) ->
+read_sensor(_I2cRef, Private) ->
 
   % Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) 
   % or from 0xF7 to 0xFE (temperature, pressure and humidity). 
   % The data are read out in an unsigned 20-bit format both for pressure and for temperature 
   % and in an unsigned 16-bit format for humidity.  
 
-  case i2c:write_read(I2cRef, <<?SENSOR_DATA_REG_BEGIN>>, ?SENSOR_DATA_LEN) of
+  case i2c_utils:write_read(<<?SENSOR_DATA_REG_BEGIN>>, ?SENSOR_DATA_LEN) of
     {error, Reason} -> {error, Reason};
   
     <<Adc_Press:20, _Fill1:4, Adc_Temp:20, _Fill2:4, Adc_Humid:16>> ->
