@@ -1085,3 +1085,21 @@ compensate_humid(Adc_H, T_fine, Private) ->
 
   H = V4 bsr 12,
   H / 1024. % division converts to floating point number
+
+
+%% ====================================================================
+%% Unit Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
+
+-endif.
+
