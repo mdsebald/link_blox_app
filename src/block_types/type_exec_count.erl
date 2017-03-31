@@ -234,15 +234,12 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
-  
 
 block_test() ->
   BlockDefn = create(create_test, "Unit Testing Block"),
-
   BlockState = block_common:initialize(BlockDefn),
-
   execute(BlockState),
-    
-  delete(BlockState).
+  BlockDefnFinal = delete(BlockState),
+  ?assertEqual(BlockDefn, BlockDefnFinal).
 
 -endif.
