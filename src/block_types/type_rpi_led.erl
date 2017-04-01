@@ -32,7 +32,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {led_id, {"led0"}},
+      {led_id, {"led0"}},  % Default to green LED, "led1" is red LED
       {default_value, {false}},
       {invert_output, {false}}                 
     ]). 
@@ -253,6 +253,13 @@ set_led_value(LedId, Value, Invert) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% INSTRUCTIONS: Create unit tests here
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
 
 -endif.

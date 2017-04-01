@@ -181,9 +181,18 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Tests
 %% ====================================================================
 
+% INSTRUCTIONS:  Create unit tests here.  
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% INSTRUCTIONS: Create unit tests here
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
 
 -endif.
