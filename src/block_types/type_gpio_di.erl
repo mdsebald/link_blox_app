@@ -112,14 +112,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
   case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
     {ok, PinNumber} ->
       % Initialize the GPIO pin as an input
-      case gpio:start_link(PinNumber, input) of
+      case gpio_utils:start_link(PinNumber, input) of
         {ok, GpioPinRef} ->
           Status = initialed,
           Value = not_active,
           {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-          gpio:register_int(GpioPinRef),
-          % TODO: Make interrupt type selectable via config value
-          gpio:set_int(GpioPinRef, both);
+          % TODO: Make interrupt type selectable via config value, check return value
+          gpio_utils:register_int(),
+          gpio_utils:set_int(both);
 
         {error, ErrorResult} ->
           BlockName = config_utils:name(Config),
@@ -176,9 +176,28 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
-read_pin_value_bool(GpioPinRef) ->
-  case gpio:read(GpioPinRef) of
+read_pin_value_bool(_GpioPinRef) ->
+  case gpio_utils:read() of
     1  -> true;
     0 -> false
   end.
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
+
+-endif.
   

@@ -115,7 +115,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
         {ok, DefaultValue} ->
           case config_utils:get_boolean(Config, invert_output) of
             {ok, InvertOutput} -> 
-              case gpio:start_link(PinNumber, output) of
+              case gpio_utils:start_link(PinNumber, output) of
                 {ok, GpioPinRef} ->
                   Status = initialed,
                   Value = DefaultValue,
@@ -223,17 +223,36 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% ====================================================================
 
 % Set the actual value of the GPIO pin here
-set_pin_value_bool(GpioPinRef, Value, Invert) ->
+set_pin_value_bool(_GpioPinRef, Value, Invert) ->
   if Value -> % Value is true/on
     if Invert -> % Invert pin value 
-      gpio:write(GpioPinRef, 0); % turn output off
+      gpio_utils:write(0); % turn output off
     true ->      % Don't invert_output output value
-      gpio:write(GpioPinRef, 1) % turn output on
+      gpio_utils:write(1) % turn output on
     end;
   true -> % Value is false/off
     if Invert -> % Invert pin value
-      gpio:write(GpioPinRef, 1); % turn output on
+      gpio_utils:write(1); % turn output on
     true ->      % Don't invert_output output value
-      gpio:write(GpioPinRef, 0)  % turn output off
+      gpio_utils:write(0)  % turn output off
     end
   end.
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
+
+-endif.

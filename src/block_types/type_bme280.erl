@@ -1088,11 +1088,13 @@ compensate_humid(Adc_H, T_fine, Private) ->
 
 
 %% ====================================================================
-%% Unit Tests
+%% Tests
 %% ====================================================================
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
 
 block_test() ->
   BlockDefn = create(create_test, "Unit Testing Block"),
@@ -1102,4 +1104,3 @@ block_test() ->
   ?assert(true).
 
 -endif.
-

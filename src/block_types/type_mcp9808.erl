@@ -113,7 +113,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
   {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
 	    
-  case i2c:start_link(I2cDevice, I2cAddr) of
+  case i2c_utils:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
       
@@ -191,7 +191,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
   case attrib_utils:get_value(Private, i2c_ref) of
-    {ok, I2cRef} -> i2c:stop(I2cRef);
+    {ok, _I2cRef} -> i2c_utils:stop();
     
     _ -> ok
   end,
@@ -216,10 +216,10 @@ delete({Config, Inputs, Outputs, Private}) ->
                    DegF :: boolean(),
                    Offset :: float()) -> {ok, float()} | {error, atom()}.
                    
-read_ambient(I2cRef, DegF, Offset) ->
+read_ambient(_I2cRef, DegF, Offset) ->
 
   % Read two bytes from the ambient temperature register  
-  case i2c:write_read(I2cRef, <<?AMBIENT_TEMP_REG>>, 2) of
+  case i2c_utils:write_read(<<?AMBIENT_TEMP_REG>>, 2) of
     {error, Reason} -> {error, Reason};
   
     Result ->
@@ -244,3 +244,22 @@ read_ambient(I2cRef, DegF, Offset) ->
       end,
       {ok, Temp + Offset}
   end.
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
+
+-endif.

@@ -210,7 +210,7 @@ delete({Config, Inputs, Outputs, Private}) ->
       shutdown_lcd(I2cRef),
 
       % Close the I2C Channel
-      i2c:stop(I2cRef);
+      i2c_utils:stop();
 
     _ -> ok
   end,
@@ -322,7 +322,7 @@ delete({Config, Inputs, Outputs, Private}) ->
                       I2cAddr :: integer()) -> {ok, pid()} | {error, atom()}.
                       
 init_lcd_driver(I2cDevice, I2cAddr) ->
-  case i2c:start_link(I2cDevice, I2cAddr) of
+  case i2c_utils:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
       
       % Reset the LCD, get its attention
@@ -548,13 +548,13 @@ write_data_low(I2cRef, Backlight, Value) ->
   write_value(I2cRef, LowValue).
 
 
-write_value(I2cRef, Value) ->
+write_value(_I2cRef, Value) ->
   % Toggle Enable pin high
   ValueEnableSet = (Value bor ?ENABLE_SET),
-  i2c:write(I2cRef, <<ValueEnableSet>>),
+  i2c_utils:write(<<ValueEnableSet>>),
   % Toggle enable pin low, don't change the 4 data bits, Backlight, RS, or R/~W lines
   ValueEnableClr = (Value band ?ENABLE_CLR),
-  i2c:write(I2cRef, <<ValueEnableClr>>).
+  i2c_utils:write(<<ValueEnableClr>>).
 
 
 %% ====================================================================
@@ -564,6 +564,13 @@ write_value(I2cRef, Value) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% INSTRUCTIONS: Create unit tests here
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
 
 -endif.

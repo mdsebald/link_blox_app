@@ -131,28 +131,28 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % TODO: Check Pin Numbers are an integer in the right range
 
   % Initialize the GPIO pins as inputs
-  case gpio:start_link(PhaseA_Pin, input) of
+  case gpio_utils:start_link_mult(PhaseA_Pin, input) of
     {ok, GpioPinA_Ref} ->
-      gpio:register_int(GpioPinA_Ref),
-      gpio:set_int(GpioPinA_Ref, PhaseIntEdge),
+      gpio_utils:register_int(GpioPinA_Ref),
+      gpio_utils:set_int(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = read_pin_value_bool(GpioPinA_Ref),
       {ok, Private2} = attrib_utils:set_values(Private1, 
                                         [{gpio_pin_A_ref, GpioPinA_Ref},
                                          {last_A_value, LastA_Value}]),
 
-      case gpio:start_link(PhaseB_Pin, input) of
+      case gpio_utils:start_link_mult(PhaseB_Pin, input) of
         {ok, GpioPinB_Ref} ->
-          gpio:register_int(GpioPinB_Ref),
-          gpio:set_int(GpioPinB_Ref, PhaseIntEdge),
+          gpio_utils:register_int(GpioPinB_Ref),
+          gpio_utils:set_int(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = read_pin_value_bool(GpioPinB_Ref),
           {ok, Private3} = attrib_utils:set_values(Private2, 
                                         [{gpio_pin_B_ref, GpioPinB_Ref},
                                          {last_B_value, LastB_Value}]),
       
-          case gpio:start_link(SwitchPin, input) of
+          case gpio_utils:start_link_mult(SwitchPin, input) of
             {ok, GpioPinSwRef} ->
-              gpio:register_int(GpioPinSwRef),
-              gpio:set_int(GpioPinSwRef, SwitchIntEdge),
+              gpio_utils:register_int(GpioPinSwRef),
+              gpio_utils:set_int(GpioPinSwRef, SwitchIntEdge),
               LastSwValue = read_pin_value_bool(GpioPinSwRef),
               {ok, Private4} = attrib_utils:set_values(Private3, 
                                         [{gpio_pin_sw_ref, GpioPinSwRef},
@@ -260,7 +260,26 @@ log_gpio_error(Config, Reason, PinNumber) ->
 
 % TODO: Create common GPIO helper module
 read_pin_value_bool(GpioPinRef) ->
-  case gpio:read(GpioPinRef) of
+  case gpio_utils:read(GpioPinRef) of
     1  -> true;
     0 -> false
   end.
+
+
+%% ====================================================================
+%% Tests
+%% ====================================================================
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+
+block_test() ->
+  BlockDefn = create(create_test, "Unit Testing Block"),
+  BlockState = block_common:initialize(BlockDefn),
+  execute(BlockState),
+  _BlockDefnFinal = delete(BlockState),
+  ?assert(true).
+
+-endif.
