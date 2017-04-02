@@ -131,7 +131,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   % TODO: Check Pin Numbers are an integer in the right range
 
   % Initialize the GPIO pins as inputs
-  case gpio_utils:start_link_mult(PhaseA_Pin, input) of
+  case gpio_utils:start_link(PhaseA_Pin, input) of
     {ok, GpioPinA_Ref} ->
       gpio_utils:register_int(GpioPinA_Ref),
       gpio_utils:set_int(GpioPinA_Ref, PhaseIntEdge),
@@ -140,7 +140,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                         [{gpio_pin_A_ref, GpioPinA_Ref},
                                          {last_A_value, LastA_Value}]),
 
-      case gpio_utils:start_link_mult(PhaseB_Pin, input) of
+      case gpio_utils:start_link(PhaseB_Pin, input) of
         {ok, GpioPinB_Ref} ->
           gpio_utils:register_int(GpioPinB_Ref),
           gpio_utils:set_int(GpioPinB_Ref, PhaseIntEdge),
@@ -149,7 +149,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                         [{gpio_pin_B_ref, GpioPinB_Ref},
                                          {last_B_value, LastB_Value}]),
       
-          case gpio_utils:start_link_mult(SwitchPin, input) of
+          case gpio_utils:start_link(SwitchPin, input) of
             {ok, GpioPinSwRef} ->
               gpio_utils:register_int(GpioPinSwRef),
               gpio_utils:set_int(GpioPinSwRef, SwitchIntEdge),

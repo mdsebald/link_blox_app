@@ -210,7 +210,7 @@ delete({Config, Inputs, Outputs, Private}) ->
       shutdown_lcd(I2cRef),
 
       % Close the I2C Channel
-      i2c_utils:stop();
+      i2c_utils:stop(I2cRef);
 
     _ -> ok
   end,
@@ -548,13 +548,13 @@ write_data_low(I2cRef, Backlight, Value) ->
   write_value(I2cRef, LowValue).
 
 
-write_value(_I2cRef, Value) ->
+write_value(I2cRef, Value) ->
   % Toggle Enable pin high
   ValueEnableSet = (Value bor ?ENABLE_SET),
-  i2c_utils:write(<<ValueEnableSet>>),
+  i2c_utils:write(I2cRef, <<ValueEnableSet>>),
   % Toggle enable pin low, don't change the 4 data bits, Backlight, RS, or R/~W lines
   ValueEnableClr = (Value band ?ENABLE_CLR),
-  i2c_utils:write(<<ValueEnableClr>>).
+  i2c_utils:write(I2cRef, <<ValueEnableClr>>).
 
 
 %% ====================================================================

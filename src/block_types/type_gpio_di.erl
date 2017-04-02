@@ -118,8 +118,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Value = not_active,
           {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
           % TODO: Make interrupt type selectable via config value, check return value
-          gpio_utils:register_int(),
-          gpio_utils:set_int(both);
+          gpio_utils:register_int(GpioPinRef),
+          gpio_utils:set_int(GpioPinRef, both);
 
         {error, ErrorResult} ->
           BlockName = config_utils:name(Config),
@@ -176,8 +176,8 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
-read_pin_value_bool(_GpioPinRef) ->
-  case gpio_utils:read() of
+read_pin_value_bool(GpioPinRef) ->
+  case gpio_utils:read(GpioPinRef) of
     1  -> true;
     0 -> false
   end.

@@ -255,7 +255,7 @@ delete({Config, Inputs, Outputs, Private}) ->
       % Turn off the display 
       shutdown_led_driver(I2cRef),  
       % Close the I2C Channel
-      i2c_utils:stop();
+      i2c_utils:stop(I2cRef);
       
     _ -> ok
   end,
@@ -299,9 +299,9 @@ delete({Config, Inputs, Outputs, Private}) ->
 init_led_driver(I2cDevice, I2cAddr) ->
    case i2c_utils:start_link(I2cDevice, I2cAddr) of
     {ok, I2cRef} ->
-      i2c_utils:write(<<?DISPLAY_OSCILLATOR_ON>>),
-      i2c_utils:write(<<?DISPLAY_BLANK>>),
-      i2c_utils:write(<<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
+      i2c_utils:write(I2cRef, <<?DISPLAY_OSCILLATOR_ON>>),
+      i2c_utils:write(I2cRef, <<?DISPLAY_BLANK>>),
+      i2c_utils:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
       
       % Clear the display buffer (clears the screen)
       clear(I2cRef),
@@ -319,8 +319,8 @@ init_led_driver(I2cDevice, I2cAddr) ->
 
 shutdown_led_driver(I2cRef) ->
   clear(I2cRef),
-  i2c_utils:write(<<?DISPLAY_BLANK>>),
-  i2c_utils:write(<<?DISPLAY_OSCILLATOR_OFF>>).
+  i2c_utils:write(I2cRef, <<?DISPLAY_BLANK>>),
+  i2c_utils:write(I2cRef, <<?DISPLAY_OSCILLATOR_OFF>>).
       
   
 %%
@@ -328,14 +328,14 @@ shutdown_led_driver(I2cRef) ->
 %%
 -spec clear(I2cRef :: pid()) -> ok | {error, atom()}.
 
-clear(_I2cRef) ->
+clear(I2cRef) ->
   % 2 digits, colon, and 2 digits, requrires 10 bytes of buffer storage
   % Only first byte (even bytes, index: 0, 2, 4, 6, and 8) are significant
   % Clear out all 16 bytes of the display buffer, regardless
   Buffer = <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>,
   
   % clear the display buffer, starting at register 0
-  i2c_utils:write(<<16#00, Buffer/binary>>).
+  i2c_utils:write(I2cRef, <<16#00, Buffer/binary>>).
 
 
 %%
@@ -345,12 +345,12 @@ clear(_I2cRef) ->
                      DisplayState :: boolean(), 
                      BlinkRate :: integer()) -> ok | {error, atom()}.
 
-set_blink_rate(_I2cRef, DisplayState, BlinkRate) ->
+set_blink_rate(I2cRef, DisplayState, BlinkRate) ->
   case DisplayState of
     true  -> DisplaySetup = (?DISPLAY_ON    bor (BlinkRate*2));
     false -> DisplaySetup = (?DISPLAY_BLANK bor (BlinkRate*2))
   end,
-  i2c_utils:write(<<DisplaySetup>>).
+  i2c_utils:write(I2cRef, <<DisplaySetup>>).
    
 
 %%
@@ -359,8 +359,8 @@ set_blink_rate(_I2cRef, DisplayState, BlinkRate) ->
 -spec set_brightness(I2cRef :: pid(),
                      Brightness :: integer()) -> ok | {error, atom()}.
 
-set_brightness(_I2cRef, Brightness) ->
-  i2c_utils:write(<<(?BRIGHTNESS_REGISTER bor Brightness)>>).
+set_brightness(I2cRef, Brightness) ->
+  i2c_utils:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor Brightness)>>).
   
 %%
 %% Set the the colon segment state
@@ -368,12 +368,12 @@ set_brightness(_I2cRef, Brightness) ->
 -spec set_colon(I2cRef :: pid(),
                 ColonState :: boolean()) -> ok | {error, atom()}.
 
-set_colon(_I2cRef, ColonState) ->
+set_colon(I2cRef, ColonState) ->
   case ColonState of
     true  -> ColonSegment = ?COLON_SEGMENT_ON;
     false -> ColonSegment = ?COLON_SEGMENT_OFF
   end,
-  i2c_utils:write(<<?COLON_ADDRESS, ColonSegment>>). 
+  i2c_utils:write(I2cRef, <<?COLON_ADDRESS, ColonSegment>>). 
 
 
 %%
@@ -387,9 +387,9 @@ set_colon(_I2cRef, ColonState) ->
                      Digit :: integer(),
                      Segments :: byte()) -> ok | {error, atom()}.
 
-write_segments(_I2cRef, Digit, Segments) ->
+write_segments(I2cRef, Digit, Segments) ->
   BufferAddress = lists:nth(Digit, [16#00, 16#02, 16#06, 16#08]),
-  i2c_utils:write(<<BufferAddress, Segments>>).
+  i2c_utils:write(I2cRef, <<BufferAddress, Segments>>).
   
 
 %% ====================================================================

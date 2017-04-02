@@ -191,7 +191,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
   case attrib_utils:get_value(Private, i2c_ref) of
-    {ok, _I2cRef} -> i2c_utils:stop();
+    {ok, I2cRef} -> i2c_utils:stop(I2cRef);
     
     _ -> ok
   end,
@@ -216,10 +216,10 @@ delete({Config, Inputs, Outputs, Private}) ->
                    DegF :: boolean(),
                    Offset :: float()) -> {ok, float()} | {error, atom()}.
                    
-read_ambient(_I2cRef, DegF, Offset) ->
+read_ambient(I2cRef, DegF, Offset) ->
 
   % Read two bytes from the ambient temperature register  
-  case i2c_utils:write_read(<<?AMBIENT_TEMP_REG>>, 2) of
+  case i2c_utils:write_read(I2cRef, <<?AMBIENT_TEMP_REG>>, 2) of
     {error, Reason} -> {error, Reason};
   
     Result ->

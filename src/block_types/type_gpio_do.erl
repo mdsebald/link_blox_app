@@ -223,18 +223,18 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% ====================================================================
 
 % Set the actual value of the GPIO pin here
-set_pin_value_bool(_GpioPinRef, Value, Invert) ->
+set_pin_value_bool(GpioPinRef, Value, Invert) ->
   if Value -> % Value is true/on
     if Invert -> % Invert pin value 
-      gpio_utils:write(0); % turn output off
+      gpio_utils:write(GpioPinRef, 0); % turn output off
     true ->      % Don't invert_output output value
-      gpio_utils:write(1) % turn output on
+      gpio_utils:write(GpioPinRef, 1) % turn output on
     end;
   true -> % Value is false/off
     if Invert -> % Invert pin value
-      gpio_utils:write(1); % turn output on
+      gpio_utils:write(GpioPinRef, 1); % turn output on
     true ->      % Don't invert_output output value
-      gpio_utils:write(0)  % turn output off
+      gpio_utils:write(GpioPinRef, 0)  % turn output off
     end
   end.
 

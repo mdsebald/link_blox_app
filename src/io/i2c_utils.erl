@@ -15,10 +15,13 @@
 %% ====================================================================
 -export([
           start_link/2,
-          write/1,
-          write_read/2,
-          stop/0
+          write/2,
+          write_read/3,
+          stop/1
 ]).
+
+
+% TODO: Check if I2C system exists before calling start_link().
 
 %
 % Replace the real functions with test functions when performing unit Tests
@@ -31,69 +34,34 @@
 -spec start_link(I2cDevice :: string(), 
                  I2cAddr :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
 
-start_link(I2cDevice, I2cAddr) ->
-  case i2c:start_link(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      i2c_ref(I2cRef),
-      {ok, I2cRef};
-
-    {error, Reason} ->
-      i2c_ref(undefined),
-      {error, Reason}
-  end.
+start_link(I2cDevice, I2cAddr) -> i2c:start_link(I2cDevice, I2cAddr).
 
 
 %%
 %% Write data to I2C channel
 %%
--spec write(Data :: binary()) -> ok | {error, atom()}.
+-spec write(I2cRef :: pid(),
+            Data :: binary()) -> ok | {error, atom()}.
 
-write(Data) ->
-  case i2c_ref() of
-    undefined -> {error, undefined};
-
-    I2cRef ->
-      case i2c:write(I2cRef, Data) of
-        ok -> ok;
-
-        {error, Reason} -> {error, Reason}
-      end
-  end.
+write(I2cRef, Data) -> i2c:write(I2cRef, Data).
 
 
 %%
 %% Write and read data, to and from I2C channel
 %%
--spec write_read(WriteData :: binary(),
+-spec write_read(I2cRef :: pid(),
+                 WriteData :: binary(),
                  ReadCnt :: pos_integer()) -> binary() | {error, atom()}.
 
-write_read(WriteData, ReadCnt) ->
-  case i2c_ref() of
-    undefined -> {error, undefined};
-
-    I2cRef ->
-      case i2c:write_read(I2cRef, WriteData, ReadCnt) of
-        {error, Reason} -> {error, Reason};
-
-        ReadData -> ReadData
-      end
-  end.
+write_read(I2cRef, WriteData, ReadCnt) -> i2c:write_read(I2cRef, WriteData, ReadCnt).
 
   
 %%
 %% Stop I2C channel
 %%
--spec stop() -> ok. 
+-spec stop(I2cRef :: pid()) -> ok. 
 
-stop() ->
-  case i2c_ref() of
-    undefined -> ok;
-
-    I2cRef -> 
-      i2c:stop(I2cRef), 
-      i2c_ref(undefined), 
-      ok
-  end.
+stop(I2cRef) -> i2c:stop(I2cRef).
 
 -endif.
 
@@ -101,17 +69,6 @@ stop() ->
 %% Internal functions
 %% ====================================================================
 
-%
-% Get and set the I2C reference for the block controlling this I2C channel
-% Use the process dictionary to store the I2C reference,
-% so we don't have to pass it in as a parameter everywhere
-%
-
-i2c_ref() ->
-  get(i2c_ref).
-
-i2c_ref(I2cRef) ->
-  put(i2c_ref, I2cRef).
 
 
 %% ====================================================================
@@ -125,40 +82,30 @@ i2c_ref(I2cRef) ->
 %% Test Start link
 %%
 -spec start_link(I2cDevice :: string(), 
-                I2cAddr :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
+                 I2cAddr :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
 
-start_link(_I2cDevice, _I2cAddr) ->
-  I2cRef = make_ref(), 
-  i2c_ref(I2cRef),
-  {ok, I2cRef}.
+start_link(_I2cDevice, _I2cAddr) -> {ok, make_ref()}.
+
 
 %%
 %% Test Write data 
 %%
--spec write(Data :: binary()) -> ok | {error, atom()}.
+-spec write(I2cRef :: pid(),
+            Data :: binary()) -> ok | {error, atom()}.
 
-write(_Data) ->
-  case i2c_ref() of
-    undefined -> {error, undefined};
-
-    _I2cRef -> ok
-  end.
+write(_I2cRef, _Data) -> ok.
 
 
 %%
 %% Test Write and read data
 %%
--spec write_read(WriteData :: binary(),
+-spec write_read(I2cRef :: pid(),
+                 WriteData :: binary(),
                  ReadCnt :: pos_integer()) -> binary() | {error, atom()}.
 
-write_read(_WriteData, ReadCnt) ->
-  case i2c_ref() of
-    undefined -> {error, undefined};
-
-    _I2cRef ->
+write_read(_I2cRef, _WriteData, ReadCnt) ->
       % make up a list of bytes, ReadCnt size, and return a binary
-      create_binary_data(ReadCnt)
-  end.
+      create_binary_data(ReadCnt).
 
 % Create binary data of N bytes length for testing
 -spec create_binary_data(N :: pos_integer()) -> binary().
@@ -179,15 +126,9 @@ create_binary([H|T], Acc) -> create_binary(T, <<Acc/binary,H>>).
 %%
 %% Test Stop
 %%
--spec stop() -> ok. 
+-spec stop(I2cRef :: pid()) -> ok. 
 
-stop() ->
-  case i2c_ref() of
-    undefined -> ok;
+stop(_I2cRef) -> ok.
 
-    _I2cRef -> 
-      i2c_ref(undefined), 
-      ok
-  end.
 
 -endif.
