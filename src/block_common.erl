@@ -123,7 +123,7 @@ outputs() ->
 %%
 %% Common block initialization function
 %%
--spec initialize(block_defn()) -> block_state().
+-spec initialize(BlockDefn :: block_defn()) -> block_state().
 
 initialize({Config, Inputs, Outputs}) ->
 
@@ -228,17 +228,13 @@ ok_to_execute(BlockStatus, ExecMethod) ->
 
     % if input value changed, allow block to execute if normal, disabled, frozen, or some kind of input error
     % The changed input value could have enabled, thawed, or otherwise fixed the input value error
+    % i.e. execute if BlockStatus a member of this list
     input_cos ->
-      case lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]) of
-        true -> true;
-        false -> false
-      end;
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]);
  
     _ ->
-      case lists:member(BlockStatus, [input_err, config_err, proc_err, no_input]) of
-        true -> false;
-        false -> true
-      end
+      % For any other execution method, don't execute if BlockStatus is a member of this list
+      not lists:member(BlockStatus, [input_err, config_err, proc_err, no_input])
   end.
 
 
