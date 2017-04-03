@@ -1,10 +1,10 @@
-%%% @doc  Logic NOT 
-%%% Block Type:  Logic NOT
-%%% Description: Invert the input boolean value  
+%%% @doc 
+%%% Block Type: GPIO Digital Input 
+%%% Description: Configure a GPIO Pin as a Digital Input block  
 %%%               
 %%% @end 
 
--module(type_logic_not). 
+-module(lblx_gpio_di).
 
 -author("Mark Sebald").
 
@@ -16,11 +16,11 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [logic].
+group() -> [input].
 
-description() -> "Invert boolean value".
- 
-version() -> "0.1.0".
+description() -> "GPIO digital input". 
+
+version() -> "0.1.0". 
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -33,18 +33,19 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-            
+      {gpio_pin, {0}}, 
+      {invert_output, {false}}
     ]). 
-
-
+                            
+                            
 -spec default_inputs() -> list(input_attr()).
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, ?EMPTY_LINK}}
-    ]). 
+
+    ]).
 
 
 -spec default_outputs() -> list(output_attr()).
@@ -54,9 +55,9 @@ default_outputs() ->
     block_common:outputs(),
     [
 
-    ]). 
+    ]).
 
-
+                        
 %%  
 %% Create a set of block attributes for this block type.  
 %% Init attributes are used to override the default attribute values
@@ -89,7 +90,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
   %
   % If any of the intial attributes do not already exist in the 
   % default attribute lists, merge_attribute_lists() will create them.
-    
+
   Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
   Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
   Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
@@ -122,21 +123,50 @@ upgrade({Config, Inputs, Outputs}) ->
 
 
 %%
-%% Initialize block values
+%% Initialize block values before starting execution
 %% Perform any setup here as needed before starting execution
 %%
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % Nothing to initialize, just treat as normal execution  
-  {Value, Status} = get_output_value(Config, Inputs),
+  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
+    
+  % Get the GPIO pin number used by this block
+  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
+    {ok, PinNumber} ->
+      % Initialize the GPIO pin as an input
+      case gpio_utils:start_link(PinNumber, input) of
+        {ok, GpioPinRef} ->
+          Status = initialed,
+          Value = not_active,
+          {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+          % TODO: Make interrupt type selectable via config value, check return value
+          gpio_utils:register_int(GpioPinRef),
+          gpio_utils:set_int(GpioPinRef, both);
 
+        {error, ErrorResult} ->
+          BlockName = config_utils:name(Config),
+          error_logger:error_msg("~p Error: ~p intitiating GPIO pin: ~p~n", 
+                              [BlockName, ErrorResult, PinNumber]),
+          Status = proc_err,
+          Value = not_active,
+          Private2 = Private1
+      end;
+    {error, Reason} ->
+      BlockName = config_utils:name(Config),
+      error_logger:error_msg("~p Error: ~p reading GPIO pin number ~n", 
+                              [BlockName, Reason]),
+      Status = config_err,
+      Value = not_active,
+      Private2 = Private1
+  end,
+    
+    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
-  % This is the block state
-  {Config, Inputs, Outputs1, Private}.
-
+  {Config, Inputs, Outputs1, Private2}.
+  
 
 %%
 %%  Execute the block specific functionality
@@ -145,23 +175,23 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  {Value, Status} = get_output_value(Config, Inputs),
- 
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  % Read the current value of the GPIO pin 
+  {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
 
+  Value = read_pin_value_bool(GpioPinRef),
+
+  Outputs1 = output_utils:set_value_status(Outputs, Value, normal),
+        
   {Config, Inputs, Outputs1, Private}.
 
 
 %% 
 %%  Delete the block
-%%	
+%%  
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
-
-  % Private values are created in the block initialization routine
-  % So they should be deleted here
-  
+  % TODO: Release the GPIO pin?
   {Config, Inputs, Outputs}.
 
 
@@ -170,26 +200,12 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
--spec get_output_value(Config :: list(config_attr()),
-                        Inputs :: list(input_attr())) -> {value(), block_status()}.
-
-get_output_value(Config, Inputs) ->
-
-  case input_utils:get_boolean(Inputs, input) of
-    {ok, Input} ->
-      % Set Output Value to NOT input value
-      case Input of
-        not_active -> {not_active, normal};
-        true ->       {false, normal};
-        false ->      {true, normal}
-      end;
-
-    {error, Reason} ->
-      BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
-                               [BlockName, Reason]),
-      {not_active, input_err}
+read_pin_value_bool(GpioPinRef) ->
+  case gpio_utils:read(GpioPinRef) of
+    1  -> true;
+    0 -> false
   end.
+
 
 %% ====================================================================
 %% Tests
@@ -209,3 +225,4 @@ block_test() ->
   ?assert(true).
 
 -endif.
+  

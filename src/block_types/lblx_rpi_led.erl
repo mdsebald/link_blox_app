@@ -1,12 +1,10 @@
 %%% @doc 
-%%% Block Type: Integer to Seven Segment Variable Digits Decoder
-%%% Description: Convert an input integer number to a set of bytes.
-%%%              one per digit, indicating which segments of a 
-%%%              seven segment display digit should be turned on.    
+%%% Block Type:   Raspberry Pi on-board LED
+%%% Description:  Control Raspberry Pi on-board LED 
 %%%               
 %%% @end 
 
--module(type_int_to_7seg). 
+-module(lblx_rpi_led).  
 
 -author("Mark Sebald").
 
@@ -18,9 +16,9 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [conversion].
+group() -> [display, output].
 
-description() -> "Convert integer input to multiple 7 segment digits outputs".
+description() -> "Control Raspi on-board LED".
 
 version() -> "0.1.0".
 
@@ -35,9 +33,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_digits, {1}},
-      {number_base, {10}},
-      {leading_zeros, {false}}
+      {led_id, {"led0"}},  % Default to green LED, "led1" is red LED
+      {default_value, {false}},
+      {invert_output, {false}}                 
     ]). 
 
 
@@ -47,8 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, ?EMPTY_LINK}},
-      {dec_pnt, [{false, ?EMPTY_LINK}]}  % Array attribute
+      {input, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -58,8 +55,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digits, [{not_active, []}]}  % Array attribute 
-    ]).
+ 
+    ]). 
 
 
 %%  
@@ -85,7 +82,7 @@ create(BlockName, Description, InitConfig, InitInputs) ->
              Description :: string(), 
              InitConfig :: list(config_attr()), 
              InitInputs :: list(input_attr()), 
-             InitOutputs :: list()) -> block_defn().
+             InitOutputs :: list(output_attr())) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
@@ -94,7 +91,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
   %
   % If any of the intial attributes do not already exist in the 
   % default attribute lists, merge_attribute_lists() will create them.
-     
+    
   Config = attrib_utils:merge_attribute_lists(default_configs(BlockName, Description), InitConfig),
   Inputs = attrib_utils:merge_attribute_lists(default_inputs(), InitInputs), 
   Outputs = attrib_utils:merge_attribute_lists(default_outputs(), InitOutputs),
@@ -126,6 +123,8 @@ upgrade({Config, Inputs, Outputs}) ->
   end.
 
 
+-define(LED_FILE_PATH, "/sys/class/leds/" ).
+
 %%
 %% Initialize block values
 %% Perform any setup here as needed before starting execution
@@ -133,51 +132,48 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  % Check the config values
-  case config_utils:get_integer_range(Config, num_of_digits, 1, 99) of
-    {error, Reason} ->
-      Inputs1 = Inputs,
-      Outputs1 = Outputs,
-      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason);
-       
-    {ok, NumOfDigits} ->
-    
-      case config_utils:get_integer_range(Config, number_base, 2, 16) of
-        {error, Reason} ->
-          Inputs1 = Inputs,
-          Outputs1 = Outputs,
-          {Value, Status} = config_utils:log_error(Config, number_base, Reason);
-             
-        {ok, _NumberBase} ->
-        
-          case config_utils:get_boolean(Config, leading_zeros) of
+  case config_utils:get_string(Config, led_id) of
+    {ok, LedId} ->
+      case config_utils:get_boolean(Config, default_value) of
+        {ok, DefaultValue} ->
+          case config_utils:get_boolean(Config, invert_output) of
+            {ok, InvertOutput} -> 
+              case filelib:is_file(?LED_FILE_PATH ++ LedId) of
+                true ->
+                  Status = initialed,
+                  Value = DefaultValue,
+                  take_led_control(LedId),
+                  set_led_value(LedId, DefaultValue, InvertOutput);
+            
+                false ->
+                  error_logger:error_msg("Error: LED file: ~p does not exist~n", 
+                              [?LED_FILE_PATH ++ LedId]),
+                  Status = proc_err,
+                  Value = not_active
+              end;
             {error, Reason} ->
-              Inputs1 = Inputs,
-              Outputs1 = Outputs,
-              {Value, Status} = config_utils:log_error(Config, number_base, Reason);
-
-            {ok, _LeadingZeros} ->
-      
-              % All config values are OK
-              
-              % Create a decimal point input for each digit
-              BlockName = config_utils:name(Config),
-              Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  dec_pnt, NumOfDigits, {false, ?EMPTY_LINK}),
-
-              % Create a digit output for each digit
-              Outputs1 = 
-                output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                       digits, NumOfDigits, {not_active, []}),
-              Value = not_active,
-              Status = initialed
-          end                    
-      end
+              error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
+                              [Reason]),
+              Status = config_err,
+              Value = not_active
+          end;
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p Error reading default_value~n", 
+                              [Reason]),
+          Status = config_err,
+          Value = not_active
+      end;
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p Error reading LED ID~n", 
+                              [Reason]),
+      Status = config_err,
+      Value = not_active
   end,
-  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
-  
+
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+    
   % This is the block state
-  {Config, Inputs1, Outputs2, Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %%
@@ -186,73 +182,93 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}) ->
-  
-  % Config values are validated in initialize function, just read them here   
-  {ok, NumOfDigits} = attrib_utils:get_value(Config, num_of_digits),
-  {ok, NumberBase} = attrib_utils:get_value(Config, number_base),
-  {ok, LeadingZeros} = attrib_utils:get_value(Config, leading_zeros),
-      
-  case input_utils:get_integer(Inputs, input) of
-    {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, input, Reason),
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
 
-    {ok, not_active} ->
-      Value = not_active, Status = normal,
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
-   
-    {ok, InValue} ->  
-      InValueStr = integer_to_list(InValue, NumberBase),
-      
-      % Set the main output value to the formated input value
-      % This should be the same as the 7 segment display is showing
-      Value = InValueStr, Status = normal, 
-      LenInValueStr = length(InValueStr),
-          
-      if LenInValueStr > NumOfDigits ->
-        % The magnitude of the input value exceeds the number of digits
-        % Set the digits outputs to display "---" 
-        Digits = lists:duplicate(NumOfDigits, $-);
-            
-      true ->  % Input value will fit into the digits
-        % Determine if leading digits should be zero or blank
-        NumBlankDigits = NumOfDigits - LenInValueStr,
-        if LeadingZeros ->
-            LeadDigits = lists:duplicate(NumBlankDigits, $0);
-        true ->
-            LeadDigits = lists:duplicate(NumBlankDigits, 32)
-        end,
-        Digits = LeadDigits ++ InValueStr  
-      end,
+  {ok, LedId} = config_utils:get_string(Config, led_id),
+  {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
+  {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
      
-      % Convert the digits to 7 segment representations
-      % TODO: Read decimal point inputs, and set decimal points also
-      Digits7Seg = lists:map(fun(Digit) -> 
-                   block_utils:char_to_segments(Digit, false) end, Digits)
-  end,
-  
-  Outputs1 = output_utils:set_array_value(Outputs, digits, Digits7Seg),
-  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
+  {ok, Input} = attrib_utils:get_value(Inputs, input),
 
-  % Return updated block state
-  {Config, Inputs, Outputs2, Private}.
+  % Set Output Val to input and set the actual LED file value too
+  case Input of
+    empty -> 
+      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
+      Status = no_input;
+
+    not_active ->
+      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
+      Status = normal;
+
+    true ->  
+      LedValue = true, 
+      Value = true,
+      Status = normal;
+
+    false ->
+      LedValue = false,
+      Value = false,
+      Status = normal;
+
+    Other ->
+      BlockName = config_utils:name(Config),
+      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
+                               [BlockName, Other]),
+      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
+      Status = input_err
+  end,
+  set_led_value(LedId, LedValue, InvertOutput),
+ 
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
 %%  Delete the block
-%%
+%%	
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
+  %
+  % Private values are created in the block initialization routine
+  % So they should be deleted here
+  
   {Config, Inputs, Outputs}.
+
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+% Set the actual value of the LED file here
+set_led_value(LedId, Value, Invert) ->
+  FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
+  
+  if Value -> % Value is true/on
+    if Invert -> % Invert pin value 
+      file:write_file(FileId, "0"); % turn output off
+    true ->      % Don't invert_output output value
+      file:write_file(FileId, "1") % turn output on
+    end;
+  true -> % Value is false/off
+    if Invert -> % Invert pin value
+      file:write_file(FileId, "1"); % turn output on
+    true ->      % Don't invert_output output value
+      file:write_file(FileId, "0")  % turn output off
+    end
+  end.
+
+  % Take control of LED, from trigger
+  take_led_control(LedId) ->
+    FileId = ?LED_FILE_PATH ++ LedId ++ "/trigger",
+    file:write_file(FileId, "none").
 
 
   
+
 
 %% ====================================================================
 %% Tests

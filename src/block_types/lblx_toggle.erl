@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(type_toggle).
+-module(lblx_toggle).
 
 -author("Mark Sebald").
 

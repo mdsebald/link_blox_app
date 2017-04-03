@@ -1,14 +1,14 @@
 %%% @doc 
-%%% Block Type:  Identity
-%%% Description:  Input value matches output value
+%%% Block Type: GPIO Digital Output
+%%% Description: Configure a GPIO Pin as a Digital Output block
 %%%               
 %%% @end 
 
--module(type_identity).  
+-module(lblx_gpio_do).
 
--author("Your Name").
+-author("Mark Sebald").
 
--include("../block_state.hrl"). 
+-include("../block_state.hrl").
 
 %% ====================================================================
 %% API functions
@@ -16,12 +16,11 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [none].
+group() -> [output].
 
-description() -> "Output value is identical to input value".
+description() -> "GPIO digital output". 
 
-version() -> "0.1.0".
-
+version() -> "0.1.0". 
 
 %% Merge the block type specific, Config, Input, and Output attributes
 %% with the common Config, Input, and Output attributes, that all block types have
@@ -33,8 +32,10 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-                  
-    ]). 
+      {gpio_pin, {0}}, 
+      {default_value, {false}},
+      {invert_output, {false}}
+    ]).
 
 
 -spec default_inputs() -> list(input_attr()).
@@ -53,7 +54,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
+ 
     ]). 
 
 
@@ -122,22 +123,62 @@ upgrade({Config, Inputs, Outputs}) ->
 
 
 %%
-%% Initialize block values
+%% Initialize block values before starting execution
 %% Perform any setup here as needed before starting execution
 %%
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
- 
-  case attrib_utils:get_value(Inputs, input) of
-    {ok, InputVal} ->
-      Outputs1 = output_utils:set_value_status(Outputs, InputVal, initialed);
-    {error, _Reason} ->
-      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
+
+  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
+  
+  % Get the GPIO Pin number used for digital outputs  
+  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
+    {ok, PinNumber} ->
+      case config_utils:get_boolean(Config, default_value) of
+        {ok, DefaultValue} ->
+          case config_utils:get_boolean(Config, invert_output) of
+            {ok, InvertOutput} -> 
+              case gpio_utils:start_link(PinNumber, output) of
+                {ok, GpioPinRef} ->
+                  Status = initialed,
+                  Value = DefaultValue,
+                   {ok, Private2} = 
+                    attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+                  set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
+            
+                {error, ErrorResult} ->
+                  error_logger:error_msg("Error: ~p intitiating GPIO pin; ~p~n", 
+                              [ErrorResult, PinNumber]),
+                  Status = proc_err,
+                  Value = not_active,
+                  Private2 = Private1
+              end;
+            {error, Reason} ->
+              error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
+                              [Reason]),
+              Status = config_err,
+              Value = not_active,
+              Private2 = Private1
+          end;
+        {error, Reason} ->
+          error_logger:error_msg("Error: ~p Error reading default_value~n", 
+                              [Reason]),
+          Status = config_err,
+          Value = not_active,
+          Private2 = Private1
+      end;
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p Error reading GPIO pin number~n", 
+                              [Reason]),
+      Status = config_err,
+      Value = not_active,
+      Private2 = Private1
   end,
 
-  % This is the block state
-  {Config, Inputs, Outputs1, Private}.
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+    
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%
@@ -147,32 +188,79 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  case attrib_utils:get_value(Inputs, input) of
-    {ok, InputVal} ->
-      Outputs1 = output_utils:set_value_normal(Outputs, InputVal);
-    {error, _Reason} ->
-      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
-  end,
+  
+  {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
+  {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
+  {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
+     
+  {ok, Input} = attrib_utils:get_value(Inputs, input),
 
-  % Return updated block state
+  % Set Output Val to input and set the actual GPIO pin value too
+  case Input of
+     empty -> 
+      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
+      Status = no_input;
+
+    not_active ->
+      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
+      Status = normal;
+
+    true ->  
+      PinValue = true, 
+      Value = true,
+      Status = normal;
+
+    false ->
+      PinValue = false,
+      Value = false,
+      Status = normal;
+
+     Other ->
+      BlockName = config_utils:name(Config),
+      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
+                               [BlockName, Other]),
+      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+      Value = not_active,
+      Status = input_err
+  end,
+  set_pin_value_bool(GpioPinRef, PinValue, InvertOutput),
+ 
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
   {Config, Inputs, Outputs1, Private}.
 
 
 %% 
 %%  Delete the block
-%%	
+%%
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, _Private}) -> 
-  
+delete({Config, Inputs, Outputs, _Private}) ->
+  % TODO: Release the GPIO pin?
   {Config, Inputs, Outputs}.
-
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
+% Set the actual value of the GPIO pin here
+set_pin_value_bool(GpioPinRef, Value, Invert) ->
+  if Value -> % Value is true/on
+    if Invert -> % Invert pin value 
+      gpio_utils:write(GpioPinRef, 0); % turn output off
+    true ->      % Don't invert_output output value
+      gpio_utils:write(GpioPinRef, 1) % turn output on
+    end;
+  true -> % Value is false/off
+    if Invert -> % Invert pin value
+      gpio_utils:write(GpioPinRef, 1); % turn output on
+    true ->      % Don't invert_output output value
+      gpio_utils:write(GpioPinRef, 0)  % turn output off
+    end
+  end.
 
 
 %% ====================================================================

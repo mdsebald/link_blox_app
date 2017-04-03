@@ -6,7 +6,7 @@
 %%%               
 %%% @end 
 
--module(type_float_to_7seg). 
+-module(lblx_float_to_7seg). 
 
 -author("Mark Sebald").
 

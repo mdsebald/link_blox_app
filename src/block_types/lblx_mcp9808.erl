@@ -1,20 +1,14 @@
 %%% @doc 
-%%% Block Type:  Single Digig Seven Segment Display Driver
-%%% Description: Unpack byte input to drive a 7 segment plus 
-%%%              decimal point single digit LED display
-%%%
-%%% -------------------------------------------------------
-%%% LED Segment ON:  a  |  b |  c | d  |  e |  f |  g | dp  
-%%% Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
-%%% --------------------------------------------------------
+%%% Block Type:  MCP9808 Temperature Sensor
+%%% Description: Microchip MCP9808 precision temperature sensor with I2C interface   
 %%%               
 %%% @end 
 
--module(type_one_digit_7seg). 
+-module(lblx_mcp9808).  
 
 -author("Mark Sebald").
 
--include("../block_state.hrl").  
+-include("../block_state.hrl"). 
 
 %% ====================================================================
 %% API functions
@@ -22,11 +16,11 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [conversion].
+group() -> [sensor, input].
 
-description() -> "Single digit 7 segment LED driver".
+description() -> "Precision temp sensor with I2C interface".
 
-version() -> "0.1.0".  
+version() -> "0.1.0".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -39,8 +33,11 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-                                
-    ]).  
+      {i2c_device, {"i2c-1"}},
+      {i2c_addr, {16#18}},
+      {deg_f, {true}},
+      {offset, {0.0}}
+    ]). 
 
 
 -spec default_inputs() -> list(input_attr()).
@@ -49,8 +46,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display_on, {true, ?EMPTY_LINK}},
-      {segments, {empty, ?EMPTY_LINK}}
+      {input, {0, ?EMPTY_LINK}} % TODO: Delete, not used
     ]). 
 
 
@@ -60,16 +56,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {seg_a, {not_active, []}},
-      {seg_b, {not_active, []}},
-      {seg_c, {not_active, []}},
-      {seg_d, {not_active, []}},
-      {seg_e, {not_active, []}},
-      {seg_f, {not_active, []}},
-      {seg_g, {not_active, []}},
-      {seg_dp, {not_active, []}}
+     
     ]). 
-
 
 %%  
 %% Create a set of block attributes for this block type.  
@@ -136,22 +124,52 @@ upgrade({Config, Inputs, Outputs}) ->
 
 
 %%
-%% Initialize block values before starting execution
+%% Initialize block values
 %% Perform any setup here as needed before starting execution
 %%
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % Turn off all segments, set output value to "  ", and status to initialed
-  {ok, NewOutputs} = attrib_utils:set_values(Outputs, 
-    [
-      {value, "  "}, {status, initialed},  
-      {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false},
-      {seg_e, false}, {seg_f, false}, {seg_g, false}, {seg_dp, false}
-    ]),
+  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
+  
+  % Get the the I2C Address of the sensor 
+  % TODO: Check for valid I2C Address
+  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
+  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
+	    
+  case i2c_utils:start_link(I2cDevice, I2cAddr) of
+    {ok, I2cRef} ->
+      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
+      
+      
+      {ok, DegF} = attrib_utils:get_value(Config, deg_f),
+      {ok, Offset} = attrib_utils:get_value(Config, offset),
+  
+      % Read the ambient temperature
+      case read_ambient(I2cRef, DegF, Offset) of
+       {ok, Value} ->
+          Status = initialed;
 
-  {Config, Inputs, NewOutputs, Private}.
+       {error, Reason} ->
+          error_logger:error_msg("Error: ~p reading temperature sensor~n", 
+                              [Reason]),
+          Status = proc_err,
+          Value = not_active
+       end;
+      
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
+                              [Reason, I2cAddr]),
+      Status = proc_err,
+      Value = not_active,
+      Private2 = Private1
+  end,	
+   
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
+  % This is the block state
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%
@@ -161,75 +179,32 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  case input_utils:get_boolean(Inputs, display_on) of
+  % TODO: Check flag bits?
+  %  Do we need to do this? Easy to implement in block code.
+  % Critical temp trips hw interrupt on chip, may need to implement that
+  % if ((UpperByte & 0x80) == 0x80){ //TA > TCRIT }
+  % if ((UpperByte & 0x40) == 0x40){ //TA > TUPPER }
+  % if ((UpperByte & 0x20) == 0x20){ //TA < TLOWER }
+  
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
+  {ok, DegF} = attrib_utils:get_value(Config, deg_f),
+  {ok, Offset} = attrib_utils:get_value(Config, offset),
+  
+  % Read the ambient temperature
+  case read_ambient(I2cRef, DegF, Offset) of
+    {ok, Value} ->
+      Status = normal;
+
     {error, Reason} ->
-      Value = not_active, Status = input_err,
-      SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
-      SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
-      input_utils:log_error(Config, display_on, Reason);
-      
-    {ok, DisplayState} ->
-      case DisplayState of
-        false ->  % Display is off or blank
-          Value = 0, Status = normal,
-          SegA = false, SegB = false, SegC = false, SegD = false,
-          SegE = false, SegF = false, SegG = false, SegDp = false;
-            
-        true -> % Display is on  
-          case input_utils:get_integer(Inputs, segments) of
-            {error, Reason} ->
-              Value = not_active, Status = input_err,
-              SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
-              SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
-               input_utils:log_error(Config, segments, Reason);
+      error_logger:error_msg("Error: ~p reading temperature sensor~n", 
+                              [Reason]),
+      Status = proc_err,
+      Value = not_active
+   end,
+   
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
-            {ok, Segments} ->
-              case Segments of 
-                not_active ->
-                  Value = not_active, Status = normal,
-                  SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
-                  SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active;
-                  
-                Segments ->
-                  Value = Segments, Status = normal,
-
-                  % Each bit of the Segments input byte controls one of the segment outputs
-                  if (Segments band 16#01) == 16#01 -> SegA = true;
-                    true -> SegA = false end,
-
-                  if (Segments band 16#02) == 16#02 -> SegB = true;
-                      true -> SegB = false end,
-
-                  if (Segments band 16#04) == 16#04 -> SegC = true;
-                    true -> SegC = false end,
-
-                  if (Segments band 16#08) == 16#08 -> SegD = true;
-                    true -> SegD = false end,
-
-                  if (Segments band 16#10) == 16#10 -> SegE = true;
-                    true -> SegE = false end,
-
-                  if (Segments band 16#20) == 16#20 -> SegF = true;
-                    true -> SegF = false end,
-    
-                  if (Segments band 16#40) == 16#40 -> SegG = true;
-                    true -> SegG = false end,
-
-                  if (Segments band 16#80) == 16#80 -> SegDp = true;
-                    true -> SegDp = false end
-              end
-          end
-      end
-  end,         
-
-  % update the outputs
-  {ok, Outputs1} = attrib_utils:set_values(Outputs, 
-    [
-      {value, Value}, {status, Status},  
-      {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, {seg_d, SegD},
-      {seg_e, SegE}, {seg_f, SegF}, {seg_g, SegG}, {seg_dp, SegDp}
-    ]),
- 
+  % Return updated block state
   {Config, Inputs, Outputs1, Private}.
 
 
@@ -238,13 +213,62 @@ execute({Config, Inputs, Outputs, Private}) ->
 %%	
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, _Private}) -> 
+delete({Config, Inputs, Outputs, Private}) -> 
+  % Close the I2C Channel
+  case attrib_utils:get_value(Private, i2c_ref) of
+    {ok, I2cRef} -> i2c_utils:stop(I2cRef);
+    
+    _ -> ok
+  end,
   {Config, Inputs, Outputs}.
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+-define(AMBIENT_TEMP_REG, 16#05). 
+-define(NEGATIVE_TEMP_FLAG, 16#10).
+-define(LOW_TEMP_FLAG, 16#20).
+-define(HIGH_TEMP_FLAG, 16#40).
+-define(CRITICAL_TEMP_FLAG, 16#80).
+-define(HIGH_BYTE_TEMP_MASK, 16#0F).
+
+%
+% Read the ambient temperature.
+%
+-spec read_ambient(I2cRef :: pid(),
+                   DegF :: boolean(),
+                   Offset :: float()) -> {ok, float()} | {error, atom()}.
+                   
+read_ambient(I2cRef, DegF, Offset) ->
+
+  % Read two bytes from the ambient temperature register  
+  case i2c_utils:write_read(I2cRef, <<?AMBIENT_TEMP_REG>>, 2) of
+    {error, Reason} -> {error, Reason};
+  
+    Result ->
+      RawBytes = binary:bin_to_list(Result),
+      UpperByte = lists:nth(1, RawBytes),
+      LowerByte = lists:nth(2, RawBytes),
+  
+      % Strip sign and alarm flags from upper byte
+      UpperTemp = (UpperByte band ?HIGH_BYTE_TEMP_MASK),
+       
+      if (UpperByte band ?NEGATIVE_TEMP_FLAG) == ?NEGATIVE_TEMP_FLAG ->  
+        % temp < 0
+        TempDegC = 256 - (UpperTemp * 16 + LowerByte / 16);
+      true -> 
+        % temp >= 0 
+        TempDegC = (UpperTemp * 16 + LowerByte / 16)
+      end,
+
+      case DegF of
+        true  -> Temp = ((TempDegC * 9) / 5 + 32);
+        false -> Temp = TempDegC
+      end,
+      {ok, Temp + Offset}
+  end.
 
 
 %% ====================================================================

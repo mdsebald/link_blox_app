@@ -1,14 +1,14 @@
 %%% @doc 
-%%% Block Type: GPIO Digital Output
-%%% Description: Configure a GPIO Pin as a Digital Output block
+%%% Block Type:  Float to String
+%%% Description: Convert floating point input value to a string
 %%%               
 %%% @end 
 
--module(type_gpio_do).
+-module(lblx_float_to_str).
 
 -author("Mark Sebald").
 
--include("../block_state.hrl").
+-include("../block_state.hrl"). 
 
 %% ====================================================================
 %% API functions
@@ -16,11 +16,12 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [output].
+group() -> [string, conversion].
 
-description() -> "GPIO digital output". 
+description() -> "Convert floating point value to a string".
 
-version() -> "0.1.0". 
+version() -> "0.1.0".
+
 
 %% Merge the block type specific, Config, Input, and Output attributes
 %% with the common Config, Input, and Output attributes, that all block types have
@@ -32,10 +33,10 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {gpio_pin, {0}}, 
-      {default_value, {false}},
-      {invert_output, {false}}
-    ]).
+      {left_justify, {false}},
+      {field_width, {0}},
+      {precision, {0}}
+    ]). 
 
 
 -spec default_inputs() -> list(input_attr()).
@@ -54,7 +55,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
- 
+
     ]). 
 
 
@@ -123,62 +124,45 @@ upgrade({Config, Inputs, Outputs}) ->
 
 
 %%
-%% Initialize block values before starting execution
+%% Initialize block values
 %% Perform any setup here as needed before starting execution
 %%
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
-  
-  % Get the GPIO Pin number used for digital outputs  
-  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
-    {ok, PinNumber} ->
-      case config_utils:get_boolean(Config, default_value) of
-        {ok, DefaultValue} ->
-          case config_utils:get_boolean(Config, invert_output) of
-            {ok, InvertOutput} -> 
-              case gpio_utils:start_link(PinNumber, output) of
-                {ok, GpioPinRef} ->
-                  Status = initialed,
-                  Value = DefaultValue,
-                   {ok, Private2} = 
-                    attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-                  set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
-            
-                {error, ErrorResult} ->
-                  error_logger:error_msg("Error: ~p intitiating GPIO pin; ~p~n", 
-                              [ErrorResult, PinNumber]),
-                  Status = proc_err,
-                  Value = not_active,
-                  Private2 = Private1
-              end;
-            {error, Reason} ->
-              error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
-                              [Reason]),
-              Status = config_err,
+  case config_utils:get_boolean(Config, left_justify) of
+    {ok, LeftJustify} ->
+
+      case config_utils:get_integer_range(Config, field_width, 0, 120) of
+        {ok, FieldWidth} ->
+
+          case config_utils:get_integer_range(Config, precision, 0, 120) of
+            {ok, Precision} ->
+              FormatStr = build_format_str(LeftJustify, FieldWidth, Precision),
+              Private1 = attrib_utils:add_attribute(Private, {format_str, {FormatStr}}),
               Value = not_active,
-              Private2 = Private1
+              Status = initialed;
+
+            {error, Reason} ->
+              Private1 = Private,
+              {Value, Status} = config_utils:log_error(Config, precision, Reason)          
           end;
+        
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p Error reading default_value~n", 
-                              [Reason]),
-          Status = config_err,
-          Value = not_active,
-          Private2 = Private1
+          Private1 = Private,
+          {Value, Status} = config_utils:log_error(Config, field_width, Reason)          
       end;
+
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p Error reading GPIO pin number~n", 
-                              [Reason]),
-      Status = config_err,
-      Value = not_active,
-      Private2 = Private1
+      Private1 = Private,
+      {Value, Status} = config_utils:log_error(Config, left_justify, Reason)          
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
-    
-  {Config, Inputs, Outputs1, Private2}.
+
+  % This is the block state
+  {Config, Inputs, Outputs1, Private1}.
 
 
 %%
@@ -189,78 +173,72 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}) ->
 
   
-  {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
-  {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
-  {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
-     
-  {ok, Input} = attrib_utils:get_value(Inputs, input),
-
-  % Set Output Val to input and set the actual GPIO pin value too
-  case Input of
-     empty -> 
-      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
-      Status = no_input;
-
-    not_active ->
-      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+  case input_utils:get_float(Inputs, input) of
+    {ok, not_active} ->
       Value = not_active,
       Status = normal;
 
-    true ->  
-      PinValue = true, 
-      Value = true,
+    {ok, InputValue} ->
+      {ok, FormatStr} = attrib_utils:get_value(Private, format_str),
+      Value = lists:flatten(io_lib:format(FormatStr, [InputValue])),
       Status = normal;
 
-    false ->
-      PinValue = false,
-      Value = false,
-      Status = normal;
-
-     Other ->
-      BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
-                               [BlockName, Other]),
-      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
-      Status = input_err
+    {error, Reason} ->
+      {Value, Status} = input_utils:log_error(Config, input, Reason)
   end,
-  set_pin_value_bool(GpioPinRef, PinValue, InvertOutput),
- 
+
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
+  % Return updated block state
   {Config, Inputs, Outputs1, Private}.
 
 
 %% 
 %%  Delete the block
-%%
+%%	
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, _Private}) ->
-  % TODO: Release the GPIO pin?
+delete({Config, Inputs, Outputs, _Private}) -> 
+  
   {Config, Inputs, Outputs}.
+
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-% Set the actual value of the GPIO pin here
-set_pin_value_bool(GpioPinRef, Value, Invert) ->
-  if Value -> % Value is true/on
-    if Invert -> % Invert pin value 
-      gpio_utils:write(GpioPinRef, 0); % turn output off
-    true ->      % Don't invert_output output value
-      gpio_utils:write(GpioPinRef, 1) % turn output on
-    end;
-  true -> % Value is false/off
-    if Invert -> % Invert pin value
-      gpio_utils:write(GpioPinRef, 1); % turn output on
-    true ->      % Don't invert_output output value
-      gpio_utils:write(GpioPinRef, 0)  % turn output off
-    end
+%
+% Format floating point input value
+%
+-spec build_format_str(LeftJustify :: boolean(),
+                       FieldWidth :: integer(),
+                       Precision :: integer()) -> string().
+
+build_format_str(LeftJustify, FieldWidth, Precision) ->
+  add_precision(Precision, 
+    add_field_width(FieldWidth, 
+      add_left_justified(LeftJustify, "\~"))) ++ "f".
+
+      
+add_left_justified(LeftJustify, FormatStr) ->
+  case LeftJustify of
+    true -> FormatStr ++ "-";
+       _ -> FormatStr
   end.
+
+add_field_width(FieldWidth, FormatStr) ->
+  case FieldWidth of
+    0 -> FormatStr ++ ".";
+    _ -> lists:flatten(io_lib:format("~s~b.", [FormatStr, FieldWidth]))
+  end.
+
+add_precision(Precision, FormatStr) ->
+  case Precision of
+    0 -> FormatStr;
+    _ -> lists:flatten(io_lib:format("~s~b", [FormatStr, Precision]))
+  end.
+
 
 
 %% ====================================================================

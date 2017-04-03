@@ -7,7 +7,7 @@
 %%%               
 %%% @end 
 
--module(type_rotary_encoder).  
+-module(lblx_rotary_encoder).  
 
 -author("Mark Sebald").
 

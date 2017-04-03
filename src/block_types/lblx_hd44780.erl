@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(type_hd44780).  
+-module(lblx_hd44780).  
 
 -author("Mark Sebald").
 

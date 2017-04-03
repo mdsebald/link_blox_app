@@ -1,12 +1,12 @@
 %%% @doc 
-%%% Block Type:   Raspberry Pi on-board LED
-%%% Description:  Control Raspberry Pi on-board LED 
+%%% Block Type:  Identity
+%%% Description:  Input value matches output value
 %%%               
 %%% @end 
 
--module(type_rpi_led).  
+-module(lblx_identity).  
 
--author("Mark Sebald").
+-author("Your Name").
 
 -include("../block_state.hrl"). 
 
@@ -16,9 +16,9 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [display, output].
+group() -> [none].
 
-description() -> "Control Raspi on-board LED".
+description() -> "Output value is identical to input value".
 
 version() -> "0.1.0".
 
@@ -33,9 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {led_id, {"led0"}},  % Default to green LED, "led1" is red LED
-      {default_value, {false}},
-      {invert_output, {false}}                 
+                  
     ]). 
 
 
@@ -55,7 +53,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
- 
+
     ]). 
 
 
@@ -123,8 +121,6 @@ upgrade({Config, Inputs, Outputs}) ->
   end.
 
 
--define(LED_FILE_PATH, "/sys/class/leds/" ).
-
 %%
 %% Initialize block values
 %% Perform any setup here as needed before starting execution
@@ -132,46 +128,14 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  case config_utils:get_string(Config, led_id) of
-    {ok, LedId} ->
-      case config_utils:get_boolean(Config, default_value) of
-        {ok, DefaultValue} ->
-          case config_utils:get_boolean(Config, invert_output) of
-            {ok, InvertOutput} -> 
-              case filelib:is_file(?LED_FILE_PATH ++ LedId) of
-                true ->
-                  Status = initialed,
-                  Value = DefaultValue,
-                  take_led_control(LedId),
-                  set_led_value(LedId, DefaultValue, InvertOutput);
-            
-                false ->
-                  error_logger:error_msg("Error: LED file: ~p does not exist~n", 
-                              [?LED_FILE_PATH ++ LedId]),
-                  Status = proc_err,
-                  Value = not_active
-              end;
-            {error, Reason} ->
-              error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
-                              [Reason]),
-              Status = config_err,
-              Value = not_active
-          end;
-        {error, Reason} ->
-          error_logger:error_msg("Error: ~p Error reading default_value~n", 
-                              [Reason]),
-          Status = config_err,
-          Value = not_active
-      end;
-    {error, Reason} ->
-      error_logger:error_msg("Error: ~p Error reading LED ID~n", 
-                              [Reason]),
-      Status = config_err,
-      Value = not_active
+ 
+  case attrib_utils:get_value(Inputs, input) of
+    {ok, InputVal} ->
+      Outputs1 = output_utils:set_value_status(Outputs, InputVal, initialed);
+    {error, _Reason} ->
+      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
   end,
 
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
-    
   % This is the block state
   {Config, Inputs, Outputs1, Private}.
 
@@ -183,46 +147,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  {ok, LedId} = config_utils:get_string(Config, led_id),
-  {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
-  {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
-     
-  {ok, Input} = attrib_utils:get_value(Inputs, input),
-
-  % Set Output Val to input and set the actual LED file value too
-  case Input of
-    empty -> 
-      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
-      Status = no_input;
-
-    not_active ->
-      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
-      Status = normal;
-
-    true ->  
-      LedValue = true, 
-      Value = true,
-      Status = normal;
-
-    false ->
-      LedValue = false,
-      Value = false,
-      Status = normal;
-
-    Other ->
-      BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
-                               [BlockName, Other]),
-      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
-      Status = input_err
+  case attrib_utils:get_value(Inputs, input) of
+    {ok, InputVal} ->
+      Outputs1 = output_utils:set_value_normal(Outputs, InputVal);
+    {error, _Reason} ->
+      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
   end,
-  set_led_value(LedId, LedValue, InvertOutput),
- 
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
+  % Return updated block state
   {Config, Inputs, Outputs1, Private}.
 
 
@@ -232,9 +164,6 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
-  %
-  % Private values are created in the block initialization routine
-  % So they should be deleted here
   
   {Config, Inputs, Outputs}.
 
@@ -243,31 +172,7 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-% Set the actual value of the LED file here
-set_led_value(LedId, Value, Invert) ->
-  FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
-  
-  if Value -> % Value is true/on
-    if Invert -> % Invert pin value 
-      file:write_file(FileId, "0"); % turn output off
-    true ->      % Don't invert_output output value
-      file:write_file(FileId, "1") % turn output on
-    end;
-  true -> % Value is false/off
-    if Invert -> % Invert pin value
-      file:write_file(FileId, "1"); % turn output on
-    true ->      % Don't invert_output output value
-      file:write_file(FileId, "0")  % turn output off
-    end
-  end.
 
-  % Take control of LED, from trigger
-  take_led_control(LedId) ->
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/trigger",
-    file:write_file(FileId, "none").
-
-
-  
 
 
 %% ====================================================================

@@ -1,46 +1,32 @@
-% INSTRUCTIONS: Copy this module and modify as appropriate 
-%               for the function this block will perform.
-%               Comments marked "INSTRUCTIONS:" may be deleted 
-
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
+%%% Block Type:  Single Digig Seven Segment Display Driver
+%%% Description: Unpack byte input to drive a 7 segment plus 
+%%%              decimal point single digit LED display
+%%%
+%%% -------------------------------------------------------
+%%% LED Segment ON:  a  |  b |  c | d  |  e |  f |  g | dp  
+%%% Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
+%%% --------------------------------------------------------
 %%%               
 %%% @end 
 
--module(type_template).  % INSTRUCTIONS: Modify to match new module name
-  
--author("Your Name").
+-module(lblx_one_digit_7seg). 
 
- % INSTRUCTIONS: Adjust path to hrl file as needed
--include("../block_state.hrl"). 
+-author("Mark Sebald").
+
+-include("../block_state.hrl").  
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([group/0, description/0, version/0]). 
+-export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
+group() -> [conversion].
 
-% INSTRUCTIONS: Classify block type, by assigning it to one or more groups
--spec group() -> list(type_group()).
-group() -> [none].
+description() -> "Single digit 7 segment LED driver".
 
-
-% INSTRUCTIONS: String describing block function
--spec description() -> string().
-description() -> "Short description of block function".
-
-
-% INSTRUCTIONS: Set block type version number.
-% Use pattern: Major.Minor.Patch
-% When a block is created, the Config version attribute value 
-% is set to this version.
-% When a block is loaded from a config file, the version attribute value
-% is compared to this.  
-% If the versions are different, the upgrade() function is called.
--spec version() -> string().
-version() -> "0.1.0".
+version() -> "0.1.0".  
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -53,12 +39,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      % INTRUCTIONS: Insert block type specific config attribute tuples here
-      % Config attribute tuples consist of a value name and a value
-      % Example: {gpio_pin, {0}}
-      % Array Example: {start_rows, [{1}, {2}]}
-      % The block is (re) initialized, when any config value is modified.                   
-    ]). 
+                                
+    ]).  
 
 
 -spec default_inputs() -> list(input_attr()).
@@ -67,11 +49,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      % INTRUCTIONS: Insert block type specific input attribute tuples here
-      % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, {100, ?EMPTY_LINK}}
-      % Array Example: {inputs, [{empty, ?EMPTY_LINK}]}
-      % Inputs may be fixed values, or linked to a block output value 
+      {display_on, {true, ?EMPTY_LINK}},
+      {segments, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -81,12 +60,14 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      % INTRUCTIONS: Insert block type specific output attribute tuples here
-      % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, {not_active, []}}
-      % Array Example: {digit, [{not_active, []}]}  
+      {seg_a, {not_active, []}},
+      {seg_b, {not_active, []}},
+      {seg_c, {not_active, []}},
+      {seg_d, {not_active, []}},
+      {seg_e, {not_active, []}},
+      {seg_f, {not_active, []}},
+      {seg_g, {not_active, []}},
+      {seg_dp, {not_active, []}}
     ]). 
 
 
@@ -113,7 +94,7 @@ create(BlockName, Description, InitConfig, InitInputs) ->
              Description :: string(), 
              InitConfig :: list(config_attr()), 
              InitInputs :: list(input_attr()), 
-             InitOutputs :: list(output_attr())) -> block_defn().
+             InitOutputs :: list()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
@@ -137,13 +118,6 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 -spec upgrade(BlockDefn :: block_defn()) -> {ok, block_defn()} | {error, atom()}.
 
 upgrade({Config, Inputs, Outputs}) ->
-
-  % INSTRUCTIONS:  This function is called, on block creation, when the
-  % module's version does not match the version in the block's config data.
-  % Depending on the version(s) perform any necessary adjustments to the 
-  % block's attributes, to make it compatible with the current block type's code.
-  % If upgrading the attributes is not possible, return an error and reason.
-
   ModuleVer = version(),
   {BlockName, BlockModule, ConfigVer} = config_utils:name_module_version(Config),
   BlockType = type_utils:type_name(BlockModule),
@@ -162,20 +136,22 @@ upgrade({Config, Inputs, Outputs}) ->
 
 
 %%
-%% Initialize block values
+%% Initialize block values before starting execution
 %% Perform any setup here as needed before starting execution
 %%
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-    
-  % INSTRUCTIONS: Perform block type specific initializations here
-  % Add and intialize private attributes here
-  Outputs1 = Outputs,
-  Private1 = Private,
 
-  % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  % Turn off all segments, set output value to "  ", and status to initialed
+  {ok, NewOutputs} = attrib_utils:set_values(Outputs, 
+    [
+      {value, "  "}, {status, initialed},  
+      {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false},
+      {seg_e, false}, {seg_f, false}, {seg_g, false}, {seg_dp, false}
+    ]),
+
+  {Config, Inputs, NewOutputs, Private}.
 
 
 %%
@@ -185,14 +161,76 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % INSTRUCTIONS: Perform block type specific actions here, 
-  % read input value(s) calculate new output value(s)
-  % set block output status value
-  Outputs1 = Outputs,
-  Private1 = Private,
+  case input_utils:get_boolean(Inputs, display_on) of
+    {error, Reason} ->
+      Value = not_active, Status = input_err,
+      SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
+      SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
+      input_utils:log_error(Config, display_on, Reason);
+      
+    {ok, DisplayState} ->
+      case DisplayState of
+        false ->  % Display is off or blank
+          Value = 0, Status = normal,
+          SegA = false, SegB = false, SegC = false, SegD = false,
+          SegE = false, SegF = false, SegG = false, SegDp = false;
+            
+        true -> % Display is on  
+          case input_utils:get_integer(Inputs, segments) of
+            {error, Reason} ->
+              Value = not_active, Status = input_err,
+              SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
+              SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
+               input_utils:log_error(Config, segments, Reason);
 
-  % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+            {ok, Segments} ->
+              case Segments of 
+                not_active ->
+                  Value = not_active, Status = normal,
+                  SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
+                  SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active;
+                  
+                Segments ->
+                  Value = Segments, Status = normal,
+
+                  % Each bit of the Segments input byte controls one of the segment outputs
+                  if (Segments band 16#01) == 16#01 -> SegA = true;
+                    true -> SegA = false end,
+
+                  if (Segments band 16#02) == 16#02 -> SegB = true;
+                      true -> SegB = false end,
+
+                  if (Segments band 16#04) == 16#04 -> SegC = true;
+                    true -> SegC = false end,
+
+                  if (Segments band 16#08) == 16#08 -> SegD = true;
+                    true -> SegD = false end,
+
+                  if (Segments band 16#10) == 16#10 -> SegE = true;
+                    true -> SegE = false end,
+
+                  if (Segments band 16#20) == 16#20 -> SegF = true;
+                    true -> SegF = false end,
+    
+                  if (Segments band 16#40) == 16#40 -> SegG = true;
+                    true -> SegG = false end,
+
+                  if (Segments band 16#80) == 16#80 -> SegDp = true;
+                    true -> SegDp = false end
+              end
+          end
+      end
+  end,         
+
+  % update the outputs
+  {ok, Outputs1} = attrib_utils:set_values(Outputs, 
+    [
+      {value, Value}, {status, Status},  
+      {seg_a, SegA}, {seg_b, SegB}, {seg_c, SegC}, {seg_d, SegD},
+      {seg_e, SegE}, {seg_f, SegF}, {seg_g, SegG}, {seg_dp, SegDp}
+    ]),
+ 
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -201,15 +239,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
-  % INSTRUCTIONS: Perform any block type specific delete functionality here
-  % Return block definition, (Block state - Private values)
-  % in case calling function wants to reuse them.
-  %
-  % Private values are created in the block initialization routine
-  % So they should be deleted here
-  
   {Config, Inputs, Outputs}.
-
 
 
 %% ====================================================================
@@ -217,12 +247,9 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% ====================================================================
 
 
-
 %% ====================================================================
 %% Tests
 %% ====================================================================
-
-% INSTRUCTIONS:  Create unit tests here.  
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

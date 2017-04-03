@@ -9,7 +9,7 @@
 %%%              
 %%% @end 
 
--module(type_exec_count).
+-module(lblx_exec_count).
 
 -author("Mark Sebald").
 

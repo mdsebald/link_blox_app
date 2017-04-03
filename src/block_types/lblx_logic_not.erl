@@ -1,10 +1,10 @@
-%%% @doc 
-%%% Block Type:  Float to String
-%%% Description: Convert floating point input value to a string
+%%% @doc  Logic NOT 
+%%% Block Type:  Logic NOT
+%%% Description: Invert the input boolean value  
 %%%               
 %%% @end 
 
--module(type_float_to_str).
+-module(lblx_logic_not). 
 
 -author("Mark Sebald").
 
@@ -16,10 +16,10 @@
 -export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [string, conversion].
+group() -> [logic].
 
-description() -> "Convert floating point value to a string".
-
+description() -> "Invert boolean value".
+ 
 version() -> "0.1.0".
 
 
@@ -33,9 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {left_justify, {false}},
-      {field_width, {0}},
-      {precision, {0}}
+            
     ]). 
 
 
@@ -131,38 +129,13 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  case config_utils:get_boolean(Config, left_justify) of
-    {ok, LeftJustify} ->
-
-      case config_utils:get_integer_range(Config, field_width, 0, 120) of
-        {ok, FieldWidth} ->
-
-          case config_utils:get_integer_range(Config, precision, 0, 120) of
-            {ok, Precision} ->
-              FormatStr = build_format_str(LeftJustify, FieldWidth, Precision),
-              Private1 = attrib_utils:add_attribute(Private, {format_str, {FormatStr}}),
-              Value = not_active,
-              Status = initialed;
-
-            {error, Reason} ->
-              Private1 = Private,
-              {Value, Status} = config_utils:log_error(Config, precision, Reason)          
-          end;
-        
-        {error, Reason} ->
-          Private1 = Private,
-          {Value, Status} = config_utils:log_error(Config, field_width, Reason)          
-      end;
-
-    {error, Reason} ->
-      Private1 = Private,
-      {Value, Status} = config_utils:log_error(Config, left_justify, Reason)          
-  end,
+  % Nothing to initialize, just treat as normal execution  
+  {Value, Status} = get_output_value(Config, Inputs),
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %%
@@ -172,24 +145,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  
-  case input_utils:get_float(Inputs, input) of
-    {ok, not_active} ->
-      Value = not_active,
-      Status = normal;
-
-    {ok, InputValue} ->
-      {ok, FormatStr} = attrib_utils:get_value(Private, format_str),
-      Value = lists:flatten(io_lib:format(FormatStr, [InputValue])),
-      Status = normal;
-
-    {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, input, Reason)
-  end,
-
+  {Value, Status} = get_output_value(Config, Inputs),
+ 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
-  % Return updated block state
   {Config, Inputs, Outputs1, Private}.
 
 
@@ -199,6 +158,9 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
+
+  % Private values are created in the block initialization routine
+  % So they should be deleted here
   
   {Config, Inputs, Outputs}.
 
@@ -208,38 +170,26 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
-%
-% Format floating point input value
-%
--spec build_format_str(LeftJustify :: boolean(),
-                       FieldWidth :: integer(),
-                       Precision :: integer()) -> string().
+-spec get_output_value(Config :: list(config_attr()),
+                        Inputs :: list(input_attr())) -> {value(), block_status()}.
 
-build_format_str(LeftJustify, FieldWidth, Precision) ->
-  add_precision(Precision, 
-    add_field_width(FieldWidth, 
-      add_left_justified(LeftJustify, "\~"))) ++ "f".
+get_output_value(Config, Inputs) ->
 
-      
-add_left_justified(LeftJustify, FormatStr) ->
-  case LeftJustify of
-    true -> FormatStr ++ "-";
-       _ -> FormatStr
+  case input_utils:get_boolean(Inputs, input) of
+    {ok, Input} ->
+      % Set Output Value to NOT input value
+      case Input of
+        not_active -> {not_active, normal};
+        true ->       {false, normal};
+        false ->      {true, normal}
+      end;
+
+    {error, Reason} ->
+      BlockName = config_utils:name(Config),
+      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
+                               [BlockName, Reason]),
+      {not_active, input_err}
   end.
-
-add_field_width(FieldWidth, FormatStr) ->
-  case FieldWidth of
-    0 -> FormatStr ++ ".";
-    _ -> lists:flatten(io_lib:format("~s~b.", [FormatStr, FieldWidth]))
-  end.
-
-add_precision(Precision, FormatStr) ->
-  case Precision of
-    0 -> FormatStr;
-    _ -> lists:flatten(io_lib:format("~s~b", [FormatStr, Precision]))
-  end.
-
-
 
 %% ====================================================================
 %% Tests
