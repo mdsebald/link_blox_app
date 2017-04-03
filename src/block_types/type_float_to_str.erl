@@ -1,4 +1,3 @@
-
 %%% @doc 
 %%% Block Type:  Float to String
 %%% Description: Convert floating point input value to a string
@@ -15,14 +14,10 @@
 %% API functions
 %% ====================================================================
 -export([description/0, version/0]). 
--export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-%   Major version change implies a breaking change, 
-%   i.e. Block module code is not compatible with a 
-%   block definition created with block code with a different major revison 
 version() -> "0.1.0".
 
-% INSTRUCTIONS String describing block function
 description() -> "Convert floating point value to a string".
 
 
@@ -101,6 +96,29 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
   % This is the block definition, 
   {Config, Inputs, Outputs}.
+
+
+%%
+%% Upgrade block attribute values, when block code and block data versions are different
+%% 
+-spec upgrade(BlockDefn :: block_defn()) -> {ok, block_defn()} | {error, atom()}.
+
+upgrade({Config, Inputs, Outputs}) ->
+  ModuleVer = version(),
+  {BlockName, BlockModule, ConfigVer} = config_utils:name_module_version(Config),
+  BlockType = block_types:block_type_name(BlockModule),
+
+  case attrib_utils:set_value(Config, version, version()) of
+    {ok, UpdConfig} ->
+      error_logger:info_msg("Block: ~p type: ~p ugraded from ver: ~s to: ~s~n", 
+                            [BlockName, BlockType, ConfigVer, ModuleVer]),
+      {ok, {UpdConfig, Inputs, Outputs}};
+
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+                            [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
+      {error, Reason}
+  end.
 
 
 %%
@@ -228,10 +246,11 @@ add_precision(Precision, FormatStr) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
   BlockDefn = create(create_test, "Unit Testing Block"),
+  {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),
   execute(BlockState),
   _BlockDefnFinal = delete(BlockState),

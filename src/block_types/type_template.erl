@@ -21,16 +21,17 @@
 -export([description/0, version/0]). 
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-
-% INSTRUCTIONS: Major.Minor.Patch, 
-%   Major version change implies a breaking change, 
-%   i.e. Block module code is not compatible with a 
-%   block definition created with block code with a different major revison 
-version() -> "0.1.0".
-
 % INSTRUCTIONS String describing block function
 description() -> "Short description of block function".
 
+% INSTRUCTIONS: Set block type version number.
+% Use pattern: Major.Minor.Patch
+% When a block is created, the Config version attribute value 
+% is set to this version.
+% When a block is loaded from a config file, the version attribute value
+% is compared to this.  
+% If the versions are different, the upgrade() function is called.
+version() -> "0.1.0".
 
 %% Merge the block type specific, Config, Input, and Output attributes
 %% with the common Config, Input, and Output attributes, that all block types have
@@ -121,7 +122,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
 
 %%
-%% Upgrade block attribute values, on mismatch between block code and block data versions
+%% Upgrade block attribute values, when block code and block data versions are different
 %% 
 -spec upgrade(BlockDefn :: block_defn()) -> {ok, block_defn()} | {error, atom()}.
 

@@ -225,27 +225,36 @@ create_blocks(BlockDefnList) ->
 create_block(BlockDefn) ->
   case BlockDefn of
     {Config, _Inputs, _Outputs} ->
-      % TODO: Check the BlockDefn version against the local block module code version
-      {BlockName, BlockModule, _Version} = config_utils:name_module_version(Config),
+      {BlockName, BlockModule, Version} = config_utils:name_module_version(Config),
       % Check if this block type, exists on this node
-      case lists:member(BlockModule, block_types:block_type_modules()) of
+      case block_types:block_module_exists(BlockModule) of
         true ->
-          case block_utils:is_block(BlockName) of
+          % Check if a block with this name is already created on this node
+          case is_block(BlockName) of
             false ->
-              case block_supervisor:start_block(BlockDefn) of
-                {ok, _Pid} -> 
-                  ok;
-                {error, Reason} -> 
-                  {error, Reason}
+              % Compare the block code and block data versions, upgrade if different
+              case BlockModule:version() /= Version of 
+                true ->
+                  case BlockModule:upgrade(BlockDefn) of
+                    {ok, UpdBlockDefn} ->
+                      case block_supervisor:start_block(UpdBlockDefn) of
+                        {ok, _Pid}      -> ok;
+                        {error, Reason} -> {error, Reason}
+                      end;
+                    {error, Reason} -> {error, Reason}
+                  end;
+                false ->
+                  % Block code and block data versions are the same, just start the block
+                  case block_supervisor:start_block(BlockDefn) of
+                    {ok, _Pid}      -> ok;
+                    {error, Reason} -> {error, Reason}
+                  end
               end;
-            _ ->
-              {error, block_exists}
+            _ -> {error, block_exists}
           end;
-        _ ->
-          {error, invalid_block_type}
+        _ -> {error, invalid_block_type}
       end;
-    _ ->
-      {error, invalid_block_values}
+    _ -> {error, invalid_block_values}
   end.
 
 
