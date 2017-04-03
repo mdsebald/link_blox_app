@@ -19,7 +19,7 @@
 %% API functions
 %% ====================================================================
 -export([description/0, version/0]). 
--export([create/2, create/4, create/5, initialize/1, execute/1, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
 
 % INSTRUCTIONS: Major.Minor.Patch, 
@@ -121,6 +121,36 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
 
 %%
+%% Upgrade block attribute values, on mismatch between block code and block data versions
+%% 
+-spec upgrade(BlockDefn :: block_defn()) -> {ok, block_defn()} | {error, atom()}.
+
+upgrade({Config, Inputs, Outputs}) ->
+
+  % INSTRUCTIONS:  This function is called, on block creation, when the
+  % module's version does not match the version in the block's config data.
+  % Depending on the version(s) perform any necessary adjustments to the 
+  % block's attributes, to make it compatible with the current block type's code.
+  % If upgrading the attributes is not possible, return an error and reason.
+
+  ModuleVer = version(),
+  {BlockName, BlockModule, ConfigVer} = config_utils:name_module_version(Config),
+  BlockType = block_types:block_type_name(BlockModule),
+
+  case attrib_utils:set_value(Config, version, version()) of
+    {ok, UpdConfig} ->
+      error_logger:info_msg("Block: ~p type: ~p ugraded from ver: ~s to: ~s~n", 
+                            [BlockName, BlockType, ConfigVer, ModuleVer]),
+      {ok, {UpdConfig, Inputs, Outputs}};
+
+    {error, Reason} ->
+      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+                            [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
+      {error, Reason}
+  end.
+
+
+%%
 %% Initialize block values
 %% Perform any setup here as needed before starting execution
 %%
@@ -128,7 +158,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
     
-  % Perform block type specific initializations here
+  % INSTRUCTIONS: Perform block type specific initializations here
   % Add and intialize private attributes here
   Outputs1 = Outputs,
   Private1 = Private,
@@ -186,10 +216,11 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), initialize(), execute(), and delete() functions.
+% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
   BlockDefn = create(create_test, "Unit Testing Block"),
+  {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),
   execute(BlockState),
   _BlockDefnFinal = delete(BlockState),
