@@ -306,9 +306,9 @@ handle_call(stop, _From, State) ->
 %% Create a block from block type and block name
 %% =====================================================================    
 handle_call({create_block, BlockType, BlockName, Description}, _From, State) ->
-  case lists:member(BlockType, block_types:block_type_names()) of
+  case lists:member(BlockType, type_utils:type_names()) of
     true ->
-      BlockModule = block_types:block_type_to_module(BlockType),
+      BlockModule = type_utils:type_to_module(BlockType),
       case block_utils:is_block(BlockName) of
         false ->
           BlockDefn = BlockModule:create(BlockName, Description),
@@ -342,7 +342,7 @@ handle_call({copy_block, BlockName, BlockValues, _InitAttribs}, _From, State) ->
       case attrib_utils:get_value(Config, block_module) of
         {ok, BlockModule} ->
           % Make sure the block type to be copied, exists on this node
-          case lists:member(BlockModule, block_types:block_type_modules()) of
+          case lists:member(BlockModule, type_utils:modules()) of
             true ->
               % Make sure the block name is not already used
               case block_utils:is_block(BlockName) of
@@ -442,7 +442,7 @@ handle_call(get_block_names, _From, State) ->
 %% Get a list of all block types information 
 %% =====================================================================    
 handle_call(get_types_info, _From, State) ->
-  Result = block_types:block_types_info(),
+  Result = type_utils:types_info(),
   {reply, Result, State};
 
 
@@ -454,7 +454,7 @@ handle_call({get_type_info, BlockName}, _From, State) ->
   % Block type info is in there.
   case block_server:get_value(BlockName, block_module) of
     {ok, BlockModule} ->
-      Result = block_types:block_type_info(BlockModule);
+      Result = type_utils:type_info(BlockModule);
 
     {error, Reason} ->
       Result = {error, Reason}  
@@ -539,7 +539,7 @@ handle_call({is_block_name, BlockName}, _From, State) ->
 %% Is BlockTypeStr a valid block type?
 %% =====================================================================    
 handle_call({is_block_type, BlockType}, _From, State) ->
-  Result = lists:member(BlockType, block_types:block_type_names()),
+  Result = lists:member(BlockType, type_utils:type_names()),
   {reply, Result, State};
 
 

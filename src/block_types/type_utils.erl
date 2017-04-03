@@ -3,7 +3,7 @@
 %%%               
 %%% @end 
 
--module(block_types). 
+-module(type_utils). 
 
 -author("Mark Sebald").
 
@@ -13,37 +13,36 @@
 %% API functions
 %% ====================================================================
 -export([
-          block_type_modules/0, 
-          block_type_to_module/1,
-          block_types_info/0, 
-          block_type_info/1,
-          block_type_names/0, 
-          block_type_name/1,
-          block_module_exists/1
+          modules/0, 
+          type_to_module/1,
+          types_info/0, 
+          type_info/1,
+          type_names/0, 
+          type_name/1,
+          module_exists/1
 ]).
 
 
 %%
 %%  Create a list of all possible block types
 %%  by searching for all file names with 
-%%  the pattern "type_*.beam in the code path".
+%%  the pattern "lblx_*.beam in the code path".
 %%  Thanks to:  alind.io
 %%
--spec block_type_modules() -> list(module()).
+-spec modules() -> list(module()).
     
-block_type_modules() ->
+modules() ->
   [list_to_atom(filename:basename(F, ".beam")) || P <- code:get_path(), 
-    F <- filelib:wildcard("type_*.beam", P)].
+    F <- filelib:wildcard("lblx_*.beam", P)].
 
 
 %%
 %%  Get the block module for the given block type string
 %% 
--spec block_type_to_module(BlockType :: type_name()) -> module() | not_found | error.
+-spec type_to_module(BlockType :: type_name()) -> module() | not_found | error.
 
-block_type_to_module(BlockType) ->
-  Modules = lists:filter(fun(Module)-> block_type_name(Module) == BlockType end, 
-                 block_type_modules()),
+type_to_module(BlockType) ->
+  Modules = lists:filter(fun(Module)-> type_name(Module) == BlockType end, modules()),
   case length(Modules) of
     0 -> not_found;
     1 -> lists:nth(1, Modules);
@@ -56,37 +55,35 @@ block_type_to_module(BlockType) ->
 %% Get a list of block types and associated info 
 %% for all of the block types in this application
 %%
--spec block_types_info() -> list({string(), string(), string()}).
+-spec types_info() -> list({string(), string(), string()}).
 
-block_types_info() ->
-  lists:map(fun(Module) -> block_type_info(Module) end,
-               block_type_modules()).
+types_info() ->
+  lists:map(fun(Module) -> type_info(Module) end, modules()).
 
 %%
 %% Get block module type name, version, and description
 %%     
--spec block_type_info(module()) -> {string(), string(), string()}.
+-spec type_info(module()) -> {string(), string(), string()}.
     
-block_type_info(Module) ->
-  {atom_to_list(block_type_name(Module)), Module:version(), Module:description()}.
+type_info(Module) ->
+  {atom_to_list(type_name(Module)), Module:version(), Module:description()}.
 
 
 %%
 %% Get a list of block type names for all of the block modules in this app
 %%
--spec block_type_names() -> list(atom()).
+-spec type_names() -> list(atom()).
 
-block_type_names() ->
-  lists:map(fun(Module) -> block_type_name(Module) end,
-               block_type_modules()).
+type_names() ->
+  lists:map(fun(Module) -> type_name(Module) end, modules()).
 
 
 %%
 %% Get the block type name for this block module
 %%
--spec block_type_name(module()) -> atom().
+-spec type_name(module()) -> atom().
     
-block_type_name(Module) ->
+type_name(Module) ->
   ModuleStr = atom_to_list(Module),
   % Module always starts with "type_"  
   % Removing that leaves the block type name 
@@ -96,10 +93,10 @@ block_type_name(Module) ->
 %%
 %% Check if given block module, exists on this node
 %%
--spec block_module_exists(BlockModule :: module()) -> true | false.
+-spec module_exists(BlockModule :: module()) -> true | false.
 
-block_module_exists(BlockModule) ->
-  lists:member(BlockModule, block_type_modules()).
+module_exists(BlockModule) ->
+  lists:member(BlockModule, modules()).
 
 
 %% ====================================================================
@@ -112,24 +109,24 @@ block_module_exists(BlockModule) ->
 % ====================================================================
 % Test block_type_name()
 % 
-block_type_name_test() ->
+type_name_test() ->
   Module = type_test_module,
   ExpectedResult = test_module,
 
-  Result = block_type_name(Module),
+  Result = type_name(Module),
   ?assertEqual(ExpectedResult, Result).
 % ====================================================================
 
 % ====================================================================
 % Test block_type_to_module()
 % 
-block_type_to_module_test() ->
+type_to_module_test() ->
   BlockType = gpio_do,
   ExpectedResult = error,
 
   % This scans subfolders also so it comes up with double set of block types.
   % Just assume this will error for now.
-  Result = block_type_to_module(BlockType),
+  Result = type_to_module(BlockType),
   ?assertEqual(ExpectedResult, Result).
 % ====================================================================
 

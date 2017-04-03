@@ -115,11 +115,11 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 upgrade({Config, Inputs, Outputs}) ->
   ModuleVer = version(),
   {BlockName, BlockModule, ConfigVer} = config_utils:name_module_version(Config),
-  BlockType = block_types:block_type_name(BlockModule),
+  BlockType = type_utils:type_name(BlockModule),
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      error_logger:info_msg("Block: ~p type: ~p ugraded from ver: ~s to: ~s~n", 
+      error_logger:info_msg("Block: ~p type: ~p upgraded from ver: ~s to: ~s~n", 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 

@@ -128,7 +128,7 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
   % TODO: Check for expected term match, before creating child spec 
 
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
-  BlockType = block_types:block_type_name(BlockModule),
+  BlockType = type_utils:type_name(BlockModule),
   error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
                         [BlockName, BlockType, Version]),
 

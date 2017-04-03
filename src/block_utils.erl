@@ -227,7 +227,7 @@ create_block(BlockDefn) ->
     {Config, _Inputs, _Outputs} ->
       {BlockName, BlockModule, Version} = config_utils:name_module_version(Config),
       % Check if this block type, exists on this node
-      case block_types:block_module_exists(BlockModule) of
+      case type_utils:module_exists(BlockModule) of
         true ->
           % Check if a block with this name is already created on this node
           case is_block(BlockName) of
