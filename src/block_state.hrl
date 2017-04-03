@@ -144,3 +144,11 @@
    
 -type block_status() :: created | initialed | normal |  disabled | frozen | 
                         error | input_err | config_err | proc_err | no_input | override.
+
+
+%%
+%% Define block type groups, to assist in classifying and organizing block types
+%% A block type can be assigned to more than one group
+%%
+
+-type type_group() :: none | math | logic | string | conversion | control | input | output | sensor | actuator | composite. 

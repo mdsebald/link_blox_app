@@ -19,13 +19,15 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([description/0, version/0]). 
+-export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
+group() -> [conversion].
 
 description() -> "Single digit 7 segment LED driver".
 
 version() -> "0.1.0".  
+
 
 %% Merge the block type specific, Config, Input, and Output attributes
 %% with the common Config, Input, and Output attributes, that all block types have

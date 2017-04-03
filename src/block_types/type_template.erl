@@ -18,11 +18,19 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([description/0, version/0]). 
+-export([group/0, description/0, version/0]). 
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-% INSTRUCTIONS String describing block function
+
+% INSTRUCTIONS: Classify block type, by assigning it to one or more groups
+-spec group() -> list(type_group()).
+group() -> [none].
+
+
+% INSTRUCTIONS: String describing block function
+-spec description() -> string().
 description() -> "Short description of block function".
+
 
 % INSTRUCTIONS: Set block type version number.
 % Use pattern: Major.Minor.Patch
@@ -31,7 +39,9 @@ description() -> "Short description of block function".
 % When a block is loaded from a config file, the version attribute value
 % is compared to this.  
 % If the versions are different, the upgrade() function is called.
+-spec version() -> string().
 version() -> "0.1.0".
+
 
 %% Merge the block type specific, Config, Input, and Output attributes
 %% with the common Config, Input, and Output attributes, that all block types have

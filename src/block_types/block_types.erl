@@ -1,5 +1,5 @@
 %%% @doc 
-%%% Get a list of block types and current version   
+%%% Common block type utilty functions   
 %%%               
 %%% @end 
 
@@ -12,9 +12,15 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([block_type_modules/0, block_type_to_module/1]).
--export([block_types_info/0, block_type_info/1]).
--export([block_type_names/0, block_type_name/1]).
+-export([
+          block_type_modules/0, 
+          block_type_to_module/1,
+          block_types_info/0, 
+          block_type_info/1,
+          block_type_names/0, 
+          block_type_name/1,
+          block_module_exists/1
+]).
 
 
 %%
@@ -64,6 +70,7 @@ block_types_info() ->
 block_type_info(Module) ->
   {atom_to_list(block_type_name(Module)), Module:version(), Module:description()}.
 
+
 %%
 %% Get a list of block type names for all of the block modules in this app
 %%
@@ -72,7 +79,8 @@ block_type_info(Module) ->
 block_type_names() ->
   lists:map(fun(Module) -> block_type_name(Module) end,
                block_type_modules()).
- 
+
+
 %%
 %% Get the block type name for this block module
 %%
@@ -82,7 +90,16 @@ block_type_name(Module) ->
   ModuleStr = atom_to_list(Module),
   % Module always starts with "type_"  
   % Removing that leaves the block type name 
-  list_to_atom(string:substr(ModuleStr, 6)).  
+  list_to_atom(string:substr(ModuleStr, 6)).
+
+
+%%
+%% Check if given block module, exists on this node
+%%
+-spec block_module_exists(BlockModule :: module()) -> true | false.
+
+block_module_exists(BlockModule) ->
+  lists:member(BlockModule, block_type_modules()).
 
 
 %% ====================================================================

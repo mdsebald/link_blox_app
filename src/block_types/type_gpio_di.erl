@@ -13,9 +13,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([description/0, version/0]). 
+-export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
+group() -> [input].
 
 description() -> "GPIO digital input". 
 

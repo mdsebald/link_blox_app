@@ -13,12 +13,14 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([description/0, version/0]). 
+-export([group/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-version() -> "0.1.0".
+group() -> [string, conversion].
 
 description() -> "Convert floating point value to a string".
+
+version() -> "0.1.0".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
