@@ -19,8 +19,8 @@
 %% API functions
 %% ====================================================================
 
-start_link(BlockValuesFile) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
+start_link([BlockValuesFile, LangMod]) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [BlockValuesFile, LangMod]).
 
 %% ====================================================================
 %% Behavioural functions
@@ -43,9 +43,9 @@ start_link(BlockValuesFile) ->
            | temporary,
   Modules :: [module()] | dynamic.
 
-init(BlockValuesFile) ->
+init([BlockValuesFile, LangMod]) ->
 
-  start_programing_interface(),
+  start_programing_interface(LangMod),
   error_logger:info_msg("Host name: ~p~n", [net_adm:localhost()]),
   
   % Listen for nodes connecting an disconnecting
@@ -76,17 +76,17 @@ init(BlockValuesFile) ->
 
 % If this is the Nerves embedded version, 
 % don't start the SSH command line interface
-start_programing_interface() -> ok.
+start_programing_interface(_LangMod) -> ok.
 
 -else.
 
 % Hosted version, start up the SSH command line interface
-start_programing_interface() ->
+start_programing_interface(LangMod) ->
   % TODO: Should be configurable,
   %       SSH port number,
   %       system_dir,
   %       Used because we get a nice shell UI experience, 
   %       (i.e command history, line editing, tab completion, etc)
-  ui_ssh_cli:start(1111, [{system_dir, "/home/vagrant/ssh_host"}]).
+  ui_ssh_cli:start(1111, LangMod, [{system_dir, "/home/vagrant/ssh_host"}]).
 
 -endif.

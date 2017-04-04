@@ -14,7 +14,7 @@
 %% ====================================================================
 %% UI functions
 %% ====================================================================
--export([start/1, start/2]).
+-export([start/2, start/3]).
 
 % Functions must be exported in order to be invoked via Module:Function(Args)
 -export([
@@ -47,23 +47,22 @@
 %%
 %% Start the SSH daemon
 %%
-start(Port) ->
-    start(Port, []).
+start(Port, LangMod) ->
+    start(Port, LangMod, []).
 
-start(Port, Options) ->
+start(Port, LangMod, Options) ->
     error_logger:info_msg("Starting SSH CLI User Interface on port: ~p ~n", [Port]),
     crypto:start(),
     ssh:start(),
-    ssh:daemon(any, Port, [{shell, fun(U, H) -> start_shell(U, H) end} | Options]).
+    ssh:daemon(any, Port, [{shell, fun(U, H) -> start_shell(U, H, LangMod) end} | Options]).
 
 %% 
 %% Start user input loop
 %%
-start_shell(User, Peer) ->
+start_shell(User, Peer, LangMod) ->
   spawn(fun() ->
-    % Default language to English US for now
-    % TODO: Make language module a config parameter
-    lang(ui_en_us),
+    lang(LangMod),
+    strings_map(LangMod),
 	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
     format_out(welcome_str),
 		format_out(enter_command_str),
@@ -200,7 +199,7 @@ expand([$  | _]) ->
   {no, "", []};
 expand(RevBefore) ->
   Before = lists:reverse(RevBefore),
-    case longest_prefix(ui_en_us:cmd_string_map(), Before) of
+    case longest_prefix((lang()):cmd_string_map(), Before) of
 	    {prefix, P, [_]} -> {yes, P ++ " ", []};
 	    {prefix, "", M}  -> {yes, "", M};
 	    {prefix, P, _M}  -> {yes, P, []};
@@ -255,15 +254,36 @@ lang() ->
 lang(LangMod) ->
   put(lang_mod, LangMod).
 
+%
+% Display Strings
+%
 
-%%
-%% Look up output strings in the current language module
-%%
 format_out(StringId) ->
-  (lang()):format_out(StringId).
+  io:format(get_string(StringId)).
 
 format_out(StringId, Args) ->
-  (lang()):format_out(StringId, Args).
+  io:format(get_string(StringId), Args).
+
+%
+% Get the string corresponding to the string ID
+%
+-spec get_string(StringId :: atom()) -> string().
+
+get_string(StringId) ->
+  case maps:get(StringId, strings_map()) of
+    {badmap, StringsMap} ->  io:lib("Error: bad strings map: ~p~n", [StringsMap]);
+    {badkey, StringId} -> io:lib("Error, string: ~p not found~n", [StringId]);
+    String -> String
+  end.
+
+%
+% Store the strings map in the process dictionary
+%
+strings_map(LangMod) ->
+  put(mod_strings_map, LangMod:strings_map()).
+
+strings_map() ->
+  get(mod_strings_map).
 
 
 % Process block create command
@@ -1082,7 +1102,7 @@ ui_help(Params) ->
   case check_num_params(Params, 0, 1) of
     ok ->
       
-      CmdList = ui_en_us:cmd_string_map(),
+      CmdList = (lang()):cmd_string_map(),
       case length(Params) of  
         0 ->
           io:format("~n     LinkBlox Help~n~n"),
