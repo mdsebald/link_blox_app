@@ -45,8 +45,9 @@ start_link([BlockValuesFile, LangMod]) ->
 
 init([BlockValuesFile, LangMod]) ->
 
-  start_programing_interface(LangMod),
-  error_logger:info_msg("Host name: ~p~n", [net_adm:localhost()]),
+  log_server:start(LangMod),
+  start_user_interface(LangMod),
+  log_server:info(host_name, [net_adm:localhost()]),
   
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
@@ -76,12 +77,12 @@ init([BlockValuesFile, LangMod]) ->
 
 % If this is the Nerves embedded version, 
 % don't start the SSH command line interface
-start_programing_interface(_LangMod) -> ok.
+start_user_interface(_LangMod) -> ok.
 
 -else.
 
 % Hosted version, start up the SSH command line interface
-start_programing_interface(LangMod) ->
+start_user_interface(LangMod) ->
   % TODO: Should be configurable,
   %       SSH port number,
   %       system_dir,

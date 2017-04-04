@@ -113,5 +113,16 @@ strings_map() -> #{
   err_saving_block_config_file => "Error: ~p saving block conifg file: ~s~n",
   err_parsing_cmd_line => "Error: Parsing command: ~s",
 
-  err_invalid_freeze_input_value => "~p Invalid freeze input value: ~p ~n"}.
+  err_invalid_freeze_input_value => "~p Invalid freeze input value: ~p ~n",
+
+  starting_log_server => "Starting log server, Language Module: ~p~n",
+  err_unknown_log_server_call_msg => "log_server, Unknown call message: ~p~n",
+  err_unknown_log_server_cast_msg => "log_server, Unknown cast message: ~p~n",
+  err_unknown_log_server_info_msg => "log_server, Unknown info message: ~p~n",
+  err_log_server_abnormal_termination => "log_server, Abnormal termination, reason: ~p~n",
+  host_name => "Host name: ~p~n",
+  linkblox_startup_complete => "LinkBlox startup complete~n",
+  err_starting_linkblox => "Error: ~p starting LinkBlox~n"
+
+}.
  

@@ -31,11 +31,11 @@
 start(normal, [BlockValuesFile, LangMod]) ->
   case linkblox_supervisor:start_link([BlockValuesFile, LangMod]) of
     {ok, Pid} ->
-      error_logger:info_msg("LinkBlox supervisor started~n"),
+      log_server:info(linkblox_startup_complete),
       {ok, Pid};
 
     Error ->
-      error_logger:error_msg("Error: ~p starting LinkBlox supervisor.~n", [Error]),
+      log_server:error(err_starting_linkblox, [Error]),
       Error
   end.
 
