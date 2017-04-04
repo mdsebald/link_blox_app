@@ -61,7 +61,7 @@ start(Port, LangMod, Options) ->
 %%
 start_shell(User, Peer, LangMod) ->
   spawn(fun() ->
-    lang(LangMod),
+    cmds_map(LangMod),
     strings_map(LangMod),
 	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
     format_out(welcome_str),
@@ -128,7 +128,7 @@ eval_input(Line) ->
 %% This indirection allows command mapping using different languages,
 %%
 cmd_string_to_cmd_atom(Command) ->
-  case lists:keysearch(Command, 1, (lang()):cmd_string_map()) of
+  case lists:keysearch(Command, 1, cmds_map()) of
 	  {value, {_, CmdAtom, _}} -> CmdAtom;
 	  false -> unknown_cmd
   end.
@@ -199,7 +199,7 @@ expand([$  | _]) ->
   {no, "", []};
 expand(RevBefore) ->
   Before = lists:reverse(RevBefore),
-    case longest_prefix((lang()):cmd_string_map(), Before) of
+    case longest_prefix(cmds_map(), Before) of
 	    {prefix, P, [_]} -> {yes, P ++ " ", []};
 	    {prefix, "", M}  -> {yes, "", M};
 	    {prefix, P, _M}  -> {yes, P, []};
@@ -245,15 +245,6 @@ curr_node(Node) ->
   put(curr_node, Node).
 
 
-%%
-%% Get and Set language module used in the UI
-%%
-lang() ->
-  get(lang_mod).
-
-lang(LangMod) ->
-  put(lang_mod, LangMod).
-
 %
 % Display Strings
 %
@@ -263,6 +254,7 @@ format_out(StringId) ->
 
 format_out(StringId, Args) ->
   io:format(get_string(StringId), Args).
+
 
 %
 % Get the string corresponding to the string ID
@@ -276,14 +268,21 @@ get_string(StringId) ->
     String -> String
   end.
 
+
 %
-% Store the strings map in the process dictionary
+% Store the strings map and commands map in the process dictionary
 %
 strings_map(LangMod) ->
   put(mod_strings_map, LangMod:strings_map()).
 
 strings_map() ->
   get(mod_strings_map).
+
+cmds_map(LangMod) ->
+  put(mod_cmds_map, LangMod:cmds_map()).
+
+cmds_map() ->
+  get(mod_cmds_map).
 
 
 % Process block create command
@@ -1102,7 +1101,7 @@ ui_help(Params) ->
   case check_num_params(Params, 0, 1) of
     ok ->
       
-      CmdList = (lang()):cmd_string_map(),
+      CmdList = cmds_map(),
       case length(Params) of  
         0 ->
           io:format("~n     LinkBlox Help~n~n"),
