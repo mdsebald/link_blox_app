@@ -115,7 +115,7 @@ strings_map() -> #{
 
   err_invalid_freeze_input_value => "~p Invalid freeze input value: ~p ~n",
 
-  starting_log_server => "Starting log server, Language Module: ~p~n",
+  starting_log_server => "Starting log_server, Language Module: ~p~n",
   err_unknown_log_server_call_msg => "log_server, Unknown call message: ~p~n",
   err_unknown_log_server_cast_msg => "log_server, Unknown cast message: ~p~n",
   err_unknown_log_server_info_msg => "log_server, Unknown info message: ~p~n",

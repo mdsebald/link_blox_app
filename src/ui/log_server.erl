@@ -34,7 +34,7 @@
 -spec start(LangMod :: module()) -> {ok, pid()} | ignore | {error, term()}.
 
 start(LangMod) ->
-  gen_server:start_link(?MODULE, LangMod, []).
+  gen_server:start_link({local, log_server}, ?MODULE, LangMod, []).
 
 
 %%
@@ -107,7 +107,7 @@ info(LogMsgId, Args) ->
 init(LangMod) ->
   StringsMap = LangMod:strings_map(),
   String = get_string(starting_log_server, StringsMap),
-  error_logger:info_msg(String, LangMod),
+  error_logger:info_msg(String, [LangMod]),
   {ok, StringsMap}.
 
 
@@ -134,11 +134,18 @@ handle_call(Msg, _From, StringsMap) ->
   error_logger:error_msg(String, [Msg]),
   {noreply, StringsMap}.
 
+
 %% ======================================================================
 %% handle_cast/2
 %% ======================================================================
--spec handle_cast(Request :: term(), 
-                  StringsMap :: map()) -> {noreply, map()}.
+-spec handle_cast(Request :: term(), State :: term()) -> Result when
+  Result :: {noreply, NewState}
+     | {noreply, NewState, Timeout}
+     | {noreply, NewState, hibernate}
+     | {stop, Reason, NewState},
+  NewState :: term(),
+  Timeout :: non_neg_integer() | infinity,
+  Reason :: term().
 
 handle_cast({error, StringId}, StringsMap) ->
   String = get_string(StringId, StringsMap),
