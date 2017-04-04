@@ -130,7 +130,7 @@ strings_map() -> #{
   starting_node_watcher => "Starting node_watcher~n",
   node_has_connected => "Node ~p has connected~n",
   node_has_disconnected => "Node ~p has disconnected~n",
-  node_watcher_received_unexpected_msg => "node_watcher, Received unexpected message: ~p"
+  node_watcher_received_unexpected_msg => "node_watcher, Received unexpected message: ~p",
 
   block_server_unknown_call_msg_from => "block_server(~p) Unknown call message: ~p From: ~p~n",
   block_server_unknown_cast_msg => "block_server(~p) Unknown cast message: ~p~n",
