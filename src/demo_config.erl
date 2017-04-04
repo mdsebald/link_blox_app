@@ -51,7 +51,7 @@ create_demo_config() ->
                                      {disable, {false, ?EMPTY_LINK}}
                                  ]),
                                                         
-    RmTemp = lblx_mcp9808_temp:create(room_temp, "Room Temp Sensor",
+    RmTemp = lblx_mcp9808:create(room_temp, "Room Temp Sensor",
                                  [],
                                  [
                                      {disable, {false, ?EMPTY_LINK}},
@@ -155,7 +155,7 @@ create_demo_config() ->
                                   {input, {empty, {select_sensor, value}}}
                                 ]),
 
-    LedDisp = lblx_ht16k33_4digit_led:create(led_disp, "4 Digit LED Display",
+    LedDisp = lblx_ht16k33:create(led_disp, "4 Digit LED Display",
                                  [
 
                                  ],

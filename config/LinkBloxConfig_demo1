@@ -69,7 +69,7 @@
   {value,{empty,[]}},
   {switch,{empty,[]}}]}.
 {[{block_name,{room_temp}},
-  {block_module,{lblx_mcp9808_temp}},
+  {block_module,{lblx_mcp9808}},
   {version,{"0.1.0"}},
   {description,{"Room Temp Sensor"}},
   {i2c_device,{"i2c-1"}},
@@ -262,7 +262,7 @@
   {value,{empty,[]}},
   {carry,{empty,[]}}]}.
 {[{block_name,{env_sensor}},
-  {block_module,{lblx_bme280_env_sensor}},
+  {block_module,{lblx_bme280}},
   {version,{"0.1.0"}},
   {description,{"Temp, Press, Humid Sensor"}},
   {i2c_device,{"i2c-1"}},
@@ -329,7 +329,7 @@
   {pos_overflow,{empty,[]}},
   {neg_overflow,{empty,[]}}]}.
 {[{block_name,{led_disp}},
-  {block_module,{lblx_ht16k33_4digit_led}},
+  {block_module,{lblx_ht16k33}},
   {version,{"0.1.0"}},
   {description,{"4 Digit LED Display"}},
   {i2c_device,{"i2c-1"}},
