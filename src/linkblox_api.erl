@@ -273,7 +273,7 @@ is_block_type(Node, BlockType) ->
   Timeout :: non_neg_integer() | infinity.
 
 init(null) ->
-  error_logger:info_msg("Starting LinkBlox API server~n"),
+  log_server:info(starting_linkblox_API_server),
   {ok, []}.
 
 %% ====================================================================
@@ -298,7 +298,7 @@ init(null) ->
 %% Stop the API server
 %% =====================================================================
 handle_call(stop, _From, State) ->  
-  error_logger:info_msg("Stopping LinkBlox API server~n"),
+  log_server:info(stopping_linkblox_API_server),
 
   {stop, normal, ok, State};
 
@@ -593,8 +593,7 @@ handle_call({load_block_data, BlockData}, _From, State) ->
 %% Unknown Call message
 %% =====================================================================      
 handle_call(Request, From, State) ->
-  error_logger:warning_msg("linkblox_api: Unknown call message: ~p From: ~p~n", 
-                            [Request, From]),
+  log_server:warning(linkblox_api_unknown_call_msg_from, [Request, From]),
   {reply, ok, State}.
 
 
@@ -620,7 +619,7 @@ handle_cast({update, BlockName, Link, NewValue}, State) ->
       block_server:update(BlockName, Link, NewValue);
 
     _ ->
-      error_logger:warning_msg("linkblox_api: Received update for unknown block: ~p~n", 
+      log_server:warning(linkblox_api_received_update_for_unknown_block, 
                             [BlockName])
   end,
   {noreply, State};
@@ -635,7 +634,7 @@ handle_cast({unlink, LinkBlockName, LinkValueId, Reference}, State) ->
       block_server:unlink(LinkBlockName, LinkValueId, Reference);
 
     _ ->
-      error_logger:warning_msg("linkblox_api: Recieved unlink for unknown block: ~p~n", 
+      log_server:warning(linkblox_api_received_unlink_for_unknown_block, 
                             [LinkBlockName])
   end,
   {noreply, State};
@@ -645,7 +644,7 @@ handle_cast({unlink, LinkBlockName, LinkValueId, Reference}, State) ->
 %% Unknown Cast message
 %% =====================================================================      
 handle_cast(Msg, State) ->
-  error_logger:warning_msg("linkblox_api: Unknown cast message: ~p~n", [Msg]),
+  log_server:warning(linkblox_api_unknown_cast_msg, [Msg]),
   {noreply, State}.
 
 
@@ -665,7 +664,7 @@ handle_cast(Msg, State) ->
 %% Unknown Info message
 %% =====================================================================
 handle_info(Info, State) ->
-  error_logger:warning_msg("Unknown info message: ~p~n", [Info]),
+  log_server:warning(linkblox_api_unknown_info_msg, [Info]),
   {noreply, State}.
 
 
@@ -682,7 +681,7 @@ terminate(normal, _State) ->
   ok;
     
 terminate(Reason, _State) ->
-  error_logger:error_msg("LinkBlox API server, Abnormal Termination: ~p~n", [Reason]),
+  log_server:error(linkblox_API_server_abnormal_termination, [Reason]),
   ok.
 
 

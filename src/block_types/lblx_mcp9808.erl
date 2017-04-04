@@ -112,12 +112,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      error_logger:info_msg("Block: ~p type: ~p upgraded from ver: ~s to: ~s~n", 
+      log_server:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+      log_server:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -152,15 +152,13 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Status = initialed;
 
        {error, Reason} ->
-          error_logger:error_msg("Error: ~p reading temperature sensor~n", 
-                              [Reason]),
+          log_server:error(err_reading_temperature_sensor, [Reason]),
           Status = proc_err,
           Value = not_active
        end;
       
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
-                              [Reason, I2cAddr]),
+      log_server:error(err_initiating_I2C_address, [Reason, I2cAddr]),
       Status = proc_err,
       Value = not_active,
       Private2 = Private1
@@ -196,8 +194,7 @@ execute({Config, Inputs, Outputs, Private}) ->
       Status = normal;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading temperature sensor~n", 
-                              [Reason]),
+      log_server:error(err_reading_temperature_sensor, [Reason]),
       Status = proc_err,
       Value = not_active
    end,
@@ -281,6 +278,7 @@ read_ambient(I2cRef, DegF, Offset) ->
 % At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
+  log_server:start(lang_en_us),
   BlockDefn = create(create_test, "Unit Testing Block"),
   {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),

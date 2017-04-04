@@ -111,12 +111,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      error_logger:info_msg("Block: ~p type: ~p upgraded from ver: ~s to: ~s~n", 
+      log_server:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+      log_server:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -147,7 +147,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
         {error, ErrorResult} ->
           BlockName = config_utils:name(Config),
-          error_logger:error_msg("~p Error: ~p intitiating GPIO pin: ~p~n", 
+          log_server:error(err_initiating_GPIO_pin, 
                               [BlockName, ErrorResult, PinNumber]),
           Status = proc_err,
           Value = not_active,
@@ -155,8 +155,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       end;
     {error, Reason} ->
       BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p Error: ~p reading GPIO pin number ~n", 
-                              [BlockName, Reason]),
+      log_server:error(err_reading_GPIO_pin_number, [BlockName, Reason]),
       Status = config_err,
       Value = not_active,
       Private2 = Private1
@@ -217,6 +216,7 @@ read_pin_value_bool(GpioPinRef) ->
 % At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
+  log_server:start(lang_en_us),
   BlockDefn = create(create_test, "Unit Testing Block"),
   {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),

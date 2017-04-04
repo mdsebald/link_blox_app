@@ -110,12 +110,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      error_logger:info_msg("Block: ~p type: ~p upgraded from ver: ~s to: ~s~n", 
+      log_server:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+      log_server:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -211,6 +211,7 @@ delete({Config, Inputs, Outputs, _Private}) ->
 % At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
+  log_server:start(lang_en_us),
   BlockDefn = create(create_test, "Unit Testing Block"),
   BlockState = block_common:initialize(BlockDefn),
   {ok, BlockDefn} = upgrade(BlockDefn),

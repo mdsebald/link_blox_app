@@ -138,15 +138,15 @@ save_blocks_to_file(FileName, BlockData) ->
     ok ->       
       case file:write_file(TargetFileName, BlockData) of
         ok ->
-          error_logger:info_msg("Block config saved to file: ~s~n", [TargetFileName]),
+          log_server:info(block_config_saved_to_file, [TargetFileName]),
           ok;
 
         {error, Reason} -> 
-          error_logger:error_msg(" ~p saving block config file: ~s~n", [Reason, TargetFileName]),
+          log_server:error(err_saving_block_config_file, [Reason, TargetFileName]),
           {error, Reason}
       end;
     {error, Reason} ->
-      error_logger:error_msg(" ~p no directory, saving block config file: ~s~n", [Reason, TargetFileName]),
+      log_server:error(err_no_directory_saving_block_config_file, [Reason, TargetFileName]),
       {error, Reason}
   end.
 
@@ -189,11 +189,11 @@ get_blocks_from_file(FileName) ->
   % file:consult() turns a text file into a set of Erlang terms
   case file:consult(TargetFileName) of
     {ok, BlockDefnList} ->
-      error_logger:info_msg("Opening block Values config file: ~p~n", [TargetFileName]),
+      log_server:info(opening_block_values_config_file, [TargetFileName]),
       {ok, BlockDefnList};
  
     {error, Reason} ->
-      error_logger:error_msg("~p error, reading block config file: ~p~n", [Reason, TargetFileName]),
+      log_server:error(err_reading_block_config_file, [Reason, TargetFileName]),
       {error, Reason}
   end.
 
@@ -210,9 +210,9 @@ create_blocks(BlockDefnList) ->
   BlockName = config_utils:name(Config),
   case create_block(BlockDefn) of
     ok -> 
-      error_logger:info_msg("Block ~p Created~n", [BlockName]);
+      log_server:info(block_created, [BlockName]);
     {error, Reason} -> 
-      error_logger:error_msg("Error: ~p creating block ~p~n", [Reason, BlockName])
+      log_server:error(err_creating_block, [Reason, BlockName])
   end,
   create_blocks(RemainingBlockDefnList). 
 

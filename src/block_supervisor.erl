@@ -95,7 +95,7 @@ block_processes() ->
   Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
-  error_logger:info_msg("Starting LinkBlox Block supervisor~n"),
+  log_server:info(starting_linkblox_block_supervisor),
 
   case block_utils:get_blocks_from_file(BlockValuesFile) of
     {ok, BlockValuesList} ->
@@ -106,7 +106,7 @@ init(BlockValuesFile) ->
       {ok, {SupFlags, BlockSpecs}};
       
     {error, _Reason} ->
-      error_logger:error_msg("Loading Demo config... ~n"),
+      log_server:error(loading_demo_config),
 
       BlockSpecs = create_block_specs(demo_config:create_demo_config()),
              
@@ -129,8 +129,7 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
 
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
   BlockType = type_utils:type_name(BlockModule),
-  error_logger:info_msg("Creating: ~p Type: ~p Version: ~s~n", 
-                        [BlockName, BlockType, Version]),
+  log_server:info(creating_type_version, [BlockName, BlockType, Version]),
 
   BlockSpec = #{id => BlockName, restart => transient,
               start => {block_server, start, [BlockValues]}},

@@ -212,8 +212,7 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
                   
 log_error(Config, ValueName, Reason) ->
   BlockName = config_utils:name(Config),
-  error_logger:error_msg("~p Invalid '~p' input value: ~p~n", 
-                            [BlockName, ValueName, Reason]),
+  log_server:error(err_invalid_input_value, [BlockName, ValueName, Reason]),
   {not_active, input_err}.
   
   

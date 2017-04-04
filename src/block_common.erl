@@ -172,7 +172,7 @@ execute(BlockValues, ExecMethod) ->
               Private1 = Private;
                     
             error -> % Freeze input value error
-              error_logger:error_msg("~p Invalid freeze input value: ~p ~n", [BlockName, Freeze]),
+              log_server:error(invalid_freeze_input_value, [BlockName, Freeze]),
               Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
               % Nothing to update in private values
               Private1 = Private
@@ -183,7 +183,7 @@ execute(BlockValues, ExecMethod) ->
           Private1 = Private;
         
         error -> % Disable input value error 
-          error_logger:error_msg("~p Invalid disable input value: ~p ~n", [BlockName, Disable]),
+          log_server:error(invalid_disable_input_value, [BlockName, Disable]),
           Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
           % Nothing to update in private values
           Private1 = Private
@@ -266,14 +266,13 @@ update_execution_timer(BlockName, Inputs, Private) ->
       true -> % Execute Interval input value is negative
         Status = input_err, 
         NewTimerRef = empty,
-        error_logger:error_msg("~p Negative exec_interval value: ~p ~n", [BlockName, ExecuteInterval])
+        log_server:error(negative_exec_interval_value, [BlockName, ExecuteInterval])
       end
     end;
   true ->  % Execute Interval input value is not an integer
     Status = input_err, 
     NewTimerRef = empty,
-    error_logger:error_msg("~p Invalid exec_interval value: ~p ~n",
-                           [BlockName, ExecuteInterval])
+    log_server:error(invalid_exec_interval_value, [BlockName, ExecuteInterval])
   end,
   {ok, Private1} = attrib_utils:set_value(Private, timer_ref, NewTimerRef),
   {Status, Private1}.

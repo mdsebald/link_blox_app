@@ -111,12 +111,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      error_logger:info_msg("Block: ~p type: ~p upgraded from ver: ~s to: ~s~n", 
+      log_server:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+      log_server:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -148,29 +148,25 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
                 {error, ErrorResult} ->
-                  error_logger:error_msg("Error: ~p intitiating GPIO pin; ~p~n", 
-                              [ErrorResult, PinNumber]),
+                  log_server:error(err_initiating_GPIO_pin, [ErrorResult, PinNumber]),
                   Status = proc_err,
                   Value = not_active,
                   Private2 = Private1
               end;
             {error, Reason} ->
-              error_logger:error_msg("Error: ~p Error reading invert_output value~n", 
-                              [Reason]),
+              log_server:error(err_reading_invert_output_value, [Reason]),
               Status = config_err,
               Value = not_active,
               Private2 = Private1
           end;
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p Error reading default_value~n", 
-                              [Reason]),
+          log_server:error(err_reading_default_value, [Reason]),
           Status = config_err,
           Value = not_active,
           Private2 = Private1
       end;
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p Error reading GPIO pin number~n", 
-                              [Reason]),
+      log_server:error(err_reading_GPIO_pin_number, [Reason]),
       Status = config_err,
       Value = not_active,
       Private2 = Private1
@@ -219,8 +215,7 @@ execute({Config, Inputs, Outputs, Private}) ->
 
      Other ->
       BlockName = config_utils:name(Config),
-      error_logger:error_msg("~p Error: Invalid input value: ~p~n", 
-                               [BlockName, Other]),
+      log_server:error(err_invalid_input_value, [BlockName, Other]),
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
       Value = not_active,
       Status = input_err
@@ -273,6 +268,7 @@ set_pin_value_bool(GpioPinRef, Value, Invert) ->
 % At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
+  log_server:start(lang_en_us),
   BlockDefn = create(create_test, "Unit Testing Block"),
   {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),

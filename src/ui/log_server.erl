@@ -130,7 +130,7 @@ init(LangMod) ->
   Reason :: term().
 
 handle_call(Msg, _From, StringsMap) ->
-  String = get_string(err_unknown_log_server_call_msg, StringsMap),
+  String = get_string(unknown_log_server_call_msg, StringsMap),
   error_logger:error_msg(String, [Msg]),
   {noreply, StringsMap}.
 
@@ -178,7 +178,7 @@ handle_cast({info, StringId, Args}, StringsMap) ->
   {noreply, StringsMap};
 
 handle_cast(Msg, StringsMap) ->
-  String = get_string(err_unknown_log_server_cast_msg, StringsMap),
+  String = get_string(unknown_log_server_cast_msg, StringsMap),
   error_logger:warning_msg(String, [Msg]),
   {noreply, StringsMap}.
 
@@ -196,7 +196,7 @@ handle_cast(Msg, StringsMap) ->
   Timeout :: non_neg_integer() | infinity.
 
 handle_info(Msg, StringsMap) ->
-  String = get_string(err_unknown_log_server_info_msg, StringsMap),
+  String = get_string(unknown_log_server_info_msg, StringsMap),
   error_logger:warning_msg(String, [Msg]),
   {noreply, StringsMap}.
 
@@ -215,7 +215,7 @@ terminate(normal, _StringsMap) ->
   ok;
     
 terminate(Reason, StringsMap) ->
-  String = get_string(err_log_server_abnormal_termination, StringsMap),
+  String = get_string(log_server_abnormal_termination, StringsMap),
   error_logger:error_msg(String, [Reason]),
   ok.
 

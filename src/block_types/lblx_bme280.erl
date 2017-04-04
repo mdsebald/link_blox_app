@@ -123,12 +123,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      error_logger:info_msg("Block: ~p type: ~p upgraded from ver: ~s to: ~s~n", 
+      log_server:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s~n", 
+      log_server:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -197,7 +197,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                       Value = Temp,
                       ok;
                     {error, Reason} ->
-                      error_logger:error_msg("Error: ~p converting sensor values~n", 
+                      log_server:error(err_converting_sensor_values, 
                               [Reason]),
                       Status = config_err,
                       Value = not_active,
@@ -207,7 +207,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   end;    
 
                 {error, Reason} ->
-                  error_logger:error_msg("Error: ~p reading sensor~n", 
+                  log_server:error(err_reading_sensor, 
                               [Reason]),
                   Status = proc_err,
                   Value = not_active,
@@ -217,7 +217,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
               end;
 
             {error, Reason} ->
-              error_logger:error_msg("Error: ~p reading sensor calibration~n", [Reason]),
+              log_server:error(err_reading_sensor_calibration, [Reason]),
               Status = config_err,
               Value = not_active,
               Temp = not_active,
@@ -227,7 +227,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           end;
   
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p configuring sensor~n", [Reason]),
+          log_server:error(err_configuring_sensor, [Reason]),
           Status = config_err,
           Value = not_active,
           Temp = not_active,
@@ -237,7 +237,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       end;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p intitiating I2C Address: ~p~n", 
+      log_server:error(err_initiating_I2C_address, 
                               [Reason, I2cAddr]),
       Status = proc_err,
       Value = not_active,
@@ -287,7 +287,7 @@ execute({Config, Inputs, Outputs, Private}) ->
               Value = Temp,
               ok;
             {error, Reason} ->
-              error_logger:error_msg("Error: ~p converting sensor values~n", 
+              log_server:error(err_converting_sensor_values, 
                                   [Reason]),
               Status = config_err,
               Value = not_active,
@@ -297,7 +297,7 @@ execute({Config, Inputs, Outputs, Private}) ->
           end;
 
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p reading sensor forced mode~n", 
+          log_server:error(err_reading_sensor_forced_mode, 
                                   [Reason]),
           Status = proc_err,
           Value = not_active,
@@ -315,8 +315,7 @@ execute({Config, Inputs, Outputs, Private}) ->
               Value = Temp,
               ok;
             {error, Reason} ->
-              error_logger:error_msg("Error: ~p converting sensor values~n", 
-                                  [Reason]),
+              log_server:error(err_converting_sensor_values, [Reason]),
               Status = config_err,
               Value = not_active,
               Temp = not_active,
@@ -325,8 +324,7 @@ execute({Config, Inputs, Outputs, Private}) ->
           end;
 
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p Reading sensor~n", 
-                                  [Reason]),
+          log_server:error(err_reading_sensor, [Reason]),
           Status = proc_err,
           Value = not_active,
           Temp = not_active,
@@ -479,7 +477,7 @@ reset_sensor(I2cRef) ->
       ok;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p resetting sensor~n", [Reason]),
+      log_server:error(err_resetting_sensor, [Reason]),
       {error, Reason}
   end. 
 
@@ -500,7 +498,7 @@ set_config_reg(I2cRef, Config) ->
             ok -> ok;
 
             {error, Reason} ->
-              error_logger:error_msg("Error: ~p setting sensor config register~n", [Reason]),
+              log_server:error(err_setting_sensor_config_register, [Reason]),
               {error, Reason}
           end;
 
@@ -524,7 +522,7 @@ set_humid_mode(I2cRef, Config) ->
         ok -> ok;
 
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p setting humidity mode~n", [Reason]),
+          log_server:error(err_setting_humidity_mode, [Reason]),
           {error, Reason}
       end;
 
@@ -553,7 +551,7 @@ set_temp_press_read_modes(I2cRef, Config) ->
                 ok -> {ok, SensorMode};
 
                 {error, Reason} ->
-                  error_logger:error_msg("Error: ~p setting temperature, pressure, or read modes~n", [Reason]),
+                  log_server:error(err_setting_temperature_pressure_or_read_mode, [Reason]),
                   {error, Reason}
               end;
 
@@ -584,10 +582,10 @@ get_standby_time(Config) ->
     {ok, 10.0} -> {ok, ?STANDBY_TIME_10};
     {ok, 20.0} -> {ok, ?STANDBY_TIME_20};
     {ok, InvalidVal} ->
-      error_logger:error_msg("Error: ~p is an invalid standby time value~n", [InvalidVal]),
+      log_server:error(err_is_an_invalid_standby_time_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading standby time value~n", [Reason]),
+      log_server:error(err_reading_standby_time_value, [Reason]),
       {error, config_err}
   end.
 
@@ -604,10 +602,10 @@ get_filter_coeff(Config) ->
     {ok, 8}  -> {ok, ?FILTER_COEFF_8};
     {ok, 16} -> {ok, ?FILTER_COEFF_16};
     {ok, InvalidVal} ->
-      error_logger:error_msg("Error: ~p is an invalid filter coefficient value~n", [InvalidVal]),
+      log_server:error(err_is_an_invalid_filter_coefficient_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading filter coefficiean value~n", [Reason]),
+      log_server:error(err_reading_filter_coefficient_value, [Reason]),
       {error, config_err}
   end.
 
@@ -625,10 +623,10 @@ get_humid_mode(Config) ->
     {ok, 8}  -> {ok, ?OSRS_HUMID_OVSAMPL_8X};
     {ok, 16} -> {ok, ?OSRS_HUMID_OVSAMPL_16X};
     {ok, InvalidVal} ->
-      error_logger:error_msg("Error: ~p is an invalid humidity mode value~n", [InvalidVal]),
+      log_server:error(err_is_an_invalid_humidity_mode_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading humidity mode value~n", [Reason]),
+      log_server:error(err_reading_humidity_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -646,10 +644,10 @@ get_temp_mode(Config) ->
     {ok, 8}  -> {ok, ?OSRS_TEMP_OVSAMPL_8X};
     {ok, 16} -> {ok, ?OSRS_TEMP_OVSAMPL_16X};
     {ok, InvalidVal} ->
-      error_logger:error_msg("Error: ~p is an invalid temperature mode value~n", [InvalidVal]),
+      log_server:error(err_is_an_invalid_temperature_mode_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading temperature mode value~n", [Reason]),
+      log_server:error(err_reading_temperature_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -667,10 +665,10 @@ get_press_mode(Config) ->
     {ok, 8}  -> {ok, ?OSRS_PRESS_OVSAMPL_8X};
     {ok, 16} -> {ok, ?OSRS_PRESS_OVSAMPL_16X};
     {ok, InvalidVal} ->
-      error_logger:error_msg("Error: ~p is an invalid pressure mode value~n", [InvalidVal]),
+      log_server:error(err_is_an_invalid_pressure_mode_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading pressure mode value~n", [Reason]),
+      log_server:error(err_reading_pressure_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -685,13 +683,12 @@ get_read_mode(Config) ->
     {ok, forced} -> {ok, ?SENSOR_MODE_FORCED};
     {ok, normal} -> {ok, ?SENSOR_MODE_NORMAL};
     {ok, InvalidVal} ->
-      error_logger:error_msg("Error: ~p is an invalid read mode value (sleep, normal, forced)~n", [InvalidVal]),
+      log_server:error(err_is_an_invalid_read_mode_value_sleep_normal_forced, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading read mode value~n", [Reason]),
+      log_server:error(err_reading_read_mode_value, [Reason]),
       {error, config_err}
   end.
-
 
 
 %
@@ -787,12 +784,12 @@ read_sensor_forced(I2cRef, Private) ->
           read_sensor(I2cRef, Private);
 
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p waiting for sleep mode~n", [Reason]),
+          log_server:error(err_waiting_for_sleep_mode, [Reason]),
           {error, Reason}
       end;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p setting forced read mode~n", [Reason]),
+      log_server:error(err_setting_forced_read_mode, [Reason]),
       {error, Reason}
   end.
 
@@ -901,12 +898,12 @@ convert_temp(Temp, Config) ->
           {ok, ConvTemp};
         
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p reading deg_f config value~n", [Reason]),
+          log_server:error(err_reading_deg_f_config_value, [Reason]),
           {error, Reason}
       end;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading temp_offset config value~n", [Reason]),
+      log_server:error(err_reading_temp_offset_config_value, [Reason]),
       {error, Reason}
   end.
 
@@ -932,12 +929,12 @@ convert_press(Press, Config) ->
           {ok, ConvPress};
         
         {error, Reason} ->
-          error_logger:error_msg("Error: ~p reading inch_merc config value~n", [Reason]),
+          log_server:error(err_reading_inch_merc_config_value, [Reason]),
           {error, Reason}
       end;
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading press_offset config value~n", [Reason]),
+      log_server:error(err_reading_press_offset_config_value, [Reason]),
       {error, Reason}
   end.
 
@@ -954,7 +951,7 @@ convert_humid(Humid, Config) ->
       {ok, ConvHumid};
 
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p reading humid_offset config value~n", [Reason]),
+      log_server:error(err_reading_humid_offset_config_value, [Reason]),
       {error, Reason}
   end.
 
@@ -1122,6 +1119,7 @@ compensate_humid(Adc_H, T_fine, Private) ->
 % At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
 
 block_test() ->
+  log_server:start(lang_en_us),
   BlockDefn = create(create_test, "Unit Testing Block"),
   {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),

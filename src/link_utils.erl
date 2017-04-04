@@ -151,7 +151,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
             
             case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
               {ok, UpdatedInputs} -> 
-                error_logger:info_msg("Block Input: ~p:~p Linked to Block Output: ~p:~p~n", 
+                log_server:info(block_input_linked_to_block_output, 
                         [BlockName, ValueId, LinkBlockName, LinkValueId]),
                         
                 UpdatedInputs;
@@ -169,8 +169,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
         _ ->
           % Log warning, block doesn't exist 
           % or user may have misspelled the Linked block name
-          error_logger:warning_msg("Linked Block: ~p Does not exist.~n", 
-                        [LinkBlockName]),
+          log_server:warning(linked_block_does_not_exist, [LinkBlockName]),
 
           % If linked block does not exist, input value should be empty
           case attrib_utils:set_value(Inputs, ValueId, empty) of
@@ -200,7 +199,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
             
                   case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
                     {ok, UpdatedInputs} -> 
-                      error_logger:info_msg("Block Input: ~p:~p Linked to Block Output: ~p:~p:~p~n", 
+                      log_server:info(block_input_linked_to_node_block_output, 
                                   [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
                       UpdatedInputs;
 
@@ -217,8 +216,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
             _ ->
               % Log warning, block doesn't exist 
               % or user may have misspelled the Linked block name
-              error_logger:warning_msg("Linked Block: ~p:~p Does not exist.~n", 
-                        [NodeName, LinkBlockName]),
+              log_server:warning(linked_node_block_does_not_exist, [NodeName, LinkBlockName]),
 
               % If linked block does not exist, input value should be empty
               case attrib_utils:set_value(Inputs, ValueId, empty) of
@@ -232,12 +230,12 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
           end;  
         _ -> 
           % Unable to connect to node, return Inputs unchanged
-          error_logger:warning_msg("Unable to connect to node: ~p~n", [NodeName]),
+          log_server:warning(unable_to_connect_to_node, [NodeName]),
           Inputs 
       end;
     _ ->
       % Urecognized link return Inputs, unchanged
-      error_logger:error_msg("Error: Unrecognized link: ~p~n", [Link]),
+      log_server:error(err_unrecognized_link, [Link]),
       Inputs 
   end.
 
@@ -307,13 +305,12 @@ unlink_input(BlockName, ValueId, Link) ->
       case block_utils:is_block(LinkBlockName) of
         true ->
           block_server:unlink(LinkBlockName, LinkValueId, {BlockName, ValueId}),
-          error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p~n", 
+          log_server:info(block_input_unlinked_from_block_output, 
                             [BlockName, ValueId, LinkBlockName, LinkValueId]),
           ok;
 
         _ ->
-          error_logger:warning_msg("unlink_input(): Linked Block: ~p Does not exist.~n", 
-                                    [LinkBlockName]),
+          log_server:warning(unlink_input_linked_block_does_not_exist,[LinkBlockName]),
           ok
       end;
 
@@ -326,25 +323,25 @@ unlink_input(BlockName, ValueId, Link) ->
             true ->
               % Linked block exists,
               linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
-              error_logger:info_msg("Block Input: ~p:~p Unlinked from Block Output: ~p:~p:~p~n", 
+              log_server:info(block_input_unlinked_from_node_block_output, 
                             [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
               ok;
 
             _ ->
-              error_logger:warning_msg("unlink_input(): Linked Block: ~p:~p Does not exist.~n", 
+              log_server:warning(unlink_input_linked_node_block_does_not_exist, 
                                     [NodeName, LinkBlockName]),
               ok
           end;
 
         _ -> 
           % Unable to connect to node, do nothing
-          error_logger:warning_msg("Unable to connect to node: ~p~n", [NodeName]),
+          log_server:warning(unable_to_connect_to_node, [NodeName]),
           ok
       end;
 
     _ ->
       % Urecognized link, nothing to do
-      error_logger:error_msg("Error: Unrecognized link: ~p~n", [Link]),
+      log_server:error(err_unrecognized_link, [Link]),
       ok
   end.
 
@@ -415,8 +412,7 @@ add_ref(Outputs, ValueId, Reference) ->
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
       % Just return the original Outputs list
-      error_logger:error_msg("add_ref() Error. ~p Doesn't exist for this block~n", 
-                             [ValueId]),
+      log_server:error(add_ref_err_doesnt_exist_for_this_block, [ValueId]),
       Outputs;
 
     % Non-array value
@@ -453,8 +449,7 @@ add_ref(Outputs, ValueId, Reference) ->
             Outputs
         end;
       true ->
-        error_logger:error_msg("add_ref() Error. Invalid array index ~p~n",
-                             [ValueId]),
+        log_server:error(add_ref_err_invalid_array_index, [ValueId]),
         Outputs
       end
   end.
@@ -475,8 +470,7 @@ delete_ref(Outputs, ValueId, Reference) ->
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
       % Just return the original Outputs list
-      error_logger:error_msg("delete_ref() Error. ~p Doesn't exist for this block~n", 
-                              [ValueId]),
+      log_server:error(delete_ref_err_doesnt_exist_for_this_block, [ValueId]),
       Outputs;
 
     % Non-Array value
@@ -500,8 +494,7 @@ delete_ref(Outputs, ValueId, Reference) ->
         NewOutput = {ValueName, NewArrayValues}, 
         attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
       true ->
-        error_logger:error_msg("delete_ref() Error. Invalid array index ~p~n",
-                                [ValueId]),
+        log_server:error(delete_ref_err_invalid_array_index, [ValueId]),
         Outputs
       end
   end.

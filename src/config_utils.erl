@@ -252,8 +252,7 @@ resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
                   
 log_error(Config, ValueName, Reason) ->
   BlockName = name(Config),
-  error_logger:error_msg("~p Invalid '~p' config value: ~p~n", 
-                            [BlockName, ValueName, Reason]),
+  log_server:error(err_invalid_config_value, [BlockName, ValueName, Reason]),
   {not_active, config_err}.
   
   

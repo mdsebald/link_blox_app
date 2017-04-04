@@ -194,8 +194,7 @@ resize_attribute_array_value(BlockName, Outputs, ArrayValueName, TargQuant, Defa
                   
 log_error(Config, ValueName, Reason) ->
   BlockName = config_utils:name(Config),
-  error_logger:error_msg("~p Invalid '~p' output value: ~p~n", 
-                            [BlockName, ValueName, Reason]),
+  log_server:error(err_invalid_output_value, [BlockName, ValueName, Reason]),
   ok.
   
   

@@ -139,7 +139,7 @@ unlink(BlockName, ValueId, Reference) ->
 init(BlockValues) ->
   BlockName = config_utils:name(BlockValues),
 
-  error_logger:info_msg("Initializing: ~p~n", [BlockName]),
+  log_server:info(initializing_block, [BlockName]),
 
   %TODO: Need to perform a sanity check here, 
   % make sure BlockModule type and version, matches BlockValues type and version
@@ -294,7 +294,7 @@ handle_call({link, ValueId, Reference}, _From, BlockValues) ->
     {ok, Value} -> ok;
  
     {error, Reason} ->
-      error_logger:error_msg("Error: ~p fetching value: ~p~n", [Reason, ValueId]),
+      log_server:error(err_fetching_value, [Reason, ValueId]),
       Value = not_active
   end,
 
@@ -307,7 +307,7 @@ handle_call({link, ValueId, Reference}, _From, BlockValues) ->
 handle_call(stop, _From, BlockValues) ->
 
   BlockName = config_utils:name(BlockValues),    
-  error_logger:info_msg("Deleting: ~p~n", [BlockName]),
+  log_server:info(deleting_block, [BlockName]),
     
   % Perform common block delete actions
   block_common:delete(BlockValues),
@@ -320,8 +320,7 @@ handle_call(stop, _From, BlockValues) ->
 %% =====================================================================      
 handle_call(Request, From, BlockValues) ->
   BlockName = config_utils:name(BlockValues),
-  error_logger:warning_msg("block_server(~p): Unknown call message: ~p From: ~p~n", 
-                            [BlockName, Request, From]),
+  log_server:warning(block_server_unknown_call_msg_from, [BlockName, Request, From]),
   {reply, ok, BlockValues}.
 
 
@@ -400,7 +399,7 @@ handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
   % match old block name, type and version/(same major rev)
   {Config, _Inputs, _Outputs, _Private} = BlockValues,
   BlockName = config_utils:name(Config), 
-  error_logger:info_msg("~p: Reconfiguring block~n", [BlockName]),
+  log_server:info(reconfiguring_block, [BlockName]),
 
   % Replace current state Block values with new values and configure block again
   % Check that new block values match the current block type and block name that is running
@@ -427,7 +426,7 @@ handle_cast({unlink, ValueId, Reference}, BlockValues) ->
 %% =====================================================================      
 handle_cast(Msg, BlockValues) ->
   BlockName = config_utils:name(BlockValues),
-  error_logger:warning_msg("block_server(~p) Unknown cast message: ~p~n", [BlockName,Msg]),
+  log_server:warning(block_server_unknown_cast_msg, [BlockName,Msg]),
   {noreply, BlockValues}.
 
 
@@ -450,7 +449,7 @@ handle_cast(Msg, BlockValues) ->
 %% =====================================================================
 
 handle_info({gpio_interrupt, _Pin, _Condition}, BlockValues) ->
-  % error_logger:info_msg("Got ~p interrupt from pin# ~p ~n", [Condition, Pin]),
+  % log_server:info(got_interrupt_from_pin, [Condition, Pin]),
   NewBlockValues = block_common:execute(BlockValues, hardware),
   {noreply, NewBlockValues};
 
@@ -473,14 +472,14 @@ handle_info(timer_execute, BlockValues) ->
 %% MQTT Publish message from a subscribed to Topic.
 %% =====================================================================
 handle_info({publish, Topic, Payload}, BlockValues) ->
-    error_logger:info_msg("Message from ~s: ~p~n", [Topic, Payload]),
+    log_server:info(message_from, [Topic, Payload]),
     {Config, Inputs, Outputs, Private} = BlockValues,
     case attrib_utils:set_values(Outputs, [{topic_pub, Topic}, {value, Payload}]) of
       {ok, NewOutputs} ->
         NewBlockValues = {Config, Inputs, NewOutputs, Private};
 
       {error, Reason} ->
-        error_logger:error_msg("Error: ~p, Parsing publish message from MQTT broker~n", [Reason]),
+        log_server:error(err_parsing_publish_message_from_MQTT_broker, [Reason]),
         NewBlockValues = BlockValues
     end,
     {noreply, NewBlockValues};
@@ -489,14 +488,14 @@ handle_info({publish, Topic, Payload}, BlockValues) ->
 %% MQTT Client connected message
 %% =====================================================================
 handle_info({mqttc, Client, connected}, BlockValues) ->
-    error_logger:info_msg("Client ~p is connected~n", [Client]),
+    log_server:info(mqtt_client_is_connected, [Client]),
     {Config, Inputs, Outputs, Private} = BlockValues,
     case attrib_utils:set_value(Outputs, connected, true) of
       {ok, NewOutputs} ->
         NewBlockValues = {Config, Inputs, NewOutputs, Private};
 
       {error, Reason} ->
-        error_logger:error_msg("Error: ~p, Updating output on MQTT broker connect message~n", [Reason]),
+        log_server:error(err_updating_output_on_MQTT_broker_connect_msg, [Reason]),
         NewBlockValues = BlockValues
     end,
     {noreply, NewBlockValues};
@@ -505,14 +504,14 @@ handle_info({mqttc, Client, connected}, BlockValues) ->
 %% MQTT Client disconnected message
 %% =====================================================================
 handle_info({mqttc, Client,  disconnected}, BlockValues) ->
-    error_logger:info_msg("Client ~p is disconnected~n", [Client]),
+    log_server:info(mqtt_client_is_disconnected, [Client]),
     {Config, Inputs, Outputs, Private} = BlockValues,
     case attrib_utils:set_values(Outputs, [{connected, false}, {value, not_active}]) of
       {ok, NewOutputs} ->
         NewBlockValues = {Config, Inputs, NewOutputs, Private};
 
       {error, Reason} ->
-        error_logger:error_msg("Error: ~p, Updating outputs on MQTT broker disconnect message~n", [Reason]),
+        log_server:error(err_updating_outputs_on_MQTT_broker_disconnect_msg, [Reason]),
         NewBlockValues = BlockValues
     end,
     {noreply, NewBlockValues};
@@ -522,7 +521,7 @@ handle_info({mqttc, Client,  disconnected}, BlockValues) ->
 %% Unknown Info message
 %% =====================================================================
 handle_info(Info, State) ->
-  error_logger:warning_msg("Unknown info message: ~p~n", [Info]),
+  log_server:warning(block_server_unknown_info_msg, [Info]),
   {noreply, State}.
 
 
@@ -541,7 +540,7 @@ terminate(normal, _BlockValues) ->
 terminate(Reason, BlockValues) ->
   BlockName = config_utils:name(BlockValues),
 
-  error_logger:error_msg("Abnormal Termination: ~p  Reason: ~p~n", [BlockName, Reason]),
+  log_server:error(block_server_abnormal_termination, [BlockName, Reason]),
   ok.
 
 
