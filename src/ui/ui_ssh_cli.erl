@@ -51,7 +51,7 @@ start(Port, LangMod) ->
     start(Port, LangMod, []).
 
 start(Port, LangMod, Options) ->
-    error_logger:info_msg("Starting SSH CLI User Interface on port: ~p ~n", [Port]),
+    error_logger:info_msg("Starting SSH CLI User Interface on port: ~p Language: ~p~n", [Port, LangMod]),
     crypto:start(),
     ssh:start(),
     ssh:daemon(any, Port, [{shell, fun(U, H) -> start_shell(U, H, LangMod) end} | Options]).
