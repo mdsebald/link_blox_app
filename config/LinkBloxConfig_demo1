@@ -1,5 +1,5 @@
 {[{block_name,{id1}},
-  {block_module,{type_identity}},
+  {block_module,{lblx_identity}},
   {version,{"0.1.0"}},
   {description,{"Default Comment"}}],
  [{disable,{false,{}}},
@@ -13,7 +13,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{rem_count}},
-  {block_module,{type_exec_count}},
+  {block_module,{lblx_exec_count}},
   {version,{"0.1.0"}},
   {description,{"Default Comment"}},
   {rollover,{true}}],
@@ -31,7 +31,7 @@
   {value,{empty,[]}},
   {carry,{empty,[]}}]}.
 {[{block_name,{test_7seg}},
-  {block_module,{type_int_to_7seg}},
+  {block_module,{lblx_int_to_7seg}},
   {version,{"0.1.0"}},
   {description,{"Testing Seven Segment Decoder"}},
   {num_of_digits,{4}},
@@ -50,7 +50,7 @@
   {value,{empty,[]}},
   {digit,[{empty,[]},{empty,[]},{empty,[]},{empty,[]}]}]}.
 {[{block_name,{rotary_encode}},
-  {block_module,{type_rotary_encoder}},
+  {block_module,{lblx_rotary_encoder}},
   {version,{"0.1.0"}},
   {description,{"Rotary Encoder with Switch"}},
   {gpio_pin_phase_A,{21}},
@@ -69,7 +69,7 @@
   {value,{empty,[]}},
   {switch,{empty,[]}}]}.
 {[{block_name,{room_temp}},
-  {block_module,{type_mcp9808_temp}},
+  {block_module,{lblx_mcp9808_temp}},
   {version,{"0.1.0"}},
   {description,{"Room Temp Sensor"}},
   {i2c_device,{"i2c-1"}},
@@ -87,7 +87,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{switch_27}},
-  {block_module,{type_gpio_di}},
+  {block_module,{lblx_gpio_di}},
   {version,{"0.1.0"}},
   {description,{"Reset Counter"}},
   {gpio_pin,{27}},
@@ -102,7 +102,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{display}},
-  {block_module,{type_one_digit_7seg}},
+  {block_module,{lblx_one_digit_7seg}},
   {version,{"0.1.0"}},
   {description,{"Decode count to seven-segments"}}],
  [{disable,{false,{}}},
@@ -125,7 +125,7 @@
   {seg_g,{empty,[]}},
   {seg_dp,{empty,[]}}]}.
 {[{block_name,{seg_a}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment A"}},
   {gpio_pin,{23}},
@@ -142,7 +142,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{seg_b}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment B"}},
   {gpio_pin,{24}},
@@ -159,7 +159,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{seg_c}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment C"}},
   {gpio_pin,{25}},
@@ -176,7 +176,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{seg_d}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment D"}},
   {gpio_pin,{26}},
@@ -193,7 +193,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{seg_e}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment E"}},
   {gpio_pin,{16}},
@@ -210,7 +210,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{seg_f}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment F"}},
   {gpio_pin,{22}},
@@ -227,7 +227,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{seg_g}},
-  {block_module,{type_gpio_do}},
+  {block_module,{lblx_gpio_do}},
   {version,{"0.1.0"}},
   {description,{"LED Segment G"}},
   {gpio_pin,{17}},
@@ -244,7 +244,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{counter}},
-  {block_module,{type_exec_count}},
+  {block_module,{lblx_exec_count}},
   {version,{"0.1.0"}},
   {description,{"Count to 3 and rollover"}},
   {rollover,{true}}],
@@ -262,7 +262,7 @@
   {value,{empty,[]}},
   {carry,{empty,[]}}]}.
 {[{block_name,{env_sensor}},
-  {block_module,{type_bme280_env_sensor}},
+  {block_module,{lblx_bme280_env_sensor}},
   {version,{"0.1.0"}},
   {description,{"Temp, Press, Humid Sensor"}},
   {i2c_device,{"i2c-1"}},
@@ -291,7 +291,7 @@
   {press,{empty,[]}},
   {humid,{empty,[]}}]}.
 {[{block_name,{select_sensor}},
-  {block_module,{type_n_select}},
+  {block_module,{lblx_n_select}},
   {version,{"0.1.0"}},
   {description,{"Select Temp, Press, or Humid Sensor"}},
   {num_of_inputs,{3}}],
@@ -309,7 +309,7 @@
   {last_exec,{empty,[]}},
   {value,{empty,[]}}]}.
 {[{block_name,{decoder}},
-  {block_module,{type_float_to_7seg}},
+  {block_module,{lblx_float_to_7seg}},
   {version,{"0.1.0"}},
   {description,{"Decode Number to 7 Segment Digits"}},
   {num_of_digits,{4}}],
@@ -329,7 +329,7 @@
   {pos_overflow,{empty,[]}},
   {neg_overflow,{empty,[]}}]}.
 {[{block_name,{led_disp}},
-  {block_module,{type_ht16k33_4digit_led}},
+  {block_module,{lblx_ht16k33_4digit_led}},
   {version,{"0.1.0"}},
   {description,{"4 Digit LED Display"}},
   {i2c_device,{"i2c-1"}},
