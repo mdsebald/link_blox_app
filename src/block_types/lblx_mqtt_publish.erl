@@ -36,7 +36,7 @@ default_configs(BlockName, Description) ->
     [
       {host, {"localhost"}},
       {port, {1883}},
-      {client_id, {"DefaultClientId"}},
+      {client_id, {"LinkBloxClientId"}},
       {clean_session, {true}},
       {keep_alive, {60}},
       {protocol_version, {4}},
@@ -139,10 +139,16 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-% Host = attrib_utils:get_value(Config, host);
+  Host = attrib_utils:get_value(Config, host),
+  Port = attrib_utils:get_value(Config, port),
+  ClientId = attrib_utils:get_value(Config, client_id),
+  KeepAlive = attrib_utils:get_value(Config, keep_alive),
   
   % Use OTP standard error_logger, rest of LinkBlox uses this too
-  case emqttc:start_link([{host, "t.emqtt.io"}, {keepalive, 60},
+  case emqttc:start_link([{host, Host},
+                          {port, Port},
+                          {client_id, <<ClientId>>},
+                          {keepalive, KeepAlive},
                           {logger, {error_logger, all}}]) of
     {ok, Client} ->
       log_server:info(started_MQTT_client),
