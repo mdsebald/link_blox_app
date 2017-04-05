@@ -141,9 +141,6 @@ init(BlockValues) ->
 
   log_server:info(initializing_block, [BlockName]),
 
-  %TODO: Need to perform a sanity check here, 
-  % make sure BlockModule type and version, matches BlockValues type and version
-
   % Perform block initialization
   NewBlockValues = block_common:initialize(BlockValues),
 

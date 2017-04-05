@@ -139,10 +139,10 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Host = attrib_utils:get_value(Config, host),
-  Port = attrib_utils:get_value(Config, port),
-  ClientId = attrib_utils:get_value(Config, client_id),
-  KeepAlive = attrib_utils:get_value(Config, keep_alive),
+  {ok, Host} = attrib_utils:get_value(Config, host),
+  {ok, Port} = attrib_utils:get_value(Config, port),
+  {ok, ClientId} = attrib_utils:get_value(Config, client_id),
+  {ok, KeepAlive} = attrib_utils:get_value(Config, keep_alive),
   
   % Use OTP standard error_logger, rest of LinkBlox uses this too
   case emqttc:start_link([{host, Host},
