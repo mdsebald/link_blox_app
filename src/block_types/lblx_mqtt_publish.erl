@@ -144,6 +144,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
   {ok, ClientId} = attrib_utils:get_value(Config, client_id),
   {ok, KeepAlive} = attrib_utils:get_value(Config, keep_alive),
   
+  io:format("Host: ~p Port: ~p ClientId ~p KeepAlive ~p~n", [Host, Port, ClientId, KeepAlive]),
+
   % Use OTP standard error_logger, rest of LinkBlox uses this too
   case emqttc:start_link([{host, Host},
                           {port, Port},
