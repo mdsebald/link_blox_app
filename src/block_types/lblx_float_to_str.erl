@@ -13,10 +13,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([group/0, description/0, version/0]).
+-export([groups/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
 
-group() -> [string, conversion].
+groups() -> [string, conversion].
 
 description() -> "Convert floating point value to a string".
 
