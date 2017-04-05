@@ -237,7 +237,10 @@ strings_map() -> #{
   unlink_input_linked_block_does_not_exist => "unlink_input(): Linked Block: ~p Does not exist.~n",
   unlink_input_linked_node_block_does_not_exist => "unlink_input(): Linked Block: ~p:~p Does not exist.~n",
   unable_to_connect_to_node => "Unable to connect to node: ~p~n",
-  err_unrecognized_link => "Error: unrecognized link: ~p~n"
+  err_unrecognized_link => "Error: unrecognized link: ~p~n",
+
+  started_MQTT_client => "Started MQTT client~n",
+  err_starting_MQTT_client => "Error: ~p starting MQTT client~n"
 
 }.
  
