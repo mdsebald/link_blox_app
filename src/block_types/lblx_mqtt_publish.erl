@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {host, {"localhost"}},
+      {host, {"broker.hivemq.com"}},  % test MQTT broker, should already be running
       {port, {1883}},
       {client_id, {"LinkBloxClientId"}},
       {clean_session, {true}},
@@ -144,7 +144,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   {ok, ClientId} = attrib_utils:get_value(Config, client_id),
   {ok, KeepAlive} = attrib_utils:get_value(Config, keep_alive),
   
-  io:format("Host: ~p Port: ~p ClientId ~p KeepAlive ~p~n", [Host, Port, ClientId, KeepAlive]),
+  Private1 = attrib_utils:add_attribute(Private, {client, {empty}}),
 
   % Use OTP standard error_logger, rest of LinkBlox uses this too
   case emqttc:start_link([{host, Host},
@@ -154,17 +154,17 @@ initialize({Config, Inputs, Outputs, Private}) ->
                           {logger, {error_logger, all}}]) of
     {ok, Client} ->
       log_server:info(started_MQTT_client),
-      {ok, Private1} = attrib_utils:set_value(Private, client, Client);
+      {ok, Private2} = attrib_utils:set_value(Private1, client, Client);
 
     {error, Reason} ->
       log_server:error(err_starting_MQTT_client, [Reason]),
-      Private1 = Private
+      Private2 = Private1
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, not_active, initialed),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%
