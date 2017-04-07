@@ -23,7 +23,9 @@
           warning/1,
           warning/2,
           info/1,
-          info/2
+          info/2,
+          debug/1,
+          debug/2
 ]).
 
 % TODO: Add calls to configure logging, i.e. to file, turn off tty, etc
@@ -40,14 +42,14 @@ start(LangMod) ->
 %%
 %% Log error messages
 %%
--spec error(LogMsgId :: atom()) -> ok | {error, atom()}.
+-spec error(LogMsgId :: atom()) -> ok.
 
 error(LogMsgId) ->
   gen_server:cast(?MODULE, {error, LogMsgId}).
 
 
 -spec error(LogMsgId :: atom(),
-            Args :: list(term())) -> ok | {error, atom()}.
+            Args :: list(term())) -> ok.
 
 error(LogMsgId, Args) ->
   gen_server:cast(?MODULE, {error, LogMsgId, Args}).
@@ -56,14 +58,14 @@ error(LogMsgId, Args) ->
 %%
 %% Log warning messages
 %%
--spec warning(LogMsgId :: atom()) -> ok | {error, atom()}.
+-spec warning(LogMsgId :: atom()) -> ok.
 
 warning(LogMsgId) ->
   gen_server:cast(?MODULE, {warning, LogMsgId}).
 
 
 -spec warning(LogMsgId :: atom(),
-              Args :: list(term())) -> ok | {error, atom()}.
+              Args :: list(term())) -> ok.
 
 warning(LogMsgId, Args) ->
   gen_server:cast(?MODULE, {warning, LogMsgId, Args}).
@@ -72,18 +74,33 @@ warning(LogMsgId, Args) ->
 %%
 %% Log info messages
 %%
--spec info(LogMsgId :: atom()) -> ok | {error, atom()}.
+-spec info(LogMsgId :: atom()) -> ok.
 
 info(LogMsgId) ->
   gen_server:cast(?MODULE, {info, LogMsgId}).
 
 
 -spec info(LogMsgId :: atom(),
-           Args :: list(term())) -> ok | {error, atom()}.
+           Args :: list(term())) -> ok.
 
 info(LogMsgId, Args) ->
   gen_server:cast(?MODULE, {info, LogMsgId, Args}).
 
+%%
+%% Log debug messages
+%% For debugging purposes, don't use string map, just pass in string
+%%
+-spec debug(LogMsg :: string()) -> ok.
+
+debug(LogMsg) ->
+  gen_server:cast(?MODULE, {debug, LogMsg}).
+
+
+-spec debug(LogMsg :: string(),
+            Args :: list(term())) -> ok.
+
+debug(LogMsg, Args) ->
+  gen_server:cast(?MODULE, {debug, LogMsg, Args}).
 
 
 %% ====================================================================
@@ -176,6 +193,17 @@ handle_cast({info, StringId, Args}, StringsMap) ->
   String = get_string(StringId, StringsMap),
   error_logger:info_msg(String, Args),
   {noreply, StringsMap};
+
+% Prefix string with "[debug] " to differentiate from info messages
+handle_cast({debug, String}, StringsMap) ->
+  error_logger:info_msg("[debug] " ++ String),
+  {noreply, StringsMap};
+
+handle_cast({debug, String, Args}, StringsMap) ->
+  DebugString = "[debug] " ++ String,
+  error_logger:info_msg(DebugString, Args),
+  {noreply, StringsMap};
+
 
 handle_cast(Msg, StringsMap) ->
   String = get_string(unknown_log_server_cast_msg, StringsMap),
