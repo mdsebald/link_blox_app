@@ -315,7 +315,7 @@ get_client_id({Config, Options}) ->
 get_clean_sess({Config, Options}) -> 
   case config_utils:get_boolean(Config, clean_sess) of
     {ok, CleanSess} -> 
-      {Config, [{clean_sess, CleanSess}]};
+      {Config, [{clean_sess, CleanSess} | Options]};
     {error, Reason} ->
       config_utils:log_error(Config, clean_sess, Reason),
       {Config, Options}
@@ -353,8 +353,11 @@ get_proto_ver({Config, Options}) ->
 
 get_username({Config, Options}) -> 
   case get_string_config(Config, username) of
-    {ok, Username} -> {Config, [{username, Username} | Options]};
-                 _ -> {Config, Options}
+    {ok, Username} -> 
+      UsernameBin = list_to_binary(Username),
+      {Config, [{username, UsernameBin} | Options]};
+    _ -> 
+      {Config, Options}
   end.
 
 %
@@ -365,8 +368,11 @@ get_username({Config, Options}) ->
 
 get_password({Config, Options}) ->
  case get_string_config(Config, password) of
-    {ok, Password} -> {Config, [{password, Password} | Options]};
-                 _ -> {Config, Options}
+    {ok, Password} -> 
+      PasswordBin = list_to_binary(Password),
+      {Config, [{password, PasswordBin} | Options]};
+    _ -> 
+      {Config, Options}
   end.
 
 %
