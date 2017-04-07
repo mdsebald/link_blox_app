@@ -431,7 +431,7 @@ config_pubs(Config, Inputs) ->
 
       % Create publish topic config values, 
       % one topic string for each published input value 
-      Config1 = config_utils:resize_attribute_array_value(BlockName, Config, 
+      Config1 = config_utils:resize_attribute_array_value(Config, 
                                       pub_topics, NumOfPubs, {"PubTopic"}),
       % Create publish inputs
       Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
