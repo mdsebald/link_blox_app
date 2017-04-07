@@ -221,7 +221,7 @@ get_string(Config, ValueId) ->
                ValueId :: value_id()) -> string_config_value().
 
 get_atom(Config, ValueId) ->
-  CheckType = fun block_utils:is_atom/1,  
+  CheckType = fun is_atom/1,  
   get_value(Config, ValueId, CheckType).
 
 
