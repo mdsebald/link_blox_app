@@ -41,6 +41,7 @@ is_block(BlockName)->
 %%
 -spec is_string(List :: list()) -> boolean().
 
+is_string([]) -> true;
 is_string(List) when is_list(List) -> lists:all(fun isprint/1, List);
 is_string(_) -> false.
 
