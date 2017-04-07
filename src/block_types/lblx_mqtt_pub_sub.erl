@@ -456,7 +456,7 @@ config_subs(Config, Outputs) ->
       BlockName = config_utils:name(Config),
       % Create subscribe topic config values, 
       % one topic string for each subscribed output value 
-      Config1 = config_utils:resize_attribute_array_value(BlockName, Config, 
+      Config1 = config_utils:resize_attribute_array_value(Config, 
                                       sub_topics, NumOfSubs, {"SubTopic"}),
       % Create subscribe outputs
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
