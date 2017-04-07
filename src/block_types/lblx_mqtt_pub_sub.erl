@@ -42,7 +42,7 @@ default_configs(BlockName, Description) ->
       {proto_ver, {4}},
       {username, {""}},
       {password, {""}},
-      {logger, {none}}, % logging level, for debug purposes 
+      {logger, {all}}, % logging level, for debug purposes 
                          % valid values: all, debug, info, warning, error, critical, none
       {num_of_pubs, {1}},
       {pub_topics, [{""}]},
@@ -242,15 +242,15 @@ delete({Config, Inputs, Outputs, Private}) ->
 
 get_options(Config) ->
   GetFuns = [
-    fun get_host/1,
-    fun get_port/1,
-    fun get_client_id/1,
-    fun get_clean_sess/1,
-    fun get_keepalive/1,
-    fun get_proto_ver/1,
-    fun get_username/1,
+    fun get_logger/1,
     fun get_password/1,
-    fun get_logger/1],
+    fun get_username/1, 
+    fun get_proto_ver/1,
+    fun get_keepalive/1,
+    fun get_clean_sess/1,
+    fun get_client_id/1,
+    fun get_port/1,
+    fun get_host/1],
 
   build_opts(GetFuns, {Config, []}).
 
@@ -258,6 +258,7 @@ get_options(Config) ->
 % Use the Chain pattern to build list of options for MQTT client
 %
 build_opts([], {_Config, Options}) ->
+  log_server:debug("MQTT client options: ~p", [Options]),
   Options;
 
 build_opts([Fun | Funs], {Config, Options}) ->
@@ -392,7 +393,7 @@ get_logger({Config, Options}) ->
 get_string_config(Config, ValueName) ->
   case config_utils:get_string(Config, ValueName) of
     {ok, Value} ->
-      case length(Value) > 0 of
+      case string:len(Value) > 0 of
         true ->  {ok, Value};
         false -> {error, empty} % Call it an error so we don't try an set an empty option value
       end;
