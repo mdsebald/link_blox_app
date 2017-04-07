@@ -240,7 +240,9 @@ strings_map() -> #{
   err_unrecognized_link => "Error: unrecognized link: ~p~n",
 
   started_MQTT_client => "Started MQTT client~n",
-  err_starting_MQTT_client => "Error: ~p starting MQTT client~n"
+  err_starting_MQTT_client => "Error: ~p starting MQTT client~n",
+  err_configuring_pub_inputs => "Error: ~p configuring pub inputs~n",
+  err_configuring_sub_outputs => "Error: ~p configuring sub outputs~n"
 
 }.
  

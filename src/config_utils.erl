@@ -17,12 +17,14 @@
           module/1, 
           name_module/1, 
           name_module_version/1,
-          get_any_type/2, 
+          get_any_type/2,
+          get_integer_range/4,
+          get_pos_integer/2,
           get_integer/2, 
-          get_integer_range/4, 
           get_float/2, 
           get_boolean/2,
           get_string/2,
+          get_atom/2,
           get_value/3, 
           resize_attribute_array_value/4,
           log_error/3
@@ -116,6 +118,7 @@ name_module_version(Config) ->
   {ok, Version} = attrib_utils:get_value(Config, version),
   {BlockName, BlockModule, Version}.
 
+
 %%
 %% Get configuration value of any type and check for errors.
 %%
@@ -126,6 +129,7 @@ get_any_type(Config, ValueId) ->
   % Return true for every value
   CheckType = fun(_Value) -> true end,
   get_value(Config, ValueId, CheckType).
+
 
 %%
 %% Get an integer configuration value and check for errors.
@@ -147,7 +151,27 @@ get_integer_range(Config, ValueId, Min, Max) ->
         {ok, Value}
       end
   end.
-       
+
+
+%%
+%% Get a a postitive (1...) integer configuration value and check for errors.
+%%
+-spec get_pos_integer(Config :: list(config_attr()), 
+                      ValueId :: value_id()) -> integer_config_value().
+
+get_pos_integer(Config, ValueId) ->
+  CheckType = fun is_integer/1,
+  case get_value(Config, ValueId, CheckType) of
+    {error, Reason} -> 
+      {error, Reason};
+    {ok, Value} ->
+      if (Value < 1 ) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
+
 
 -spec get_integer(Config :: list(config_attr()), 
                   ValueId :: value_id()) -> integer_config_value().
@@ -188,6 +212,18 @@ get_boolean(Config, ValueId) ->
 get_string(Config, ValueId) ->
   CheckType = fun block_utils:is_string/1,  
   get_value(Config, ValueId, CheckType).
+
+
+%%
+%% Get an atom configuration value and check for errors
+%%
+-spec get_atom(Config :: list(config_attr()), 
+               ValueId :: value_id()) -> string_config_value().
+
+get_atom(Config, ValueId) ->
+  CheckType = fun block_utils:is_atom/1,  
+  get_value(Config, ValueId, CheckType).
+
 
 
 %%
