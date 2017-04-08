@@ -437,9 +437,11 @@ str_to_value_id(ValueIdStr) ->
 
 value_id_to_str(ValueId) ->
   case ValueId of
-    {ValueName, Index} -> io_lib:format("~p[~B]", [ValueName, Index]);
+    {ValueName, Index} ->
+      lists:flatten(io_lib:format("~p[~b]", [ValueName, Index]));
   
-    ValueId -> atom_to_list(ValueId)
+    ValueId -> 
+      atom_to_list(ValueId)
   end.
 
 

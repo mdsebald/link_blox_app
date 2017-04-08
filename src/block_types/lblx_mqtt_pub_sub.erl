@@ -696,7 +696,9 @@ update_sub_values(Config, InitOutputs, [{PubMsgTopic, PubMsgValue} | PubMsgs]) -
                         true ->
                           case SubTopic == PubMsgTopic of
                             true ->
-                              log_server:debug("Topic: ~s Set sub_values[~B] to ~p", [PubMsgTopic, Index, PubMsgValue]),
+                              DebugStr = lists:flatten(io_lib:format("Topic: ~s Set sub_values[~b] to ~p", 
+                                                                       [PubMsgTopic, Index, PubMsgValue])),
+                              log_server:debug(DebugStr),
                               {ok, UpdOutputs} = attrib_utils:set_value(NewOutputs, {sub_values, Index}, PubMsgValue),
                               {UpdOutputs, Index + 1};
                             
