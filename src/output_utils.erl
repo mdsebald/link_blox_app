@@ -20,8 +20,7 @@
           set_array_value/3,
           update_all_outputs/3,
           clear_output_refs/1,
-          resize_attribute_array_value/5,
-          log_error/3
+          resize_attribute_array_value/5
 ]).
 
 
@@ -185,17 +184,19 @@ resize_attribute_array_value(BlockName, Outputs, ArrayValueName, TargQuant, Defa
                                             DefaultValue, DeleteExcess).
 
 
+% TODO: Delete, not used
 %%
 %% Log output value error
 %%
--spec log_error(Config :: list(config_attr()),
-                ValueName :: value_name(),
-                Reason :: atom()) -> ok.
+%-spec log_error(Config :: list(config_attr()),
+%                ValueId :: value_id(),
+%                Reason :: atom()) -> ok.
                   
-log_error(Config, ValueName, Reason) ->
-  BlockName = config_utils:name(Config),
-  log_server:error(err_invalid_output_value, [BlockName, ValueName, Reason]),
-  ok.
+%log_error(Config, ValueId, Reason) ->
+%  BlockName = config_utils:name(Config),
+%  ValueIdStr = attrib_utils:value_id_to_str(ValueId),
+%  log_server:error(err_invalid_output_value, [BlockName, ValueIdStr, Reason]),
+%  ok.
   
   
 %% ====================================================================
@@ -281,16 +282,17 @@ resize_attribute_array_value_increase_test() ->
                          
   ?assertEqual(ExpectedResult, Result).
 
+% TODO: Delete not used
 % ====================================================================
 % Test log_error()
 %     
-log_error_test() ->
-  Config = test_data:output_utils_config_attribs1(),
+%log_error_test() ->
+%  Config = test_data:output_utils_config_attribs1(),
   
-  ExpectedResult =  ok,
+%  ExpectedResult =  ok,
   
-  Result = log_error(Config, value_name, bad_value),
-  ?assertEqual(ExpectedResult, Result) .
+%  Result = log_error(Config, value_name, bad_value),
+%  ?assertEqual(ExpectedResult, Result) .
 % ====================================================================
 
 -endif.

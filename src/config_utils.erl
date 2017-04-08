@@ -283,12 +283,13 @@ resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
 %% Log config value error
 %%
 -spec log_error(Config :: list(),
-                ValueName :: atom(),
+                ValueId :: value_id(),
                 Reason :: atom()) -> {not_active, config_err}.
                   
-log_error(Config, ValueName, Reason) ->
+log_error(Config, ValueId, Reason) ->
   BlockName = name(Config),
-  log_server:error(err_invalid_config_value, [BlockName, ValueName, Reason]),
+  ValueIdStr = attrib_utils:value_id_to_str(ValueId),
+  log_server:error(err_invalid_config_value, [BlockName, ValueIdStr, Reason]),
   {not_active, config_err}.
   
   

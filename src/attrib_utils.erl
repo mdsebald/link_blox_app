@@ -27,7 +27,10 @@
           resize_attribute_array_value/4, 
           resize_attribute_array_value/5,
           replace_array_value/3,
-          str_to_value_id/1
+          str_to_value_id/1,
+          value_id_to_str/1,
+          log_error/3,
+          log_error/4
 ]).
 
 
@@ -424,6 +427,46 @@ str_to_value_id(ValueIdStr) ->
     {ok, list_to_atom(ValueIdStr)}
   end.
 
+
+%%
+%% Convert a value ID into a string
+%%    num_of_inputs => "num_of_inputs"
+%%    {inputs, 1} => "inputs[1]"
+%%
+-spec value_id_to_str(ValueId :: value_id()) -> string().
+
+value_id_to_str(ValueId) ->
+  case ValueId of
+    {ValueName, Index} -> io:lib("~p[~B]", ValueName, Index);
+  
+    ValueName -> atom_to_list(ValueName)
+  end.
+
+
+%%
+%% Log value error
+%%
+-spec log_error(Config :: list(config_attr()),
+                ValueId :: value_id(),
+                Reason :: atom()) -> ok.
+                  
+log_error(Config, ValueId, Reason) ->
+  BlockName = config_utils:name(Config),
+  ValueIdStr = value_id_to_str(ValueId),
+  log_server:error(err_invalid_reason, [BlockName, ValueIdStr, Reason]).
+
+
+-spec log_error(Config :: list(config_attr()),
+                ValueId :: value_id(),
+                Reason :: atom(),
+                Value :: term()) -> ok.
+                  
+log_error(Config, ValueId, Reason, Value) ->
+  BlockName = config_utils:name(Config),
+  ValueIdStr = value_id_to_str(ValueId),
+  log_server:error(err_invalid_reason_value, [BlockName, ValueIdStr, Reason, Value]).
+
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
@@ -705,6 +748,25 @@ str_to_value_id_valuename_array_invalid4_test() ->
   Result = str_to_value_id("bad_array[12.34]"),
   ExpectedResult = {error, invalid},
   ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
+
+% ====================================================================
+% Test value_id_to_str())
+
+% Test non-array value id
+value_id_to_str_non_array_test() ->
+  Result = value_id_to_str(num_of_inputs),
+  ExpectedResult = "num_of_inputs",
+  ?assertEqual(ExpectedResult, Result).
+
+% Test array value id
+value_id_to_str_array_test() ->
+  Result = value_id_to_str({inputs, 11}),
+  ExpectedResult = "inputs[11]",
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
 
 
 -endif.

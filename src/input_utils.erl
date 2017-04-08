@@ -207,12 +207,13 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
 %% Log input value error
 %%
 -spec log_error(Config :: list(config_attr()),
-                ValueName :: value_name(),
+                ValueId :: value_id(),
                 Reason :: atom()) -> {not_active, input_err}.
                   
-log_error(Config, ValueName, Reason) ->
+log_error(Config, ValueId, Reason) ->
   BlockName = config_utils:name(Config),
-  log_server:error(err_invalid_input_value, [BlockName, ValueName, Reason]),
+  ValueIdStr = attrib_utils:value_id_to_str(ValueId),
+  log_server:error(err_invalid_input_value, [BlockName, ValueIdStr, Reason]),
   {not_active, input_err}.
   
   
