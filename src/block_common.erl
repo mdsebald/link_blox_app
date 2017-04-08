@@ -231,7 +231,11 @@ ok_to_execute(BlockStatus, ExecMethod) ->
     % i.e. execute if BlockStatus a member of this list
     input_cos ->
       lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]);
- 
+    
+    % If block received a message from a subsystem, execute the block if in one of these states:
+    message ->
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]);
+
     _ ->
       % For any other execution method, don't execute if BlockStatus is a member of this list
       not lists:member(BlockStatus, [input_err, config_err, proc_err, no_input])

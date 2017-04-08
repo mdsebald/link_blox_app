@@ -41,7 +41,7 @@
 -type type_name() :: atom().
 
 -type attr_value() :: config_value() | input_value() | output_value().
--type attr_value_array() ::  config_value_array() | input_value_array() | output_value_array().
+-type attr_value_array() ::  config_value_array() | input_value_array() | output_value_array() | private_value_array().
 
 -type config_value_array() :: list(config_value()).
 -type config_value() :: {value()}.
@@ -122,8 +122,9 @@
 %%              a block that has been executed.  (i.e. Control Flow)
 %%  hardware:   Block is connected to HW that can trigger execution
 %%              i.e. GPIO interrupt
+%%  message:    Block has received a message from a subsystem, 
 
--type exec_method() :: manual | input_cos | timer | exec_out | hardware.
+-type exec_method() :: manual | input_cos | timer | exec_out | hardware | message.
    
    
 %%
@@ -151,4 +152,5 @@
 %% A block type can be assigned to more than one group
 %%
 
--type type_group() :: none | math | logic | string | conversion | control | input | output | sensor | actuator | composite. 
+-type type_group() :: none | math | logic | string | conversion | control | input | output | 
+                      digital | analog | sensor | actuator | composite | i2c | spi | gpio. 

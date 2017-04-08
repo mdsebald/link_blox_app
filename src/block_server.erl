@@ -427,6 +427,7 @@ handle_cast(Msg, BlockValues) ->
   {noreply, BlockValues}.
 
 
+%% ====================================================================
 %% handle_info/2
 %% ====================================================================
 %% @doc <a href="http://www.erlang.org/doc/man/gen_server.html#Module:handle_info-2">gen_server:handle_info/2</a>
@@ -445,8 +446,8 @@ handle_cast(Msg, BlockValues) ->
 %% Execute the block connected to this interrupt
 %% =====================================================================
 
-handle_info({gpio_interrupt, _Pin, _Condition}, BlockValues) ->
-  % log_server:info(got_interrupt_from_pin, [Condition, Pin]),
+handle_info({gpio_interrupt, Pin, Condition}, BlockValues) ->
+  log_server:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
   NewBlockValues = block_common:execute(BlockValues, hardware),
   {noreply, NewBlockValues};
 
@@ -469,46 +470,58 @@ handle_info(timer_execute, BlockValues) ->
 %% MQTT Publish message from a subscribed to Topic.
 %% =====================================================================
 handle_info({publish, Topic, Payload}, BlockValues) ->
-    log_server:info(message_from, [Topic, Payload]),
-    {Config, Inputs, Outputs, Private} = BlockValues,
-    case attrib_utils:set_values(Outputs, [{topic_pub, Topic}, {value, Payload}]) of
-      {ok, NewOutputs} ->
-        NewBlockValues = {Config, Inputs, NewOutputs, Private};
+  {Config, Inputs, Outputs, Private} = BlockValues,
+  BlkName = config_utils:name(Config),
+  log_server:debug("Block: ~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
+                      [BlkName, Topic, Payload]),
 
-      {error, Reason} ->
-        log_server:error(err_parsing_publish_message_from_MQTT_broker, [Reason]),
-        NewBlockValues = BlockValues
-    end,
-    {noreply, NewBlockValues};
+  % Add the message topic and payload to the front of the list of pub messages,
+  % and execute the block
+  case attrib_utils:get_value(Private, pub_msgs) of
+    {ok, PubMsgs} ->
+      {ok, Private1} = attrib_utils:set_value(Private, pub_msgs, [{Topic, Payload} | PubMsgs]),
+      NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+    {error, Reason} ->
+      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlkName]),
+      NewBlockValues = BlockValues
+  end,
+  {noreply, NewBlockValues};
 
 %% =====================================================================
 %% MQTT Client connected message
 %% =====================================================================
-handle_info({mqttc, Client, connected}, BlockValues) ->
-    log_server:info(mqtt_client_is_connected, [Client]),
-    {Config, Inputs, Outputs, Private} = BlockValues,
-    case attrib_utils:set_value(Outputs, connected, true) of
-      {ok, NewOutputs} ->
-        NewBlockValues = {Config, Inputs, NewOutputs, Private};
+handle_info({mqttc, _Client, connected}, BlockValues) ->
+  {Config, Inputs, Outputs, Private} = BlockValues,
+  BlkName = config_utils:name(Config),
+  log_server:info(block_is_connected_to_MQTT_broker, [BlkName]),
 
-      {error, Reason} ->
-        log_server:error(err_updating_output_on_MQTT_broker_connect_msg, [Reason]),
-        NewBlockValues = BlockValues
-    end,
-    {noreply, NewBlockValues};
+  % Update the connection state in the block values and execute the block
+  case attrib_utils:set_value(Private, conn_state, true) of
+    {ok, Private1} ->
+      NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+    {error, Reason} ->
+      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlkName]),
+      NewBlockValues = BlockValues
+  end,
+  {noreply, NewBlockValues};
 
 %% =====================================================================
 %% MQTT Client disconnected message
 %% =====================================================================
-handle_info({mqttc, Client,  disconnected}, BlockValues) ->
-    log_server:info(mqtt_client_is_disconnected, [Client]),
+handle_info({mqttc, _Client,  disconnected}, BlockValues) ->
     {Config, Inputs, Outputs, Private} = BlockValues,
-    case attrib_utils:set_values(Outputs, [{connected, false}, {value, not_active}]) of
-      {ok, NewOutputs} ->
-        NewBlockValues = {Config, Inputs, NewOutputs, Private};
+    BlkName = config_utils:name(Config),
+    log_server:info(block_is_disconnected_from_MQTT_broker, [BlkName]),
+    
+    % Update the connection state in the block values, and execute the block
+    case attrib_utils:set_value(Private, conn_state, false) of
+      {ok, Private1} ->
+        NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
       {error, Reason} ->
-        log_server:error(err_updating_outputs_on_MQTT_broker_disconnect_msg, [Reason]),
+        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlkName]),
         NewBlockValues = BlockValues
     end,
     {noreply, NewBlockValues};
