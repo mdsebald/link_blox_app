@@ -437,7 +437,7 @@ str_to_value_id(ValueIdStr) ->
 
 value_id_to_str(ValueId) ->
   case ValueId of
-    {ValueName, Index} -> io:lib("~p[~B]", ValueName, Index);
+    {ValueName, Index} -> io_lib:format("~p[~B]", ValueName, Index);
   
     ValueName -> atom_to_list(ValueName)
   end.
