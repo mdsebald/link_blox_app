@@ -147,9 +147,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
   
   % Create private attributes
   Private1 = attrib_utils:merge_attribute_lists(Private, 
-                                                [{client, {}}, 
+                                                [{client, {not_active}}, 
                                                  {pub_msgs, {[]}}, 
-                                                 {conn_state, {}}]),
+                                                 {conn_state, {not_active}}]),
   case config_pubs(Config, Inputs) of
     {ok, Config1, Inputs1} ->
 
