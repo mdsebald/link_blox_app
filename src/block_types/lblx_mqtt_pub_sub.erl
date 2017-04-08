@@ -135,6 +135,7 @@ upgrade({Config, Inputs, Outputs}) ->
       {error, Reason}
   end.
 
+% TODO: Add quality of service, and auto reconnect config values
 
 %%
 %% Initialize block values
@@ -144,26 +145,52 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
   
-  Private1 = attrib_utils:add_attribute(Private, {client, {empty}}),
-  
+  % Create private attributes
+  Private1 = attrib_utils:merge_attribute_lists(Private, 
+                                                [{client, {}}, 
+                                                 {pub_msgs, {[]}}, 
+                                                 {conn_state, {}}]),
   case config_pubs(Config, Inputs) of
     {ok, Config1, Inputs1} ->
 
       case config_subs(Config1, Outputs) of
         {ok, Config2, Outputs1} ->
 
-          Options = get_options(Config2),
+          % if host name is missing, this is a config error
+          case config_utils:get_string(Config2, host) of
+            {ok, Host} ->
+              case string:len(Host) > 0 of
+                true ->
+                  Options = get_options(Config2),
+                  case emqttc:start_link(Options) of 
+                    {ok, Client} ->
+                      {ok, Private2} = attrib_utils:set_value(Private1, client, Client),
+                      log_server:info(started_MQTT_client),
+                      Status = initialed,
+                      Value = not_active,
+                      % Subscibe to the sub_topics config values
+                      sub_topics(Config, Client);
 
-          case emqttc:start_link(Options) of
-            {ok, Client} ->
-              log_server:info(started_MQTT_client),
-              Value = not_active, Status = initialed,
-              {ok, Private2} = attrib_utils:set_value(Private1, client, Client);
+                    {error, Reason} ->
+                      log_server:error(err_starting_MQTT_client, [Reason]),
+                      Status = proc_err,
+                      Value = not_active,
+                      Private2 = Private1
+                  end;
+
+                false ->
+                  % Host config value is empty
+                  {Value, Status} = config_utils:log_error(Config, host, empty),
+                  Config2 = Config1,
+                  Outputs1 = Outputs,
+                  Private2 = Private1
+              end;
 
             {error, Reason} ->
-              log_server:error(err_starting_MQTT_client, [Reason]),
-              Status = proc_err,
-              Value = not_active,
+              % Error reading host config value
+              {Value, Status} = config_utils:log_error(Config, host, Reason),
+              Config2 = Config1,
+              Outputs1 = Outputs,
               Private2 = Private1
           end;
 
@@ -199,12 +226,28 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  % Output updated in block server module?
-  Outputs1 = Outputs,
-  Private1 = Private,
+  {ok, Client} = attrib_utils:get_value(Private, client),
 
+  % Update connected status
+  case attrib_utils:get_value(Private, conn_state) of
+    {ok, true} ->
+      {ok, Outputs1} = attrib_utils:set_value(Outputs, connected, true),
+      % Read inputs, publish values to corresponding topics
+      pub_topics(Config, Inputs, Client);
+    
+    {ok, false} ->
+      {ok, Outputs1} = attrib_utils:set_value(Outputs, connected, false);
+      % Don't bother publishing input values, if disconnected.
+
+    _ ->
+      {ok, Outputs1} = attrib_utils:set_value(Outputs, connected, not_active)
+  end,
+
+  % Read received publish messages and update subscribed output values
+  {Outputs2, Private1} = process_pub_msgs(Config, Outputs1, Private),
+  
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs2, Private1}.
 
 
 %% 
@@ -213,9 +256,15 @@ execute({Config, Inputs, Outputs, Private}) ->
 -spec delete(BlockValues :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) ->
-  % Unsubscribe from each subscription first
+  % If MQTT client has been started
+  % Unsubscribe from each subscription and then disconnect from MQTT client
   {ok, Client} = attrib_utils:get_value(Private, client),
-  emqttc:disconnect(Client),
+  case is_pid(Client) of
+    true ->
+      unsub_topics(Config, Client),
+      emqttc:disconnect(Client);
+    false -> ok 
+  end,
   {Config, Inputs, Outputs}.
 
 
@@ -424,7 +473,6 @@ get_pos_int_config(Config, ValueName) ->
       {error, Reason}
   end.
 
-
 %
 % Configure quantity of publish topics and inputs
 %
@@ -439,10 +487,10 @@ config_pubs(Config, Inputs) ->
       % Create publish topic config values, 
       % one topic string for each published input value 
       Config1 = config_utils:resize_attribute_array_value(Config, 
-                                      pub_topics, NumOfPubs, {"PubTopic"}),
+                                                 pub_topics, NumOfPubs, {""}),
       % Create publish inputs
       Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  pub_inputs, NumOfPubs, {empty, ?EMPTY_LINK}),
+                                                 pub_inputs, NumOfPubs, {empty, ?EMPTY_LINK}),
       % Return updated Config and Inputs attributes
       {ok, Config1, Inputs1};
 
@@ -464,10 +512,10 @@ config_subs(Config, Outputs) ->
       % Create subscribe topic config values, 
       % one topic string for each subscribed output value 
       Config1 = config_utils:resize_attribute_array_value(Config, 
-                                      sub_topics, NumOfSubs, {"SubTopic"}),
+                                                  sub_topics, NumOfSubs, {""}),
       % Create subscribe outputs
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                  sub_outputs, NumOfSubs, {not_active, []}),
+                                                  sub_outputs, NumOfSubs, {not_active, []}),
       % Return updated Config and Outputs attributes
       {ok, Config1, Outputs1};
     
@@ -475,6 +523,195 @@ config_subs(Config, Outputs) ->
       config_utils:log_error(Config, num_of_subs, Reason),
       {error, Reason}
   end.
+
+%
+% Publish pub_inputs values to the topics in the pub_topics config values
+%
+-spec pub_topics(Config :: list(config_attr()), 
+                 Inputs :: list(input_attr()),
+                 Client :: pid()) -> ok.
+
+pub_topics(Config, Inputs, Client) ->
+  PubTopicsValues = get_pub_topics_values(Config, Inputs),
+
+  % For each pub_topic config and pub input value pair, 
+  % send a publish message to the MQTT client
+  % PubTopicsValues is of the form: [{<<"TopicA">>,<<"TopicAValue">>}, ...]
+
+  lists:foreach(fun({PubTopicBin, PubValueBin}) -> 
+                     log_server:debug("MQTT Client: ~p publishing value: ~p  to topic: ~p", [Client, PubValueBin, PubTopicBin]),
+                     emqttc:publish(Client, PubTopicBin, PubValueBin)
+                     end, PubTopicsValues). 
+
+%
+% Get a list of Topics and Input Values to publish
+%
+-spec get_pub_topics_values(Config :: list(config_attr()),
+                            Inputs :: list(input_attr())) -> list(tuple()).
+
+get_pub_topics_values(Config, Inputs) ->
+  {ok, NumOfPubs} = config_utils:get_pos_integer(Config, num_of_pubs),
+  get_pub_topics_values(Config, Inputs, NumOfPubs, []).
+
+get_pub_topics_values(_Config, _Inputs, 0, TopicsValues) ->
+  TopicsValues;
+
+get_pub_topics_values(Config, Inputs, Index, TopicsValues) ->
+  case config_utils:get_string(Config, {pub_topics, Index}) of
+    {ok, PubTopic} ->
+      case string:len(PubTopic) > 0 of
+        true ->
+          case input_utils:get_string(Inputs, {pub_inputs, Index}) of
+            {ok, PubValue} ->
+              case (PubValue /= not_active) andalso (string:len(PubValue) > 0) of
+                true ->
+                  PubTopicBin = list_to_binary(PubTopic),
+                  PubValueBin = list_to_binary(PubValue),
+                  NewTopicsValues = [{PubTopicBin, PubValueBin} | TopicsValues];
+                false ->
+                  % pub input value is zero length string, or not_active
+                  NewTopicsValues = TopicsValues
+              end;
+            {error, Reason} ->
+              % bad pub input[x] value 
+              input_utils:log_error(Config, {pub_inputs, Index}, Reason),
+              NewTopicsValues = TopicsValues
+          end;  
+        false ->
+          % config pub topic zero length string
+          NewTopicsValues = TopicsValues
+      end;
+    {error, Reason} ->
+      % bad config pub topic value
+      config_utils:log_error(Config, {pub_topics, Index}, Reason),
+      NewTopicsValues = TopicsValues
+  end,
+  get_pub_topics_values(Config, Inputs, Index-1, NewTopicsValues).
+
+%
+% Subscribe to the topics in the config values
+%
+-spec sub_topics(Config :: list(config_attr()), 
+                 Client :: pid()) -> ok.
+
+sub_topics(Config, Client) ->
+  % for each sub_topic value, send a subscribe message to MQTT client
+  % Get the whole array of sub_topics config values at once
+  % SubTopics is of the form: [{"Topic1"}, {"Topic2"}, ...]
+  case attrib_utils:get_attribute(Config, sub_topics) of
+    {ok, {sub_topics, SubTopics}} ->
+      lists:foreach(fun({SubTopic}) -> 
+                      case block_utils:is_string(SubTopic) andalso (string:len(SubTopic) > 0) of
+                        true ->
+                          SubTopicBin = list_to_binary(SubTopic),
+                          log_server:debug("MQTT Client: ~p subscribing to: ~p", [Client, SubTopicBin]),
+                          emqttc:subscribe(Client, SubTopicBin);
+                        false -> 
+                          ok % nothing to subscribe to
+                      end
+                    end, SubTopics);
+    ErrorValue ->
+      attrib_utils:log_error(Config, sub_topics, invalid, ErrorValue)
+  end,
+  ok.
+
+%
+% Unsubscribe to the topics in the sub_topics config values 
+%
+-spec unsub_topics(Config :: list(config_attr()), 
+                   Client :: pid()) -> ok.
+
+unsub_topics(Config, Client) ->
+  % For each sub_topic value send an unsubscribe message to MQTT client
+  % Get the whole array of sub_topics config values at once
+  % SubTopics is of the form [{"Topic1"}, {"Topic2"}, ...]
+  case attrib_utils:get_attribute(Config, sub_topics) of
+    {ok, {sub_topics, SubTopics}} ->
+      lists:foreach(fun({SubTopic}) -> 
+                      case block_utils:is_string(SubTopic) andalso (string:len(SubTopic) > 0) of
+                        true ->
+                          SubTopicBin = list_to_binary(SubTopic),
+                          log_server:debug("MQTT Client: ~p unsubscribing from: ~p", [Client, SubTopicBin]),
+                          emqttc:unsubscribe(Client, SubTopicBin);
+                        false -> 
+                          ok % nothing to unsubscribe from
+                      end
+                    end, SubTopics);
+    ErrorValue ->
+      attrib_utils:log_error(Config, sub_topics, invalid, ErrorValue)
+  end,
+  ok.
+
+%
+% Process received publish messages, and update coresponding sub_values outputs
+%
+-spec process_pub_msgs(Config :: list(config_attr()),
+                       Outputs :: list(output_attr()),
+                       Private :: list(private_attr())) -> {list(output_attr()), list(private_attr())}.
+
+process_pub_msgs(Config, Outputs, Private) ->
+
+  case attrib_utils:get_value(Private, pub_msgs) of
+    {ok, []} ->
+      % No messages to process
+      {Outputs, Private};
+    
+    {ok, PubMsgs} ->
+      % In case there is more than one pub message with the same topic
+      % Only process the latest one, which will be first in the list
+      DedupedPubMsgs = lists:ukeysort(1, PubMsgs),
+      Outputs1 = update_sub_values(Config, Outputs, DedupedPubMsgs),
+      % Clear pub message list
+      {ok, Private1} = attrib_utils:set_value(Private, pub_msgs, []),
+      {Outputs1, Private1};
+
+    {error, Reason} ->
+      % error reading pub messages, log error and clear 
+      attrib_utils:log_error(Config, pub_msgs, Reason),
+      {ok, Private1} = attrib_utils:set_value(Private, pub_msgs, []),
+      {Outputs, Private1}
+  end.
+
+%
+% Read publish messages and update corresponding sub_values outputs
+%
+-spec update_sub_values(Config :: list(config_attr()), 
+                        Outputs :: list(output_attr()), 
+                        PubMsgs :: list(tuple())) -> list(output_attr()).
+                      
+% When done reading messages, just return updated Output values
+update_sub_values(_Config, Outputs, []) ->
+  Outputs;
+
+update_sub_values(Config, InitOutputs, [{PubMsgTopic, PubMsgValue} | PubMsgs]) ->
+  % get each sub_topic config value and try to match it with the PubMsgTopic.  
+  % The sub_value output with corresponding index will get updated with the PubMsgValue
+  % Get the whole array of sub_topics config values at once
+  % SubTopics is of the form [{"Topic1"}, {"Topic2"}, ...]
+  case attrib_utils:get_attribute(Config, sub_topics) of
+    {ok, {sub_topics, SubTopics}} ->
+      {FinOutputs, _Index} =
+        lists:foldl(fun({SubTopic}, {NewOutputs, Index}) -> 
+                      case block_utils:is_string(SubTopic) andalso (string:len(SubTopic) > 0) of
+                        true ->
+                          case SubTopic == PubMsgTopic of
+                            true ->
+                              log_server:debug("Topic: ~s Set sub_values[~B] to ~p", [PubMsgTopic, Index, PubMsgValue]),
+                              {ok, UpdOutputs} = attrib_utils:set_value(NewOutputs, {sub_values, Index}, PubMsgValue),
+                              {UpdOutputs, Index + 1};
+                            
+                            false -> {NewOutputs, Index + 1}
+                          end;
+                        false -> {NewOutputs, Index + 1}
+                      end
+                    end, 
+                    {InitOutputs, 1}, % Initial Accumulator
+                    SubTopics);
+    ErrorVal ->
+      attrib_utils:log_error(Config, sub_topics, invalid, ErrorVal),
+      FinOutputs = InitOutputs
+  end,
+  update_sub_values(Config, FinOutputs, PubMsgs).
 
 
 %% ====================================================================
