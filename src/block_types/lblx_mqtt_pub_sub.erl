@@ -67,7 +67,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {connected, {not_active, []}},
       {sub_values, [{not_active, []}]}
     ]). 
 
@@ -149,33 +148,54 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Private1 = attrib_utils:merge_attribute_lists(Private, 
                                                 [{client, {not_active}}, 
                                                  {pub_msgs, {[]}}, 
-                                                 {conn_state, {not_active}}]),
+                                                 {conn_state, {not_active}},
+                                                 {subscribed, {false}}]),
   case config_pubs(Config, Inputs) of
     {ok, Config1, Inputs1} ->
 
       case config_subs(Config1, Outputs) of
         {ok, Config2, Outputs1} ->
 
-          % if host name is missing, this is a config error
+          % if host name config is invalid, or zero length, this is a config error
           case config_utils:get_string(Config2, host) of
             {ok, Host} ->
               case string:len(Host) > 0 of
                 true ->
-                  Options = get_options(Config2),
-                  case emqttc:start_link(Options) of 
-                    {ok, Client} ->
-                      {ok, Private2} = attrib_utils:set_value(Private1, client, Client),
-                      log_server:info(started_MQTT_client),
+
+                  case input_utils:get_boolean(Inputs, disable) of
+                    {ok, false} ->
+                      % block is already enabled, start MQTT client
+                      Options = get_options(Config2),
+                      case emqttc:start_link(Options) of 
+                        {ok, Client} ->
+                          {ok, Private2} = attrib_utils:set_value(Private1, client, Client),
+                          log_server:info(started_MQTT_client),
+                          Status = initialed,
+                          Value = not_active;
+
+                        {error, Reason} ->
+                          log_server:error(err_starting_MQTT_client, [Reason]),
+                          Status = proc_err,
+                          Value = not_active,
+                          Private2 = Private1
+                      end;
+
+                    {ok, true} ->
+                      % block is currently disabled, don't start MQTT client
                       Status = initialed,
                       Value = not_active,
-                      % Subscibe to the sub_topics config values
-                      sub_topics(Config, Client);
-
+                      Config2 = Config1,
+                      Outputs1 = Outputs,
+                      Private2 = Private1;
+                    
                     {error, Reason} ->
-                      log_server:error(err_starting_MQTT_client, [Reason]),
-                      Status = proc_err,
+                      % Bad disable input value
+                      Status = input_err,
                       Value = not_active,
-                      Private2 = Private1
+                      Config2 = Config1,
+                      Outputs1 = Outputs,
+                      Private2 = Private1,
+                      input_utils:log_error(Config, disable, Reason)
                   end;
 
                 false ->
@@ -226,28 +246,65 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}) ->
 
-  {ok, Client} = attrib_utils:get_value(Private, client),
+  % Block is enabled at this point, 
+  % Start MQTT client if not already started
+  case attrib_utils:get_value(Private, client) of
+    {ok, not_active} ->
+      Options = get_options(Config),
+      case emqttc:start_link(Options) of 
+        {ok, Client} ->
+          {ok, Private1} = attrib_utils:set_value(Private, client, Client),
+          log_server:info(started_MQTT_client),
+          % Update the status and main output
+          Outputs1 = output_utils:set_value_status(Outputs, not_active, normal),
+          % Return updated block state
+          {Config, Inputs, Outputs1, Private1};
 
-  % Update connected status
-  case attrib_utils:get_value(Private, conn_state) of
-    {ok, true} ->
-      {ok, Outputs1} = attrib_utils:set_value(Outputs, connected, true),
-      % Read inputs, publish values to corresponding topics
-      pub_topics(Config, Inputs, Client);
+        {error, Reason} ->
+          log_server:error(err_starting_MQTT_client, [Reason]),
+          % Update the status and main output
+          Outputs1 = output_utils:set_value_status(Outputs, not_active, proc_err),
+          % Return updated block state
+          {Config, Inputs, Outputs1, Private}
+      end;
+
+    {ok, Client} -> 
+      % MQTT Client already started
+      % Update connected status, 
+      % conn_state is set via messages from MQTT client
+      case attrib_utils:get_value(Private, conn_state) of
+        {ok, true} ->
+          % Subscibe to the sub_topics config values, if not done yet
+          case attrib_utils:get_value(Private, subscribed) of
+            {ok, false} ->
+              sub_topics(Config, Client),
+              Private1 = attrib_utils:set_value(Private, subscribed, true);
+            {ok, true} ->
+              % Already subscribed 
+              Private1 = Private
+          end,
+          % Read inputs, publish values to corresponding topics
+          pub_topics(Config, Inputs, Client),
+
+          % Read received publish messages and update subscribed output values
+          {Outputs1, Private2} = process_pub_msgs(Config, Outputs, Private1),
+
+          % Update the status and main output
+          Outputs2 = output_utils:set_value_status(Outputs1, true, normal),
+          % Return updated block state
+          {Config, Inputs, Outputs2, Private2};
     
-    {ok, false} ->
-      {ok, Outputs1} = attrib_utils:set_value(Outputs, connected, false);
-      % Don't bother publishing input values, if disconnected.
-
-    _ ->
-      {ok, Outputs1} = attrib_utils:set_value(Outputs, connected, not_active)
-  end,
-
-  % Read received publish messages and update subscribed output values
-  {Outputs2, Private1} = process_pub_msgs(Config, Outputs1, Private),
-  
-  % Return updated block state
-  {Config, Inputs, Outputs2, Private1}.
+        {ok, false} ->
+          % Client Disconnected from MQTT broker. Don't bother subcribing or publishing
+          % Reset the subscribed flag, to force resubscribe on next connect
+          Private1 = attrib_utils:set_value(Private, subscribed, false),
+          
+          % Update the status and main output
+          Outputs1 = output_utils:set_value_status(Outputs, false, normal),
+          % Return updated block state
+          {Config, Inputs, Outputs1, Private1}
+      end
+  end.
 
 
 %% 
