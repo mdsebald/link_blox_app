@@ -278,7 +278,7 @@ execute({Config, Inputs, Outputs, Private}) ->
           case attrib_utils:get_value(Private, subscribed) of
             {ok, false} ->
               sub_topics(Config, Client),
-              Private1 = attrib_utils:set_value(Private, subscribed, true);
+              {ok, Private1} = attrib_utils:set_value(Private, subscribed, true);
             {ok, true} ->
               % Already subscribed 
               Private1 = Private
@@ -297,7 +297,7 @@ execute({Config, Inputs, Outputs, Private}) ->
         {ok, false} ->
           % Client Disconnected from MQTT broker. Don't bother subcribing or publishing
           % Reset the subscribed flag, to force resubscribe on next connect
-          Private1 = attrib_utils:set_value(Private, subscribed, false),
+          {ok, Private1} = attrib_utils:set_value(Private, subscribed, false),
           
           % Update the status and main output
           Outputs1 = output_utils:set_value_status(Outputs, false, normal),
