@@ -283,16 +283,36 @@ execute({Config, Inputs, Outputs, Private}) ->
               % Already subscribed 
               Private1 = Private
           end,
-          % Read inputs, publish values to corresponding topics
-          pub_topics(Config, Inputs, Client),
 
-          % Read received publish messages and update subscribed output values
-          {Outputs1, Private2} = process_pub_msgs(Config, Outputs, Private1),
+          case attrib_utils:get_value(Outputs, exec_method) of
+            {ok, input_cos} ->
+              % An input value has changed
+              % Read inputs, publish values to corresponding topics
+              pub_topics(Config, Inputs, Client),
+            
+              % Update the status and main output
+              Outputs1 = output_utils:set_value_status(Outputs, true, normal),
+              % Return updated block state
+              {Config, Inputs, Outputs1, Private1};
 
-          % Update the status and main output
-          Outputs2 = output_utils:set_value_status(Outputs1, true, normal),
-          % Return updated block state
-          {Config, Inputs, Outputs2, Private2};
+
+            {ok, message} ->
+              % Read received publish message(s) if any, and update subscribed output values
+              {Outputs1, Private2} = process_pub_msgs(Config, Outputs, Private1),
+
+              % Update the status and main output
+              Outputs2 = output_utils:set_value_status(Outputs1, true, normal),
+              % Return updated block state
+              {Config, Inputs, Outputs2, Private2};
+            
+            {ok, ExecMethod} ->
+              BlockName = config_utils:name(Config),
+              log_server:debug("Not executing: ~p Exec Method: ~p", [BlockName, ExecMethod]),
+              % Update the status and main output
+              Outputs1 = output_utils:set_value_status(Outputs, true, normal),
+              % Return updated block state
+              {Config, Inputs, Outputs1, Private1}
+          end;
     
         {ok, false} ->
           % Client Disconnected from MQTT broker. Don't bother subcribing or publishing
