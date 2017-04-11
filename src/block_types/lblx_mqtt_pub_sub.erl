@@ -259,6 +259,9 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
         {ok, Client} ->
           {ok, Private1} = attrib_utils:set_value(Private, client, Client),
           log_server:info(started_MQTT_client),
+          % Attempt to publish all input values
+          pub_topics(Config, Inputs, Client),
+
           % Update the status and main output
           Outputs1 = output_utils:set_value_status(Outputs, not_active, normal),
           % Return updated block state
