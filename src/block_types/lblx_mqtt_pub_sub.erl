@@ -162,7 +162,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
               case string:len(Host) > 0 of
                 true ->
 
-                  case input_utils:get_boolean(Inputs, disable) of
+                  case input_utils:get_boolean(Inputs1, disable) of
                     {ok, false} ->
                       % block is already enabled, start MQTT client
                       Options = get_options(Config2),
@@ -184,16 +184,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
                       % block is currently disabled, don't start MQTT client
                       Status = initialed,
                       Value = not_active,
-                      Config2 = Config1,
-                      Outputs1 = Outputs,
                       Private2 = Private1;
                     
                     {error, Reason} ->
                       % Bad disable input value
                       Status = input_err,
                       Value = not_active,
-                      Config2 = Config1,
-                      Outputs1 = Outputs,
                       Private2 = Private1,
                       input_utils:log_error(Config, disable, Reason)
                   end;
@@ -201,16 +197,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 false ->
                   % Host config value is empty
                   {Value, Status} = config_utils:log_error(Config, host, empty),
-                  Config2 = Config1,
-                  Outputs1 = Outputs,
                   Private2 = Private1
               end;
 
             {error, Reason} ->
               % Error reading host config value
               {Value, Status} = config_utils:log_error(Config, host, Reason),
-              Config2 = Config1,
-              Outputs1 = Outputs,
               Private2 = Private1
           end;
 
