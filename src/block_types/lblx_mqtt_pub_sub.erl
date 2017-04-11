@@ -325,7 +325,8 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
               {Config, Inputs, Outputs1, Private1}
           end;
     
-        {ok, false} ->
+        _ConnState ->
+          % ConnState, could be false or not_active, Don't care
           % Client Disconnected from MQTT broker. Don't bother subcribing or publishing
           % Reset the subscribed flag, to force resubscribe on next connect
           {ok, Private1} = attrib_utils:set_value(Private, subscribed, false),
