@@ -337,7 +337,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           % If MQTT client is not running, clear the Client pid to set up to connect again
           case process_info(Client) of
             undefined ->
-              Private2 = attrib_utils:set_value(Private1, client, not_active);
+              {ok, Private2} = attrib_utils:set_value(Private1, client, not_active);
             
             _ProcInfo ->
               Private2 = Private1
