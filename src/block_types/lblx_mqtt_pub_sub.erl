@@ -333,11 +333,20 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           % Client Disconnected from MQTT broker. Don't bother subcribing or publishing
           % Reset the subscribed flag, to force resubscribe on next connect
           {ok, Private1} = attrib_utils:set_value(Private, subscribed, false),
+
+          % If MQTT client is not running, clear the Client pid to set up to connect again
+          case process_info(Client) of
+            undefined ->
+              Private2 = attrib_utils:set_value(Private1, client, not_active);
+            
+            _ProcInfo ->
+              Private2 = Private1
+          end,
           
           % Update the status and main output
           Outputs1 = output_utils:set_value_status(Outputs, false, normal),
           % Return updated block state
-          {Config, Inputs, Outputs1, Private1}
+          {Config, Inputs, Outputs1, Private2}
       end
   end.
 
