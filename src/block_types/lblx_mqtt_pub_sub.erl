@@ -245,7 +245,6 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(block_state()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}) ->
-
   % Block is enabled at this point, 
   % Start MQTT client if not already started
   case attrib_utils:get_value(Private, client) of
@@ -284,8 +283,10 @@ execute({Config, Inputs, Outputs, Private}) ->
               Private1 = Private
           end,
 
+          BlockName = config_utils:name(Config),
           case attrib_utils:get_value(Outputs, exec_method) of
             {ok, input_cos} ->
+              log_server:debug("Executing: ~p Exec Method: ~p", [BlockName, input_cos]),
               % An input value has changed
               % Read inputs, publish values to corresponding topics
               pub_topics(Config, Inputs, Client),
@@ -295,8 +296,8 @@ execute({Config, Inputs, Outputs, Private}) ->
               % Return updated block state
               {Config, Inputs, Outputs1, Private1};
 
-
             {ok, message} ->
+              log_server:debug("Executing: ~p Exec Method: ~p", [BlockName, message]),
               % Read received publish message(s) if any, and update subscribed output values
               {Outputs1, Private2} = process_pub_msgs(Config, Outputs, Private1),
 
@@ -306,7 +307,6 @@ execute({Config, Inputs, Outputs, Private}) ->
               {Config, Inputs, Outputs2, Private2};
             
             {ok, ExecMethod} ->
-              BlockName = config_utils:name(Config),
               log_server:debug("Not executing: ~p Exec Method: ~p", [BlockName, ExecMethod]),
               % Update the status and main output
               Outputs1 = output_utils:set_value_status(Outputs, true, normal),
@@ -767,16 +767,18 @@ update_sub_values(Config, InitOutputs, [{PubMsgTopic, PubMsgValue} | PubMsgs]) -
   % SubTopics is of the form [{"Topic1"}, {"Topic2"}, ...]
   case attrib_utils:get_attribute(Config, sub_topics) of
     {ok, {sub_topics, SubTopics}} ->
+      PubMsgTopicStr = binary_to_list(PubMsgTopic),
+      PubMsgValueStr = binary_to_list(PubMsgValue),
       {FinOutputs, _Index} =
         lists:foldl(fun({SubTopic}, {NewOutputs, Index}) -> 
                       case block_utils:is_string(SubTopic) andalso (string:len(SubTopic) > 0) of
                         true ->
-                          case SubTopic == PubMsgTopic of
+                          case SubTopic == PubMsgTopicStr of
                             true ->
                               DebugStr = lists:flatten(io_lib:format("Topic: ~s Set sub_values[~b] to ~p", 
-                                                                       [PubMsgTopic, Index, PubMsgValue])),
+                                                                       [PubMsgTopicStr, Index, PubMsgValueStr])),
                               log_server:debug(DebugStr),
-                              {ok, UpdOutputs} = attrib_utils:set_value(NewOutputs, {sub_values, Index}, PubMsgValue),
+                              {ok, UpdOutputs} = attrib_utils:set_value(NewOutputs, {sub_values, Index}, PubMsgValueStr),
                               {UpdOutputs, Index + 1};
                             
                             false -> {NewOutputs, Index + 1}
