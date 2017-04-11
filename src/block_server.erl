@@ -218,9 +218,9 @@ handle_call({set_value, ValueId, Value}, _From, BlockValues) ->
         true ->
           case attrib_utils:set_value(Inputs, ValueId, Value) of
             {ok, NewInputs} ->
-              % manually execute the block with updated input value
+              % Block input value changed, execute block with reason 'input_cos'
               NewBlockValues = 
-               block_common:execute({Config, NewInputs, Outputs, Private}, manual),
+               block_common:execute({Config, NewInputs, Outputs, Private}, input_cos),
                Result = ok;
             {error, Reason} ->
               NewBlockValues = BlockValues,
@@ -394,8 +394,7 @@ handle_cast(configure, BlockValues) ->
 handle_cast({reconfigure, NewBlockValues}, BlockValues) ->
   % TODO: Sanity check make sure new block name, type and version 
   % match old block name, type and version/(same major rev)
-  {Config, _Inputs, _Outputs, _Private} = BlockValues,
-  BlockName = config_utils:name(Config), 
+  BlockName = config_utils:name(BlockValues), 
   log_server:info(reconfiguring_block, [BlockName]),
 
   % Replace current state Block values with new values and configure block again
@@ -585,12 +584,10 @@ update_block({Config, NewInputs, Outputs, Private}) ->
   {ok, {exec_in, {_Value, ExecuteLink}}} = attrib_utils:get_attribute(NewInputs, exec_in),
     
   if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
-    NewBlockValues = block_common:execute({Config, NewInputs, Outputs, Private}, 
-                                                input_cos);
+    block_common:execute({Config, NewInputs, Outputs, Private}, input_cos);
 
   true -> % Block will be executed via timer timeout or linked block execution, just return
-    NewBlockValues = {Config, NewInputs, Outputs, Private}
-  end,
-  
-  NewBlockValues.
+    {Config, NewInputs, Outputs, Private}
+  end.
+
   

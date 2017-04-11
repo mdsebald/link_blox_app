@@ -516,7 +516,7 @@ update_linked_input_values(Inputs, TargetLink, NewValue) ->
       case Input of
         % Non-array value
         {ValueName, {_Value, Link}} ->
-          case Link =:= TargetLink of
+          case Link == TargetLink of
             % Matching links, update the input attribute value
             true  -> {ValueName, {NewValue, Link}};
             % Links don't match don't change the input value 
@@ -541,7 +541,7 @@ update_linked_input_values(Inputs, TargetLink, NewValue) ->
 update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
   lists:map(
     fun({Value, Link}) ->
-      case Link =:= TargetLink of
+      case Link == TargetLink of
         % Matching links, update the value
         true  -> {NewValue, Link};
         % Links don't match, don't change the array value

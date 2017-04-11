@@ -515,10 +515,9 @@ delete({Config, Inputs, Outputs, Private}) ->
 
 configure_all_blocks() ->
   BlockNames = block_supervisor:block_names(),
-  Configure = fun(EachBlock) ->
-                block_server:configure(EachBlock)
-              end,
-  lists:foreach(Configure, BlockNames).
+  lists:foreach(fun(BlockName) ->
+                  block_server:configure(BlockName)
+                end, BlockNames).
   
 
 %% ====================================================================
