@@ -88,6 +88,6 @@ start_user_interface(LangMod) ->
   %       system_dir,
   %       Used because we get a nice shell UI experience, 
   %       (i.e command history, line editing, tab completion, etc)
-  ui_ssh_cli:start(1111, LangMod, [{system_dir, "/home/vagrant/ssh_host"}]).
+  ui_ssh_cli:start(1111, LangMod, [{system_dir, "/home/mark/ssh_host"}]).
 
 -endif.

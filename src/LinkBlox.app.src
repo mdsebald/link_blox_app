@@ -6,6 +6,7 @@
   {applications,
    [kernel,
     stdlib,
+    runtime_tools,
     ssh,
     erlang_ale,
     emqttc
