@@ -14,7 +14,7 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
 groups() -> [digital, output].
 
@@ -180,9 +180,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
 %%
 %%  Execute the block specific functionality
 %%
--spec execute(block_state()) -> block_state().
+-spec execute(BlockValues :: block_state(), 
+              ExecMethod :: exec_method()) -> block_state().
 
-execute({Config, Inputs, Outputs, Private}) ->
+execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   
   {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
@@ -272,7 +273,7 @@ block_test() ->
   BlockDefn = create(create_test, "Unit Testing Block"),
   {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState),
+  execute(BlockState, input_cos),
   _BlockDefnFinal = delete(BlockState),
   ?assert(true).
 

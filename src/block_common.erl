@@ -162,7 +162,7 @@ execute(BlockValues, ExecMethod) ->
           {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
           case input_utils:check_boolean_input(Freeze) of
             not_active -> % block is not disabled or frozen, execute it
-              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues),
+              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues, ExecMethod),
               Outputs2 = update_execute_track(Outputs1, ExecMethod);
                     
             active -> % Block is frozen

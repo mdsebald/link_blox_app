@@ -15,7 +15,7 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/1, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
 groups() -> [web].
 
@@ -242,9 +242,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
 %%
 %%  Execute the block specific functionality
 %%
--spec execute(block_state()) -> block_state().
+-spec execute(BlockValues :: block_state(), 
+              ExecMethod :: exec_method()) -> block_state().
 
-execute({Config, Inputs, Outputs, Private}) ->
+execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
+
+  BlockName = config_utils:name(Config),
+  log_server:debug("Executing: ~p Exec Method: ~p", [BlockName, ExecMethod]),
+
   % Block is enabled at this point, 
   % Start MQTT client if not already started
   case attrib_utils:get_value(Private, client) of
@@ -283,10 +288,17 @@ execute({Config, Inputs, Outputs, Private}) ->
               Private1 = Private
           end,
 
-          BlockName = config_utils:name(Config),
-          case attrib_utils:get_value(Outputs, exec_method) of
-            {ok, input_cos} ->
-              log_server:debug("Executing: ~p Exec Method: ~p", [BlockName, input_cos]),
+          case ExecMethod of
+            manual ->
+              % Block manually executed, publish all input values
+              pub_topics(Config, Inputs, Client),
+
+              % Update the status and main output
+              Outputs1 = output_utils:set_value_status(Outputs, true, normal),
+              % Return updated block state
+              {Config, Inputs, Outputs1, Private1};
+            
+            input_cos ->
               % An input value has changed
               % Read inputs, publish values to corresponding topics
               pub_topics(Config, Inputs, Client),
@@ -296,8 +308,7 @@ execute({Config, Inputs, Outputs, Private}) ->
               % Return updated block state
               {Config, Inputs, Outputs1, Private1};
 
-            {ok, message} ->
-              log_server:debug("Executing: ~p Exec Method: ~p", [BlockName, message]),
+            message ->
               % Read received publish message(s) if any, and update subscribed output values
               {Outputs1, Private2} = process_pub_msgs(Config, Outputs, Private1),
 
@@ -306,8 +317,8 @@ execute({Config, Inputs, Outputs, Private}) ->
               % Return updated block state
               {Config, Inputs, Outputs2, Private2};
             
-            {ok, ExecMethod} ->
-              log_server:debug("Not executing: ~p Exec Method: ~p", [BlockName, ExecMethod]),
+            ExecMethod ->
+              log_server:debug("Ignoring Exec Method: ~p", [ExecMethod]),
               % Update the status and main output
               Outputs1 = output_utils:set_value_status(Outputs, true, normal),
               % Return updated block state
@@ -809,7 +820,7 @@ block_test() ->
   BlockDefn = create(mqtt_pub_sub_test, "Unit Test Block"),
   {ok, BlockDefn} = upgrade(BlockDefn),
   BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState),
+  execute(BlockState, input_cos),
   delete(BlockState),
   ?assert(true).
 
