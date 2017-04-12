@@ -251,8 +251,6 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
         {ok, Client} ->
           {ok, Private1} = attrib_utils:set_value(Private, client, Client),
           log_server:info(started_MQTT_client),
-          % Attempt to publish all input values
-          pub_topics(Config, Inputs, Client),
 
           % Update the status and main output
           Outputs1 = output_utils:set_value_status(Outputs, not_active, normal),
@@ -276,7 +274,11 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           % Subscibe to the sub_topics config values, if not done yet
           case attrib_utils:get_value(Private, subscribed) of
             {ok, false} ->
+              % publish input values to pub_topics
+              pub_topics(Config, Inputs, Client),
+              % subscribe to sub_topics, so output values get updated
               sub_topics(Config, Client),
+
               {ok, Private1} = attrib_utils:set_value(Private, subscribed, true);
             {ok, true} ->
               % Already subscribed 
@@ -296,6 +298,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
             input_cos ->
               % An input value has changed
               % Read inputs, publish values to corresponding topics
+              % TODO: Determine which input value(s) changed and only publish that one/those
               pub_topics(Config, Inputs, Client),
             
               % Update the status and main output
@@ -606,9 +609,9 @@ config_subs(Config, Outputs) ->
       % one topic string for each subscribed output value 
       Config1 = config_utils:resize_attribute_array_value(Config, 
                                                   sub_topics, NumOfSubs, {""}),
-      % Create subscribe outputs
+      % Create subscribe values outputs
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                                  sub_outputs, NumOfSubs, {not_active, []}),
+                                                  sub_values, NumOfSubs, {not_active, []}),
       % Return updated Config and Outputs attributes
       {ok, Config1, Outputs1};
     
