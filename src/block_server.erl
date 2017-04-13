@@ -470,9 +470,9 @@ handle_info(timer_execute, BlockValues) ->
 %% =====================================================================
 handle_info({publish, Topic, Payload}, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
-  BlkName = config_utils:name(Config),
-  log_server:debug("Block: ~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
-                      [BlkName, Topic, Payload]),
+  BlockName = config_utils:name(Config),
+  log_server:debug("~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
+                      [BlockName, Topic, Payload]),
 
   % Add the message topic and payload to the front of the list of pub messages,
   % and execute the block
@@ -482,7 +482,7 @@ handle_info({publish, Topic, Payload}, BlockValues) ->
       NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
     {error, Reason} ->
-      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlkName]),
+      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
       NewBlockValues = BlockValues
   end,
   {noreply, NewBlockValues};
@@ -492,8 +492,8 @@ handle_info({publish, Topic, Payload}, BlockValues) ->
 %% =====================================================================
 handle_info({mqttc, _Client, connected}, BlockValues) ->
   {Config, Inputs, Outputs, Private} = BlockValues,
-  BlkName = config_utils:name(Config),
-  log_server:info(block_is_connected_to_MQTT_broker, [BlkName]),
+  BlockName = config_utils:name(Config),
+  log_server:info(connected_to_MQTT_broker, [BlockName]),
 
   % Update the connection state in the block values and execute the block
   case attrib_utils:set_value(Private, conn_state, true) of
@@ -501,7 +501,7 @@ handle_info({mqttc, _Client, connected}, BlockValues) ->
       NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
     {error, Reason} ->
-      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlkName]),
+      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
       NewBlockValues = BlockValues
   end,
   {noreply, NewBlockValues};
@@ -511,8 +511,8 @@ handle_info({mqttc, _Client, connected}, BlockValues) ->
 %% =====================================================================
 handle_info({mqttc, _Client,  disconnected}, BlockValues) ->
     {Config, Inputs, Outputs, Private} = BlockValues,
-    BlkName = config_utils:name(Config),
-    log_server:info(block_is_disconnected_from_MQTT_broker, [BlkName]),
+    BlockName = config_utils:name(Config),
+    log_server:info(disconnected_from_MQTT_broker, [BlockName]),
     
     % Update the connection state in the block values, and execute the block
     case attrib_utils:set_value(Private, conn_state, false) of
@@ -520,7 +520,26 @@ handle_info({mqttc, _Client,  disconnected}, BlockValues) ->
         NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
       {error, Reason} ->
-        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlkName]),
+        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+        NewBlockValues = BlockValues
+    end,
+    {noreply, NewBlockValues};
+  
+%% =====================================================================
+%% MQTT Client shutdown message
+%% =====================================================================
+handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockValues) ->
+    {Config, Inputs, Outputs, Private} = BlockValues,
+    BlockName = config_utils:name(Config),
+    log_server:info(mqtt_client_shutdown, [BlockName, ShutdownReason]),
+    
+    % Reset the client reference, to indicate MQTT client needs to be restarted
+    case attrib_utils:set_value(Private, client, not_active) of
+      {ok, Private1} ->
+        NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+      {error, Reason} ->
+        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
         NewBlockValues = BlockValues
     end,
     {noreply, NewBlockValues};

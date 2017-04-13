@@ -220,8 +220,9 @@ strings_map() -> #{
   reconfiguring_block => "Reconfiguring block: ~p~n",
   creating_type_version => "Creating: ~p Type: ~p Version: ~s~n",
   got_interrupt_from_pin => "Got ~p interrupt from pin# ~p ~n",
-  block_is_connected_to_MQTT_broker => "Block: ~p is connected to MQTT broker~n",
-  block_is_disconnected_from_MQTT_broker => "Block: ~p is disconnected from MQTT broker~n",
+  connected_to_MQTT_broker => "~p connected to MQTT broker~n",
+  disconnected_from_MQTT_broker => "~p disconnected from MQTT broker~n",
+  mqtt_client_shutdown => "~p MQTT client shutdown: ~p~n",
 
   err_unrecognized_link => "Error: unrecognized link: ~p~n",
   add_ref_err_doesnt_exist_for_this_block => "add_ref() Error. ~p Doesn't exist for this block~n",

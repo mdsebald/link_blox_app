@@ -150,6 +150,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                                  {pub_msgs, {[]}}, 
                                                  {conn_state, {not_active}},
                                                  {subscribed, {false}}]),
+  % If and when MQTT client is shutdown, 
+  % don't don't let this block die too.
+  process_flag(trap_exit, true),
   case config_pubs(Config, Inputs) of
     {ok, Config1, Inputs1} ->
 
