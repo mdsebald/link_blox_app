@@ -24,13 +24,17 @@
           set_link/3,
           override/2, 
           get_block/1,
-          execute/2, 
-          update/3, 
+          execute/2,
+          execute/3,
+          update/3,
+          update/4, 
           init_configure/1, 
           configure/1, 
           reconfigure/2,
-          link/3, 
-          unlink/3
+          link/3,
+          link/4,
+          unlink/3,
+          unlink/4
 ]).
 
 
@@ -80,16 +84,38 @@ get_block(BlockName) ->
 
 
 %% Execute the block 
+-spec execute(BlockName :: block_name(),
+              Reason :: exec_method()) -> term().
+
 execute(BlockName, Reason) ->
   gen_server:cast(BlockName, {execute, Reason}).
 
-%% Update this block's input value that is linked
-%% to the given output value i.e {Node, BlockName, ValueId} 
-%% In other words, push the value from the output of one block 
-%% to the input(s) of the linked block
+%% Execute block on another node
+-spec execute(Node :: node(),
+              BlockName :: block_name(),
+              Reason :: exec_method()) -> term().
+
+execute(Node, BlockName, Reason) ->
+  gen_server:call({BlockName, Node}, {execute, Reason}).
+
+
+%% Update block input value 
 %% i.e. Implement Data Flow
+-spec update(BlockName :: block_name(),
+             Link :: input_link(),
+             Value :: attr_value()) -> term().
+            
 update(BlockName, Link, Value) ->
   gen_server:cast(BlockName, {update, Link, Value}).
+
+%% Update block input value on another node
+-spec update(Node :: node(),
+             BlockName :: block_name(),
+             Link :: input_link(),
+             Value :: attr_value()) -> term().
+
+update(Node, BlockName, Link, NewValue) ->
+  gen_server:cast({BlockName, Node}, {update, Link, Value}).
 
 
 %% Perform initial configuration of the block.  
@@ -109,14 +135,41 @@ reconfigure(BlockName, BlockValues)->
   gen_server:cast(BlockName, {reconfigure, BlockValues}).
 
 
-%% Link the output value: 'ValueId' of this block to to the BlockName:InputValueId reference
+%% Link the output value: 'ValueId' of this block 
+%% to to the <Node>:BlockName:InputValueId reference
+-spec link(BlockName :: block_name(),
+           ValueId :: value_id(),
+           Reference :: block_name() | {node(), block_name()}) -> term().
+
 link(BlockName, ValueId, Reference) ->
   gen_server:call(BlockName, {link, ValueId, Reference}).
 
+%% Link block on another node
+-spec link(Node :: node(),
+           BlockName :: block_name(),
+           ValueId :: value_id(),
+           Reference :: block_name() | {node(), block_name()}) -> term().
+
+link(Node, BlockName, ValueId, Reference) ->
+  gen_server:call({BlockName, Node}, {link, ValueId, Reference}).
+
 
 %% Unlink the output value: 'ValueId' of this block from BlockName:InputValueId reference
+-spec unlink(BlockName :: block_name(),
+             ValueId :: value_id(),
+             Reference :: link_ref()) -> term().
+
 unlink(BlockName, ValueId, Reference) ->
   gen_server:cast(BlockName, {unlink, ValueId, Reference}).
+
+%% Unlink the block on another node
+-spec unlink(Node :: node(),
+             BlockName :: block_name(),
+             ValueId :: value_id(),
+             Reference :: link_ref()) -> term().
+
+unlink(Node, BlockName, ValueId, Reference) ->
+  gen_server:cast({BlockName, Node}, {unlink, ValueId, Reference}).
 
 
 %% ====================================================================

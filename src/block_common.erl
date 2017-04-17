@@ -413,7 +413,7 @@ update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
                       % so we need to include the self node to match the link
                       % in the input value
                       Link = {node(), FromBlockName, ValueId},
-                      linkblox_api:update(ToNodeName, ToBlockName, Link, NewValue);
+                      block_server:update(ToNodeName, ToBlockName, Link, NewValue);
 
                     ToBlockName ->
                       % Reference is to a block on the same node
@@ -440,7 +440,7 @@ update_execute(Outputs) ->
                   case Ref of
                     {ToNodeName, ToBlockName} ->
                       % Execute block on another node
-                      linkblox_api:execute_block(ToNodeName, ToBlockName, exec_out);
+                      block_server:execute(ToNodeName, ToBlockName, exec_out);
                     
                     ToBlockName ->
                       block_server:execute(ToBlockName, exec_out) 

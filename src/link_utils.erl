@@ -139,7 +139,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
       
     {LinkBlockName, LinkValueId} ->
       % Input is linked to the output of another block on this node
-      case block_utils:is_block(LinkBlockName) of
+      case system_server:is_block(LinkBlockName) of
         true ->
           % Linked block exists,
           % if the block input value is empty, 
@@ -187,7 +187,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
       case net_kernel:connect_node(NodeName) of
         true ->
           % Connected to remote node
-          case linkblox_api:is_block_name(NodeName, LinkBlockName) of
+          case system_server:is_block(NodeName, LinkBlockName) of
             true ->
               % Linked block exists,
 
@@ -195,7 +195,7 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
                 empty ->
                   % block input value is empty, 
                   % send a link message to the linked block, get current linked value back
-                  UpdatedValue = linkblox_api:link(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
+                  UpdatedValue = block_server:link(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
             
                   case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
                     {ok, UpdatedInputs} -> 
@@ -302,7 +302,7 @@ unlink_input(BlockName, ValueId, Link) ->
        
     {LinkBlockName, LinkValueId} ->
       % Input is linked to the output of another block on this node
-      case block_utils:is_block(LinkBlockName) of
+      case system_server:is_block(LinkBlockName) of
         true ->
           block_server:unlink(LinkBlockName, LinkValueId, {BlockName, ValueId}),
           log_server:info(block_input_unlinked_from_block_output, 
@@ -319,10 +319,10 @@ unlink_input(BlockName, ValueId, Link) ->
       case net_kernel:connect_node(NodeName) of
         true ->
            % Connected to remote node
-          case linkblox_api:is_block_name(NodeName, LinkBlockName) of
+          case system_server:is_block(NodeName, LinkBlockName) of
             true ->
               % Linked block exists,
-              linkblox_api:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
+              block_server:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
               log_server:info(block_input_unlinked_from_node_block_output, 
                             [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
               ok;

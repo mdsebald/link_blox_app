@@ -52,6 +52,12 @@ init([BlockValuesFile, LangMod]) ->
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
 
+  % System Server Spec
+  SystemServerSpec = #{id => system_server, 
+                       restart => transient,
+                       start => {system_server, start, []},
+                       type => worker},
+
   % API Server Spec
   ApiServerSpec = #{id => linkblox_api, 
                     restart => transient,
@@ -66,7 +72,7 @@ init([BlockValuesFile, LangMod]) ->
                    
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
           
-  {ok, {SupFlags, [ApiServerSpec, BlockSupervisorSpec]}}.
+  {ok, {SupFlags, SystemServerSpec, [ApiServerSpec, BlockSupervisorSpec]}}.
 
 
 %% ====================================================================
