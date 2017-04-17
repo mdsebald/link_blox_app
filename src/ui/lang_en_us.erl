@@ -70,7 +70,7 @@ strings_map() -> #{
   block_enabled => "Block ~s Enabled~n",
   block_frozen => "Block ~s Frozen~n",
   block_thawed => "Block ~s Thawed~n",
-  block_input_linked_to_block_output => "Block Input: ~s:~s Linked to Block Output: ~p~n",
+  ui_block_input_linked_to_block_output => "Block Input: ~s:~s Linked to Block Output: ~p~n",
   block_input_unlinked => "Block Input: ~s:~s Unlinked~n",
   block_config_file_loaded => "Block config file: ~s loaded~n",
   block_config_file_saved => "Block config file: ~s saved~n",
@@ -120,6 +120,12 @@ strings_map() -> #{
   unknown_log_server_cast_msg => "log_server, Unknown cast message: ~p~n",
   unknown_log_server_info_msg => "log_server, Unknown info message: ~p~n",
   log_server_abnormal_termination => "log_server, Abnormal termination, reason: ~p~n",
+
+  starting_system_server => "Starting system_server~n",
+  unknown_system_server_call_msg => "system_server, Unknown call message: ~p~n",
+  unknown_system_server_cast_msg => "system_server, Unknown cast message: ~p~n",
+  unknown_system_server_info_msg => "system_server, Unknown info message: ~p~n",
+  system_server_abnormal_termination => "system_server, Abnormal termination, reason: ~p~n",
 
   starting_linkblox_block_supervisor => "Starting LinkBlox Block supervisor~n",
 

@@ -826,7 +826,7 @@ ui_link_blocks(Params) ->
                   format_out(err_linking_input_to_output, 
                           [Reason, InputBlockNameStr, InputValueIdStr, Link]);
                 ok ->
-                  format_out(block_input_linked_to_block_output, 
+                  format_out(ui_block_input_linked_to_block_output, 
                               [InputBlockNameStr, InputValueIdStr, Link])
               end;
             {error, Reason} ->
