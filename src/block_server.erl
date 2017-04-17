@@ -114,7 +114,7 @@ update(BlockName, Link, Value) ->
              Link :: input_link(),
              Value :: attr_value()) -> term().
 
-update(Node, BlockName, Link, NewValue) ->
+update(Node, BlockName, Link, Value) ->
   gen_server:cast({BlockName, Node}, {update, Link, Value}).
 
 
