@@ -72,7 +72,7 @@ init([BlockValuesFile, LangMod]) ->
                    
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
           
-  {ok, {SupFlags, SystemServerSpec, [ApiServerSpec, BlockSupervisorSpec]}}.
+  {ok, {SupFlags, [SystemServerSpec, ApiServerSpec, BlockSupervisorSpec]}}.
 
 
 %% ====================================================================
