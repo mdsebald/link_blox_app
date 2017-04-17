@@ -233,7 +233,7 @@ create_block(BlockDefn) ->
       case type_utils:module_exists(BlockModule) of
         true ->
           % Check if a block with this name is already created on this node
-          case is_block(BlockName) of
+          case system_server:is_block(BlockName) of
             false ->
               % Compare the block code and block data versions, upgrade if different
               case BlockModule:version() /= Version of 
