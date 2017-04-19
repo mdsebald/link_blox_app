@@ -184,8 +184,8 @@ evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
          
     {NodeName, LinkBlockName, LinkValueId} ->
       % Input is linked the output of a block on another node 
-      case net_kernel:connect_node(NodeName) of
-        true ->
+      case net_adm:ping(NodeName) of
+        pong ->
           % Connected to remote node
           case system_server:is_block(NodeName, LinkBlockName) of
             true ->
@@ -316,8 +316,8 @@ unlink_input(BlockName, ValueId, Link) ->
 
     {NodeName, LinkBlockName, LinkValueId} ->
       % Input is linked the output of a block on another node 
-      case net_kernel:connect_node(NodeName) of
-        true ->
+      case net_adm:ping(NodeName) of
+        pong ->
            % Connected to remote node
           case system_server:is_block(NodeName, LinkBlockName) of
             true ->
