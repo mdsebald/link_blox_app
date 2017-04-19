@@ -14,7 +14,7 @@
 %% ====================================================================
 
 -export([
-          %is_block/1,
+          is_block/1,
           is_string/1,
           sleep/1,
           char_to_segments/2,
@@ -24,18 +24,18 @@
           load_blocks_from_file/1,
           create_blocks/1,
           create_block/1,
-          get_blocks_from_file/1
+          get_blocks_from_file/1,
+          configure_all_blocks/0
 ]). 
 
 
-% TODO: Remove after successful test
 %%
 %% Is BlockName a valid block?
 %%
-%-spec is_block(BlockName :: block_name()) -> boolean().
-%
-%is_block(BlockName)->
-%  lists:member(BlockName, block_supervisor:block_names()).
+-spec is_block(BlockName :: block_name()) -> boolean().
+
+is_block(BlockName)->
+  lists:member(BlockName, block_supervisor:block_names()).
 
 
 %%
@@ -259,6 +259,18 @@ create_block(BlockDefn) ->
       end;
     _ -> {error, invalid_block_values}
   end.
+
+
+%%
+%% Send a configure message to each block on this node
+%%
+-spec configure_all_blocks() -> ok.
+
+configure_all_blocks() ->
+  BlockNames = block_supervisor:block_names(),
+  lists:foreach(fun(BlockName) ->
+                  block_server:configure(BlockName)
+                end, BlockNames).
 
 
 %% ====================================================================

@@ -420,7 +420,7 @@ handle_cast(init_configure, BlockValues) ->
   % because you can't call block_supervisor:block_names()
   % (i.e.supervisor:which_child()) from the init() function 
   % of a child process. 
-  block_common:configure_all_blocks(),
+  block_utils:configure_all_blocks(),
   
   {noreply, BlockValues};
 

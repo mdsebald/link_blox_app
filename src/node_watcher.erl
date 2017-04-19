@@ -32,7 +32,7 @@ listen_loop() ->
       log_server:info(node_has_connected, [Node]),
       % Configure all blocks on this node, in case any are linked
       % to blocks on the node that just connected
-      block_common:configure_all_blocks();
+      block_utils:configure_all_blocks();
 
     {nodedown, Node} ->
       log_server:info(node_has_disconnected, [Node]);

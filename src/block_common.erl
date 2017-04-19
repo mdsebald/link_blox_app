@@ -21,8 +21,7 @@
           execute/2,
           initialize/1,
           delete/1,
-          update_linked_inputs/4,
-          configure_all_blocks/0
+          update_linked_inputs/4
 ]).
 
 %%
@@ -506,18 +505,6 @@ delete({Config, Inputs, Outputs, Private}) ->
     
   % Perform block type specific delete actions
   BlockModule:delete({Config, EmptyInputs, EmptyOutputs1, Private}).
-
-
-%%
-%% Send a configure message to each block on this node
-%%
--spec configure_all_blocks() -> ok.
-
-configure_all_blocks() ->
-  BlockNames = block_supervisor:block_names(),
-  lists:foreach(fun(BlockName) ->
-                  block_server:configure(BlockName)
-                end, BlockNames).
   
 
 %% ====================================================================
