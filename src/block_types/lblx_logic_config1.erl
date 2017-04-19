@@ -19,21 +19,10 @@
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
 
--spec groups() -> list(type_group()).
 groups() -> [logic].
 
-
--spec description() -> string().
 description() -> "1 Input Configurable Logic Block".
 
-
-% Use pattern: Major.Minor.Patch
-% When a block is created, the Config version attribute value 
-% is set to this version.
-% When a block is loaded from a config file, the version attribute value
-% is compared to this.  
-% If the versions are different, the upgrade() function is called.
--spec version() -> string().
 version() -> "0.1.0".
 
 

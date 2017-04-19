@@ -26,14 +26,10 @@
 
 
 % INSTRUCTIONS: Classify block type, by assigning it to one or more groups
--spec groups() -> list(type_group()).
 groups() -> [none].
 
-
 % INSTRUCTIONS: String describing block function
--spec description() -> string().
 description() -> "Short description of block function".
-
 
 % INSTRUCTIONS: Set block type version number.
 % Use pattern: Major.Minor.Patch
@@ -42,7 +38,6 @@ description() -> "Short description of block function".
 % When a block is loaded from a config file, the version attribute value
 % is compared to this.  
 % If the versions are different, the upgrade() function is called.
--spec version() -> string().
 version() -> "0.1.0".
 
 
