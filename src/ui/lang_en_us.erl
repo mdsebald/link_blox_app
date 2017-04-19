@@ -241,7 +241,6 @@ strings_map() -> #{
   block_input_unlinked_from_node_block_output => "Block Input: ~p:~p Unlinked from Block Output: ~p:~p:~p~n",
   linked_block_does_not_exist => "Linked Block: ~p Does not exist.~n",
   linked_node_block_does_not_exist => "Linked Block: ~p:~p Does not exist.~n",
-  unable_to_connect_to_node => "Unable to connect to node: ~p~n",
   unlink_input_linked_block_does_not_exist => "unlink_input(): Linked Block: ~p Does not exist.~n",
   unlink_input_linked_node_block_does_not_exist => "unlink_input(): Linked Block: ~p:~p Does not exist.~n",
   unable_to_connect_to_node => "Unable to connect to node: ~p~n",
