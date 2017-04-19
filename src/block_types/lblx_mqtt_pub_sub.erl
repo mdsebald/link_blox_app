@@ -67,7 +67,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {sub_values, [{not_active, []}]}
+      {sub_values, [{null, []}]}
     ]). 
 
 
@@ -146,9 +146,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
   
   % Create private attributes
   Private1 = attrib_utils:merge_attribute_lists(Private, 
-                                                [{client, {not_active}}, 
+                                                [{client, {null}}, 
                                                  {pub_msgs, {[]}}, 
-                                                 {conn_state, {not_active}},
+                                                 {conn_state, {null}},
                                                  {subscribed, {false}}]),
   % If and when MQTT client is shutdown, 
   % don't don't let this block die too.
@@ -174,25 +174,25 @@ initialize({Config, Inputs, Outputs, Private}) ->
                           {ok, Private2} = attrib_utils:set_value(Private1, client, Client),
                           log_server:info(started_MQTT_client),
                           Status = initialed,
-                          Value = not_active;
+                          Value = null;
 
                         {error, Reason} ->
                           log_server:error(err_starting_MQTT_client, [Reason]),
                           Status = proc_err,
-                          Value = not_active,
+                          Value = null,
                           Private2 = Private1
                       end;
 
                     {ok, true} ->
                       % block is currently disabled, don't start MQTT client
                       Status = initialed,
-                      Value = not_active,
+                      Value = null,
                       Private2 = Private1;
                     
                     {error, Reason} ->
                       % Bad disable input value
                       Status = input_err,
-                      Value = not_active,
+                      Value = null,
                       Private2 = Private1,
                       input_utils:log_error(Config, disable, Reason)
                   end;
@@ -212,7 +212,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
         {error, Reason} ->
           log_server:error(err_configuring_sub_outputs, [Reason]),
           Status = config_err,
-          Value = not_active, 
+          Value = null, 
           Config2 = Config1,
           Outputs1 = Outputs,
           Private2 = Private1
@@ -221,7 +221,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       log_server:error(err_configuring_pub_inputs, [Reason]),
       Status = config_err,
-      Value = not_active, 
+      Value = null, 
       Config2 = Config,
       Inputs1 = Inputs,
       Outputs1 = Outputs,
@@ -248,7 +248,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
   % Block is enabled at this point, 
   % Start MQTT client if not already started
   case attrib_utils:get_value(Private, client) of
-    {ok, not_active} ->
+    {ok, null} ->
       Options = get_options(Config),
       case emqttc:start_link(Options) of 
         {ok, Client} ->
@@ -256,14 +256,14 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           log_server:info(started_MQTT_client),
 
           % Update the status and main output
-          Outputs1 = output_utils:set_value_status(Outputs, not_active, normal),
+          Outputs1 = output_utils:set_value_status(Outputs, null, normal),
           % Return updated block state
           {Config, Inputs, Outputs1, Private1};
 
         {error, Reason} ->
           log_server:error(err_starting_MQTT_client, [Reason]),
           % Update the status and main output
-          Outputs1 = output_utils:set_value_status(Outputs, not_active, proc_err),
+          Outputs1 = output_utils:set_value_status(Outputs, null, proc_err),
           % Return updated block state
           {Config, Inputs, Outputs1, Private}
       end;
@@ -327,7 +327,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           end;
     
         _ConnState ->
-          % ConnState, could be false or not_active, Don't care
+          % ConnState, could be false or null, Don't care
           % Client Disconnected from MQTT broker. Don't bother subcribing or publishing
           % Reset the subscribed flag, to force resubscribe on next connect
           {ok, Private1} = attrib_utils:set_value(Private, subscribed, false),
@@ -335,7 +335,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           % If MQTT client is not running, clear the Client pid to set up to connect again
           case process_info(Client) of
             undefined ->
-              {ok, Private2} = attrib_utils:set_value(Private1, client, not_active);
+              {ok, Private2} = attrib_utils:set_value(Private1, client, null);
             
             _ProcInfo ->
               Private2 = Private1
@@ -614,7 +614,7 @@ config_subs(Config, Outputs) ->
                                                   sub_topics, NumOfSubs, {""}),
       % Create subscribe values outputs
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                                  sub_values, NumOfSubs, {not_active, []}),
+                                                  sub_values, NumOfSubs, {null, []}),
       % Return updated Config and Outputs attributes
       {ok, Config1, Outputs1};
     
@@ -662,13 +662,13 @@ get_pub_topics_values(Config, Inputs, Index, TopicsValues) ->
         true ->
           case input_utils:get_string(Inputs, {pub_inputs, Index}) of
             {ok, PubValue} ->
-              case (PubValue /= not_active) andalso (string:len(PubValue) > 0) of
+              case (PubValue /= null) andalso (string:len(PubValue) > 0) of
                 true ->
                   PubTopicBin = list_to_binary(PubTopic),
                   PubValueBin = list_to_binary(PubValue),
                   NewTopicsValues = [{PubTopicBin, PubValueBin} | TopicsValues];
                 false ->
-                  % pub input value is zero length string, or not_active
+                  % pub input value is zero length string, or null
                   NewTopicsValues = TopicsValues
               end;
             {error, Reason} ->

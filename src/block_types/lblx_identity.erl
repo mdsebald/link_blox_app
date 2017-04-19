@@ -133,7 +133,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, InputVal} ->
       Outputs1 = output_utils:set_value_status(Outputs, InputVal, initialed);
     {error, _Reason} ->
-      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
+      Outputs1 = output_utils:set_value_status(Outputs, null, input_err)
   end,
 
   % This is the block state
@@ -152,7 +152,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
     {ok, InputVal} ->
       Outputs1 = output_utils:set_value_normal(Outputs, InputVal);
     {error, _Reason} ->
-      Outputs1 = output_utils:set_value_status(Outputs, not_active, input_err)
+      Outputs1 = output_utils:set_value_status(Outputs, null, input_err)
   end,
 
   % Return updated block state

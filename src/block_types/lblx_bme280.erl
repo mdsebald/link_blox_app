@@ -65,9 +65,9 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {temp, {not_active, []}},
-      {press, {not_active, []}},
-      {humid, {not_active, []}}
+      {temp, {null, []}},
+      {press, {null, []}},
+      {humid, {null, []}}
     ]). 
 
 %%  
@@ -200,39 +200,39 @@ initialize({Config, Inputs, Outputs, Private}) ->
                       log_server:error(err_converting_sensor_values, 
                               [Reason]),
                       Status = config_err,
-                      Value = not_active,
-                      Temp = not_active,
-                      Press = not_active,
-                      Humid = not_active
+                      Value = null,
+                      Temp = null,
+                      Press = null,
+                      Humid = null
                   end;    
 
                 {error, Reason} ->
                   log_server:error(err_reading_sensor, 
                               [Reason]),
                   Status = proc_err,
-                  Value = not_active,
-                  Temp = not_active,
-                  Press = not_active,
-                  Humid = not_active
+                  Value = null,
+                  Temp = null,
+                  Press = null,
+                  Humid = null
               end;
 
             {error, Reason} ->
               log_server:error(err_reading_sensor_calibration, [Reason]),
               Status = config_err,
-              Value = not_active,
-              Temp = not_active,
-              Press = not_active,
-              Humid = not_active,
+              Value = null,
+              Temp = null,
+              Press = null,
+              Humid = null,
               Private4 = Private3
           end;
   
         {error, Reason} ->
           log_server:error(err_configuring_sensor, [Reason]),
           Status = config_err,
-          Value = not_active,
-          Temp = not_active,
-          Press = not_active,
-          Humid = not_active,
+          Value = null,
+          Temp = null,
+          Press = null,
+          Humid = null,
           Private4 = Private1
       end;
 
@@ -240,10 +240,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
       log_server:error(err_initiating_I2C_address, 
                               [Reason, I2cAddr]),
       Status = proc_err,
-      Value = not_active,
-      Temp = not_active,
-      Press = not_active,
-      Humid = not_active,
+      Value = null,
+      Temp = null,
+      Press = null,
+      Humid = null,
       Private4 = Private1
   end,  
    
@@ -274,10 +274,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
     {ok, sleep}  ->
       % Don't read the sensor
       Status = no_input,
-      Value = not_active,
-      Temp = not_active,
-      Press = not_active,
-      Humid = not_active;
+      Value = null,
+      Temp = null,
+      Press = null,
+      Humid = null;
 
     {ok, forced} ->
       case read_sensor_forced(I2cRef, Private) of
@@ -291,20 +291,20 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
               log_server:error(err_converting_sensor_values, 
                                   [Reason]),
               Status = config_err,
-              Value = not_active,
-              Temp = not_active,
-              Press = not_active,
-              Humid = not_active
+              Value = null,
+              Temp = null,
+              Press = null,
+              Humid = null
           end;
 
         {error, Reason} ->
           log_server:error(err_reading_sensor_forced_mode, 
                                   [Reason]),
           Status = proc_err,
-          Value = not_active,
-          Temp = not_active,
-          Press = not_active,
-          Humid = not_active
+          Value = null,
+          Temp = null,
+          Press = null,
+          Humid = null
       end;
 
     {ok, normal} -> 
@@ -318,19 +318,19 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
             {error, Reason} ->
               log_server:error(err_converting_sensor_values, [Reason]),
               Status = config_err,
-              Value = not_active,
-              Temp = not_active,
-              Press = not_active,
-              Humid = not_active
+              Value = null,
+              Temp = null,
+              Press = null,
+              Humid = null
           end;
 
         {error, Reason} ->
           log_server:error(err_reading_sensor, [Reason]),
           Status = proc_err,
-          Value = not_active,
-          Temp = not_active,
-          Press = not_active,
-          Humid = not_active
+          Value = null,
+          Temp = null,
+          Press = null,
+          Humid = null
       end
   end,
    

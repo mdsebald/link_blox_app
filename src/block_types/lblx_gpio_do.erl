@@ -150,25 +150,25 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 {error, ErrorResult} ->
                   log_server:error(err_initiating_GPIO_pin, [ErrorResult, PinNumber]),
                   Status = proc_err,
-                  Value = not_active,
+                  Value = null,
                   Private2 = Private1
               end;
             {error, Reason} ->
               log_server:error(err_reading_invert_output_value, [Reason]),
               Status = config_err,
-              Value = not_active,
+              Value = null,
               Private2 = Private1
           end;
         {error, Reason} ->
           log_server:error(err_reading_default_value, [Reason]),
           Status = config_err,
-          Value = not_active,
+          Value = null,
           Private2 = Private1
       end;
     {error, Reason} ->
       log_server:error(err_reading_GPIO_pin_number, [Reason]),
       Status = config_err,
-      Value = not_active,
+      Value = null,
       Private2 = Private1
   end,
 
@@ -196,12 +196,12 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   case Input of
      empty -> 
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
+      Value = null,
       Status = no_input;
 
-    not_active ->
+    null ->
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
+      Value = null,
       Status = normal;
 
     true ->  
@@ -218,7 +218,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       BlockName = config_utils:name(Config),
       log_server:error(err_invalid_input_value, [BlockName, Other]),
       PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
+      Value = null,
       Status = input_err
   end,
   set_pin_value_bool(GpioPinRef, PinValue, InvertOutput),

@@ -154,13 +154,13 @@ initialize({Config, Inputs, Outputs, Private}) ->
        {error, Reason} ->
           log_server:error(err_reading_temperature_sensor, [Reason]),
           Status = proc_err,
-          Value = not_active
+          Value = null
        end;
       
     {error, Reason} ->
       log_server:error(err_initiating_I2C_address, [Reason, I2cAddr]),
       Status = proc_err,
-      Value = not_active,
+      Value = null,
       Private2 = Private1
   end,	
    
@@ -197,7 +197,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
     {error, Reason} ->
       log_server:error(err_reading_temperature_sensor, [Reason]),
       Status = proc_err,
-      Value = not_active
+      Value = null
    end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),

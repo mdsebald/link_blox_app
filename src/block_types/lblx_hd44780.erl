@@ -178,7 +178,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       log_server:error(err_initializing_LCD_driver_I2C_address, [Reason, I2cAddr]),
       Status = proc_err,
-      Value = not_active,
+      Value = null,
       Private2 = Private1,
       Config3 = Config,
       Inputs1 = Inputs
@@ -444,8 +444,8 @@ update_lcd_data(I2cRef, Backlight, Config, Inputs, NumOfInputs, InputNum, Value,
             {ok, FieldWidth} ->
 
               case input_utils:get_string(Inputs, {inputs, InputNum}) of
-                {ok, not_active} -> 
-                  % Input is not_active, display config not active string value
+                {ok, null} -> 
+                  % Input is null, display config not active string value
                   {ok, InputStr} = config_utils:get_string(Config, not_active_str),
                   DisplayedStr = display_str(I2cRef, Backlight, StartRow, StartCol, FieldWidth, InputStr),                
                   NewValue = Value ++ DisplayedStr,

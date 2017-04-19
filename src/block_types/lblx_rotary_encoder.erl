@@ -60,7 +60,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {switch, {not_active, []}}
+      {switch, {null, []}}
     ]). 
 
 %%  
@@ -181,7 +181,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                         [{gpio_pin_sw_ref, GpioPinSwRef},
                                          {last_sw_value, LastSwValue}]),
 
-              Value = not_active,
+              Value = null,
               Status = initialed;
               
             {error, SwReason} ->
@@ -226,7 +226,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   {ok, _LastSwValue} = attrib_utils:get_value(Private, last_sw_value),
   
   case attrib_utils:get_value(Outputs, value) of
-    {ok, not_active} -> Count = 0;
+    {ok, null} -> Count = 0;
     {ok, Count}      -> Count
   end,
  
@@ -272,13 +272,13 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 -spec log_gpio_error(Config :: list(), 
                      Reason :: atom(), 
-                     PinNumber :: integer()) -> {not_active, proc_err}.
+                     PinNumber :: integer()) -> {null, proc_err}.
 
 log_gpio_error(Config, Reason, PinNumber) ->
   BlockName = config_utils:name(Config),
   log_server:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
   
-  {not_active, proc_err}.
+  {null, proc_err}.
 
 
 % TODO: Create common GPIO helper module

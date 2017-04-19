@@ -148,22 +148,22 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 false ->
                   log_server:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
                   Status = proc_err,
-                  Value = not_active
+                  Value = null
               end;
             {error, Reason} ->
               log_server:error(err_reading_invert_output_value, [Reason]),
               Status = config_err,
-              Value = not_active
+              Value = null
           end;
         {error, Reason} ->
           log_server:error(err_reading_default_value, [Reason]),
           Status = config_err,
-          Value = not_active
+          Value = null
       end;
     {error, Reason} ->
       log_server:error(err_reading_LED_id, [Reason]),
       Status = config_err,
-      Value = not_active
+      Value = null
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -190,12 +190,12 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   case Input of
     empty -> 
       LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
+      Value = null,
       Status = no_input;
 
-    not_active ->
+    null ->
       LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
+      Value = null,
       Status = normal;
 
     true ->  
@@ -212,7 +212,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       BlockName = config_utils:name(Config),
       log_server:error(err_invalid_input_value, [BlockName, Other]),
       LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = not_active,
+      Value = null,
       Status = input_err
   end,
   set_led_value(LedId, LedValue, InvertOutput),

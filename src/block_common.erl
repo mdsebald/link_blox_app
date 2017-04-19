@@ -57,8 +57,8 @@ configs(Name, Module, Version, Description) ->
 
 inputs() ->
   [
-    % Block will execute as long as disable input is false/not_active
-    % When disable input is true, all block outputs set to not_active,
+    % Block will execute as long as disable input is false/null
+    % When disable input is true, all block outputs set to null,
     % and block status is set to disabled.  Block will not execute, 
     % Default block to disabled, on create. 
     % Set disable input to false in create function if you want block 
@@ -66,7 +66,7 @@ inputs() ->
     {disable, {true, ?EMPTY_LINK}},
  
    
-    % Block will execute as long as freeze input is false/not_active
+    % Block will execute as long as freeze input is false/null
     % When freeze input is true, all block outputs remain at last value
     % and block status is set to frozen.  Block will not be executed.
     {freeze, {false, ?EMPTY_LINK}},
@@ -115,7 +115,7 @@ outputs() ->
     {last_exec, {empty, []}},
 
     % Main block output value
-    {value, {not_active, []}}
+    {value, {null, []}}
   ].
 
 
@@ -157,10 +157,10 @@ execute(BlockValues, ExecMethod) ->
     
       {ok, Disable} = attrib_utils:get_value(Inputs, disable),
       case input_utils:check_boolean_input(Disable) of
-        not_active ->
+        null ->
           {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
           case input_utils:check_boolean_input(Freeze) of
-            not_active -> % block is not disabled or frozen, execute it
+            null -> % block is not disabled or frozen, execute it
               {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues, ExecMethod),
               Outputs2 = update_execute_track(Outputs1, ExecMethod);
                     
@@ -172,18 +172,18 @@ execute(BlockValues, ExecMethod) ->
                     
             error -> % Freeze input value error
               log_server:error(invalid_freeze_input_value, [BlockName, Freeze]),
-              Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
+              Outputs2 = output_utils:update_all_outputs(Outputs, null, input_err),
               % Nothing to update in private values
               Private1 = Private
           end;
         active -> % Block is disabled
-          Outputs2 = output_utils:update_all_outputs(Outputs, not_active, disabled),
+          Outputs2 = output_utils:update_all_outputs(Outputs, null, disabled),
           % Nothing to update in private values
           Private1 = Private;
         
         error -> % Disable input value error 
           log_server:error(invalid_disable_input_value, [BlockName, Disable]),
-          Outputs2 = output_utils:update_all_outputs(Outputs, not_active, input_err),
+          Outputs2 = output_utils:update_all_outputs(Outputs, null, input_err),
           % Nothing to update in private values
           Private1 = Private
       end,
@@ -191,7 +191,7 @@ execute(BlockValues, ExecMethod) ->
       {Status, Private2} = update_execution_timer(BlockName, Inputs, Private1), 
     
       if (Status /= normal) ->  % Some kind error setting execution timer
-        Outputs3 = output_utils:update_all_outputs(Outputs2, not_active, Status);
+        Outputs3 = output_utils:update_all_outputs(Outputs2, null, Status);
       true -> % Execution timer status is normal
         Outputs3 = Outputs2
       end,

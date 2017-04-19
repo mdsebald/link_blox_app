@@ -35,15 +35,15 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {out_for_0_0, {not_active}}, % Output value for input 2 = false & 1 = false
-      {out_for_0_1, {not_active}}, % Output value for input 2 = false & 1 = true
-      {out_for_0_X, {not_active}}, % Output value for input 2 = false & 1 = N/A
-      {out_for_1_0, {not_active}}, % Output value for input 2 = true & 1 = false
-      {out_for_1_1, {not_active}}, % Output value for input 2 = true & 1 = true
-      {out_for_1_X, {not_active}}, % Output value for input 2 = true & 1 = N/A
-      {out_for_X_0, {not_active}}, % Output value for input 2 = N/A & 1 = false
-      {out_for_X_1, {not_active}}, % Output value for input 2 = N/A & 1 = N/A
-      {out_for_X_X, {not_active}}  % Output value for input 2 = N/A & 1 = N/A            
+      {out_for_0_0, {null}}, % Output value for input 2 = false & 1 = false
+      {out_for_0_1, {null}}, % Output value for input 2 = false & 1 = true
+      {out_for_0_X, {null}}, % Output value for input 2 = false & 1 =null
+      {out_for_1_0, {null}}, % Output value for input 2 = true & 1 = false
+      {out_for_1_1, {null}}, % Output value for input 2 = true & 1 = true
+      {out_for_1_X, {null}}, % Output value for input 2 = true & 1 =null
+      {out_for_X_0, {null}}, % Output value for input 2 =null & 1 = false
+      {out_for_X_1, {null}}, % Output value for input 2 =null & 1 =null
+      {out_for_X_X, {null}}  % Output value for input 2 =null & 1 =null            
     ]). 
 
 
@@ -192,28 +192,28 @@ get_output_value(Config, Inputs) ->
         {ok, Input1} ->
           % Set the output value to the config value corresponding to the input state
           case {Input2, Input1} of
-            {false, false} ->      {ok, Value} = config_utils:get_any_type(Config, out_for_0_0);
-            {false, true} ->       {ok, Value} = config_utils:get_any_type(Config, out_for_0_1);
-            {false, not_active} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_X);
-            {true, false} ->       {ok, Value} = config_utils:get_any_type(Config, out_for_1_0);
-            {true, true} ->        {ok, Value} = config_utils:get_any_type(Config, out_for_1_1);
-            {true, not_active} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_1_X);
-            {not_active, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_X_0);
-            {not_active, true} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_X_1);
-            {not_active, not_active} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_X_X)
+            {false, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_0);
+            {false, true} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_1);
+            {false, null} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_X);
+            {true, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_1_0);
+            {true, true} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_1_1);
+            {true, null} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_1_X);
+            {null, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_X_0);
+            {null, true} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_X_1);
+            {null, null} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_X_X)
          end,
           {Value, normal};
 
         {error, Reason} ->
           BlockName = config_utils:name(Config),
           log_server:error(err_invalid_input_value, [BlockName, Reason]),
-          {not_active, input_err}
+          {null, input_err}
       end;
 
     {error, Reason} ->
       BlockName = config_utils:name(Config),
       log_server:error(err_invalid_input_value, [BlockName, Reason]),
-      {not_active, input_err}
+      {null, input_err}
   end.
 
 

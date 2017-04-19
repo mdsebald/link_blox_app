@@ -139,7 +139,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       case gpio_utils:start_link(PinNumber, input) of
         {ok, GpioPinRef} ->
           Status = initialed,
-          Value = not_active,
+          Value = null,
           {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
           % TODO: Make interrupt type selectable via config value, check return value
           gpio_utils:register_int(GpioPinRef),
@@ -150,14 +150,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
           log_server:error(err_initiating_GPIO_pin, 
                               [BlockName, ErrorResult, PinNumber]),
           Status = proc_err,
-          Value = not_active,
+          Value = null,
           Private2 = Private1
       end;
     {error, Reason} ->
       BlockName = config_utils:name(Config),
       log_server:error(err_reading_GPIO_pin_number, [BlockName, Reason]),
       Status = config_err,
-      Value = not_active,
+      Value = null,
       Private2 = Private1
   end,
     

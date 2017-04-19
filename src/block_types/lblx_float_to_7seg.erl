@@ -60,9 +60,9 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digits, [{not_active, []}]},  % Array attribute
-      {pos_overflow, {not_active, []}},  % Insufficient digits to display positive value
-      {neg_overflow, {not_active, []}}   % Insufficient digits to display negative value
+      {digits, [{null, []}]},  % Array attribute
+      {pos_overflow, {null, []}},  % Insufficient digits to display positive value
+      {neg_overflow, {null, []}}   % Insufficient digits to display negative value
     ]).
 
 
@@ -143,8 +143,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
       % Create a digit output for each digit
       BlockName = config_utils:name(Config),
       Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                       digits, NumOfDigits, {not_active, []}),
-      Value = not_active,
+                                       digits, NumOfDigits, {null, []}),
+      Value = null,
       Status = initialed;
 
     {error, Reason} ->
@@ -170,11 +170,11 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   {ok, NumOfDigits} = attrib_utils:get_value(Config, num_of_digits),
 
   case input_utils:get_float(Inputs, input) of
-    {ok, not_active} ->
-      Value = not_active, Status = normal,
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active),
-      PosOverflow = not_active,
-      NegOverflow = not_active;
+    {ok, null} ->
+      Value = null, Status = normal,
+      Digits7Seg = lists:duplicate(NumOfDigits, null),
+      PosOverflow = null,
+      NegOverflow = null;
    
     {ok, InValue} ->
       % In normal status, set the main Value output equal to the input value
@@ -213,16 +213,16 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       
         {error, Reason, false} ->
           {Value, Status} = input_utils:log_error(Config, precision, Reason),
-          Digits7Seg = lists:duplicate(NumOfDigits, not_active),
-          PosOverflow = not_active,
-          NegOverflow = not_active
+          Digits7Seg = lists:duplicate(NumOfDigits, null),
+          PosOverflow = null,
+          NegOverflow = null
       end;
 
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, input, Reason),
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active),
-      PosOverflow = not_active,
-      NegOverflow = not_active
+      Digits7Seg = lists:duplicate(NumOfDigits, null),
+      PosOverflow = null,
+      NegOverflow = null
   end,
 
   {ok, Outputs1} = attrib_utils:set_value(Outputs, pos_overflow, PosOverflow),
@@ -276,7 +276,7 @@ format_number(InValue, NumOfDigits, Inputs) ->
   end,
 
   case PrecResult of
-    {ok, not_active} ->
+    {ok, null} ->
       % Don't care about precision 
       % Format number with the maximum possible precision
       if IsNegative ->

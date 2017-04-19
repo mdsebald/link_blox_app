@@ -710,8 +710,8 @@ format_newline() ->
 % Format last_exec value
 format_last_exec(Value) ->
   case Value of 
-    not_active ->
-      "not_active";
+    null ->
+      "null";
     {Hour, Minute, Second, Micro} ->
       io_lib:format("~2w:~2..0w:~2..0w.~6..0w", 
                     [Hour,Minute,Second,Micro]);
@@ -1030,8 +1030,8 @@ block_status([BlockName | RemainingBlockNames]) ->
   {ok, ExecMethod} = linkblox_api:get_value(curr_node(), BlockName, exec_method),
   
   case linkblox_api:get_value(curr_node(), BlockName, last_exec) of 
-    {ok, not_active} ->
-      LastExecuted = "not_active";
+    {ok, null} ->
+      LastExecuted = "null";
     {ok, {Hour, Minute, Second, Micro}} ->
       LastExecuted = io_lib:format("~2w:~2..0w:~2..0w.~6..0w", 
                                     [Hour,Minute,Second,Micro]);

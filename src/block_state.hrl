@@ -85,15 +85,15 @@
 
 -type input_errors() :: {error, not_found | bad_link | range | bad_type | not_input}.
                           
--type generic_input_value() :: {ok, value()} | {ok, not_active} | input_errors().
+-type generic_input_value() :: {ok, value()} | {ok, null} | input_errors().
 
--type integer_input_value() :: {ok, integer()} | {ok, not_active} | input_errors().
+-type integer_input_value() :: {ok, integer()} | {ok, null} | input_errors().
 
--type float_input_value() :: {ok, float()} | {ok, not_active} | input_errors().
+-type float_input_value() :: {ok, float()} | {ok, null} | input_errors().
 
--type boolean_input_value() :: {ok, boolean()} | {ok, not_active} | input_errors().
+-type boolean_input_value() :: {ok, boolean()} | {ok, null} | input_errors().
 
--type string_input_value() :: {ok, string()} | {ok, not_active} | input_errors().
+-type string_input_value() :: {ok, string()} | {ok, null} | input_errors().
 
 
 % Used to read block configuration values
@@ -133,7 +133,7 @@
 %%  created:    Block attributes have been instantiated
 %%  initialed:  Block has been initialized, pre execution prep has been completed
 %%  normal:     Block has executed normally
-%%  disabled:   Block disable input is true/on. All block outputs are set to not_active 
+%%  disabled:   Block disable input is true/on. All block outputs are set to null 
 %%  frozen:     Block freeze input is true/on.  All block outputs are frozen at last calculated value
 %%  error:      Block has encountered some error when attempting to execute
 %%  input_err:  One or more of the block input values is incompatible with the block's code

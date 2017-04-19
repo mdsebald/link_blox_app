@@ -141,7 +141,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
             {ok, Precision} ->
               FormatStr = build_format_str(LeftJustify, FieldWidth, Precision),
               Private1 = attrib_utils:add_attribute(Private, {format_str, {FormatStr}}),
-              Value = not_active,
+              Value = null,
               Status = initialed;
 
             {error, Reason} ->
@@ -175,8 +175,8 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   
   case input_utils:get_float(Inputs, input) of
-    {ok, not_active} ->
-      Value = not_active,
+    {ok, null} ->
+      Value = null,
       Status = normal;
 
     {ok, InputValue} ->

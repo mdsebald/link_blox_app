@@ -61,7 +61,7 @@ get_integer_range(Inputs, ValueId, Min, Max) ->
   case get_value(Inputs, ValueId, CheckType) of
     {error, Reason} ->  {error, Reason};
 
-    {ok, not_active} -> {ok, not_active};
+    {ok, null} -> {ok, null};
     
     {ok, Value} ->
       if (Value < Min ) orelse (Max < Value) ->
@@ -141,14 +141,14 @@ get_value(Inputs, ValueId, CheckType) ->
 %% Check the value and link for both non-array and array values
 check_value(Value, Link, CheckType) ->
   case Value of
-    % not_active is a valid value
-    not_active -> {ok, not_active};
+    % null is a valid value
+    null -> {ok, null};
         
     empty ->   
       case Link of
         % if the input value is empty and the link is empty
-        % treat this like a not_active value
-        ?EMPTY_LINK -> {ok, not_active};
+        % treat this like a null value
+        ?EMPTY_LINK -> {ok, null};
 
         % input is linked to another block but value is empty,
         % this is an error
@@ -169,9 +169,9 @@ check_value(Value, Link, CheckType) ->
 check_boolean_input(Value) ->
   case Value of
     true       -> active;
-    false      -> not_active; 
-    not_active -> not_active;
-    empty      -> not_active;
+    false      -> null; 
+    null -> null;
+    empty      -> null;
     _Error     -> error
   end.
 
@@ -208,13 +208,13 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
 %%
 -spec log_error(Config :: list(config_attr()),
                 ValueId :: value_id(),
-                Reason :: atom()) -> {not_active, input_err}.
+                Reason :: atom()) -> {null, input_err}.
                   
 log_error(Config, ValueId, Reason) ->
   BlockName = config_utils:name(Config),
   ValueIdStr = attrib_utils:value_id_to_str(ValueId),
   log_server:error(err_invalid_input_value, [BlockName, ValueIdStr, Reason]),
-  {not_active, input_err}.
+  {null, input_err}.
   
   
 %% ====================================================================
@@ -277,7 +277,7 @@ resize_attribute_array_value_increase_test() ->
 log_error_test() ->
   Config = test_data:input_utils_config_attribs1(),
   
-  ExpectedResult =  {not_active, input_err},
+  ExpectedResult =  {null, input_err},
   
   Result = log_error(Config, value_name, bad_value),
   ?assertEqual(ExpectedResult, Result) .

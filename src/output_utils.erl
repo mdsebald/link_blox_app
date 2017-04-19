@@ -239,7 +239,7 @@ set_array_value_test() ->
 % Test update_all_outputs()  
 update_all_outputs_test() ->
   Outputs = test_data:output_attribs1(),
-  Value = not_active,
+  Value = null,
   Status = input_err,
   
   ExpectedResult = test_data:output_utils_output_attribs4(),
@@ -259,7 +259,7 @@ resize_attribute_array_value_nochange_test() ->
   Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 3,
-  DefaultValue = {not_active, []},
+  DefaultValue = {null, []},
   
   ExpectedResult = test_data:output_attribs1(),
   
@@ -273,7 +273,7 @@ resize_attribute_array_value_increase_test() ->
   Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 6,
-  DefaultValue = {not_active, []},
+  DefaultValue = {null, []},
   
   ExpectedResult = test_data:output_utils_output_attribs2(),
   

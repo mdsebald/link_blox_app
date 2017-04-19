@@ -59,7 +59,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {carry, {not_active, []}}
+      {carry, {null, []}}
     ]). 
 
                                                        
@@ -146,7 +146,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   if is_integer(InitialValue) ->
     Outputs1 = output_utils:set_value_status(Outputs, InitialValue, initialed);
   true ->    
-     Outputs1 = output_utils:set_value_status(Outputs, not_active, initialed)
+     Outputs1 = output_utils:set_value_status(Outputs, null, initialed)
   end,
     
   {Config, Inputs, Outputs1, Private}.
@@ -171,9 +171,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                
               case config_utils:get_boolean(Config, rollover) of
                 {ok, Rollover} ->
-                  % Initial and Final values must be integers, can't be empty or not_active
+                  % Initial and Final values must be integers, can't be empty or null
                   if (not is_integer(InitialValue)) orelse (not is_integer(FinalValue)) ->
-                    Value = not_active, Status = no_input, Carry = not_active;
+                    Value = null, Status = no_input, Carry = null;
                   true ->
                     % Input and Config values are good
                     {ok, CurrentValue} = attrib_utils:get_value(Outputs, value),
@@ -219,19 +219,19 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                     
                 {error, Reason} ->
                   {Value, Status} = config_utils:log_error(Config, rollover, Reason),
-                  Carry = not_active
+                  Carry = null
               end;
             {error, Reason} ->
               {Value, Status} = input_utils:log_error(Config, final_value, Reason),
-              Carry = not_active
+              Carry = null
           end;
         {error, Reason} -> 
           {Value, Status} = input_utils:log_error(Config, initial_value, Reason),
-          Carry = not_active
+          Carry = null
       end;
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, reset, Reason),
-      Carry = not_active
+      Carry = null
   end,
   
   % Update outputs        

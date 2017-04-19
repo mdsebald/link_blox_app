@@ -152,7 +152,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {error, Reason} ->
       log_server:error(err_initializing_LED_driver_I2C_address, [Reason, I2cAddr]),
       Status = proc_err,
-      Value = not_active,
+      Value = null,
       Private2 = Private1
     end,
    
@@ -179,9 +179,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       case input_utils:get_integer(Inputs, blink_rate) of
         {error, Reason} ->
           input_utils:log_error(Config, blink_rate, Reason),
-          Value = not_active, Status = input_err;
-        {ok, not_active} -> 
-          Value = not_active, Status = normal;
+          Value = null, Status = input_err;
+        {ok, null} -> 
+          Value = null, Status = normal;
         
         {ok, BlinkRate} ->
           % Display State and Blink Rate are write to the same byte 
@@ -190,10 +190,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
           case input_utils:get_integer(Inputs, brightness) of
             {error, Reason} ->
               input_utils:log_error(Config, brightness, Reason),
-              Value = not_active, Status = input_err;
+              Value = null, Status = input_err;
               
-            {ok, not_active} -> 
-              Value = not_active, Status = normal;
+            {ok, null} -> 
+              Value = null, Status = normal;
                                 
             {ok, Brightness} ->
               set_brightness(I2cRef, Brightness),
@@ -201,10 +201,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
               case input_utils:get_integer(Inputs, digit_segs_1) of
                 {error, Reason} ->
                   input_utils:log_error(Config, digit_segs_1, Reason),
-                  Value = not_active, Status = input_err;
+                  Value = null, Status = input_err;
                   
-                {ok, not_active} -> 
-                  Value = not_active, Status = normal;
+                {ok, null} -> 
+                  Value = null, Status = normal;
                      
                 {ok, Segments1} ->
                   write_segments(I2cRef, 1, Segments1),
@@ -212,10 +212,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                   case input_utils:get_integer(Inputs, digit_segs_2) of
                     {error, Reason} ->
                       input_utils:log_error(Config, digit_segs_2, Reason),
-                      Value = not_active, Status = input_err;
+                      Value = null, Status = input_err;
                       
-                    {ok, not_active} -> 
-                      Value = not_active, Status = normal;
+                    {ok, null} -> 
+                      Value = null, Status = normal;
                       
                     {ok, Segments2} ->
                       write_segments(I2cRef, 2, Segments2),
@@ -223,10 +223,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                       case input_utils:get_boolean(Inputs, colon) of
                         {error, Reason} ->
                           input_utils:log_error(Config, colon, Reason),
-                          Value = not_active, Status = input_err;
+                          Value = null, Status = input_err;
                           
-                        {ok, not_active} -> 
-                          Value = not_active, Status = normal;
+                        {ok, null} -> 
+                          Value = null, Status = normal;
                    
                         {ok, ColonState} ->
                           set_colon(I2cRef, ColonState),
@@ -234,10 +234,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                           case input_utils:get_integer(Inputs, digit_segs_3) of
                             {error, Reason} ->
                               input_utils:log_error(Config, digit_segs_3, Reason),
-                              Value = not_active, Status = input_err;
+                              Value = null, Status = input_err;
                               
-                            {ok, not_active} -> 
-                              Value = not_active, Status = normal;
+                            {ok, null} -> 
+                              Value = null, Status = normal;
 
                             {ok, Segments3} ->
                               write_segments(I2cRef, 3, Segments3),
@@ -245,10 +245,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                               case input_utils:get_integer(Inputs, digit_segs_4) of
                                 {error, Reason} ->
                                   input_utils:log_error(Config, digit_segs_4, Reason),
-                                  Value = not_active, Status = input_err;
+                                  Value = null, Status = input_err;
                                   
-                                {ok, not_active} -> 
-                                  Value = not_active, Status = normal;
+                                {ok, null} -> 
+                                  Value = null, Status = normal;
 
                                 {ok, Segments4} ->
                                   write_segments(I2cRef, 4, Segments4),

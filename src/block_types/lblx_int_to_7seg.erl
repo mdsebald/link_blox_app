@@ -58,7 +58,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digits, [{not_active, []}]}  % Array attribute 
+      {digits, [{null, []}]}  % Array attribute 
     ]).
 
 
@@ -168,8 +168,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
               % Create a digit output for each digit
               Outputs1 = 
                 output_utils:resize_attribute_array_value(BlockName, Outputs, 
-                                       digits, NumOfDigits, {not_active, []}),
-              Value = not_active,
+                                       digits, NumOfDigits, {null, []}),
+              Value = null,
               Status = initialed
           end                    
       end
@@ -196,11 +196,11 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   case input_utils:get_integer(Inputs, input) of
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, input, Reason),
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
+      Digits7Seg = lists:duplicate(NumOfDigits, null);
 
-    {ok, not_active} ->
-      Value = not_active, Status = normal,
-      Digits7Seg = lists:duplicate(NumOfDigits, not_active);
+    {ok, null} ->
+      Value = null, Status = normal,
+      Digits7Seg = lists:duplicate(NumOfDigits, null);
    
     {ok, InValue} ->  
       InValueStr = integer_to_list(InValue, NumberBase),

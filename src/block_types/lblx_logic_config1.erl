@@ -36,9 +36,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {out_for_0, {not_active}}, % Output value for false input
-      {out_for_1, {not_active}}, % Output value for true input
-      {out_for_X, {not_active}}  % Output value for not_active input                
+      {out_for_0, {null}}, % Output value for false input
+      {out_for_1, {null}}, % Output value for true input
+      {out_for_X, {null}}  % Output value for null input                
     ]). 
 
 
@@ -185,14 +185,14 @@ get_output_value(Config, Inputs) ->
       case Input of
         false ->      {ok, Value} = config_utils:get_any_type(Config, out_for_0);
         true ->       {ok, Value} = config_utils:get_any_type(Config, out_for_1);
-        not_active -> {ok, Value} = config_utils:get_any_type(Config, out_for_X)
+        null -> {ok, Value} = config_utils:get_any_type(Config, out_for_X)
       end,
       {Value, normal};
 
     {error, Reason} ->
       BlockName = config_utils:name(Config),
       log_server:error(err_invalid_input_value, [BlockName, Reason]),
-      {not_active, input_err}
+      {null, input_err}
   end.
 
 

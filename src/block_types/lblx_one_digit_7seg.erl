@@ -60,14 +60,14 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {seg_a, {not_active, []}},
-      {seg_b, {not_active, []}},
-      {seg_c, {not_active, []}},
-      {seg_d, {not_active, []}},
-      {seg_e, {not_active, []}},
-      {seg_f, {not_active, []}},
-      {seg_g, {not_active, []}},
-      {seg_dp, {not_active, []}}
+      {seg_a, {null, []}},
+      {seg_b, {null, []}},
+      {seg_c, {null, []}},
+      {seg_d, {null, []}},
+      {seg_e, {null, []}},
+      {seg_f, {null, []}},
+      {seg_g, {null, []}},
+      {seg_dp, {null, []}}
     ]). 
 
 
@@ -164,9 +164,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   case input_utils:get_boolean(Inputs, display_on) of
     {error, Reason} ->
-      Value = not_active, Status = input_err,
-      SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
-      SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
+      Value = null, Status = input_err,
+      SegA = null, SegB = null, SegC = null, SegD = null, 
+      SegE = null, SegF = null, SegG = null, SegDp = null,
       input_utils:log_error(Config, display_on, Reason);
       
     {ok, DisplayState} ->
@@ -179,17 +179,17 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
         true -> % Display is on  
           case input_utils:get_integer(Inputs, segments) of
             {error, Reason} ->
-              Value = not_active, Status = input_err,
-              SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
-              SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active,
+              Value = null, Status = input_err,
+              SegA = null, SegB = null, SegC = null, SegD = null, 
+              SegE = null, SegF = null, SegG = null, SegDp = null,
                input_utils:log_error(Config, segments, Reason);
 
             {ok, Segments} ->
               case Segments of 
-                not_active ->
-                  Value = not_active, Status = normal,
-                  SegA = not_active, SegB = not_active, SegC = not_active, SegD = not_active, 
-                  SegE = not_active, SegF = not_active, SegG = not_active, SegDp = not_active;
+                null ->
+                  Value = null, Status = normal,
+                  SegA = null, SegB = null, SegC = null, SegD = null, 
+                  SegE = null, SegF = null, SegG = null, SegDp = null;
                   
                 Segments ->
                   Value = Segments, Status = normal,

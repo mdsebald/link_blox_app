@@ -128,7 +128,7 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Outputs1 = output_utils:set_value_status(Outputs, not_active, initialed),
+  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
  
   {Config, Inputs, Outputs1, Private}.
 
@@ -145,8 +145,8 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   case attrib_utils:get_value(Outputs, value) of
     {ok, true}       -> Value = false,      Status = normal;
     {ok, false}      -> Value = true,       Status = normal;
-    {ok, not_active} -> Value = true,       Status = normal;
-    _                -> Value = not_active, Status = error
+    {ok, null} -> Value = true,       Status = normal;
+    _                -> Value = null, Status = error
   end,
 	
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),

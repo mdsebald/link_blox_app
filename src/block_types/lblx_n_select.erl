@@ -143,7 +143,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                   inputs, NumOfInputs, {empty, ?EMPTY_LINK}),
 
       % Initialize output values
-      Value = not_active,
+      Value = null,
       Status = initialed
   end,
 
@@ -167,8 +167,8 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, select, Reason);
 
-    {ok, not_active} ->
-      Value = not_active, Status = no_input;
+    {ok, null} ->
+      Value = null, Status = no_input;
    
     {ok, SelectedInput} ->  
       case input_utils:get_any_type(Inputs, {inputs, SelectedInput}) of

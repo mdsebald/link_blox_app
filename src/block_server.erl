@@ -345,7 +345,7 @@ handle_call({link, ValueId, Reference}, _From, BlockValues) ->
  
     {error, Reason} ->
       log_server:error(err_fetching_value, [Reason, ValueId]),
-      Value = not_active
+      Value = null
   end,
 
   {reply, Value, {Config, Inputs, NewOutputs, Private}};
@@ -587,7 +587,7 @@ handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockValues) ->
     log_server:info(mqtt_client_shutdown, [BlockName, ShutdownReason]),
     
     % Reset the client reference, to indicate MQTT client needs to be restarted
-    case attrib_utils:set_value(Private, client, not_active) of
+    case attrib_utils:set_value(Private, client, null) of
       {ok, Private1} ->
         NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 

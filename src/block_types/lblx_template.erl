@@ -83,8 +83,8 @@ default_outputs() ->
       % Output attribute tuples consist of a value name, a calculated value, 
       % and a list of blocks that reference (have links to) this output value
       % Output values are always set to 'not_actve' and empty reference list on creation
-      % Example: {dwell, {not_active, []}}
-      % Array Example: {digit, [{not_active, []}]}  
+      % Example: {dwell, {null, []}}
+      % Array Example: {digit, [{null, []}]}  
     ]). 
 
 

@@ -92,7 +92,7 @@ config_utils_config_attribs1() ->
     {integer_bad, {"bad"}},
     {boolean_good, {true}},
     {boolean_bad, {0.0}},
-    {not_active_good, {not_active}},
+    {not_active_good, {null}},
     {empty_good, {empty}},
     {empty_bad, {empty, {knot, empty, link}}},
     {not_config, {123, [test1,test2]}}
@@ -116,7 +116,7 @@ input_utils_input_attribs1() ->
     {integer_bad, {"bad", ?EMPTY_LINK}},
     {boolean_good, {true, ?EMPTY_LINK}},
     {boolean_bad, {0.0, ?EMPTY_LINK}},
-    {not_active_good, {not_active, ?EMPTY_LINK}},
+    {not_active_good, {null, ?EMPTY_LINK}},
     {empty_good, {empty, ?EMPTY_LINK}},
     {empty_bad, {empty, {knot, empty, link}}},
     {not_input, {123, [test1,test2]}},
@@ -152,7 +152,7 @@ output_utils_input_attribs1() ->
     {integer_bad, {"bad", ?EMPTY_LINK}},
     {boolean_good, {true, ?EMPTY_LINK}},
     {boolean_bad, {0.0, ?EMPTY_LINK}},
-    {not_active_good, {not_active, ?EMPTY_LINK}},
+    {not_active_good, {null, ?EMPTY_LINK}},
     {empty_good, {empty, ?EMPTY_LINK}},
     {empty_bad, {empty, {knot, empty, link}}},
     {not_input, {123, [test1,test2]}},
@@ -175,14 +175,14 @@ output_attribs1() ->
     {status, {created, []}},     
     {exec_method, {empty, []}},
     {last_exec, {empty, []}},
-    {value, {not_active, []}},
+    {value, {null, []}},
     {integer_array_out, [{0, []}, {1,[]}, {2, []}]}
   ].
  
   output_utils_output_attribs2() ->
     OutputList = output_attribs1(),
     ModifiedAttribute = {integer_array_out, 
-    [{0, []}, {1,[]}, {2, []}, {not_active, []}, {not_active, []}, {not_active, []}]},
+    [{0, []}, {1,[]}, {2, []}, {null, []}, {null, []}, {null, []}]},
     
     attrib_utils:replace_attribute(OutputList, integer_array_out, 
                             ModifiedAttribute).
@@ -197,12 +197,12 @@ output_attribs1() ->
                             
 output_utils_output_attribs4() ->
   [
-    {exec_out, {not_active, []}},                         
+    {exec_out, {null, []}},                         
     {status, {input_err, []}},     
-    {exec_method, {not_active, []}},
-    {last_exec, {not_active, []}},
-    {value, {not_active, []}},
-    {integer_array_out, [{not_active, []}, {not_active,[]}, {not_active, []}]}
+    {exec_method, {null, []}},
+    {last_exec, {null, []}},
+    {value, {null, []}},
+    {integer_array_out, [{null, []}, {null,[]}, {null, []}]}
   ].
   
 -endif.
