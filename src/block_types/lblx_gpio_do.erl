@@ -148,7 +148,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
                 {error, ErrorResult} ->
-                  log_server:error(err_initiating_GPIO_pin, [ErrorResult, PinNumber]),
+                  BlockName = config_utils:name(Config),
+                  log_server:error(err_initiating_GPIO_pin, [BlockName, ErrorResult, PinNumber]),
                   Status = proc_err,
                   Value = null,
                   Private2 = Private1
@@ -166,7 +167,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Private2 = Private1
       end;
     {error, Reason} ->
-      log_server:error(err_reading_GPIO_pin_number, [Reason]),
+      BlockName = config_utils:name(Config),
+      log_server:error(err_reading_GPIO_pin_number, [BlockName, Reason]),
       Status = config_err,
       Value = null,
       Private2 = Private1
