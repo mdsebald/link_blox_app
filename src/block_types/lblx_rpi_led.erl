@@ -181,40 +181,26 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   {ok, LedId} = config_utils:get_string(Config, led_id),
-  {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
-  {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
+  {ok, DefaultValue} = config_utils:get_boolean(Config, default_value),
+  {ok, InvertOutput} = config_utils:get_boolean(Config, invert_output),
      
-  {ok, Input} = attrib_utils:get_value(Inputs, input),
-
   % Set Output Val to input and set the actual LED file value too
-  case Input of
-    empty -> 
-      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = null,
-      Status = no_input;
+  case input_utils:get_boolean(Inputs, input) of
 
-    null ->
-      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
+    {ok, null} ->
+      LedValue = DefaultValue,
       Value = null,
       Status = normal;
 
-    true ->  
-      LedValue = true, 
-      Value = true,
+    {ok, Value} ->  
+      LedValue = Value, 
       Status = normal;
 
-    false ->
-      LedValue = false,
-      Value = false,
-      Status = normal;
-
-    Other ->
-      BlockName = config_utils:name(Config),
-      log_server:error(err_invalid_input_value, [BlockName, Other]),
-      LedValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = null,
-      Status = input_err
+    {error, Reason} ->
+      LedValue = DefaultValue,
+      {Value, Status} = input_utils:log_error(Config, input, Reason)
   end,
+
   set_led_value(LedId, LedValue, InvertOutput),
  
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),

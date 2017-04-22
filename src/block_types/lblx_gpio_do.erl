@@ -192,37 +192,22 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
   {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),
      
-  {ok, Input} = attrib_utils:get_value(Inputs, input),
-
   % Set Output Val to input and set the actual GPIO pin value too
-  case Input of
-     empty -> 
-      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
+  case input_utils:get_boolean(Inputs, input) of
+    {ok, null} -> 
+      PinValue = DefaultValue, 
       Value = null,
-      Status = no_input;
+      Status = ok;
 
-    null ->
-      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = null,
+    {ok, Value} ->  
+      PinValue = Value, 
       Status = normal;
 
-    true ->  
-      PinValue = true, 
-      Value = true,
-      Status = normal;
-
-    false ->
-      PinValue = false,
-      Value = false,
-      Status = normal;
-
-     Other ->
-      BlockName = config_utils:name(Config),
-      log_server:error(err_invalid_input_value, [BlockName, Other]),
-      PinValue = DefaultValue, % TODO: Set pin to default value or input? 
-      Value = null,
-      Status = input_err
+     {error, Reason} ->
+      PinValue = DefaultValue,
+      {Value, Status} = input_utils:log_error(Config, input, Reason)
   end,
+
   set_pin_value_bool(GpioPinRef, PinValue, InvertOutput),
  
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),

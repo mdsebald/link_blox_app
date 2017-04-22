@@ -180,15 +180,13 @@ get_output_value(Config, Inputs) ->
     {ok, Input} ->
       % Set Output Value to NOT input value
       case Input of
-        null -> {null, normal};
-        true ->       {false, normal};
-        false ->      {true, normal}
+        null ->  {null, normal};
+        true ->  {false, normal};
+        false -> {true, normal}
       end;
 
     {error, Reason} ->
-      BlockName = config_utils:name(Config),
-      log_server:error(err_invalid_input_value, [BlockName, Reason]),
-      {null, input_err}
+      input_utils:log_error(Config, input, Reason)
   end.
 
 %% ====================================================================
