@@ -262,15 +262,10 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+% Perform minimum block unit test
 
 block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(create_test, "Unit Testing Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  _BlockDefnFinal = delete(BlockState),
-  ?assert(true).
+  unit_test_utils:min_block_test(?MODULE).
+
 
 -endif.

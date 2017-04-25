@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {host, {"broker.hivemq.com"}},  % test MQTT broker, should already be running
+      {host, {"localhost"}},  % "broker.hivemq.com" test MQTT broker, should already be running
       {port, {1883}},
       {client_id, {""}},  % Default client ID is the block name
       {clean_sess, {true}},
@@ -824,15 +824,10 @@ update_sub_values(Config, InitOutputs, [{PubMsgTopic, PubMsgValue} | PubMsgs]) -
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+% Perform minimum block unit test
 
 block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(mqtt_pub_sub_test, "Unit Test Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  delete(BlockState),
-  ?assert(true).
+  unit_test_utils:min_block_test(?MODULE).
+
 
 -endif.

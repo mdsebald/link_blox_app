@@ -5,11 +5,10 @@
 %%% @end 
 
 
--module(lblx_logic_config1).  
+-module(lblx_config_logic1).  
   
 -author("Mark Sebald").
 
- % INSTRUCTIONS: Adjust path to hrl file as needed
 -include("../block_state.hrl"). 
 
 %% ====================================================================
@@ -21,7 +20,7 @@
 
 groups() -> [logic].
 
-description() -> "1 Input Configurable Logic Block".
+description() -> "1 Input Configurable Logic Gate".
 
 version() -> "0.1.0".
 
@@ -36,9 +35,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {out_for_0, {null}}, % Output value for false input
-      {out_for_1, {null}}, % Output value for true input
-      {out_for_X, {null}}  % Output value for null input                
+      {'0_out', {null}}, % Output value for false input
+      {'1_out', {null}} % Output value for true input
     ]). 
 
 
@@ -180,40 +178,66 @@ delete({Config, Inputs, Outputs, _Private}) ->
 get_output_value(Config, Inputs) ->
 
   case input_utils:get_boolean(Inputs, input) of
+    {ok, null} ->
+      % Input value null, set output value null
+      {null, normal};
+    
     {ok, Input} ->
+      ValueName = maps:get(Input, in_out_value_map()),
       % Set the output value to the config value corresponding to the input state
-      case Input of
-        false ->      {ok, Value} = config_utils:get_any_type(Config, out_for_0);
-        true ->       {ok, Value} = config_utils:get_any_type(Config, out_for_1);
-        null -> {ok, Value} = config_utils:get_any_type(Config, out_for_X)
-      end,
+      {ok, Value} = config_utils:get_any_type(Config, ValueName),
       {Value, normal};
 
     {error, Reason} ->
-      BlockName = config_utils:name(Config),
-      log_server:error(err_invalid_input_value, [BlockName, Reason]),
-      {null, input_err}
+      input_utils:log_error(Config, input, Reason)
   end.
+
+% Return Config value ID for given input value
+-spec in_out_value_map() -> value_name().
+
+in_out_value_map() ->
+  #{
+    false => '0_out',
+    true => '1_out'
+  }.
 
 
 %% ====================================================================
 %% Tests
 %% ====================================================================
 
-% INSTRUCTIONS:  Create unit tests here.  
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+        ]}
+      end} 
+  }.
 
-block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(create_test, "Unit Testing Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  _BlockDefnFinal = delete(BlockState),
-  ?assert(true).
+setup() ->
+  InitConfigVals = [{'0_out', false}, {'1_out', true}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
+
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_states()).
+
+test_states() ->
+  [
+    {[{input, empty}], [{status, normal}, {value, null}]},
+    {[{input, "bad"}], [{status, input_err}, {value, null}]},
+    {[{input, true}], [{status, normal}, {value, true}]},
+    {[{input, false}], [{status, normal}, {value, false}]}
+  ].
 
 -endif.

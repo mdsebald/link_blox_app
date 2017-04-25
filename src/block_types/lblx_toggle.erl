@@ -143,10 +143,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % Toggle output everytime block is executed
   case attrib_utils:get_value(Outputs, value) of
-    {ok, true}       -> Value = false,      Status = normal;
-    {ok, false}      -> Value = true,       Status = normal;
-    {ok, null} -> Value = true,       Status = normal;
-    _                -> Value = null, Status = error
+    {ok, true}  -> Value = false, Status = normal;
+    {ok, false} -> Value = true,  Status = normal;
+    {ok, null}  -> Value = true,  Status = normal;
+            _   -> Value = null,  Status = error
   end,
 	
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -176,15 +176,34 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+        ]}
+      end} 
+  }.
 
-block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(create_test, "Unit Testing Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  _BlockDefnFinal = delete(BlockState),
-  ?assert(true).
+setup() ->
+  unit_test_utils:block_setup(?MODULE).
+
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+
+test_sets() ->
+  [
+    {[], [{status, normal}, {value, true}]},
+    {[], [{status, normal}, {value, false}]},
+    {[], [{status, normal}, {value, true}]},
+    {[], [{status, normal}, {value, false}]}
+  ].
 
 -endif.

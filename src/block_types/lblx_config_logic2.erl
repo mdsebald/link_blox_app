@@ -1,11 +1,11 @@
 %%% @doc 
-%%% Block Type:  logic_config2
-%%% Description:  2 Input Configurable Logic Block
+%%% Block Type:  
+%%% Description:  2 Input Configurable Logic Block with null values
 %%%               
 %%% @end 
 
 
--module(lblx_logic_config2).
+-module(lblx_config_logic2).
   
 -author("Mark Sebald").
 
@@ -20,7 +20,7 @@
 
 groups() -> [logic].
 
-description() -> "2 Input Configurable Logic Block".
+description() -> "2 Input Configurable Logic Gate".
 
 version() -> "0.1.0".
 
@@ -35,15 +35,10 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {out_for_0_0, {null}}, % Output value for input 2 = false & 1 = false
-      {out_for_0_1, {null}}, % Output value for input 2 = false & 1 = true
-      {out_for_0_X, {null}}, % Output value for input 2 = false & 1 =null
-      {out_for_1_0, {null}}, % Output value for input 2 = true & 1 = false
-      {out_for_1_1, {null}}, % Output value for input 2 = true & 1 = true
-      {out_for_1_X, {null}}, % Output value for input 2 = true & 1 =null
-      {out_for_X_0, {null}}, % Output value for input 2 =null & 1 = false
-      {out_for_X_1, {null}}, % Output value for input 2 =null & 1 =null
-      {out_for_X_X, {null}}  % Output value for input 2 =null & 1 =null            
+      {'0_0_out', {null}}, % Output value for input 2 = false & 1 = false
+      {'0_1_out', {null}}, % Output value for input 2 = false & 1 = true
+      {'1_0_out', {null}}, % Output value for input 2 = true & 1 = false
+      {'1_1_out', {null}} % Output value for input 2 = true & 1 = true
     ]). 
 
 
@@ -53,8 +48,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input2, {empty, ?EMPTY_LINK}},
-      {input1, {empty, ?EMPTY_LINK}}
+      {inputs_2, {empty, ?EMPTY_LINK}},
+      {inputs_1, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -185,36 +180,41 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 get_output_value(Config, Inputs) ->
 
- case input_utils:get_boolean(Inputs, input2) of
-    {ok, Input2} ->
+ case input_utils:get_boolean(Inputs, inputs_2) of
+    {ok, null} ->
+      % input value null, set output value null
+      {null, normal};
 
-      case input_utils:get_boolean(Inputs, input1) of
+    {ok, Input2} ->
+      case input_utils:get_boolean(Inputs, inputs_1) of
+        {ok, null} ->
+          % input value null, set output value null
+          {null, normal};
+
         {ok, Input1} ->
+          ValueName = maps:get({Input2, Input1}, in_out_value_map()),
           % Set the output value to the config value corresponding to the input state
-          case {Input2, Input1} of
-            {false, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_0);
-            {false, true} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_1);
-            {false, null} -> {ok, Value} = config_utils:get_any_type(Config, out_for_0_X);
-            {true, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_1_0);
-            {true, true} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_1_1);
-            {true, null} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_1_X);
-            {null, false} -> {ok, Value} = config_utils:get_any_type(Config, out_for_X_0);
-            {null, true} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_X_1);
-            {null, null} ->  {ok, Value} = config_utils:get_any_type(Config, out_for_X_X)
-         end,
+          {ok, Value} = config_utils:get_any_type(Config, ValueName),
           {Value, normal};
 
         {error, Reason} ->
-          BlockName = config_utils:name(Config),
-          log_server:error(err_invalid_input_value, [BlockName, Reason]),
-          {null, input_err}
+          input_utils:log_error(Config, inputs_1, Reason)
       end;
 
     {error, Reason} ->
-      BlockName = config_utils:name(Config),
-      log_server:error(err_invalid_input_value, [BlockName, Reason]),
-      {null, input_err}
+      input_utils:log_error(Config, inputs_2, Reason)
   end.
+
+% Return Config value ID for given input values
+-spec in_out_value_map() -> value_name().
+
+in_out_value_map() ->
+  #{
+    {false, false} => '0_0_out',
+    {false, true} => '0_1_out',
+    {true, false} => '1_0_out',
+    {true, true} => '1_1_out'
+  }.
 
 
 %% ====================================================================
@@ -226,15 +226,37 @@ get_output_value(Config, Inputs) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+        ]}
+      end} 
+  }.
 
-block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(create_test, "Unit Testing Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  _BlockDefnFinal = delete(BlockState),
-  ?assert(true).
+setup() ->
+  InitConfigVals = [{'0_0_out', 0}, {'0_1_out', 1}, {'1_0_out', 2}, {'1_1_out', 3}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
+
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+
+test_sets()->
+  [
+    {[{inputs_2, empty}, {inputs_1, true}], [{status, normal}, {value, null}]},
+    {[{inputs_2, true}, {inputs_1, null}], [{status, normal}, {value, null}]},
+    {[{inputs_2, "bad"}, {inputs_1, true}], [{status, input_err}, {value, null}]},
+    {[{inputs_2, true}, {inputs_1, "bad"}], [{status, input_err}, {value, null}]},
+    {[{inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 0}]},
+    {[{inputs_2, true}, {inputs_1, true}], [{status, normal}, {value, 3}]}
+  ].
 
 -endif.

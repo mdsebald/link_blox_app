@@ -18,6 +18,7 @@
 
 -export([
           start/1,
+          stop/0,
           error/1,
           error/2,
           warning/1,
@@ -37,6 +38,15 @@
 
 start(LangMod) ->
   gen_server:start_link({local, log_server}, ?MODULE, LangMod, []).
+
+
+%%
+%% Stop logging server
+%%
+-spec stop() -> ok.
+
+stop() ->
+  gen_server:call(?MODULE, stop).
 
 
 %%
@@ -145,6 +155,9 @@ init(LangMod) ->
   NewState :: term(),
   Timeout :: non_neg_integer() | infinity,
   Reason :: term().
+
+handle_call(stop, _From, StringsMap) ->
+  {stop, normal, ok, StringsMap};
 
 handle_call(Msg, _From, StringsMap) ->
   String = get_string(unknown_log_server_call_msg, StringsMap),

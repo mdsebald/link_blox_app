@@ -391,15 +391,35 @@ list_replace(List, Element, Position) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+        ]}
+      end} 
+  }.
 
-block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(create_test, "Unit Testing Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  _BlockDefnFinal = delete(BlockState),
-  ?assert(true).
+setup() ->
+  unit_test_utils:block_setup(?MODULE).
+
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_states()).
+
+test_states() ->
+  [
+    {[{input, "bad"}], [{status, input_err}, {value, null}, {pos_overflow, null}, {neg_overflow, null}]},
+    {[{input, 88.0}], [{status, normal}, {value, 88.0}, {{digits, 1}, 16#7F}, {{digits, 2}, 16#FF}, {pos_overflow, false}, {neg_overflow, false}]},
+    {[{input, -100.0}], [{status, normal}, {value, -100.0}, {{digits, 1}, 16#40}, {{digits, 2}, 16#40}, {pos_overflow, false}, {neg_overflow, true}]},
+    {[{input, 100.0}], [{status, normal}, {value, 100.0}, {{digits, 1}, 16#40}, {{digits, 2}, 16#40}, {pos_overflow, true}, {neg_overflow, false}]}
+  ].
+
 
 -endif.

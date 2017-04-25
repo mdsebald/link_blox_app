@@ -55,7 +55,8 @@ default_configs(BlockName, Description) ->
       % Config attribute tuples consist of a value name and a value
       % Example: {gpio_pin, {0}}
       % Array Example: {start_rows, [{1}, {2}]}
-      % The block is (re) initialized, when any config value is modified.                   
+      % The block is (re) initialized, when any config value is modified.
+      {config1, {"Example Value"}}               
     ]). 
 
 
@@ -70,6 +71,7 @@ default_inputs() ->
       % Example: {hi_limit, {100, ?EMPTY_LINK}}
       % Array Example: {inputs, [{empty, ?EMPTY_LINK}]}
       % Inputs may be fixed values, or linked to a block output value 
+      {input1, {"Example Input Value", ?EMPTY_LINK}}
     ]). 
 
 
@@ -84,7 +86,8 @@ default_outputs() ->
       % and a list of blocks that reference (have links to) this output value
       % Output values are always set to 'not_actve' and empty reference list on creation
       % Example: {dwell, {null, []}}
-      % Array Example: {digit, [{null, []}]}  
+      % Array Example: {digit, [{null, []}]} 
+      {output1, {null, []}} 
     ]). 
 
 
@@ -187,11 +190,19 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   % INSTRUCTIONS: Perform block type specific actions here, 
   % read input value(s) calculate new output value(s)
   % set block output status value
-  Outputs1 = Outputs,
-  Private1 = Private,
+
+  % Example block execution: 
+  %  read input1 and set value output to same, and set status output to normal, 
+  %  unless error encountered reading input1
+  case input_utils:get_any_type(Inputs, input1) of
+    {ok, InputVal} ->
+      Outputs1 = output_utils:set_value_normal(Outputs, InputVal);
+    {error, _Reason} ->
+      Outputs1 = output_utils:set_value_status(Outputs, null, input_err)
+  end,
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -226,15 +237,67 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% At a minimum, call the block type's create(), upgrade(), initialize(), execute(), and delete() functions.
+% INSTRUCTIONS: At the very least,  invoke a minimal block test, 
+%   which calls the block's create(), upgrade(), initialize(), execute(), and delete() functions
 
 block_test() ->
-  log_server:start(lang_en_us),
-  BlockDefn = create(create_test, "Unit Testing Block"),
-  {ok, BlockDefn} = upgrade(BlockDefn),
-  BlockState = block_common:initialize(BlockDefn),
-  execute(BlockState, input_cos),
-  _BlockDefnFinal = delete(BlockState),
-  ?assert(true).
+  unit_test_utils:min_block_test(?MODULE).
+
+
+% INSTRUCTIONS: Use this test fixture to exercise the block's input to output functionality
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+          % test_io_x(BlockState)
+        ]}
+      end} 
+  }.
+
+setup() ->
+  % INSTRUCTIONS: Call one of the following 3 block_setup() functions:
+
+  % INSTRUCTIONS: Use this setup if default block config values do not need to be set before running I/O tests
+  unit_test_utils:block_setup(?MODULE).
+
+  % INSTRUCTIONS: Use this setup if default block config values need to be set before running I/O tests
+  % PreInitConfigVals = [{config1, "config1 value"}, {config2, 2}],  % Example config values
+  % unit_test_utils:block_setup(?MODULE, PreInitConfigVals).
+
+  % INSTRUCTIONS: Use this setup if block config values need to be set before and after initialization
+  % PreInitConfigVals = [{num_of_configs, 24} ],  % Example pre-init config values  
+  % PostInitConfigVals = [{{config, 24}, "24th Config Value"}]  % Example post-init config values 
+  % unit_test_utils:block_setup(?MODULE, PreInitConfigVals, PostInitConfigVals).
+
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+
+% INSTRUCTIONS: 
+%  test_sets() is a list of tuples.  
+%  Each tuple defines one I/O test, and contains 2 lists.
+%  The first list contains {input value id, value} tuples, that the inputs of the block 
+%    will be set to before executing the block.  
+%  The second list contains {output value id, value} tuples, that represent 
+%    the expected output values after executing the block
+%  Each set of input / output values represents a test.
+%  A test consists of setting the input values to the input values of the list,
+%    executing the block, and comparing the actual output values to the expected output values list
+%  The block state is preserved between each test, and used in the subsequent test.
+%  Any input value IDs not specified in the input list, will not be modified before the test
+%  Any output value IDs not specified in the output list, will not be compared after the test
+
+test_sets() ->
+  [
+    {[{input1, "I/O Unit Test 1"}], [{status, normal}, {value, "I/O Unit Test 1"}]},
+    {[{input1, "I/O Unit Test 2"}], [{status, normal}, {value, "I/O Unit Test 2"}]}
+  ].
 
 -endif.
