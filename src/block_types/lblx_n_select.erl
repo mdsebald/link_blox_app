@@ -1,6 +1,6 @@
 %%% @doc 
 %%% Block Type: Select Input Value
-%%% Description:  Set the block output value to selected input input value 
+%%% Description:  Set the block output value to selected input value 
 %%%               
 %%% @end 
 
@@ -130,10 +130,6 @@ upgrade({Config, Inputs, Outputs}) ->
 initialize({Config, Inputs, Outputs, Private}) ->
   % Check the config values
   case config_utils:get_integer_range(Config, num_of_inputs, 1, 99) of
-    {error, Reason} ->
-      Inputs1 = Inputs,
-      {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason);
-       
     {ok, NumOfInputs} ->      
       % All config values are OK
               
@@ -144,8 +140,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
       % Initialize output values
       Value = null,
-      Status = initialed
-  end,
+      Status = initialed;
+    
+    {error, Reason} ->
+      Inputs1 = Inputs,
+      {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason)
+ end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),  
 
@@ -164,20 +164,20 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
 
   case input_utils:get_integer_range(Inputs, select, 1, NumOfInputs) of
-    {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, select, Reason);
-
-    {ok, null} ->
-      Value = null, Status = no_input;
-   
     {ok, SelectedInput} ->  
       case input_utils:get_any_type(Inputs, {inputs, SelectedInput}) of
+        {ok, null} ->
+          Value = null, Status = no_input;
+        
         {ok, Value} ->
           Status = normal;
 
         {error, Reason} ->
           {Value, Status} = input_utils:log_error(Config, inputs, Reason)
-      end
+      end;
+    
+    {error, Reason} ->
+      {Value, Status} = input_utils:log_error(Config, select, Reason)
   end,
    
    Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -209,10 +209,37 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Perform minimum block unit test
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+        ]}
+      end} 
+  }.
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
+setup() ->
+  InitConfigVals = [{num_of_inputs, 10}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
 
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+
+test_sets() ->
+  [
+    {[{select, "bad"}], [{status, input_err}, {value, null}]},
+    {[{select, 0}], [{status, input_err}, {value, null}]},
+    {[{select, 1}], [{status, no_input}, {value, null}]},
+    {[{select, 1}, {{inputs, 1}, 1}, {{inputs, 10}, 10}], [{status, normal}, {value, 1}]},
+    {[{select, 10}], [{status, normal}, {value, 10}]},
+    {[{select, 12}], [{status, input_err}, {value, null}]}
+  ].
 
 -endif.
