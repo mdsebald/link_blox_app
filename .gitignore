@@ -12,3 +12,4 @@ rel/example_project
 erlcinfo
 _rel
 *.fw
+firmware
