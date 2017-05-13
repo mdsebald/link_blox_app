@@ -142,12 +142,12 @@ initialize({Config, Inputs, Outputs}) ->
 %%
 %% Common block execute function
 %%
--spec execute(BlockValues :: block_state(), 
+-spec execute(BlockState :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
 
-execute(BlockValues, ExecMethod) ->
+execute(BlockState, ExecMethod) ->
 
-  {Config, Inputs, Outputs, Private} = BlockValues,
+  {Config, Inputs, Outputs, Private} = BlockState,
   BlockStatus = output_utils:get_status(Outputs),
 
   % Check block status before executing
@@ -161,7 +161,7 @@ execute(BlockValues, ExecMethod) ->
           {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
           case input_utils:check_boolean_input(Freeze) of
             null -> % block is not disabled or frozen, execute it
-              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockValues, ExecMethod),
+              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, ExecMethod),
               Outputs2 = update_execute_track(Outputs1, ExecMethod);
                     
             active -> % Block is frozen
@@ -470,7 +470,7 @@ get_block_name_refs(Refs) ->
 %% Common block delete function, 
 %% Return the updated block state, in case calling function wants to reuse it 
 %%
--spec delete(BlockValues :: block_state()) -> block_state().
+-spec delete(BlockState :: block_state()) -> block_state().
 
 delete({Config, Inputs, Outputs, Private}) ->
   

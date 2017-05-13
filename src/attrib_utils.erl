@@ -100,13 +100,13 @@ get_value(Attributes, ValueId) ->
 %% This is used by processes external to the block
 %% so don't allow getting Private values 
 %%
--spec get_value_any(BlockValues :: block_state(), 
+-spec get_value_any(BlockState :: block_state(), 
                     ValueId :: value_id()) -> attrib_value().
 
 % Get array value
-get_value_any(BlockValues, ValueId) ->
+get_value_any(BlockState, ValueId) ->
 
-  {Config, Inputs, Outputs, _Private} = BlockValues,
+  {Config, Inputs, Outputs, _Private} = BlockState,
 
   case get_value(Config, ValueId) of
     {error, not_found} ->
@@ -189,11 +189,11 @@ set_value(Attributes, ValueId, NewValue)->
 %% is ValueID an attribute of this block
 %% Don't check the private attributes list
 %%
--spec is_attribute(BlockValues :: block_state(),
+-spec is_attribute(BlockState :: block_state(),
                    ValueId :: value_id()) -> boolean().
 
-is_attribute(BlockValues, ValueId) ->
-  {Config, Inputs, Outputs, _Private} = BlockValues,
+is_attribute(BlockState, ValueId) ->
+  {Config, Inputs, Outputs, _Private} = BlockState,
   case is_attribute_type(Config, ValueId) of
     true -> true;
 
@@ -570,56 +570,56 @@ get_value_config_array_negative_index_test() ->
 % 
 % Test config good
 is_attribute_config_test() ->
-  BlockValues = {test_data:attrib_utils_config_attribs1(),
+  BlockState = {test_data:attrib_utils_config_attribs1(),
                  test_data:input_utils_input_attribs1(),
                  test_data:output_attribs1(),
                  []}, % No private data
 
-  Result = is_attribute(BlockValues, {integer_array, 2}),
+  Result = is_attribute(BlockState, {integer_array, 2}),
   ExpectedResult = true,
   ?assertEqual(ExpectedResult, Result).
 
 % Test input good
 is_attribute_input_test() ->
-  BlockValues = {test_data:attrib_utils_config_attribs1(),
+  BlockState = {test_data:attrib_utils_config_attribs1(),
                  test_data:attrib_utils_input_attribs1(),
                  test_data:output_attribs1(),
                  []}, % No private data
 
-  Result = is_attribute(BlockValues, {integer_array_in, 2}),
+  Result = is_attribute(BlockState, {integer_array_in, 2}),
   ExpectedResult = true,
   ?assertEqual(ExpectedResult, Result).
 
 % Test output good
 is_attribute_output_test() ->
-  BlockValues = {test_data:attrib_utils_config_attribs1(),
+  BlockState = {test_data:attrib_utils_config_attribs1(),
                  test_data:attrib_utils_input_attribs1(),
                  test_data:output_attribs1(),
                  []}, % No private data
 
-  Result = is_attribute(BlockValues, value),
+  Result = is_attribute(BlockState, value),
   ExpectedResult = true,
   ?assertEqual(ExpectedResult, Result).
 
 % Test bad value id
 is_attribute_bad_value_test() ->
-  BlockValues = {test_data:attrib_utils_config_attribs1(),
+  BlockState = {test_data:attrib_utils_config_attribs1(),
                  test_data:attrib_utils_input_attribs1(),
                  test_data:output_attribs1(),
                  []}, % No private data
 
-  Result = is_attribute(BlockValues, does_not_exist),
+  Result = is_attribute(BlockState, does_not_exist),
   ExpectedResult = false,
   ?assertEqual(ExpectedResult, Result).
 
 % Test bad array value id
 is_attribute_bad_array_test() ->
-  BlockValues = {test_data:attrib_utils_config_attribs1(),
+  BlockState = {test_data:attrib_utils_config_attribs1(),
                  test_data:attrib_utils_input_attribs1(),
                  test_data:output_attribs1(),
                  []}, % No private data
 
-  Result = is_attribute(BlockValues, {integer_array_out, 4}),
+  Result = is_attribute(BlockState, {integer_array_out, 4}),
   ExpectedResult = false,
   ?assertEqual(ExpectedResult, Result).
 

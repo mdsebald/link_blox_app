@@ -109,7 +109,7 @@ char_to_segments(Char, DecPnt) ->
 get_blocks_to_save() -> 
   BlockValuesList = block_values(),
   
-  Clean = fun(BlockValues) -> clean_block_values(BlockValues) end,
+  Clean = fun(BlockState) -> clean_block_values(BlockState) end,
   CleanedBlockValuesList = lists:map(Clean, BlockValuesList),
   
   Format = fun(Term) -> io_lib:format("~tp.~n", [Term]) end,
@@ -289,8 +289,8 @@ block_values([], BlockValuesList) ->
 block_values(BlockNames, BlockValuesList) ->
   [BlockName | RemainingBlockNames] = BlockNames,
   {Config, Inputs, Outputs, _Private} = block_server:get_block(BlockName),
-  BlockValues = {Config, Inputs, Outputs},
-  block_values(RemainingBlockNames, [BlockValues | BlockValuesList]).
+  BlockState = {Config, Inputs, Outputs},
+  block_values(RemainingBlockNames, [BlockState | BlockValuesList]).
 
 
 %%

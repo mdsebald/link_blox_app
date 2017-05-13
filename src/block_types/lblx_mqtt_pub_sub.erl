@@ -237,7 +237,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 %%
 %%  Execute the block specific functionality
 %%
--spec execute(BlockValues :: block_state(), 
+-spec execute(BlockState :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
@@ -352,7 +352,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
 %% 
 %%  Delete the block
 %%	
--spec delete(BlockValues :: block_state()) -> block_defn().
+-spec delete(BlockState :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) ->
   % If MQTT client has been started

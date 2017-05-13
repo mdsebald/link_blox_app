@@ -574,8 +574,8 @@ ui_get_values(Params) ->
        _ ->
           BlockName = list_to_atom(BlockNameStr),
           case linkblox_api:get_block(curr_node(), BlockName) of
-            {ok, BlockValues} -> 
-              format_block_values(BlockValues);
+            {ok, BlockState} -> 
+              format_block_values(BlockState);
             {error, block_not_found} -> 
               format_out(err_block_not_found, [BlockNameStr]);
             Unknown ->
@@ -589,8 +589,8 @@ ui_get_values(Params) ->
           % Display the unformated tuple and list values
           BlockName = list_to_atom(BlockNameStr),
           case linkblox_api:get_block(curr_node(), BlockName) of
-            {ok, BlockValues} -> 
-              io:format("~n~p~n", [BlockValues]);
+            {ok, BlockState} -> 
+              io:format("~n~p~n", [BlockState]);
             {error, block_not_found} -> 
               format_out(err_block_not_found, [BlockNameStr]);
             Unknown ->
@@ -625,10 +625,10 @@ ui_get_values(Params) ->
 
 
 % Display the block values in a readable format
-format_block_values(BlockValues) ->
+format_block_values(BlockState) ->
   FormatAttribute = fun(BlockValue) -> format_attribute(BlockValue) end,
 
-  case BlockValues of
+  case BlockState of
     {Config, Inputs, Outputs} ->
       format_out(config_str),
       lists:map(FormatAttribute, Config),

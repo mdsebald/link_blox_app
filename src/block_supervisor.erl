@@ -29,8 +29,8 @@ start_link(BlockValuesFile) ->
 %%
 %%  Start a block
 %%    
-start_block(BlockValues) ->
-  [BlockSpec] = create_block_specs([BlockValues]),                    
+start_block(BlockState) ->
+  [BlockSpec] = create_block_specs([BlockState]),                    
   supervisor:start_child(?MODULE, BlockSpec).
    
 %%
@@ -124,15 +124,15 @@ create_block_specs(BlockValuesList) ->
 create_block_specs([], BlockSpecs) -> BlockSpecs;
 
 create_block_specs(BlockValuesList, BlockSpecs) ->
-  [BlockValues | RemainingBlockValuesList] = BlockValuesList,
+  [BlockState | RemainingBlockValuesList] = BlockValuesList,
   % TODO: Check for expected term match, before creating child spec 
 
-  {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockValues),
+  {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockState),
   BlockType = type_utils:type_name(BlockModule),
   log_server:info(creating_type_version, [BlockName, BlockType, Version]),
 
   BlockSpec = #{id => BlockName, restart => transient,
-              start => {block_server, start, [BlockValues]}},
+              start => {block_server, start, [BlockState]}},
   NewBlockSpecs = [BlockSpec | BlockSpecs],
 
   create_block_specs(RemainingBlockValuesList, NewBlockSpecs).

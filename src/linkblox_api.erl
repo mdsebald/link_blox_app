@@ -334,9 +334,9 @@ handle_call({create_block, BlockDefn}, _From, State) ->
 %% Copy a block
 %% =====================================================================    
 % TODO: Set initial attribute values
-handle_call({copy_block, BlockName, BlockValues, _InitAttribs}, _From, State) ->
+handle_call({copy_block, BlockName, BlockState, _InitAttribs}, _From, State) ->
   % Make sure the block values to be copied are the correct form
-  case BlockValues of
+  case BlockState of
     {Config, Inputs, Outputs} ->
       % Get the block module from the copied config values 
       case attrib_utils:get_value(Config, block_module) of
