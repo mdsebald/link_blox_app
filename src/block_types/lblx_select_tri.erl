@@ -18,7 +18,7 @@
 
 groups() -> [select].
 
-description() -> "Select true or false or null Input based on trinary select input".
+description() -> "Trinary Select True, False, or Null Input Value".
 
 version() -> "0.1.0".
 
