@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(lblx_ht16k33).  
+-module(lblx_i2c_ht16k33).  
 
 -author("Mark Sebald").
 

@@ -1,11 +1,11 @@
 %%% @doc 
-%%% Block Type:  
-%%% Description:  2 Input Configurable Logic Gate, Null Values Allowed
+%%% Block Type:  3 Input Configurable Logic Gate
+%%% Description:  Output is set to the config value corresponding to the combination of binary input values
 %%%               
 %%% @end 
 
 
--module(lblx_config_logic2n).
+-module(lblx_logic_config3).
   
 -author("Mark Sebald").
 
@@ -20,7 +20,7 @@
 
 groups() -> [logic].
 
-description() -> "2 Input Configurable Logic Gate, Null Values Allowed".
+description() -> "3 Input Configurable Logic Gate".
 
 version() -> "0.1.0".
 
@@ -35,15 +35,14 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {'0_0_out', {null}}, % Output value for input 2 = false & 1 = false
-      {'0_1_out', {null}}, % Output value for input 2 = false & 1 = true
-      {'0_X_out', {null}}, % Output value for input 2 = false & 1 = null
-      {'1_0_out', {null}}, % Output value for input 2 = true & 1 = false
-      {'1_1_out', {null}}, % Output value for input 2 = true & 1 = true
-      {'1_X_out', {null}}, % Output value for input 2 = true & 1 = null
-      {'X_0_out', {null}}, % Output value for input 2 = null & 1 = false
-      {'X_1_out', {null}}, % Output value for input 2 = null & 1 = true
-      {'X_X_out', {null}}  % Output value for input 2 = null & 1 = null            
+      {'0_0_0_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = false
+      {'0_0_1_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = true
+      {'0_1_0_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = false
+      {'0_1_1_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = true
+      {'1_0_0_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = false
+      {'1_0_1_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = true
+      {'1_1_0_out', {null}}, % Output value for input 3 = true & 2 = true & 1 = false
+      {'1_1_1_out', {null}}  % Output value for input 3 = true & 2 = true & 1 = true
     ]). 
 
 
@@ -53,6 +52,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
+      {inputs_3, {empty, ?EMPTY_LINK}},
       {inputs_2, {empty, ?EMPTY_LINK}},
       {inputs_1, {empty, ?EMPTY_LINK}}
     ]). 
@@ -185,38 +185,55 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 get_output_value(Config, Inputs) ->
 
- case input_utils:get_boolean(Inputs, inputs_2) of
-    {ok, Input2} ->
+  case input_utils:get_boolean(Inputs, inputs_3) of
+    {ok, null} ->
+      % input value null, set output value null
+      {null, normal};
 
-      case input_utils:get_boolean(Inputs, inputs_1) of
-        {ok, Input1} ->
-          ValueName = maps:get({Input2, Input1}, in_out_value_map()),
-          % Set the output value to the config value corresponding to the input state
-          {ok, Value} = config_utils:get_any_type(Config, ValueName),
-          {Value, normal};
+    {ok, Input3} ->
+      case input_utils:get_boolean(Inputs, inputs_2) of
+        {ok, null} ->
+          % input value null, set output value null
+          {null, normal};
+
+        {ok, Input2} ->
+          case input_utils:get_boolean(Inputs, inputs_1) of
+            {ok, null} ->
+              % input value null, set output value null
+              {null, normal};
+
+            {ok, Input1} ->
+              ValueName = maps:get({Input3, Input2, Input1}, in_out_value_map()),
+              % Set the output value to the config value corresponding to the input state
+              {ok, Value} = config_utils:get_any_type(Config, ValueName),
+              {Value, normal};
+
+            {error, Reason} ->
+              input_utils:log_error(Config, inputs_1, Reason)
+          end;
 
         {error, Reason} ->
-          input_utils:log_error(Config, inputs_1, Reason)
+          input_utils:log_error(Config, inputs_2, Reason)
       end;
-
+ 
     {error, Reason} ->
-      input_utils:log_error(Config, inputs_2, Reason)
+      input_utils:log_error(Config, inputs_3, Reason)
   end.
+ 
 
 % Return Config value ID for given input values
 -spec in_out_value_map() -> value_name().
 
 in_out_value_map() ->
   #{
-    {false, false} => '0_0_out',
-    {false, true} => '0_1_out',
-    {false, null} => '0_X_out',
-    {true, false} => '1_0_out',
-    {true, true} => '1_1_out',
-    {true, null} => '1_X_out',
-    {null, false} => 'X_0_out',
-    {null, true} => 'X_1_out',
-    {null, null} => 'X_X_out'
+    {false, false, false} => '0_0_0_out',
+    {false, false, true} => '0_0_1_out',
+    {false, true, false} => '0_1_0_out',
+    {false, true, true} => '0_1_1_out',
+    {true, false, false} => '1_0_0_out',
+    {true, false, true} => '1_0_1_out',
+    {true, true, false} => '1_1_0_out',
+    {true, true, true} => '1_1_1_out'
   }.
 
 
@@ -224,15 +241,48 @@ in_out_value_map() ->
 %% Tests
 %% ====================================================================
 
-% INSTRUCTIONS:  Create unit tests here.  
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Perform minimum block unit test
+block_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun setup/0, 
+      fun cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          test_io(BlockState)
+        ]}
+      end} 
+  }.
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
+setup() ->
+  InitConfigVals = [{'0_0_0_out', 0}, {'0_0_1_out', 1}, {'0_1_0_out', 2}, {'1_0_0_out', 4}, {'1_1_1_out', 7}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
 
+cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+test_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+
+test_sets()->
+  [
+    % Test null/empty input values
+    {[{inputs_3, false}, {inputs_2, true},  {inputs_1, null}], [{status, normal}, {value, null}]},
+    {[{inputs_3, false}, {inputs_2, empty}, {inputs_1, true}], [{status, normal}, {value, null}]},
+    {[{inputs_3, null},  {inputs_2, false}, {inputs_1, true}], [{status, normal}, {value, null}]},
+    % Test bad input values
+    {[{inputs_3, false}, {inputs_2, true},  {inputs_1, "bad"}], [{status, input_err}, {value, null}]},
+    {[{inputs_3, true},  {inputs_2, "bad"}, {inputs_1, true}],  [{status, input_err}, {value, null}]},
+    {[{inputs_3, "bad"}, {inputs_2, true},  {inputs_1, false}], [{status, input_err}, {value, null}]},
+    % Test normal input values
+    {[{inputs_3, false}, {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 0}]},
+    {[{inputs_3, false}, {inputs_2, false}, {inputs_1, true}],  [{status, normal}, {value, 1}]},
+    {[{inputs_3, false}, {inputs_2, true},  {inputs_1, false}], [{status, normal}, {value, 2}]},
+    {[{inputs_3, true},  {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 4}]},
+    {[{inputs_3, true},  {inputs_2, true},  {inputs_1, true}],  [{status, normal}, {value, 7}]}
+ ].
 
 -endif.

@@ -1,10 +1,10 @@
 %%% @doc 
-%%% Block Type: Select Input Value
-%%% Description:  Set the block output value to selected input value 
+%%% Block Type: Select Higest Priority Active Input Value
+%%% Description:  Set the block output value to the highest priority actvive input value 
 %%%               
 %%% @end 
 
--module(lblx_n_select).  
+-module(lblx_select_pri).  
 
 -author("Mark Sebald").
 
@@ -18,7 +18,7 @@
 
 groups() -> [select].
 
-description() -> "Select 1 of N Inputs".
+description() -> "Select Highest Priority Active Input Value".
 
 version() -> "0.1.0".
 
@@ -43,7 +43,6 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {select, {1, ?EMPTY_LINK}}, % Default selection to 1st input
       {inputs, [{empty, ?EMPTY_LINK}]} % Array attribute
     ]). 
 
@@ -163,24 +162,19 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
 
-  case input_utils:get_integer_range(Inputs, select, 1, NumOfInputs) of
-    {ok, SelectedInput} ->  
-      case input_utils:get_any_type(Inputs, {inputs, SelectedInput}) of
-        {ok, null} ->
-          Value = null, Status = no_input;
-        
-        {ok, Value} ->
-          Status = normal;
-
-        {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, inputs, Reason)
-      end;
+  case highest_priority_input(Inputs, 1, NumOfInputs) of
+    {ok, null} ->
+      Value = null,
+      Status = no_input;
     
+    {ok, Value} -> 
+      Status = normal;
+  
     {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, select, Reason)
+      {Value, Status} = input_utils:log_error(Config, inputs, Reason)
   end,
    
-   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.
@@ -200,6 +194,23 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
+% Find the value of the highest priority (lowest index) input value
+
+highest_priority_input(Inputs, Index, NumOfInputs) when Index =< NumOfInputs ->
+
+  case input_utils:get_any_type(Inputs, {inputs, Index}) of
+    % Input value is null, get next input value
+    {ok, null} -> highest_priority_input(Inputs, Index+1, NumOfInputs);
+    
+    % Got an active input value, return it
+    {ok, Value} -> {ok, Value};
+  
+    % Error input value, stop looking, put block in error state
+    {error, Reason} -> {error, Reason}
+  end;
+
+% None of the inputs have active value, return null
+highest_priority_input(_Inputs, _Index, _NumOfInputs) -> {ok, null}.
 
 
 %% ====================================================================
@@ -234,12 +245,10 @@ test_io(BlockState) ->
 
 test_sets() ->
   [
-    {[{select, "bad"}], [{status, input_err}, {value, null}]},
-    {[{select, 0}], [{status, input_err}, {value, null}]},
-    {[{select, 1}], [{status, no_input}, {value, null}]},
-    {[{select, 1}, {{inputs, 1}, 1}, {{inputs, 10}, 10}], [{status, normal}, {value, 1}]},
-    {[{select, 10}], [{status, normal}, {value, 10}]},
-    {[{select, 12}], [{status, input_err}, {value, null}]}
-  ].
+    {[], [{status, no_input}, {value, null}]},
+    {[{{inputs, 1}, null}, {{inputs, 2}, 2}, {{inputs, 10}, 10}], [{status, normal}, {value, 2}]},
+    {[{{inputs, 1}, 1}, {{inputs, 2}, 2}, {{inputs, 10}, 10}], [{status, normal}, {value, 1}]},
+    {[{{inputs, 1}, null}, {{inputs, 2}, null}], [{status, normal}, {value, 10}]}
+ ].
 
 -endif.

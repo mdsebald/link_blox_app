@@ -1,11 +1,11 @@
 %%% @doc 
-%%% Block Type:  logic_config1
-%%% Description:  1 Input Configurable Logic Block
+%%% Block Type:  1 Input Configurable Logic Gate
+%%% Description: Output is set to the config value corresponding to the binary input value
 %%%               
 %%% @end 
 
 
--module(lblx_config_logic1).  
+-module(lblx_logic_config1).  
   
 -author("Mark Sebald").
 

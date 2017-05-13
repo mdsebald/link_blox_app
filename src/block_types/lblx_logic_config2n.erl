@@ -1,11 +1,12 @@
 %%% @doc 
-%%% Block Type: Binary Select True or False Input Value
-%%% Description:  Set the block output value to selected true or false input value
+%%% Block Type:  2 Input Configurable Logic Gate, Null Values Allowed
+%%% Description:  Output is set to the config value corresponding to the combination or binary or null input values
 %%%               
 %%% @end 
 
--module(lblx_bin_select).  
 
+-module(lblx_logic_config2n).
+  
 -author("Mark Sebald").
 
 -include("../block_state.hrl"). 
@@ -13,12 +14,13 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([groups/0, description/0, version/0]).
+-export([groups/0, description/0, version/0]). 
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
-groups() -> [select].
 
-description() -> "Select true or false Input based on binary select input".
+groups() -> [logic].
+
+description() -> "2 Input Configurable Logic Gate, Null Values Allowed".
 
 version() -> "0.1.0".
 
@@ -33,7 +35,15 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-
+      {'0_0_out', {null}}, % Output value for input 2 = false & 1 = false
+      {'0_1_out', {null}}, % Output value for input 2 = false & 1 = true
+      {'0_X_out', {null}}, % Output value for input 2 = false & 1 = null
+      {'1_0_out', {null}}, % Output value for input 2 = true & 1 = false
+      {'1_1_out', {null}}, % Output value for input 2 = true & 1 = true
+      {'1_X_out', {null}}, % Output value for input 2 = true & 1 = null
+      {'X_0_out', {null}}, % Output value for input 2 = null & 1 = false
+      {'X_1_out', {null}}, % Output value for input 2 = null & 1 = true
+      {'X_X_out', {null}}  % Output value for input 2 = null & 1 = null            
     ]). 
 
 
@@ -43,9 +53,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {select, {empty, ?EMPTY_LINK}}, % Boolean input value selects true or false input value
-      {true_input, {empty, ?EMPTY_LINK}}, % Output value for true select input value
-      {false_input, {empty, ?EMPTY_LINK}} % Output value for false select input value
+      {inputs_2, {empty, ?EMPTY_LINK}},
+      {inputs_1, {empty, ?EMPTY_LINK}}
     ]). 
 
 
@@ -55,6 +64,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
+ 
     ]). 
 
 
@@ -105,6 +115,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 -spec upgrade(BlockDefn :: block_defn()) -> {ok, block_defn()} | {error, atom()}.
 
 upgrade({Config, Inputs, Outputs}) ->
+
   ModuleVer = version(),
   {BlockName, BlockModule, ConfigVer} = config_utils:name_module_version(Config),
   BlockType = type_utils:type_name(BlockModule),
@@ -129,10 +140,12 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  % Initialize block outputs
-  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),  
-
-  % This is the block state
+    
+  {Value, Status} = get_output_value(Config, Inputs),
+ 
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  
+  % Return updated block state
   {Config, Inputs, Outputs1, Private}.
 
 
@@ -144,33 +157,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
-  case input_utils:get_boolean(Inputs, select) of
-    {ok, true} ->  
-      case input_utils:get_any_type(Inputs, true_input) of
-        {ok, Value} ->
-          Status = normal;
-
-        {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, true_input, Reason)
-      end;
-
-    {ok, false} ->  
-      case input_utils:get_any_type(Inputs, false_input) of
-        {ok, Value} ->
-          Status = normal;
-
-        {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, false_input, Reason)
-      end;
-
-    {ok, null} ->
-      Value = null, Status = no_input;
-    
-    {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, select, Reason)
-
-  end,
-   
+  {Value, Status} = get_output_value(Config, Inputs),
+ 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % Return updated block state
@@ -183,6 +171,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 -spec delete(BlockState :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
+  
   {Config, Inputs, Outputs}.
 
 
@@ -191,6 +180,44 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
+-spec get_output_value(Config :: list(config_attr()),
+                       Inputs :: list(input_attr())) -> {value(), block_status()}.
+
+get_output_value(Config, Inputs) ->
+
+ case input_utils:get_boolean(Inputs, inputs_2) of
+    {ok, Input2} ->
+
+      case input_utils:get_boolean(Inputs, inputs_1) of
+        {ok, Input1} ->
+          ValueName = maps:get({Input2, Input1}, in_out_value_map()),
+          % Set the output value to the config value corresponding to the input state
+          {ok, Value} = config_utils:get_any_type(Config, ValueName),
+          {Value, normal};
+
+        {error, Reason} ->
+          input_utils:log_error(Config, inputs_1, Reason)
+      end;
+
+    {error, Reason} ->
+      input_utils:log_error(Config, inputs_2, Reason)
+  end.
+
+% Return Config value ID for given input values
+-spec in_out_value_map() -> value_name().
+
+in_out_value_map() ->
+  #{
+    {false, false} => '0_0_out',
+    {false, true} => '0_1_out',
+    {false, null} => '0_X_out',
+    {true, false} => '1_0_out',
+    {true, true} => '1_1_out',
+    {true, null} => '1_X_out',
+    {null, false} => 'X_0_out',
+    {null, true} => 'X_1_out',
+    {null, null} => 'X_X_out'
+  }.
 
 
 %% ====================================================================
@@ -199,6 +226,7 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+
 
 block_test_() ->
   {"Input to Output tests for: " ++ atom_to_list(?MODULE),
@@ -213,8 +241,10 @@ block_test_() ->
       end} 
   }.
 
-setup() ->
-  unit_test_utils:block_setup(?MODULE).
+ setup() ->
+  InitConfigVals = [{'0_X_out', "Input 1 Null"}, {'X_0_out', "Input 2 Null"}, {'X_X_out', "All Null"}, 
+                    {'0_0_out', 0}, {'0_1_out', 1}, {'1_0_out', 2}, {'1_1_out', 3}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
 
 cleanup(BlockState) ->
   unit_test_utils:block_cleanup(?MODULE, BlockState).
@@ -222,12 +252,22 @@ cleanup(BlockState) ->
 test_io(BlockState) ->
   unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
 
-test_sets() ->
+test_sets()->
   [
-    {[{select, empty}, {true_input, "True Input"}, {false_input, "False Input"}], [{status, no_input}, {value, null}]},
-    {[{select, "bad"}], [{status, input_err}, {value, null}]},
-    {[{select, true}], [{status, normal}, {value, "True Input"}]},
-    {[{select, false}], [{status, normal}, {value, "False Input"}]}
-  ].
+    % Test null/empty input values
+    {[{inputs_2, false}, {inputs_1, null}],  [{status, normal}, {value, "Input 1 Null"}]},
+    {[{inputs_2, empty}, {inputs_1, false}], [{status, normal}, {value, "Input 2 Null"}]},
+    {[{inputs_2, null},  {inputs_1, empty}], [{status, normal}, {value, "All Null"}]},
+    % Test bad input values
+    {[{inputs_2, true},  {inputs_1, "bad"}], [{status, input_err}, {value, null}]},
+    {[{inputs_2, "bad"}, {inputs_1, true}],  [{status, input_err}, {value, null}]},
+    % Test normal input values
+    {[{inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 0}]},
+    {[{inputs_2, false}, {inputs_1, true}],  [{status, normal}, {value, 1}]},
+    {[{inputs_2, true},  {inputs_1, false}], [{status, normal}, {value, 2}]},
+    {[{inputs_2, true},  {inputs_1, true}],  [{status, normal}, {value, 3}]}
+ ].
+
+
 
 -endif.

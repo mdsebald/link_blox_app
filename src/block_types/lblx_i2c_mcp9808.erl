@@ -1,10 +1,10 @@
 %%% @doc 
-%%% Block Type: Select Higest Priority Active Input Value
-%%% Description:  Set the block output value to the highest priority actvive input value 
+%%% Block Type:  MCP9808 Temperature Sensor
+%%% Description: Microchip MCP9808 precision temperature sensor with I2C interface   
 %%%               
 %%% @end 
 
--module(lblx_pri_select).  
+-module(lblx_i2c_mcp9808).  
 
 -author("Mark Sebald").
 
@@ -16,9 +16,9 @@
 -export([groups/0, description/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
-groups() -> [select].
+groups() -> [sensor, input, i2c_device].
 
-description() -> "Select Highest Priority Active Input Value".
+description() -> "Precision temp sensor with I2C interface".
 
 version() -> "0.1.0".
 
@@ -33,7 +33,10 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-       {num_of_inputs, {3}}  % Default number of selectable inputs to 3                
+      {i2c_device, {"i2c-1"}},
+      {i2c_addr, {16#18}},
+      {deg_f, {true}},
+      {offset, {0.0}}
     ]). 
 
 
@@ -43,7 +46,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs, [{empty, ?EMPTY_LINK}]} % Array attribute
+      {input, {0, ?EMPTY_LINK}} % TODO: Delete, not used
     ]). 
 
 
@@ -53,8 +56,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
+     
     ]). 
-
 
 %%  
 %% Create a set of block attributes for this block type.  
@@ -79,7 +82,7 @@ create(BlockName, Description, InitConfig, InitInputs) ->
              Description :: string(), 
              InitConfig :: list(config_attr()), 
              InitInputs :: list(input_attr()), 
-             InitOutputs :: list(output_attr())) -> block_defn().
+             InitOutputs :: list()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
@@ -127,29 +130,44 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  % Check the config values
-  case config_utils:get_integer_range(Config, num_of_inputs, 1, 99) of
-    {ok, NumOfInputs} ->      
-      % All config values are OK
-              
-      % Create N inputs
-      BlockName = config_utils:name(Config),
-      Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  inputs, NumOfInputs, {empty, ?EMPTY_LINK}),
 
-      % Initialize output values
-      Value = null,
-      Status = initialed;
-    
+  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
+  
+  % Get the the I2C Address of the sensor 
+  % TODO: Check for valid I2C Address
+  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
+  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
+	    
+  case i2c_utils:start_link(I2cDevice, I2cAddr) of
+    {ok, I2cRef} ->
+      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
+      
+      
+      {ok, DegF} = attrib_utils:get_value(Config, deg_f),
+      {ok, Offset} = attrib_utils:get_value(Config, offset),
+  
+      % Read the ambient temperature
+      case read_ambient(I2cRef, DegF, Offset) of
+       {ok, Value} ->
+          Status = initialed;
+
+       {error, Reason} ->
+          log_server:error(err_reading_temperature_sensor, [Reason]),
+          Status = proc_err,
+          Value = null
+       end;
+      
     {error, Reason} ->
-      Inputs1 = Inputs,
-      {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason)
- end,
-
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),  
+      log_server:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+      Status = proc_err,
+      Value = null,
+      Private2 = Private1
+  end,	
+   
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs1, Outputs1, Private}.
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%
@@ -160,19 +178,27 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
-  {ok, NumOfInputs} = attrib_utils:get_value(Config, num_of_inputs),
-
-  case highest_priority_input(Inputs, 1, NumOfInputs) of
-    {ok, null} ->
-      Value = null,
-      Status = no_input;
-    
-    {ok, Value} -> 
-      Status = normal;
+  % TODO: Check flag bits?
+  %  Do we need to do this? Easy to implement in block code.
+  % Critical temp trips hw interrupt on chip, may need to implement that
+  % if ((UpperByte & 0x80) == 0x80){ //TA > TCRIT }
+  % if ((UpperByte & 0x40) == 0x40){ //TA > TUPPER }
+  % if ((UpperByte & 0x20) == 0x20){ //TA < TLOWER }
   
+  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
+  {ok, DegF} = attrib_utils:get_value(Config, deg_f),
+  {ok, Offset} = attrib_utils:get_value(Config, offset),
+  
+  % Read the ambient temperature
+  case read_ambient(I2cRef, DegF, Offset) of
+    {ok, Value} ->
+      Status = normal;
+
     {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, inputs, Reason)
-  end,
+      log_server:error(err_reading_temperature_sensor, [Reason]),
+      Status = proc_err,
+      Value = null
+   end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
@@ -185,32 +211,62 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 %%	
 -spec delete(BlockState :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, _Private}) -> 
+delete({Config, Inputs, Outputs, Private}) -> 
+  % Close the I2C Channel
+  case attrib_utils:get_value(Private, i2c_ref) of
+    {ok, I2cRef} -> i2c_utils:stop(I2cRef);
+    
+    _ -> ok
+  end,
   {Config, Inputs, Outputs}.
-
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-% Find the value of the highest priority (lowest index) input value
+-define(AMBIENT_TEMP_REG, 16#05). 
+-define(NEGATIVE_TEMP_FLAG, 16#10).
+-define(LOW_TEMP_FLAG, 16#20).
+-define(HIGH_TEMP_FLAG, 16#40).
+-define(CRITICAL_TEMP_FLAG, 16#80).
+-define(HIGH_BYTE_TEMP_MASK, 16#0F).
 
-highest_priority_input(Inputs, Index, NumOfInputs) when Index =< NumOfInputs ->
+%
+% Read the ambient temperature.
+%
+-spec read_ambient(I2cRef :: pid(),
+                   DegF :: boolean(),
+                   Offset :: float()) -> {ok, float()} | {error, atom()}.
+                   
+read_ambient(I2cRef, DegF, Offset) ->
 
-  case input_utils:get_any_type(Inputs, {inputs, Index}) of
-    % Input value is null, get next input value
-    {ok, null} -> highest_priority_input(Inputs, Index+1, NumOfInputs);
-    
-    % Got an active input value, return it
-    {ok, Value} -> {ok, Value};
+  % Read two bytes from the ambient temperature register  
+  case i2c_utils:write_read(I2cRef, <<?AMBIENT_TEMP_REG>>, 2) of
+    {error, Reason} -> {error, Reason};
   
-    % Error input value, stop looking, put block in error state
-    {error, Reason} -> {error, Reason}
-  end;
+    Result ->
+      RawBytes = binary:bin_to_list(Result),
+      UpperByte = lists:nth(1, RawBytes),
+      LowerByte = lists:nth(2, RawBytes),
+  
+      % Strip sign and alarm flags from upper byte
+      UpperTemp = (UpperByte band ?HIGH_BYTE_TEMP_MASK),
+       
+      if (UpperByte band ?NEGATIVE_TEMP_FLAG) == ?NEGATIVE_TEMP_FLAG ->  
+        % temp < 0
+        TempDegC = 256 - (UpperTemp * 16 + LowerByte / 16);
+      true -> 
+        % temp >= 0 
+        TempDegC = (UpperTemp * 16 + LowerByte / 16)
+      end,
 
-% None of the inputs have active value, return null
-highest_priority_input(_Inputs, _Index, _NumOfInputs) -> {ok, null}.
+      case DegF of
+        true  -> Temp = ((TempDegC * 9) / 5 + 32);
+        false -> Temp = TempDegC
+      end,
+      {ok, Temp + Offset}
+  end.
 
 
 %% ====================================================================
@@ -220,35 +276,10 @@ highest_priority_input(_Inputs, _Index, _NumOfInputs) -> {ok, null}.
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
+% Perform minimum block unit test
 
-setup() ->
-  InitConfigVals = [{num_of_inputs, 10}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
+block_test() ->
+  unit_test_utils:min_block_test(?MODULE).
 
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
-
-test_sets() ->
-  [
-    {[], [{status, no_input}, {value, null}]},
-    {[{{inputs, 1}, null}, {{inputs, 2}, 2}, {{inputs, 10}, 10}], [{status, normal}, {value, 2}]},
-    {[{{inputs, 1}, 1}, {{inputs, 2}, 2}, {{inputs, 10}, 10}], [{status, normal}, {value, 1}]},
-    {[{{inputs, 1}, null}, {{inputs, 2}, null}], [{status, normal}, {value, 10}]}
- ].
 
 -endif.

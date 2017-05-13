@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(lblx_tri_select).  
+-module(lblx_select_tri).  
 
 -author("Mark Sebald").
 
