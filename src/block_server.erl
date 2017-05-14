@@ -195,14 +195,14 @@ init(BlockState) ->
   log_server:info(initializing_block, [BlockName]),
 
   % Perform block initialization
-  NewBlockValues = block_common:initialize(BlockState),
+  NewBlockState = block_common:initialize(BlockState),
 
   % Perform intial configuration
   % Basically, tell all blocks to check their input links
   % and link to this block if necessary
   block_server:init_configure(BlockName),
   
-  {ok, NewBlockValues}.
+  {ok, NewBlockState}.
 
 
 %% handle_call/3
@@ -258,11 +258,11 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
           BlockName = config_utils:name(Config3),
           % re-establish the links to other blocks 
           block_server:init_configure(BlockName),
-          NewBlockValues = {Config3, Inputs2, Outputs2, Private1},
+          NewBlockState = {Config3, Inputs2, Outputs2, Private1},
           Result = ok;
 
         {error, Reason} ->
-          NewBlockValues = {Config1, Inputs1, Outputs1, Private},
+          NewBlockState = {Config1, Inputs1, Outputs1, Private},
           Result = {error, Reason}
       end;
 
@@ -272,11 +272,11 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
           case attrib_utils:set_value(Inputs, ValueId, Value) of
             {ok, NewInputs} ->
               % Block input value changed, execute block with reason 'input_cos'
-              NewBlockValues = 
+              NewBlockState = 
                block_common:execute({Config, NewInputs, Outputs, Private}, input_cos),
                Result = ok;
             {error, Reason} ->
-              NewBlockValues = BlockState,
+              NewBlockState = BlockState,
               Result = {error, Reason}
           end;
 
@@ -285,20 +285,20 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
             true ->
               case attrib_utils:set_value(Outputs, ValueId, Value) of
                 {ok, NewOutputs} ->
-                  NewBlockValues = {Config, Inputs, NewOutputs, Private},
+                  NewBlockState = {Config, Inputs, NewOutputs, Private},
                   Result = ok;
                 {error, Reason} ->
-                  NewBlockValues = BlockState,
+                  NewBlockState = BlockState,
                   Result = {error, Reason}
               end;
 
             _ -> % Not an Output either, do nothing
-              NewBlockValues = BlockState,
+              NewBlockState = BlockState,
               Result = {error, not_found}
           end
       end
   end,
-  {reply, Result, NewBlockValues};
+  {reply, Result, NewBlockState};
 
 
 %% =====================================================================
@@ -318,15 +318,15 @@ handle_call({set_link, InputValueId, Link}, _From, BlockState) ->
                                          Link, Inputs1),
 
       % Execute the block because input value may have changed
-      NewBlockValues = update_block({Config, Inputs2, Outputs, Private}),
+      NewBlockState = update_block({Config, Inputs2, Outputs, Private}),
       Result = ok;
 
     {error, Reason} ->
       Result = {error, Reason},
-      NewBlockValues = {Config, Inputs, Outputs, Private}
+      NewBlockState = {Config, Inputs, Outputs, Private}
   end,
   
-  {reply, Result, NewBlockValues};
+  {reply, Result, NewBlockState};
 
 
 %% =====================================================================
@@ -388,8 +388,8 @@ handle_call(Request, From, BlockState) ->
 handle_cast({execute, Reason}, BlockState) ->
 
   % Execute the block
-  NewBlockValues = block_common:execute(BlockState, Reason),
-  {noreply, NewBlockValues};
+  NewBlockState = block_common:execute(BlockState, Reason),
+  {noreply, NewBlockState};
 
 
 %% ====================================================================
@@ -403,9 +403,9 @@ handle_cast({update, Link, Value}, BlockState) ->
   NewInputs = link_utils:update_linked_input_values(Inputs, Link, Value),
 
   % Execute the block because input values have changed
-  NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
+  NewBlockState = update_block({Config, NewInputs, Outputs, Private}),
  
-  {noreply, NewBlockValues};
+  {noreply, NewBlockState};
 
 
 %% =====================================================================
@@ -436,15 +436,15 @@ handle_cast(configure, BlockState) ->
   NewInputs = link_utils:link_blocks(BlockName, Inputs),
   
   % Execute the block because input value(s) may have changed
-  NewBlockValues = update_block({Config, NewInputs, Outputs, Private}),
+  NewBlockState = update_block({Config, NewInputs, Outputs, Private}),
  
-  {noreply, NewBlockValues};
+  {noreply, NewBlockState};
 
 
 %% =====================================================================
 %% Reconfigure the block, with the new set of block values, update State
 %% =====================================================================
-handle_cast({reconfigure, NewBlockValues}, BlockState) ->
+handle_cast({reconfigure, NewBlockState}, BlockState) ->
   % TODO: Sanity check make sure new block name, type and version 
   % match old block name, type and version/(same major rev)
   BlockName = config_utils:name(BlockState), 
@@ -454,7 +454,7 @@ handle_cast({reconfigure, NewBlockValues}, BlockState) ->
   % Check that new block values match the current block type and block name that is running
   %  TODO: Disconnect existing block links first
   configure(BlockName),
-  {noreply, NewBlockValues};
+  {noreply, NewBlockState};
 
 
 %% =====================================================================
@@ -500,8 +500,8 @@ handle_cast(Msg, BlockState) ->
 
 handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
   log_server:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
-  NewBlockValues = block_common:execute(BlockState, hardware),
-  {noreply, NewBlockValues};
+  NewBlockState = block_common:execute(BlockState, hardware),
+  {noreply, NewBlockState};
 
 
 %% =====================================================================
@@ -510,8 +510,8 @@ handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
 %% =====================================================================
 
 handle_info(timer_execute, BlockState) ->
-  NewBlockValues = block_common:execute(BlockState, timer),
-  {noreply, NewBlockValues};
+  NewBlockState = block_common:execute(BlockState, timer),
+  {noreply, NewBlockState};
 
 
 %%======================================================================
@@ -532,13 +532,13 @@ handle_info({publish, Topic, Payload}, BlockState) ->
   case attrib_utils:get_value(Private, pub_msgs) of
     {ok, PubMsgs} ->
       {ok, Private1} = attrib_utils:set_value(Private, pub_msgs, [{Topic, Payload} | PubMsgs]),
-      NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+      NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
     {error, Reason} ->
       log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-      NewBlockValues = BlockState
+      NewBlockState = BlockState
   end,
-  {noreply, NewBlockValues};
+  {noreply, NewBlockState};
 
 %% =====================================================================
 %% MQTT Client connected message
@@ -551,13 +551,13 @@ handle_info({mqttc, _Client, connected}, BlockState) ->
   % Update the connection state in the block values and execute the block
   case attrib_utils:set_value(Private, conn_state, true) of
     {ok, Private1} ->
-      NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+      NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
     {error, Reason} ->
       log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-      NewBlockValues = BlockState
+      NewBlockState = BlockState
   end,
-  {noreply, NewBlockValues};
+  {noreply, NewBlockState};
 
 %% =====================================================================
 %% MQTT Client disconnected message
@@ -570,13 +570,13 @@ handle_info({mqttc, _Client,  disconnected}, BlockState) ->
     % Update the connection state in the block values, and execute the block
     case attrib_utils:set_value(Private, conn_state, false) of
       {ok, Private1} ->
-        NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+        NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
       {error, Reason} ->
         log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-        NewBlockValues = BlockState
+        NewBlockState = BlockState
     end,
-    {noreply, NewBlockValues};
+    {noreply, NewBlockState};
   
 %% =====================================================================
 %% MQTT Client shutdown message
@@ -589,13 +589,13 @@ handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
     % Reset the client reference, to indicate MQTT client needs to be restarted
     case attrib_utils:set_value(Private, client, null) of
       {ok, Private1} ->
-        NewBlockValues = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+        NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
       {error, Reason} ->
         log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-        NewBlockValues = BlockState
+        NewBlockState = BlockState
     end,
-    {noreply, NewBlockValues};
+    {noreply, NewBlockState};
 
 
 %% =====================================================================
