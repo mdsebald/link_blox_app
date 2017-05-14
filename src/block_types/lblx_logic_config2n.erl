@@ -137,7 +137,7 @@ upgrade({Config, Inputs, Outputs}) ->
 %% Initialize block values
 %% Perform any setup here as needed before starting execution
 %%
--spec initialize(block_state()) -> block_state().
+-spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
     
