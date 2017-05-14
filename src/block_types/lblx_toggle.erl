@@ -128,6 +128,8 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
+  % No config values to check
+
   Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
  
   {Config, Inputs, Outputs1, Private}.

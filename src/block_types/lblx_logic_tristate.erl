@@ -129,13 +129,13 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  % No config values
  
-  {ok, Outputs1} = attrib_utils:set_values(Outputs, [{active_true, null}, {active_false, null}]),
-  Outputs2 = output_utils:set_value_status(Outputs1, null, initialed),  
+  % No config values to check
+ 
+  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),  
 
   % This is the block state
-  {Config, Inputs, Outputs2, Private}.
+  {Config, Inputs, Outputs, Private}.
 
 
 %%

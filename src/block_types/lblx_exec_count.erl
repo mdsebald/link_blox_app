@@ -135,16 +135,8 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  {ok, InitialValue} = attrib_utils:get_value(Inputs, initial_value),
-    
-  % If the Initial input value is a fixed value integer, 
-  % We can imediately set the initial block output value, 
-  % Otherwise we need to wait for the initial input value to get set, via block execution
-  if is_integer(InitialValue) ->
-    Outputs1 = output_utils:set_value_status(Outputs, InitialValue, initialed);
-  true ->    
-     Outputs1 = output_utils:set_value_status(Outputs, null, initialed)
-  end,
+  % No config values to check  
+  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
     
   {Config, Inputs, Outputs1, Private}.
 

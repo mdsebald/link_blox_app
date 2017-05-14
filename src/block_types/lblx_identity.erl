@@ -128,14 +128,10 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
+
+  % No config values to check
  
-  % TODO: Don't update output here, should schedule execution after initialize
-  case attrib_utils:get_value(Inputs, input) of
-    {ok, InputVal} ->
-      Outputs1 = output_utils:set_value_status(Outputs, InputVal, initialed);
-    {error, _Reason} ->
-      Outputs1 = output_utils:set_value_status(Outputs, null, input_err)
-  end,
+  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
 
   % This is the block state
   {Config, Inputs, Outputs1, Private}.

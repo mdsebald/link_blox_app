@@ -136,9 +136,9 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
     
-  {Value, Status} = get_output_value(Config, Inputs),
- 
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+ % No config values to check,
+  
+  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
   
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.
