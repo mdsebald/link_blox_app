@@ -135,7 +135,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Outputs1 = output_utils:set_value_status(Outputs, null, initialed),  
 
   % This is the block state
-  {Config, Inputs, Outputs, Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %%
