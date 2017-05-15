@@ -179,9 +179,9 @@ get_output_value(Config, Inputs) ->
     {ok, Input} ->
       % Set Output Value to NOT input value
       case Input of
-        null ->  {null, normal};
+        null ->  {null,  no_input};
         true ->  {false, normal};
-        false -> {true, normal}
+        false -> {true,  normal}
       end;
 
     {error, Reason} ->
@@ -219,7 +219,7 @@ test_io(BlockState) ->
 
 test_sets() ->
   [
-    {[{input, empty}], [{status, normal}, {value, null}]},
+    {[{input, empty}], [{status, no_input}, {value, null}]},
     {[{input, "bad"}], [{status, input_err}, {value, null}]},
     {[{input, true}], [{status, normal}, {value, false}]},
     {[{input, false}], [{status, normal}, {value, true}]}
