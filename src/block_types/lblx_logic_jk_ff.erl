@@ -33,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      
+      {initial_state, {false}}  % This is the initial value when transitioning from a null state
     ]). 
 
 
@@ -128,11 +128,17 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
- 
-  % No config values to check
- 
-  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),  
+  
+  case config_utils:get_boolean(Config, initial_state) of
+    {ok, _InitState} -> 
+      Value = null, Status = initialed;
+    
+    {error, Reason} ->
+      {Value, Status} = config_utils:log_error(Config, initial_state, Reason)
+  end,
 
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  
   % This is the block state
   {Config, Inputs, Outputs1, Private}.
 
@@ -158,11 +164,14 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
         {ok, null} -> Value = null, Status = no_input;
     
         {ok, InputK} -> 
-          % If we are coming from a previous state, where the output was null
-          % Default the current value to False.
+          % If we are transitioning from a null state.
+          % Set output to the intial state config value
           case CurrValue of 
-            null     -> CurrValueNotNull = false;
-            _NotNull -> CurrValueNotNull = CurrValue
+            null ->
+              {ok, CurrValueNotNull} = config_utils:get_boolean(Config, initial_state);
+
+            _NotNull -> 
+              CurrValueNotNull = CurrValue
           end,
 
           % Inplement JK Flip-Flop truth table
@@ -243,5 +252,37 @@ test_sets() ->
     {[{input_j, true},  {input_k, false}], [{status, normal}, {value, true}]},
     {[{input_j, true},  {input_k, true}],  [{status, normal}, {value, false}]}
   ].
+
+  block_init_state_true_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun init_state_true_setup/0, 
+      fun init_state_true_cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          init_state_true_io(BlockState)
+        ]}
+      end} 
+  }.
+
+init_state_true_setup() ->
+  InitConfigVals = [{initial_state, true}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
+
+init_state_true_cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+init_state_true_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, init_state_true_test_sets()).
+
+init_state_true_test_sets() ->
+  [
+    {[], [{status, no_input}, {value, null}]},
+    {[{input_j, true},  {input_k, true}],  [{status, normal},   {value, false}]},
+    {[{input_j, null}],                    [{status, no_input}, {value, null}]},
+    {[{input_j, false}, {input_k, false}], [{status, normal},   {value, true}]}
+  ].
+
 
 -endif.
