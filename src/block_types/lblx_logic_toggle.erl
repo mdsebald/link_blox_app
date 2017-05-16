@@ -4,7 +4,7 @@
 %%%               
 %%% @end 
 
--module(lblx_toggle).
+-module(lblx_logic_toggle).
 
 -author("Mark Sebald").
 
@@ -33,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-
+        {initial_state, {false}}  % This is the initial value when transitioning from a null state
     ]). 
 
 
@@ -128,10 +128,17 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % No config values to check
+  case config_utils:get_boolean(Config, initial_state) of
+    {ok, _InitState} -> 
+      Value = null, Status = initialed;
+    
+    {error, Reason} ->
+      {Value, Status} = config_utils:log_error(Config, initial_state, Reason)
+  end,
 
-  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
+  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
  
+  % This is the block state  
   {Config, Inputs, Outputs1, Private}.
 
 
@@ -145,10 +152,15 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % Toggle output everytime block is executed
   case attrib_utils:get_value(Outputs, value) of
-    {ok, true}  -> Value = false, Status = normal;
-    {ok, false} -> Value = true,  Status = normal;
-    {ok, null}  -> Value = true,  Status = normal;
-            _   -> Value = null,  Status = error
+    {ok, true} -> 
+      Value = false, Status = normal;
+    
+    {ok, false} -> 
+      Value = true,  Status = normal;
+    
+    {ok, null} -> 
+      {ok, Value} = config_utils:get_boolean(Config, initial_state),
+      Status = normal
   end,
 	
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
@@ -202,10 +214,40 @@ test_io(BlockState) ->
 
 test_sets() ->
   [
+    {[], [{status, normal}, {value, false}]},
     {[], [{status, normal}, {value, true}]},
     {[], [{status, normal}, {value, false}]},
+    {[], [{status, normal}, {value, true}]}
+  ].
+
+block_init_state_true_test_() ->
+  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+   {setup, 
+      fun init_state_true_setup/0, 
+      fun init_state_true_cleanup/1,
+      fun (BlockState) -> 
+        {inorder,
+        [
+          init_state_true_io(BlockState)
+        ]}
+      end} 
+  }.
+
+init_state_true_setup() ->
+  InitConfigVals = [{initial_state, true}],
+  unit_test_utils:block_setup(?MODULE, InitConfigVals).
+
+init_state_true_cleanup(BlockState) ->
+  unit_test_utils:block_cleanup(?MODULE, BlockState).
+
+init_state_true_io(BlockState) ->
+  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, init_state_true_test_sets()).
+
+init_state_true_test_sets() ->
+  [
     {[], [{status, normal}, {value, true}]},
     {[], [{status, normal}, {value, false}]}
   ].
+
 
 -endif.
