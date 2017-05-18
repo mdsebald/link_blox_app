@@ -14,7 +14,7 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
 
 groups() -> [digital, output].
 
@@ -223,6 +223,17 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 delete({Config, Inputs, Outputs, _Private}) ->
   % TODO: Release the GPIO pin?
   {Config, Inputs, Outputs}.
+
+
+%%
+%% Unknown Info message, just log a warning
+%% 
+-spec handle_info(Info :: term(), 
+                  BlockState :: block_state()) -> {noreply, block_state()}.
+
+handle_info(Info, BlockState) ->
+  log_server:warning(block_server_unknown_info_msg, [Info]),
+  {noreply, BlockState}.
 
 
 %% ====================================================================

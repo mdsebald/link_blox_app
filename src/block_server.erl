@@ -493,17 +493,6 @@ handle_cast(Msg, BlockState) ->
 %% ====================================================================
 
 
-%% ====================================================================
-%% GPIO Interupt message from Erlang ALE library, 
-%% Execute the block connected to this interrupt
-%% =====================================================================
-
-handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
-  log_server:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
-  NewBlockState = block_common:execute(BlockState, hardware),
-  {noreply, NewBlockState};
-
-
 %% =====================================================================
 %% Timer timeout from erlang:send_after() function
 %% Execute block with timer as the reason
@@ -514,96 +503,13 @@ handle_info(timer_execute, BlockState) ->
   {noreply, NewBlockState};
 
 
-%%======================================================================
-%% Process messages from emqttc (MQTT Related functionality)
-%%======================================================================
-
-%% =====================================================================
-%% MQTT Publish message from a subscribed to Topic.
-%% =====================================================================
-handle_info({publish, Topic, Payload}, BlockState) ->
-  {Config, Inputs, Outputs, Private} = BlockState,
-  BlockName = config_utils:name(Config),
-  log_server:debug("~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
-                      [BlockName, Topic, Payload]),
-
-  % Add the message topic and payload to the front of the list of pub messages,
-  % and execute the block
-  case attrib_utils:get_value(Private, pub_msgs) of
-    {ok, PubMsgs} ->
-      {ok, Private1} = attrib_utils:set_value(Private, pub_msgs, [{Topic, Payload} | PubMsgs]),
-      NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
-
-    {error, Reason} ->
-      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-      NewBlockState = BlockState
-  end,
-  {noreply, NewBlockState};
-
-%% =====================================================================
-%% MQTT Client connected message
-%% =====================================================================
-handle_info({mqttc, _Client, connected}, BlockState) ->
-  {Config, Inputs, Outputs, Private} = BlockState,
-  BlockName = config_utils:name(Config),
-  log_server:info(connected_to_MQTT_broker, [BlockName]),
-
-  % Update the connection state in the block values and execute the block
-  case attrib_utils:set_value(Private, conn_state, true) of
-    {ok, Private1} ->
-      NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
-
-    {error, Reason} ->
-      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-      NewBlockState = BlockState
-  end,
-  {noreply, NewBlockState};
-
-%% =====================================================================
-%% MQTT Client disconnected message
-%% =====================================================================
-handle_info({mqttc, _Client,  disconnected}, BlockState) ->
-    {Config, Inputs, Outputs, Private} = BlockState,
-    BlockName = config_utils:name(Config),
-    log_server:info(disconnected_from_MQTT_broker, [BlockName]),
-    
-    % Update the connection state in the block values, and execute the block
-    case attrib_utils:set_value(Private, conn_state, false) of
-      {ok, Private1} ->
-        NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
-
-      {error, Reason} ->
-        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-        NewBlockState = BlockState
-    end,
-    {noreply, NewBlockState};
-  
-%% =====================================================================
-%% MQTT Client shutdown message
-%% =====================================================================
-handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
-    {Config, Inputs, Outputs, Private} = BlockState,
-    BlockName = config_utils:name(Config),
-    log_server:info(mqtt_client_shutdown, [BlockName, ShutdownReason]),
-    
-    % Reset the client reference, to indicate MQTT client needs to be restarted
-    case attrib_utils:set_value(Private, client, null) of
-      {ok, Private1} ->
-        NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
-
-      {error, Reason} ->
-        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
-        NewBlockState = BlockState
-    end,
-    {noreply, NewBlockState};
-
-
-%% =====================================================================
-%% Unknown Info message
-%% =====================================================================
-handle_info(Info, State) ->
-  log_server:warning(block_server_unknown_info_msg, [Info]),
-  {noreply, State}.
+%% ======================================================================
+%% For all other Info Messages, 
+%% Call the Block Type's internal handle_info() function
+%% ======================================================================
+handle_info(Info, BlockState) ->
+  Module = config_utils:module(BlockState),
+  Module:handle_info(Info, BlockState).
 
 
 %% terminate/2

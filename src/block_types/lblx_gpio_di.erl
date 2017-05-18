@@ -14,7 +14,7 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
 
 groups() -> [digital, input].
 
@@ -194,6 +194,25 @@ delete({Config, Inputs, Outputs, _Private}) ->
   % TODO: Release the GPIO pin?
   {Config, Inputs, Outputs}.
 
+
+%% 
+%% GPIO Interupt message from Erlang ALE library, 
+%% Execute this block
+%% 
+-spec handle_info(Info :: term(), 
+                  BlockState :: block_state()) -> {noreply, block_state()}.
+
+handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
+  log_server:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
+  NewBlockState = block_common:execute(BlockState, hardware),
+  {noreply, NewBlockState};
+
+%%
+%% Unknown Info message, just log a warning
+%% 
+handle_info(Info, BlockState) ->
+  log_server:warning(block_server_unknown_info_msg, [Info]),
+  {noreply, BlockState}.
 
 
 %% ====================================================================

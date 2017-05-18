@@ -15,7 +15,7 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
 
 groups() -> [web].
 
@@ -365,6 +365,100 @@ delete({Config, Inputs, Outputs, Private}) ->
     false -> ok 
   end,
   {Config, Inputs, Outputs}.
+
+
+%%======================================================================
+%% Process messages from emqttc 
+%%======================================================================
+
+-spec handle_info(Info :: term(), 
+                  BlockState :: block_state()) -> {noreply, block_state()}.
+
+%% 
+%% MQTT Publish message from a subscribed to Topic.
+%%
+handle_info({publish, Topic, Payload}, BlockState) ->
+  {Config, Inputs, Outputs, Private} = BlockState,
+  BlockName = config_utils:name(Config),
+  log_server:debug("~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
+                      [BlockName, Topic, Payload]),
+
+  % Add the message topic and payload to the front of the list of pub messages,
+  % and execute the block
+  case attrib_utils:get_value(Private, pub_msgs) of
+    {ok, PubMsgs} ->
+      {ok, Private1} = attrib_utils:set_value(Private, pub_msgs, [{Topic, Payload} | PubMsgs]),
+      NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+    {error, Reason} ->
+      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+      NewBlockState = BlockState
+  end,
+  {noreply, NewBlockState};
+
+%% 
+%% MQTT Client connected message
+%% 
+handle_info({mqttc, _Client, connected}, BlockState) ->
+  {Config, Inputs, Outputs, Private} = BlockState,
+  BlockName = config_utils:name(Config),
+  log_server:info(connected_to_MQTT_broker, [BlockName]),
+
+  % Update the connection state in the block values and execute the block
+  case attrib_utils:set_value(Private, conn_state, true) of
+    {ok, Private1} ->
+      NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+    {error, Reason} ->
+      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+      NewBlockState = BlockState
+  end,
+  {noreply, NewBlockState};
+
+%% 
+%% MQTT Client disconnected message
+%% 
+handle_info({mqttc, _Client,  disconnected}, BlockState) ->
+    {Config, Inputs, Outputs, Private} = BlockState,
+    BlockName = config_utils:name(Config),
+    log_server:info(disconnected_from_MQTT_broker, [BlockName]),
+    
+    % Update the connection state in the block values, and execute the block
+    case attrib_utils:set_value(Private, conn_state, false) of
+      {ok, Private1} ->
+        NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+      {error, Reason} ->
+        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+        NewBlockState = BlockState
+    end,
+    {noreply, NewBlockState};
+  
+%% 
+%% MQTT Client shutdown message
+%% 
+handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
+    {Config, Inputs, Outputs, Private} = BlockState,
+    BlockName = config_utils:name(Config),
+    log_server:info(mqtt_client_shutdown, [BlockName, ShutdownReason]),
+    
+    % Reset the client reference, to indicate MQTT client needs to be restarted
+    case attrib_utils:set_value(Private, client, null) of
+      {ok, Private1} ->
+        NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
+
+      {error, Reason} ->
+        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+        NewBlockState = BlockState
+    end,
+    {noreply, NewBlockState};
+
+%%
+%% Unknown Info message, just log a warning
+%% 
+handle_info(Info, BlockState) ->
+  log_server:warning(block_server_unknown_info_msg, [Info]),
+  {noreply, BlockState}.
 
 
 %% ====================================================================
