@@ -13,14 +13,15 @@
 %% API functions
 %% ====================================================================
 -export([
-          get_any_type/2, 
+          get_any_type/2,
+          get_number/2,
           get_integer/2,
-          get_integer_range/4, 
-          get_float/2, 
+          get_integer_range/4,
+          get_float/2,
           get_boolean/2,
           get_string/2,
-          get_value/3, 
-          check_boolean_input/1, 
+          get_value/3,
+          check_boolean_input/1,
           resize_attribute_array_value/5,
           log_error/3
 ]).
@@ -36,6 +37,18 @@ get_any_type(Inputs, ValueId) ->
   % Return true for every value
   CheckType = fun(_Value) -> true end,
   get_value(Inputs, ValueId, CheckType).
+
+
+%%
+%% Get a number (float or integer) input value and check for errors.
+%%
+-spec get_number(Inputs :: list(input_attr()), 
+                  ValueId :: value_id()) -> integer_input_value().
+
+get_number(Inputs, ValueId) ->
+  CheckType = fun is_number/1,
+  get_value(Inputs, ValueId, CheckType).
+
 
 %%
 %% Get an integer input value and check for errors.
