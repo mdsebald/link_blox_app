@@ -245,8 +245,7 @@ block_test_() ->
   }.
 
 setup() ->
-  InitConfigVals = [{num_of_inputs, 5}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
+  unit_test_utils:block_setup(?MODULE).
 
 cleanup(BlockState) ->
   unit_test_utils:block_cleanup(?MODULE, BlockState).
@@ -261,7 +260,8 @@ test_sets() ->
     {[{high_limit, bad_value}, {low_limit, -50}, {input, 23.3}], [{status, input_err}, {value, null}]},
     {[{high_limit, 98.6}, {low_limit, -40}, {input, 23.3}], [{status, normal}, {value, 23.3}]},
     {[{high_limit, 98.6}, {low_limit, -40}, {input, -56.7}], [{status, normal}, {value, -40}]},
-    {[{high_limit, 98.6}, {low_limit, -40}, {input, 100}], [{status, normal}, {value, 98.6}]}
- ].
+    {[{high_limit, 98.6}, {low_limit, -40}, {input, 100}], [{status, normal}, {value, 98.6}]},
+    {[{high_limit, -40}, {low_limit, -40}, {input, 100}], [{status, input_err}, {value, null}]}
+  ].
 
 -endif.
