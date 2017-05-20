@@ -17,7 +17,7 @@
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
 
 
-groups() -> [logic].
+groups() -> [math].
 
 description() -> "Sum All Input Values".
 
@@ -236,8 +236,10 @@ sum_inputs(_Inputs, _Index, NumOfInputs, IgnoreNulls, ActiveInputs, Sum) ->
   case IgnoreNulls of
     true -> % Ignoring null input values
       case (ActiveInputs > 0) of
-        true  -> % At least one input was active, return the current sum
+        true  -> 
+          % At least one input was active, return the current sum
           {ok, Sum};
+
         false -> 
           % No active input values, all inputs must be null, 
           % Even though we are ignoring nulls, output is still null
@@ -246,10 +248,12 @@ sum_inputs(_Inputs, _Index, NumOfInputs, IgnoreNulls, ActiveInputs, Sum) ->
 
     false -> % Not ignoring null input values
       case (ActiveInputs < NumOfInputs) of
-        true -> % At least one input was null, return null
+        true -> 
+          % At least one input was null, return null
           {ok, null};
       
-        false -> % No inputs were null, return Sum
+        false -> 
+          % No inputs were null, return Sum
           {ok, Sum}
       end
   end.
