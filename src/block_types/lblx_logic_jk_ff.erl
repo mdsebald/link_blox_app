@@ -54,6 +54,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
+      {active_true, {empty, []}},
+      {active_false, {empty, []}}
     ]). 
 
 
@@ -156,13 +158,17 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   case input_utils:get_boolean(Inputs, input_j) of
 
-    {ok, null} -> Value = null, Status = no_input;
+    {ok, null} -> 
+      InputId = input_j,  % Id doesn't matter, since input is not in error
+      OutputVal = {ok, null};
     
     {ok, InputJ} -> 
       case input_utils:get_boolean(Inputs, input_k) of
 
-        {ok, null} -> Value = null, Status = no_input;
-    
+        {ok, null} ->
+          InputId = input_k,  % Id doesn't matter, since input is not in error
+          OutputVal = {ok, null};
+
         {ok, InputK} -> 
           % If we are transitioning from a null state.
           % Set output to the intial state config value
@@ -181,17 +187,20 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
             {true,  false} -> Value = true;
             {true,  true}  -> Value = not CurrValueNotNull
           end,
-          Status = normal;
-  
+          InputId = input,  % Id doesn't matter, since input is not in error
+          OutputVal = {ok, Value};
+
         {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, input, Reason)
+          InputId = input_k,
+          OutputVal = {error, Reason}
       end;
 
     {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, input, Reason)
+      InputId = input_j,
+      OutputVal = {error, Reason}
   end,
-
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+      
+  Outputs1 = output_utils:set_tristate_outputs(InputId, OutputVal, Config, Outputs),
 
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.

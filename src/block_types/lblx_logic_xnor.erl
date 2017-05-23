@@ -53,6 +53,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
+      {active_true, {empty, []}},
+      {active_false, {empty, []}}
     ]). 
 
 
@@ -146,27 +148,32 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   case input_utils:get_boolean(Inputs, input_a) of
     {ok, null} ->
-      Value = null, Status = no_input;
+      InputId = input_a,
+      OutputVal = {ok, null};
     
     {ok, InputA} ->
       case input_utils:get_boolean(Inputs, input_b) of
         {ok, null} ->
-          Value = null, Status = no_input;
+          InputId = input_b,
+          OutputVal = {ok, null};
     
         {ok, InputB} ->
-          Status = normal,
+          InputId = input, % Don't care, Input is not in error state
           % Exclusive NOR, if one or the other, but not both are true, output is false
-          Value = not ((InputA andalso (not InputB)) orelse ((not InputA) andalso InputB));
+          Value = not ((InputA andalso (not InputB)) orelse ((not InputA) andalso InputB)),
+          OutputVal = {ok, Value};
         
         {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, input_b, Reason)
+          InputId = input_b,
+          OutputVal = {error, Reason}
       end;
 
     {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, input_a, Reason)
+      InputId = input_a,
+      OutputVal = {error, Reason}
   end,
-   
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
+  Outputs1 = output_utils:set_tristate_outputs(InputId, OutputVal, Config, Outputs),
 
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.

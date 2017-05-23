@@ -145,37 +145,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
               ExecMethod :: exec_method()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
-
-  case input_utils:get_boolean(Inputs, input) of
-    {ok, null} ->
-      ActiveTrue = null,
-      ActiveFalse = null,
-      Value = null,
-      Status = no_input;
-    
-    {ok, true} -> 
-      ActiveTrue = true,
-      ActiveFalse = null,
-      Value = true,
-      Status = normal;
+  OutputVal = input_utils:get_boolean(Inputs, input),
   
-    {ok, false} -> 
-      ActiveTrue = null,
-      ActiveFalse = false,
-      Value = false,
-      Status = normal;
-    
-    {error, Reason} ->
-      ActiveTrue = null,
-      ActiveFalse = null,
-      {Value, Status} = input_utils:log_error(Config, input, Reason)
-  end,
-   
-  {ok, Outputs1} = attrib_utils:set_values(Outputs, [{active_true, ActiveTrue}, {active_false, ActiveFalse}]),
-  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
-
+  Outputs1 = output_utils:set_tristate_outputs(input, OutputVal, Config, Outputs),
+  
   % Return updated block state
-  {Config, Inputs, Outputs2, Private}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 

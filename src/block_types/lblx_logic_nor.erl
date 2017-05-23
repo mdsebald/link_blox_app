@@ -54,6 +54,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
+      {active_true, {empty, []}},
+      {active_false, {empty, []}}
     ]). 
 
 
@@ -171,21 +173,17 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % Use the logic from the OR block and invert the output value
   case lblx_logic_or:or_inputs(Inputs, 1, NumOfInputs, IgnoreNulls, []) of
-    % At least one input value is null, and ignore_nulls config value is false
-    {ok, null} ->
-      Value = null, Status = no_input;
+     % At least one input value is null, and ignore_nulls config value is false
+    {ok, null} ->  OutputVal = {ok, null};
     
-    {ok, true} -> 
-      Value = false, Status = normal;
+    {ok, true} ->  OutputVal = {ok, false};
     
-    {ok, false} ->
-      Value = true, Status = normal;
-    
-    {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, inputs, Reason)
+    {ok, false} -> OutputVal = {ok, true};
+  
+    {error, Reason} -> OutputVal = {error, Reason}
   end,
-   
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
+  ok, Outputs1 = output_utils:set_tristate_outputs(inputs, OutputVal, Config, Outputs),
 
   % Return updated block state
   {Config, Inputs, Outputs1, Private}.

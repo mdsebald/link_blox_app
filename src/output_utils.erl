@@ -18,6 +18,7 @@
           set_status/2,
           get_status/1,
           set_array_value/3,
+          set_tristate_outputs/4,
           update_all_outputs/3,
           clear_output_refs/1,
           resize_attribute_array_value/5
@@ -92,6 +93,46 @@ set_array_value(Outputs, _ArrayValueName, _Index, []) ->
 set_array_value(Outputs, ArrayValueName, Index, [Value | ArrayValues]) ->
   {ok, NewOutputs} = attrib_utils:set_value(Outputs, {ArrayValueName, Index}, Value),
   set_array_value(NewOutputs, ArrayValueName, (Index + 1), ArrayValues).
+
+
+%%
+%% Update a set of tristate ouputs, value, active_true, and active_false
+%%
+-spec set_tristate_outputs(InputValId :: value_id(),  % Only needed for error logging
+                           OutputVal :: {ok, boolean()} | {error, atom()},
+                           Config :: list(config_attr()),  % Only Needed for error logging
+                           Outputs :: list(output_attr())) -> {ok, list(output_attr)}.
+
+set_tristate_outputs(InputValId, OutputVal, Config, Outputs) ->
+  case OutputVal of
+    {ok, null} ->
+      Status = no_input,
+      Value = null,
+      ActiveTrue = null,
+      ActiveFalse = null;
+   
+    {ok, true} -> 
+      Status = normal,
+      Value = true,
+      ActiveTrue = true,
+      ActiveFalse = null;
+  
+    {ok, false} -> 
+      Status = normal,
+      Value = false,
+      ActiveTrue = null,
+      ActiveFalse = false;
+    
+    {error, Reason} ->
+      {Value, Status} = input_utils:log_error(Config, InputValId, Reason),
+      ActiveTrue = null,
+      ActiveFalse = null
+  end,
+  
+  % Update the output status and values
+  {ok, Outputs1} = attrib_utils:set_values(Outputs, [{status, Status}, {value, Value}, 
+                                           {active_true, ActiveTrue}, {active_false, ActiveFalse}]),
+  Outputs1.
 
 
 %% 

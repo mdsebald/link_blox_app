@@ -54,7 +54,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
+      {active_true, {empty, []}},
+      {active_false, {empty, []}}
     ]).
 
                         
@@ -180,7 +181,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   Value = read_pin_value_bool(GpioPinRef),
 
-  Outputs1 = output_utils:set_value_status(Outputs, Value, normal),
+  Outputs1 = output_utils:set_tristate_outputs(input, {ok, Value}, Config, Outputs),
         
   {Config, Inputs, Outputs1, Private}.
 

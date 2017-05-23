@@ -54,7 +54,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
- 
     ]). 
 
 

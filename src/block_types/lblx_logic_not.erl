@@ -53,7 +53,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
+      {active_true, {empty, []}},
+      {active_false, {empty, []}}
     ]). 
 
 
@@ -145,9 +146,18 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
-  {Value, Status} = get_output_value(Config, Inputs),
- 
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  case input_utils:get_boolean(Inputs, input) of
+    {ok, null} -> OutputVal = {ok, null};
+  
+    {ok, true} -> OutputVal = {ok, false};
+  
+    {ok, false} -> OutputVal = {ok, true};
+
+    {error, Reason} -> OutputVal = {error, Reason}
+
+  end,
+
+  Outputs1 = output_utils:set_tristate_outputs(input, OutputVal, Config, Outputs),
 
   {Config, Inputs, Outputs1, Private}.
 
@@ -180,23 +190,6 @@ handle_info(Info, BlockState) ->
 %% Internal functions
 %% ====================================================================
 
--spec get_output_value(Config :: list(config_attr()),
-                        Inputs :: list(input_attr())) -> {value(), block_status()}.
-
-get_output_value(Config, Inputs) ->
-
-  case input_utils:get_boolean(Inputs, input) of
-    {ok, Input} ->
-      % Set Output Value to NOT input value
-      case Input of
-        null ->  {null,  no_input};
-        true ->  {false, normal};
-        false -> {true,  normal}
-      end;
-
-    {error, Reason} ->
-      input_utils:log_error(Config, input, Reason)
-  end.
 
 %% ====================================================================
 %% Tests

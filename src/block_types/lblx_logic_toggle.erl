@@ -53,7 +53,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
+      {active_true, {empty, []}},
+      {active_false, {empty, []}}
     ]). 
 
 %%  
@@ -152,18 +153,15 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % Toggle output everytime block is executed
   case attrib_utils:get_value(Outputs, value) of
-    {ok, true} -> 
-      Value = false, Status = normal;
+    {ok, true}  -> OutputVal = {ok, false};
     
-    {ok, false} -> 
-      Value = true,  Status = normal;
+    {ok, false} -> OutputVal = {ok, true};
     
     {ok, null} -> 
-      {ok, Value} = config_utils:get_boolean(Config, initial_state),
-      Status = normal
+      OutputVal = config_utils:get_boolean(Config, initial_state)
   end,
 	
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+  Outputs1 = output_utils:set_tristate_outputs(input, OutputVal, Config, Outputs),
      
   {Config, Inputs, Outputs1, Private}.
 
