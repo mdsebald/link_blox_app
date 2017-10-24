@@ -25,7 +25,7 @@ create_demo_config() ->
                                  [{disable, {false, ?EMPTY_LINK}},
                                   {input, {empty, {toggle, value}}}]
                                 ),
-  Toggle = lblx_toggle:create(toggle, "Toggle LED on / off",
+  Toggle = lblx_logic_toggle:create(toggle, "Toggle LED on / off",
                               [],  % Default Config values are good 
                               [{disable, {false, ?EMPTY_LINK}},
                                {exec_interval, {250, ?EMPTY_LINK}}]
