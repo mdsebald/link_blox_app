@@ -79,21 +79,12 @@ init([BlockValuesFile, LangMod]) ->
 %% Internal functions
 %% ====================================================================
 
--ifdef(STANDALONE).
-
-% If this is the Nerves embedded version, 
-% don't start the SSH command line interface
-start_user_interface(_LangMod) -> ok.
-
--else.
-
-% Hosted version, start up the SSH command line interface
+% Start up the SSH command line interface
 start_user_interface(LangMod) ->
   % TODO: Should be configurable,
+  %       Start up SSH CLI or not
   %       SSH port number,
   %       system_dir,
   %       Used because we get a nice shell UI experience, 
   %       (i.e command history, line editing, tab completion, etc)
-  ui_ssh_cli:start(1111, LangMod, [{system_dir, "/home/mark/ssh_host"}]).
-
--endif.
+  ui_ssh_cli:start(1111, LangMod, [{system_dir, "/etc/ssh"}]).
