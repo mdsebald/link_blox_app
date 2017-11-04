@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {host, {"localhost"}},  % "broker.hivemq.com" test MQTT broker, should already be running
+      {broker, {"localhost"}},  % "broker.hivemq.com" test MQTT broker, should already be running
       {port, {1883}},
       {client_id, {""}},  % Default client ID is the block name
       {clean_sess, {true}},
