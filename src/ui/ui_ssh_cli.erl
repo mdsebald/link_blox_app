@@ -1029,6 +1029,11 @@ block_status([BlockName | RemainingBlockNames]) ->
   {ok, Status} = linkblox_api:get_value(curr_node(), BlockName, status),
   {ok, ExecMethod} = linkblox_api:get_value(curr_node(), BlockName, exec_method),
   
+  case block_utils:is_string(Value) of
+      true -> ValueStr = string:left(io_lib:format("\"~s\"", [Value]), 12);
+         _ -> ValueStr = string:left(io_lib:format("~w",[Value]), 12)
+  end,
+
   case linkblox_api:get_value(curr_node(), BlockName, last_exec) of 
     {ok, null} ->
       LastExecuted = "null";
@@ -1038,12 +1043,13 @@ block_status([BlockName | RemainingBlockNames]) ->
     _ ->
       LastExecuted = "undef last_exec val"
   end,  
-    
+
+ 
+
   io:fwrite("~-16s ~-16s ~-12s ~-12w ~-12w ~-15s~n", 
             [string:left(BlockTypeStr, 16), 
              string:left(atom_to_list(BlockName), 16), 
-             string:left(io_lib:format("~w",[Value]), 12), 
-             Status, ExecMethod, LastExecuted]),
+             ValueStr, Status, ExecMethod, LastExecuted]),
   block_status(RemainingBlockNames).
 
 
