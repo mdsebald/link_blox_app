@@ -16,6 +16,8 @@
           get_any_type/2,
           get_number/2,
           get_integer/2,
+          get_integer_greater_than/3,
+          get_integer_less_than/3,
           get_integer_range/4,
           get_float/2,
           get_boolean/2,
@@ -60,9 +62,53 @@ get_integer(Inputs, ValueId) ->
   CheckType = fun is_integer/1,
   get_value(Inputs, ValueId, CheckType).
 
+  
+%%
+%% Get an integer input value greater than minimum, and check for errors.
+%%
+-spec get_integer_greater_than(Inputs :: list(input_attr()), 
+                               ValueId :: value_id(),
+                               Min :: integer()) -> integer_input_value().
+
+get_integer_greater_than(Inputs, ValueId, Min) ->
+  case get_integer(Inputs, ValueId) of
+    {error, Reason} ->  {error, Reason};
+
+    {ok, null} -> {ok, null};
+    
+    {ok, Value} ->
+      if (Value < Min) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
+
 
 %%
-%% Get an integer input value and check for errors.
+%% Get an integer input value less than maximum, and check for errors.
+%%
+-spec get_integer_less_than(Inputs :: list(input_attr()), 
+                            ValueId :: value_id(),
+                            Max :: integer()) -> integer_input_value().
+
+get_integer_less_than(Inputs, ValueId, Max) ->
+  case get_integer(Inputs, ValueId) of
+    {error, Reason} ->  {error, Reason};
+
+    {ok, null} -> {ok, null};
+    
+    {ok, Value} ->
+      if (Max < Value) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
+
+
+%%
+%% Get an integer input value in a range, and check for errors.
 %%
 -spec get_integer_range(Inputs :: list(input_attr()), 
                         ValueId :: value_id(),
@@ -70,8 +116,7 @@ get_integer(Inputs, ValueId) ->
                         Max :: integer()) -> integer_input_value().
 
 get_integer_range(Inputs, ValueId, Min, Max) ->
-  CheckType = fun is_integer/1,
-  case get_value(Inputs, ValueId, CheckType) of
+  case get_integer(Inputs, ValueId) of
     {error, Reason} ->  {error, Reason};
 
     {ok, null} -> {ok, null};
