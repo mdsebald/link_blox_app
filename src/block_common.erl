@@ -235,6 +235,14 @@ ok_to_execute(BlockStatus, ExecMethod) ->
     message ->
       lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]);
 
+    % If block execution timer expired, execute the block if in one of these states:
+    timer ->
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal]);
+
+    % If block executed via exec_out, execute the block if in one of these states:
+    exec_out ->
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal]);
+
     _ ->
       % For any other execution method, don't execute if BlockStatus is a member of this list
       not lists:member(BlockStatus, [input_err, config_err, proc_err, no_input])
