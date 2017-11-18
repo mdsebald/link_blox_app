@@ -23,7 +23,6 @@
           get_boolean/2,
           get_string/2,
           get_value/3,
-          check_boolean_input/1,
           resize_attribute_array_value/5,
           log_error/3
 ]).
@@ -218,19 +217,6 @@ check_value(Value, Link, CheckType) ->
         true  -> {ok, Value};
         false -> {error, bad_type}
       end
-  end.
-
-
-%
-% Check the value of the disable or freeze control value input
-%
-check_boolean_input(Value) ->
-  case Value of
-    true       -> active;
-    false      -> null; 
-    null -> null;
-    empty      -> null;
-    _Error     -> error
   end.
 
 

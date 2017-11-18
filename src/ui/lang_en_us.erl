@@ -156,8 +156,6 @@ strings_map() -> #{
   linkblox_startup_complete => "LinkBlox startup complete~n",
   err_starting_linkblox => "Error: ~p starting LinkBlox~n",
   loading_demo_config => "Loading Demo config... ~n",
-  invalid_freeze_input_value => "~p Invalid freeze input value: ~p ~n",
-  invalid_disable_input_value => "~p Invalid disable input value: ~p ~n",
   negative_exec_interval_value => "~p Negative exec_interval value: ~p ~n",
   invalid_exec_interval_value => "~p Invalid exec_interval value: ~p ~n",
   err_updating_is_this_an_mqtt_pub_sub_block => "Error: ~p updating ~p. Is this an mqtt_pub_sub block?~n",

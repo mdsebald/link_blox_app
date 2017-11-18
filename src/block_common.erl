@@ -155,34 +155,33 @@ execute(BlockState, ExecMethod) ->
     true ->
       {BlockName, BlockModule} = config_utils:name_module(Config),
     
-      {ok, Disable} = attrib_utils:get_value(Inputs, disable),
-      case input_utils:check_boolean_input(Disable) of
-        null ->
-          {ok, Freeze} = attrib_utils:get_value(Inputs, freeze),
-          case input_utils:check_boolean_input(Freeze) of
-            null -> % block is not disabled or frozen, execute it
-              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, ExecMethod),
-              Outputs2 = update_execute_track(Outputs1, ExecMethod);
-                    
-            active -> % Block is frozen
+      case input_utils:get_boolean(Inputs, disable) of
+        {ok, true} -> % Block is disabled
+          Outputs2 = output_utils:update_all_outputs(Outputs, null, disabled),
+          % Nothing to update in private values
+          Private1 = Private;
+     
+        {ok, _NotDisabled} -> % Disable input is false or null
+          case input_utils:get_boolean(Inputs, freeze) of
+            {ok, true} -> % Block is frozen
               % Just update the status output, all other outputs are frozen
               Outputs2 = output_utils:set_status(Outputs, frozen),
               % Nothing to update in private values
               Private1 = Private;
+
+            {ok, _NotFrozen} -> % block is not disabled or frozen, execute it
+              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, ExecMethod),
+              Outputs2 = update_execute_track(Outputs1, ExecMethod);
                     
-            error -> % Freeze input value error
-              log_server:error(invalid_freeze_input_value, [BlockName, Freeze]),
+            {error, Reason} -> % Freeze input value error
+              input_utils:log_error(Config, freeze, Reason),
               Outputs2 = output_utils:update_all_outputs(Outputs, null, input_err),
               % Nothing to update in private values
               Private1 = Private
           end;
-        active -> % Block is disabled
-          Outputs2 = output_utils:update_all_outputs(Outputs, null, disabled),
-          % Nothing to update in private values
-          Private1 = Private;
         
-        error -> % Disable input value error 
-          log_server:error(invalid_disable_input_value, [BlockName, Disable]),
+        {error, Reason} -> % Disable input value error 
+          input_utils:log_error(Config, disable, Reason),
           Outputs2 = output_utils:update_all_outputs(Outputs, null, input_err),
           % Nothing to update in private values
           Private1 = Private
