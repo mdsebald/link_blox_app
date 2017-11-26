@@ -18,29 +18,29 @@
 
 % Functions must be exported in order to be invoked via Module:Function(Args)
 -export([
-          ui_create_block/1,    ui_create_block_help/0,
-          ui_copy_block/1,      ui_copy_block_help/0,
-          ui_rename_block/1,    ui_rename_block_help/0,
-          ui_execute_block/1,   ui_execute_block_help/0,
-          ui_delete_block/1,    ui_delete_block_help/0,
-          ui_disable_block/1,   ui_disable_block_help/0,
-          ui_enable_block/1,    ui_enable_block_help/0,
-          ui_freeze_block/1,    ui_freeze_block_help/0,
-          ui_thaw_block/1,      ui_thaw_block_help/0,
-          ui_get_values/1,      ui_get_values_help/0,
-          ui_set_value/1,       ui_set_value_help/0,
-          ui_link_blocks/1,     ui_link_blocks_help/0,
-          ui_unlink_blocks/1,   ui_unlink_blocks_help/0,
-          ui_status/1,          ui_status_help/0,
-          ui_valid_block_name/1, ui_valid_block_name_help/0,
-          ui_load_blocks/1,     ui_load_blocks_help/0,
-          ui_save_blocks/1,     ui_save_blocks_help/0,
-          ui_node/1,            ui_node_help/0,
-          ui_nodes/1,           ui_nodes_help/0,
-          ui_connect/1,         ui_connect_help/0,
-          ui_hosts/1,           ui_hosts_help/0,
-          ui_exit/1,            ui_exit_help/0,
-          ui_help/1,            ui_help_help/0
+          ui_create_block/2,
+          ui_copy_block/2,
+          ui_rename_block/2,
+          ui_execute_block/2,
+          ui_delete_block/2,
+          ui_disable_block/2,
+          ui_enable_block/2,
+          ui_freeze_block/2,
+          ui_thaw_block/2,
+          ui_get_values/2,
+          ui_set_value/2,
+          ui_link_blocks/2,
+          ui_unlink_blocks/2,
+          ui_status/2,
+          ui_valid_block_name/2,
+          ui_load_blocks/2,
+          ui_save_blocks/2,
+          ui_node/2,
+          ui_nodes/2,
+          ui_connect/2,
+          ui_hosts/2,
+          ui_exit/2,
+          ui_help/2
         ]).
 
 
@@ -104,13 +104,13 @@ eval_input(Line) ->
 	    case cmd_string_to_cmd_atom(Command) of
         unknown_cmd ->
           format_out(unk_cmd_str, [Command]);
-        CmdAtom ->
+        {CmdAtom, ParamStrAtom, _HelpStrAtom} ->
           case cmd_atom_to_function(CmdAtom) of
             unknown_cmd ->
               format_out(unk_cmd_atom, [CmdAtom]);
 
             {Module, Function} ->
-		          case catch Module:Function(Params) of
+		          case catch Module:Function(Params, ParamStrAtom) of
 			          {'EXIT', Error} ->
 			            {error, Error}; % wrong_number_of_arguments
 			          Result ->
@@ -125,11 +125,11 @@ eval_input(Line) ->
 
 %% 
 %% Translate a command string to an atom
-%% This indirection allows command mapping using different languages,
+%% This indirection allows command strings to be in different languages,
 %%
 cmd_string_to_cmd_atom(Command) ->
-  case lists:keysearch(Command, 1, cmds_map()) of
-	  {value, {_, CmdAtom, _}} -> CmdAtom;
+  case lists:keyfind(Command, 1, cmds_map()) of
+	  {Command, CmdAtom, ParamStrAtom, HelpStrAtom} -> {CmdAtom, ParamStrAtom, HelpStrAtom};
 	  false -> unknown_cmd
   end.
 
@@ -138,51 +138,42 @@ cmd_string_to_cmd_atom(Command) ->
 %% Translate command atom to command module and function
 %%
 cmd_atom_to_function(CmdAtom) ->
-  case lists:keysearch(CmdAtom, 1, cmd_atom_map()) of
-	  {value, {_, Module, Function, _HelpFunction}} -> {Module, Function};
-	  false -> unknown_cmd
-  end.
-
-%%
-%% Translate command atom to command module and help function
-%%
-cmd_atom_to_help_function(CmdAtom) ->
-  case lists:keysearch(CmdAtom, 1, cmd_atom_map()) of
-	  {value, {_, Module, _Function, HelpFunction}} -> {Module, HelpFunction};
+  case lists:keyfind(CmdAtom, 1, cmd_atom_map()) of
+	  {CmdAtom, Module, Function} -> {Module, Function};
 	  false -> unknown_cmd
   end.
 
 
 %%
-%% Map command atom to command module and function
-%% Specify the Module here, in case we want to break out
-%%  UI functions into separate modules.
+%% Map a command atom to a module and function here
+%% We specify the Module here, in case we want to break out
+%%  the UI functions into separate modules.
 %%
 cmd_atom_map() ->  
   [
-    {cmd_create_block,     ?MODULE,  ui_create_block,   ui_create_block_help},
-    {cmd_copy_block,       ?MODULE,  ui_copy_block,     ui_copy_block_help},
-    {cmd_rename_block,     ?MODULE,  ui_rename_block,   ui_rename_block_help},
-    {cmd_execute_block,    ?MODULE,  ui_execute_block,  ui_execute_block_help},
-    {cmd_delete_block,     ?MODULE,  ui_delete_block,   ui_delete_block_help},
-    {cmd_disable_block,    ?MODULE,  ui_disable_block,  ui_disable_block_help},
-    {cmd_enable_block,     ?MODULE,  ui_enable_block,   ui_enable_block_help},
-    {cmd_freeze_block,     ?MODULE,  ui_freeze_block,   ui_freeze_block_help},
-    {cmd_thaw_block,       ?MODULE,  ui_thaw_block,     ui_thaw_block_help},
-    {cmd_get_values,       ?MODULE,  ui_get_values,     ui_get_values_help},
-    {cmd_set_value,        ?MODULE,  ui_set_value,      ui_set_value_help},
-    {cmd_link_blocks,      ?MODULE,  ui_link_blocks,    ui_link_blocks_help},
-    {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks,  ui_unlink_blocks_help},
-    {cmd_status,           ?MODULE,  ui_status,         ui_status_help},
-    {cmd_valid_block_name, ?MODULE,  ui_valid_block_name, ui_valid_block_name_help},
-    {cmd_load_blocks,      ?MODULE,  ui_load_blocks,    ui_load_blocks_help},
-    {cmd_save_blocks,      ?MODULE,  ui_save_blocks,    ui_save_blocks_help},
-    {cmd_node,             ?MODULE,  ui_node,           ui_node_help},
-    {cmd_nodes,            ?MODULE,  ui_nodes,          ui_nodes_help},
-    {cmd_connect,          ?MODULE,  ui_connect,        ui_connect_help},
-    {cmd_hosts,            ?MODULE,  ui_hosts,          ui_hosts_help},
-    {cmd_exit,             ?MODULE,  ui_exit,           ui_exit_help},
-    {cmd_help,             ?MODULE,  ui_help,           ui_help_help}
+    {cmd_create_block,     ?MODULE,  ui_create_block},
+    {cmd_copy_block,       ?MODULE,  ui_copy_block},
+    {cmd_rename_block,     ?MODULE,  ui_rename_block},
+    {cmd_execute_block,    ?MODULE,  ui_execute_block},
+    {cmd_delete_block,     ?MODULE,  ui_delete_block},
+    {cmd_disable_block,    ?MODULE,  ui_disable_block},
+    {cmd_enable_block,     ?MODULE,  ui_enable_block},
+    {cmd_freeze_block,     ?MODULE,  ui_freeze_block},
+    {cmd_thaw_block,       ?MODULE,  ui_thaw_block},
+    {cmd_get_values,       ?MODULE,  ui_get_values},
+    {cmd_set_value,        ?MODULE,  ui_set_value},
+    {cmd_link_blocks,      ?MODULE,  ui_link_blocks},
+    {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks},
+    {cmd_status,           ?MODULE,  ui_status},
+    {cmd_valid_block_name, ?MODULE,  ui_valid_block_name},
+    {cmd_load_blocks,      ?MODULE,  ui_load_blocks},
+    {cmd_save_blocks,      ?MODULE,  ui_save_blocks},
+    {cmd_node,             ?MODULE,  ui_node},
+    {cmd_nodes,            ?MODULE,  ui_nodes},
+    {cmd_connect,          ?MODULE,  ui_connect},
+    {cmd_hosts,            ?MODULE,  ui_hosts},
+    {cmd_exit,             ?MODULE,  ui_exit},
+    {cmd_help,             ?MODULE,  ui_help}
   ].
 
 
@@ -255,6 +246,9 @@ format_out(StringId) ->
 format_out(StringId, Args) ->
   io:format(get_string(StringId), Args).
 
+show_params(ParamStrAtom) ->
+  io:format("~s ~s~n", [get_string(enter_str), get_string(ParamStrAtom)]).
+
 
 %
 % Get the string corresponding to the string ID
@@ -287,9 +281,9 @@ cmds_map() ->
 
 % Process block create command
 % TODO: Add initial attrib values
-ui_create_block(Params) ->
+ui_create_block(Params, ParamStrAtom) ->
   case check_num_params(Params, 2, 3) of  
-    low -> io:format("Enter block-type new-block-name <description>~n");
+    low -> show_params(ParamStrAtom);
 
     ok ->
       case length(Params) of
@@ -323,9 +317,9 @@ ui_create_block(Params) ->
 
 % Process block copy command
 % TODO: Add initial attrib values
-ui_copy_block(Params) ->
+ui_copy_block(Params, ParamStrAtom) ->
   case check_num_params(Params, 2, 3) of  
-    low -> io:format("Enter source-block-name <dest-node-name> dest-block-name~n");
+    low -> show_params(ParamStrAtom);
 
     ok ->
       case length(Params) of
@@ -363,9 +357,9 @@ ui_copy_block(Params) ->
 
 % Process rename block command
 % TODO: Just copied from copy block command still needs to be finished
-ui_rename_block(Params) ->
+ui_rename_block(Params, ParamStrAtom) ->
   case check_num_params(Params, 2) of  
-    low -> io:format("Enter current-block-name new-block-name~n");
+    low -> show_params(ParamStrAtom);
 
     ok ->
       [SrcBlockNameStr, DstBlockNameStr] = Params,
@@ -395,9 +389,9 @@ ui_rename_block(Params) ->
 
 
 % Process manual block execute command
-ui_execute_block(Params) ->
+ui_execute_block(Params, ParamStrAtom) ->
    case check_num_params(Params, 1) of  
-    low -> format_out(enter_block_name);
+    low -> show_params(ParamStrAtom);
 
     ok -> 
       [BlockNameStr] = Params,
@@ -414,11 +408,11 @@ ui_execute_block(Params) ->
 
 
 % Process block delete command
-ui_delete_block(Params) ->
+ui_delete_block(Params, ParamStrAtom) ->
   % TODO: Add delete all command to delete all blocks at once
   % TODO: Ask the user if they really want to delete
    case check_num_params(Params, 1) of  
-    low -> format_out(enter_block_name);
+    low -> show_params(ParamStrAtom);
 
     ok -> 
       [BlockNameStr] = Params,
@@ -439,10 +433,10 @@ ui_delete_block(Params) ->
     
     
 % Process disable block command
-ui_disable_block(Params) ->
+ui_disable_block(Params, ParamStrAtom) ->
   case check_num_params(Params, 1) of
 
-    low -> format_out(enter_block_name);
+    low -> show_params(ParamStrAtom);
     
     ok -> 
       [BlockNameStr] = Params,
@@ -463,10 +457,10 @@ ui_disable_block(Params) ->
 
 
 % Process enable block command
-ui_enable_block(Params) ->
+ui_enable_block(Params, ParamStrAtom) ->
  case check_num_params(Params, 1) of
 
-    low -> format_out(enter_block_name);
+    low -> show_params(ParamStrAtom);
     
     ok -> 
       [BlockNameStr] = Params,
@@ -487,10 +481,10 @@ ui_enable_block(Params) ->
     
     
 % Process freeze block command
-ui_freeze_block(Params) ->
+ui_freeze_block(Params, ParamStrAtom) ->
 case check_num_params(Params, 1) of
 
-    low -> format_out(enter_block_name);
+    low -> show_params(ParamStrAtom);
     
     ok -> 
       [BlockNameStr] = Params,
@@ -511,10 +505,10 @@ case check_num_params(Params, 1) of
 
     
 % Process thaw block command
-ui_thaw_block(Params) ->
+ui_thaw_block(Params, ParamStrAtom) ->
 case check_num_params(Params, 1) of
 
-    low -> format_out(enter_block_name);
+    low -> show_params(ParamStrAtom);
     
     ok -> 
       [BlockNameStr] = Params,
@@ -535,7 +529,7 @@ case check_num_params(Params, 1) of
 
 
 % Process block status command
-ui_status(Params) ->
+ui_status(Params, _ParamStrAtom) ->
   case check_num_params(Params, 0) of  
     ok -> block_status();
 
@@ -544,9 +538,9 @@ ui_status(Params) ->
  
  
 % Process the get values command
-ui_get_values(Params) ->
+ui_get_values(Params, ParamStrAtom) ->
   case length(Params) of  
-    0 -> io:format("Enter block-name <value-name>~n");
+    0 -> show_params(ParamStrAtom);
     1 -> 
       [BlockNameStr] = Params,
 
@@ -768,10 +762,10 @@ format_array_values(ValueName, Index, ArrayValues) ->
 
 
 % Process the set value command
-ui_set_value(Params) ->
+ui_set_value(Params, ParamStrAtom) ->
   case check_num_params(Params, 3) of
 
-    low -> io:format("Enter block-name value-name value~n");
+    low -> show_params(ParamStrAtom);
     
     ok -> 
       [BlockNameStr, ValueIdStr, ValueStr] = Params,
@@ -803,9 +797,9 @@ ui_set_value(Params) ->
 
 
 % Process link blocks command
-ui_link_blocks(Params) ->
+ui_link_blocks(Params, ParamStrAtom) ->
   case check_num_params(Params, 3, 5) of
-    low -> io:format("Enter input-block-name input-value-name <output-node-name <output-block-name>> output-value-name~n");
+    low -> show_params(ParamStrAtom);
 
     ok ->
       % 1st parameter is block name
@@ -841,9 +835,9 @@ ui_link_blocks(Params) ->
 
 
 % Process unlink blocks command
-ui_unlink_blocks(Params) ->
+ui_unlink_blocks(Params, ParamStrAtom) ->
   case check_num_params(Params, 2) of
-    low -> io:format("Enter block-name input-value-name~n");
+    low -> show_params(ParamStrAtom);
 
     ok ->
       % 1st parameter is block name
@@ -899,7 +893,7 @@ parse_link(LinkParams) ->
 
 
 % Process the load blocks command
-ui_load_blocks(Params) ->
+ui_load_blocks(Params, _ParamStrAtom) ->
   %% Read a set of block values from a config file
   % TODO: Check for existence and validity
   case check_num_params(Params, 0, 1) of
@@ -930,9 +924,8 @@ ui_load_blocks(Params) ->
 % TODO: Create command to get block data from one node and load it on another node
 
 
-
 % Process the save blocks command
-ui_save_blocks(Params) ->
+ui_save_blocks(Params, _ParamStrAtom) ->
   % Write the block values to a configuration file
   case check_num_params(Params, 0, 1) of
     ok ->
@@ -965,20 +958,19 @@ ui_save_blocks(Params) ->
 
 
 % Execute Erlang BIF node()
-ui_node(_Params) ->
+ui_node(_Params, _ParamStrAtom) ->
   format_out(node_prompt_str, [node()]).
 
 
 % Execute Erlang BIF nodes()
-ui_nodes(_Params) ->  
+ui_nodes(_Params, _ParamStrAtom) ->  
   format_out(nodes_prompt_str, [[node() | nodes()]]).
 
 
 % Connect to another node
-ui_connect(Params) ->
+ui_connect(Params, ParamStrAtom) ->
   case check_num_params(Params, 1) of
-    low ->
-      format_out(enter_node_name);
+    low -> show_params(ParamStrAtom);
 
     ok ->
       case Params of
@@ -1054,10 +1046,9 @@ block_status([BlockName | RemainingBlockNames]) ->
 
 
 % validate Params is one valid block name
-ui_valid_block_name(Params) ->
+ui_valid_block_name(Params, ParamStrAtom) ->
   case check_num_params(Params, 1) of
-    low ->
-      format_out(enter_block_name),
+    low -> show_params(ParamStrAtom),
       error;
 
     ok ->
@@ -1080,7 +1071,7 @@ ui_valid_block_name(Params) ->
 %%
 %% Print out the /etc/hosts file
 %%
-ui_hosts(_Params) ->
+ui_hosts(_Params, _ParamStrAtom) ->
     {ok, Device} = file:open("/etc/hosts", [read]),
     try get_all_lines(Device)
       after file:close(Device)
@@ -1097,35 +1088,33 @@ get_all_lines(Device) ->
 %%
 %% Exit UI
 %%
-ui_exit(_Params) ->
+ui_exit(_Params, _ParamStrAtom) ->
   done.
 
 %%
 %% Process the help command
 %%
-ui_help(Params) ->
+ui_help(Params, _ParamStrAtom) ->
   case check_num_params(Params, 0, 1) of
-    ok ->
-      
+    ok -> 
       CmdList = cmds_map(),
       case length(Params) of  
         0 ->
-          io:format("~n     LinkBlox Help~n~n"),
+          format_out(linkblox_help),
           lists:map(fun(Cmd) -> 
-                      {CmdStr, _CmdAtom, CmdParamStr} = Cmd,
-                      io:format("~s ~s~n", [CmdStr, CmdParamStr])
+                      {CmdStr, _CmdAtom, _CmdParamAtom, CmdHelpAtom} = Cmd,
+                      io:format("~s:  ~s~n", [CmdStr, get_string(CmdHelpAtom)])
                     end,
                     CmdList);
         1 ->
           % Use the entered parameter as the command Name
           [CmdHelp] = Params,
-          CmdAtom = cmd_string_to_cmd_atom(CmdHelp),
-          case cmd_atom_to_help_function(CmdAtom) of
+          case cmd_string_to_cmd_atom(CmdHelp) of
             unknown_cmd ->
-              io:format("No help for: ~s~n", [CmdHelp]);
+              format_out(no_help_for, [CmdHelp]);
 
-            {Module, HelpFunction} -> 
-              Module:HelpFunction()
+            {_CmdAtom, ParamStrAtom, HelpStrAtom} -> 
+                io:format("~s:  ~s~n  ~s~n", [CmdHelp, get_string(HelpStrAtom), get_string(ParamStrAtom)])
           end
       end;
     high ->
@@ -1133,75 +1122,6 @@ ui_help(Params) ->
       error
   end.
 
-ui_create_block_help() ->
-  io:format("~nCreate a new block with default values~n").
-
-ui_copy_block_help() ->
-  io:format("TODO: Insert copy help text here~n").
-  
-ui_rename_block_help() ->
-  io:format("TODO: Insert rename help text here~n").
-  
-ui_execute_block_help() ->
-  io:format("TODO: Insert execute help text here~n").
-  
-ui_delete_block_help() ->
-  io:format("TODO: Insert delete help text here~n").
-  
-ui_disable_block_help() ->
-  io:format("TODO: Insert disable help text here~n").
-  
-ui_enable_block_help() ->
-  io:format("TODO: Insert enable help text here~n").
-  
-ui_freeze_block_help() ->
-  io:format("TODO: Insert freeze help text here~n").
-  
-ui_thaw_block_help() ->
-  io:format("TODO: Insert thaw help text here~n").
-  
-ui_get_values_help() ->
-  io:format("TODO: Insert get help text here~n").
-  
-ui_set_value_help() ->
-  io:format("TODO: Insert set help text here~n").
-  
-ui_link_blocks_help() ->
-  io:format("TODO: Insert link help text here~n").
-  
-ui_unlink_blocks_help() ->
-  io:format("TODO: Insert unlink help text here~n").
-  
-ui_status_help() ->
-  io:format("TODO: Insert status help text here~n").
-
-ui_valid_block_name_help() ->
-  io:format("TODO: Insert validate block name help text here~n").
-  
-ui_load_blocks_help() ->
-  io:format("TODO: Insert load help text here~n").
-  
-ui_save_blocks_help() ->
-  io:format("TODO: Insert save help text here~n").
-  
-ui_node_help() ->
-  io:format("TODO: Insert node help text here~n").
-  
-ui_nodes_help() ->
-  io:format("TODO: Insert nodes help text here~n").
-  
-ui_connect_help() ->
-  io:format("TODO: Insert connect help text here~n").
-
-ui_hosts_help() ->
-  io:format("Display the contents of the /etc/hosts file~n").
-
-ui_exit_help() ->
-   io:format("Exit the UI~n").
-
-ui_help_help() ->
-  io:format("Display the contents of the help screen~n").
-  
   
 %%
 %% Check the number of parameters in the param list

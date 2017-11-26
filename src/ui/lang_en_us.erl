@@ -15,35 +15,36 @@
 
 
 %%
-%% Map string to ui command atom
+%% Map a string to ui command atom, parameter(s) string, and help text
+%%  Template:  {"cmd",       cmd_atom,             cmd_atom_params,          cmd_atom_help},
 %%
 -spec cmds_map() -> list({string(), atom(), string()}).
 
 cmds_map() ->
   [
-    {"create",    cmd_create_block,     "<block type name> <new block name>"},
-    {"copy",      cmd_copy_block,       "<source block name> <dest block name>"},
-    {"rename",    cmd_rename_block,     "<current block name> <new block name>"},
-    {"execute",   cmd_execute_block,    "<block name>"},
-    {"delete",    cmd_delete_block,     "<block name>"},
-    {"disable",   cmd_disable_block,    "<block name>"},
-    {"enable",    cmd_enable_block,     "<block name>"},
-    {"freeze",    cmd_freeze_block,     "<block name>"},
-    {"thaw",      cmd_thaw_block,       "<block name>"},
-    {"get",       cmd_get_values,       "<block name>"},
-    {"set",       cmd_set_value,        "<block name> <attribute name> <value>"},
-    {"link",      cmd_link_blocks,      "<block name> <input name> <block name> <output name>"},
-    {"unlink",    cmd_unlink_blocks,    "<block name> <input name>"},
-    {"status",    cmd_status,           ""},
-    {"valid",     cmd_valid_block_name, "<block name>"},
-    {"load",      cmd_load_blocks,      "<file name> | blank"},
-    {"save",      cmd_save_blocks,      "<file name> | blank"},
-    {"node",      cmd_node,             ""},
-    {"nodes",     cmd_nodes,            ""},
-    {"connect",   cmd_connect,          "<node name>"},
-    {"hosts",     cmd_hosts,            ""},
-    {"exit",      cmd_exit,             ""},
-    {"help",      cmd_help,             "display help screen"}
+    {"create",    cmd_create_block,     cmd_create_block_params,  cmd_create_block_help},
+    {"copy",      cmd_copy_block,       cmd_copy_block_params,    cmd_copy_block_help},
+    {"rename",    cmd_rename_block,     cmd_rename_block_params,  cmd_rename_block_help},
+    {"execute",   cmd_execute_block,    cmd_block_name_param,     cmd_execute_block_help},
+    {"delete",    cmd_delete_block,     cmd_block_name_param,     cmd_delete_block_help},
+    {"disable",   cmd_disable_block,    cmd_block_name_param,     cmd_disable_block_help},
+    {"enable",    cmd_enable_block,     cmd_block_name_param,     cmd_enable_block_help},
+    {"freeze",    cmd_freeze_block,     cmd_block_name_param,     cmd_freeze_block_help},
+    {"thaw",      cmd_thaw_block,       cmd_block_name_param,     cmd_thaw_block_help},
+    {"get",       cmd_get_values,       cmd_block_name_param,     cmd_get_values_help},
+    {"set",       cmd_set_value,        cmd_set_value_params,     cmd_set_value_help},
+    {"link",      cmd_link_blocks,      cmd_link_blocks_params,   cmd_link_blocks_help},
+    {"unlink",    cmd_unlink_blocks,    cmd_link_blocks_params,   cmd_unlink_blocks_help},
+    {"status",    cmd_status,           cmd_blank_params,         cmd_status_help},
+    {"valid",     cmd_valid_block_name, cmd_block_name_param,     cmd_valid_block_name_help},
+    {"load",      cmd_load_blocks,      cmd_file_name_params,     cmd_load_blocks_help},
+    {"save",      cmd_save_blocks,      cmd_file_name_params,     cmd_save_blocks_help},
+    {"node",      cmd_node,             cmd_blank_params,         cmd_node_help},
+    {"nodes",     cmd_nodes,            cmd_blank_params,         cmd_nodes_help},
+    {"connect",   cmd_connect,          cmd_node_name_params,     cmd_connect_help},
+    {"hosts",     cmd_hosts,            cmd_blank_params,         cmd_hosts_help},
+    {"exit",      cmd_exit,             cmd_blank_params,         cmd_exit_help},
+    {"help",      cmd_help,             cmd_blank_params,         cmd_help_help}
   ].
 
 
@@ -52,6 +53,47 @@ cmds_map() ->
 strings_map() -> #{
   welcome_str => "~n   W E L C O M E  T O  L i n k B l o x !~n~n",
   enter_command_str => "Enter command\n",
+
+  cmd_atom_params => "command parameter list",
+  cmd_create_block_params => "block-type-name new-block-name <description-string>",
+  cmd_copy_block_params => "source-block-name dest-block-name",
+  cmd_rename_block_params => "current-block-name new-block-name",
+  cmd_set_value_params => "block-name value-name value",
+  cmd_link_blocks_params => "output-block-name output-value-name <input-node-name <input-block-name>> input-value-name",
+  cmd_block_name_param => "block-name",
+  cmd_file_name_params => "file-name | blank",
+  cmd_node_name_params => "node-name",
+  cmd_blank_params => "",
+
+  cmd_atom_help => "Command help text",
+  cmd_create_block_help => "Create a new block",
+  cmd_copy_block_help => "Create a copy of an existing block",
+  cmd_rename_block_help => "Rename a block",
+  cmd_execute_block_help => "Execute a block",
+  cmd_delete_block_help => "Delete a block",
+  cmd_disable_block_help => "Prevent a block from executing",
+  cmd_enable_block_help => "Allow a block to execute",
+  cmd_freeze_block_help => "Freeze block's outputs at current values",
+  cmd_thaw_block_help => "Allow a block's output values to be updated",
+  cmd_get_values_help => "Get the specified block value",
+  cmd_set_value_help => "Set the specified block value",
+  cmd_link_blocks_help => "Link a block output value to the input value of a block",
+  cmd_unlink_blocks_help => "Unlink a block output value from the input value of a block",
+  cmd_status_help => "Display status of all created blocks on this node",
+  cmd_valid_block_name_help => "Is the entered string a valid block name",
+  cmd_load_blocks_help => "Load block definitions from a file",
+  cmd_save_blocks_help => "Save all block defintions to a file",
+  cmd_node_help => "Display the self node of the user",
+  cmd_nodes_help => "Display a list of all currently connected nodes",
+  cmd_connect_help => "Connect to another node",
+  cmd_hosts_help => "Display the contents of the hosts file",
+  cmd_exit_help => "Exit the LinkBlox command line",
+  cmd_help_help => "Display help screen",
+
+  linkblox_help => "~n     LinkBlox Help~n~n",
+  no_help_for => "No help for: ~s~n",
+  enter_str => "Enter", 
+
   config_str => "Config:~n",
   inputs_str => "Inputs:~n",
   outputs_str => "Outputs:~n",
@@ -60,7 +102,6 @@ strings_map() -> #{
   node_link_str => "  Link: ~p:~p:~p",
   reference_str => "  Refs: ~p",
   block_value_set_to_str => "~s:~s Set to: ~s~n",
-  enter_block_name => "Enter block-name~n",
   block_exists => "Block: ~s exists~n",
   block_does_not_exist => "Block ~p does not exist~n",
   block_type_created => "Block ~s:~s Created~n",
