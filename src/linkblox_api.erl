@@ -29,15 +29,15 @@
           get_types_info/1,
           get_type_info/2,
           set_value/4,
-          set_link/4,
-          %link/4,
-          %unlink/4,
+          add_link/4,
+          del_link/4,
+          add_exec_link/3,
+          del_exec_link/3,
           get_blocks/1,
           save_blocks/2,
           save_blocks/3,
           load_block_file/2,
           load_block_data/2,
-          %update/4,
           execute_block/3,
           is_block_name/2, 
           is_block_type/2
@@ -147,34 +147,42 @@ set_value(Node, BlockName, ValueId, Value) ->
   gen_server:call({?MODULE, Node}, {set_value, BlockName, ValueId, Value}).
 
 
-%% Link block input to a block output
--spec set_link(Node :: node(),
-               BlockName :: block_name(),
-               InputValueId :: value_id(),
-               Link :: input_link()) -> term().
+%% Link a block output to a block input
+-spec add_link(Node :: node(),
+               OutputBlockName :: block_name(),
+               OutputValueId :: value_id(),
+               Link :: link_def()) -> term().
 
-set_link(Node, BlockName, InputValueId, Link) ->
-  gen_server:call({?MODULE, Node}, {set_link, BlockName, InputValueId, Link}).
-
-
-%% Link the value 'ValueId' of this block to 'ToBlockName' 
-%-spec link(Node :: node(),
-%           BlockName :: block_name(),
-%           ValueId :: value_id(),
-%           ToBlockName :: block_name() | {node(), block_name()}) -> term().
-%
-%link(Node, BlockName, ValueId, ToBlockName) ->
-%  gen_server:call({?MODULE, Node}, {link, BlockName, ValueId, ToBlockName}).
+add_link(Node, OutputBlockName, OutputValueId, Link) ->
+  gen_server:call({?MODULE, Node}, {add_link, OutputBlockName, OutputValueId, Link}).
 
 
-%% Unlink the output value: LinkBlockName : LinkValueId from BlockName 
-%-spec unlink(Node :: node(),
-%             LinkBlockName :: block_name(),
-%             LinkValueId :: value_id(),
-%             Reference :: link_ref()) -> term().
-%
-%unlink(Node, LinkBlockName, LinkValueId, Reference) ->
-%  gen_server:cast({?MODULE, Node}, {unlink, LinkBlockName, LinkValueId, Reference}).
+%% Unlink a block output from a block input
+-spec del_link(Node :: node(),
+               OutputBlockName :: block_name(),
+               OutputValueId :: value_id(),
+               Link :: link_def()) -> term().
+
+del_link(Node, OutputBlockName, OutputValueId, Link) ->
+  gen_server:call({?MODULE, Node}, {del_link, OutputBlockName, OutputValueId, Link}).
+
+
+%% Create execution link from Executor to Executee block
+-spec add_exec_link(Node :: node(),
+                    ExecutorBlockName :: block_name(),
+                    ExecuteeBlockName :: block_name()) -> term().
+
+add_exec_link(Node, ExecutorBlockName, ExecuteeBlockName) ->
+  gen_server:call({?MODULE, Node}, {add_exec_link, ExecutorBlockName, ExecuteeBlockName}).
+
+
+%% Delete execution link from Executor to Executee block
+-spec del_exec_link(Node :: node(),
+                    ExecutorBlockName :: block_name(),
+                    ExecuteeBlockName :: block_name()) -> term().
+
+del_exec_link(Node, ExecutorBlockName, ExecuteeBlockName) ->
+  gen_server:call({?MODULE, Node}, {del_exec_link, ExecutorBlockName, ExecuteeBlockName}).
 
 
 %% Get all of the current created blocks on this node 
@@ -215,16 +223,6 @@ load_block_file(Node, FileName) ->
  
 load_block_data(Node, BlockData) ->
   gen_server:call({?MODULE, Node}, {load_block_data, BlockData}).
-
-%% Update the input value(s) on this block, 
-%% linked to the FromBlockName: ValueId 
-%-spec update(Node :: node(),
-%             BlockName :: block_name(),
-%             Link :: input_link(),
-%             NewValue :: attr_value()) -> term().
-%
-%update(Node, BlockName, Link, NewValue) ->
-%  gen_server:cast({?MODULE, Node}, {update, BlockName, Link, NewValue}).
 
 
 %% Execute the block
@@ -347,15 +345,17 @@ handle_call({copy_block, BlockName, BlockState, _InitAttribs}, _From, State) ->
               % Make sure the block name is not already used
               case system_server:is_block(BlockName) of
                 false ->
-                  % Create the block, but ignore the default values
+                  % Create the block, but ignore the created block state
+                  % Use the source block state for the new block state
                   BlockModule:create(BlockName, "Default Comment"),
                   % Change the name in the copied block values, to the new block name
                   {ok, NewConfig} = attrib_utils:set_value(Config, block_name, BlockName),
-                  % Set all linked input values to empty. 
-                  % This forces the creation of references to the new block's linked inputs  
-                  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
-                  % Start the new block with the set of copied values,  
-                  case block_supervisor:start_block({NewConfig, EmptyInputs, Outputs}) of
+                  % Set the copied inputs, to their default values
+                  DefaultInputs = input_utils:default_inputs(Inputs),
+                  % Set all output values of this block to 'empty'. Status is created
+                  EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, created),
+                  % Start the new block with the set of copied values, 
+                  case block_supervisor:start_block({NewConfig, DefaultInputs, EmptyOutputs}) of
                     {ok, _Pid} -> 
                       Result = ok;
                     {error, Reason} -> 
@@ -481,32 +481,92 @@ handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
 
 
 %% =====================================================================
-%% Set the link of the given input value to the given link value
+%% Add a link to an input value from a block output
 %% =====================================================================    
-handle_call({set_link, BlockName, InputValueId, Link}, _From, State) ->
-  case system_server:is_block(BlockName) of
+handle_call({add_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
+  case system_server:is_block(OutputBlockName) of
     true ->
-      Result = block_server:set_link(BlockName, InputValueId, Link);
+      case link_utils:validate_link(OutputBlockName, Link) of
+        ok ->
+          Result = block_server:add_link(OutputBlockName, OutputValueId, Link);
 
-    _ ->
+        {error, Reason} ->
+          Result = {error, Reason}
+      end;
+    _False ->
       Result = {error, block_not_found}
+  end,      
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Delete a link to an input value from a block output
+%% =====================================================================    
+handle_call({del_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
+  case system_server:is_block(OutputBlockName) of
+    true ->
+      case link_utils:validate_link(OutputBlockName, Link) of
+        ok ->
+          Result = block_server:del_link(OutputBlockName, OutputValueId, Link);
+  
+        {error, Reason} -> Result = {error, Reason}
+      end;
+    _False ->
+      Result = {error, block_not_found}        
   end,
   {reply, Result, State};  
 
 
-% TODO: Remove after successful test
 %% =====================================================================
-%% Link block input to a block output 
+%% Create execution link from Executor to Executee block
 %% =====================================================================    
-%handle_call({link, BlockName, ValueId, ToBlockName}, _From, State) ->
-% case system_server:is_block(BlockName) of
-%    true ->
-%      Result = block_server:link(BlockName, ValueId, ToBlockName);
-%
-%    _ ->
-%      Result = {error, block_not_found}
-%  end,
-%  {reply, Result, State};
+handle_call({add_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State) ->
+  case system_server:is_block(ExecutorBlockName) of
+    true ->
+      % Execution links are hard coded from exec_out output to exec_in input attributes
+      case link_utils:validate_link(ExecutorBlockName, {ExecuteeBlockName, exec_in}) of
+        ok ->
+          case block_server:add_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
+            ok ->
+              Result = block_server:add_exec_in(ExecuteeBlockName, ExecutorBlockName);
+
+            {error, Reason} ->
+              Result = {error, Reason}
+          end;
+
+        {error, Reason} ->
+          Result = {error, Reason}
+      end;
+    _False ->
+      Result = {error, block_not_found}
+  end,      
+  {reply, Result, State};
+
+
+%% =====================================================================
+%% Delete execution link from Executor to Executee block
+%% =====================================================================    
+handle_call({del_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State) ->
+  case system_server:is_block(ExecutorBlockName) of
+    true ->
+      % Execution links are hard coded from exec_out output to exec_in input attributes
+      case link_utils:validate_link(ExecutorBlockName, {ExecuteeBlockName, exec_in}) of
+        ok ->
+          case block_server:del_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
+            ok ->
+              Result = block_server:del_exec_in(ExecuteeBlockName, ExecutorBlockName);
+              
+            {error, Reason} ->
+              Result = {error, Reason}
+          end;
+
+        {error, Reason} ->
+          Result = {error, Reason}
+      end;
+    _False ->
+      Result = {error, block_not_found}
+  end,      
+  {reply, Result, State};
 
 
 %% =====================================================================
@@ -609,38 +669,6 @@ handle_call(Request, From, State) ->
   NewState :: term(),
   Timeout :: non_neg_integer() | infinity,
   Reason :: term().
-
-
-% TODO: Remove after sucessful test
-%% =====================================================================
-%% Update block input value(s) linked to the given block output value 
-%% =====================================================================    
-%handle_cast({update, BlockName, Link, NewValue}, State) ->
-%  case system_server:is_block(BlockName) of
-%    true ->
-%     block_server:update(BlockName, Link, NewValue);
-%
-%    _ ->
-%     log_server:warning(linkblox_api_received_update_for_unknown_block, 
-%                            [BlockName])
-%  end,
-%  {noreply, State};
-
-
-% TODO: Remove after sucessful test
-%% =====================================================================
-%% Unlink block input from block output 
-%% =====================================================================  
-%handle_cast({unlink, LinkBlockName, LinkValueId, Reference}, State) ->
-%  case system_server:is_block(LinkBlockName) of
-%    true ->
-%      block_server:unlink(LinkBlockName, LinkValueId, Reference);
-%
-%    _ ->
-%      log_server:warning(linkblox_api_received_unlink_for_unknown_block, 
-%                            [LinkBlockName])
-%  end,
-%  {noreply, State};
 
 
 %% =====================================================================

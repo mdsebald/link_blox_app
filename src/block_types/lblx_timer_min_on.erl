@@ -36,7 +36,7 @@ version() -> "0.1.0".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: block_name(),
-                      Description :: string()) -> list(config_attr()).
+                      Description :: string()) -> config_attribs().
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -46,18 +46,18 @@ default_configs(BlockName, Description) ->
     ]). 
 
 
--spec default_inputs() -> list(input_attr()).
+-spec default_inputs() -> input_attribs().
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {min_on_time, {1000, ?EMPTY_LINK}},
-      {input, {empty, ?EMPTY_LINK}}
+      {min_on_time, {1000, {1000}}},
+      {input, {empty, {empty}}}
     ]). 
 
 
--spec default_outputs() -> list(output_attr()).
+-spec default_outputs() -> output_attribs().
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -80,17 +80,17 @@ create(BlockName, Description) ->
 
 -spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs()) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr()), 
-             InitOutputs :: list(output_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs(), 
+             InitOutputs :: output_attribs()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 

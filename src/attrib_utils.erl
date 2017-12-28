@@ -38,9 +38,9 @@
 %% Get the attribute for the given ValueName in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private type
 %%
--spec get_attribute(Attributes :: list(attribute()), 
-                    ValueId :: value_id()) -> {ok, attribute()} | {error, not_found}.
-% Array Value ID case
+-spec get_attribute(Attributes :: attribs(), 
+                    ValueId :: value_id()) -> {ok, attrib()} | {error, not_found}.
+
 get_attribute(Attributes, ValueId) ->
   % Get the ValueName from the ValueId
   case ValueId of
@@ -52,44 +52,46 @@ get_attribute(Attributes, ValueId) ->
   case lists:keyfind(ValueName, 1, Attributes) of 
     false     -> {error, not_found};
     Attribute -> {ok, Attribute}
-   end.
+  end.
 
 
 %%
 %% Get the value of the ValueId attribute in the list of Attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec get_value(Attributes :: list(attribute()), 
-                ValueId :: value_id()) -> attrib_value().
+-spec get_value(Attributes :: attribs(), 
+                ValueId :: value_id()) -> attrib_result_value().
  
 get_value(Attributes, ValueId) ->
   case get_attribute(Attributes, ValueId) of
     {error, not_found} -> {error, not_found};
     
-    % For non-array values, the ValueId is the attribute ValueName
-    % Non-array Config or Private value
-    {ok, {ValueId, {Value}}} -> {ok, Value};
-    
-     % Non-array Input or Output value
-    {ok, {ValueId, {Value, _LinkOrRefs}}} -> {ok, Value};
-    
-    % Assume this is an array value
-    {ok, {ValueName, ArrayValue}} ->
-        % if this is an array value, the ValueName from get_attribute()
-        % will match ValueName in the ValueId tuple
+    % Array value attribute
+    {ok, {ValueName, ArrayValue}} when is_list(ArrayValue) ->
       case ValueId of
+        % For an array values, ValueId is composed of ValueName and ArrayIndex
         {ValueName, ArrayIndex} ->
           if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
             case lists:nth(ArrayIndex, ArrayValue) of
               % Config or Private array value
               {Value} -> {ok, Value};
               % Input or Output array value
-              {Value, _LinkOrRefs} -> {ok, Value}
+              {Value, _DefValOrLinks} -> {ok, Value}
             end;
           true -> {error, invalid_index}
           end;
         _InvalidValue -> {error, invalid_value}
-      end
+      end;
+
+    % For non-array values, the ValueId is the attribute ValueName
+    % Config value
+    {ok, {ValueId, {Value}}} -> {ok, Value};
+    
+    % Input or Output value
+    {ok, {ValueId, {Value, _DefValueOrLinks}}} -> {ok, Value};
+
+    % Otherwise an invalid value
+    _InvalidValue -> {error, invalid_value}
   end.
 
 
@@ -101,7 +103,7 @@ get_value(Attributes, ValueId) ->
 %% so don't allow getting Private values 
 %%
 -spec get_value_any(BlockState :: block_state(), 
-                    ValueId :: value_id()) -> attrib_value().
+                    ValueId :: value_id()) -> attrib_result_value().
 
 % Get array value
 get_value_any(BlockState, ValueId) ->
@@ -137,27 +139,16 @@ get_value_any(BlockState, ValueId) ->
 %% Set a value in attribute ValueId
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec set_value(Attributes :: list(attribute()), 
+-spec set_value(Attributes :: attribs(), 
                 ValueId :: value_id(), 
-                NewValue :: value()) -> {ok, list(attribute())} | attrib_errors().
+                NewValue :: value()) -> {ok, attribs()} | attrib_errors().
               
 set_value(Attributes, ValueId, NewValue)->
   case get_attribute(Attributes, ValueId) of
     {error, not_found} -> {error, not_found};
     
-    % For non-array values, the ValueId is the attribute ValueName
-    % Non-array Config or Private value
-    {ok, {ValueId, {_OldValue}}} -> 
-      NewAttribute = {ValueId, {NewValue}},
-      {ok, replace_attribute(Attributes, ValueId, NewAttribute)};
-    
-    % Non-array Input or Output value
-    {ok, {ValueId, {_OldValue, LinkOrRefs}}} ->  
-      NewAttribute = {ValueId, {NewValue, LinkOrRefs}},
-      {ok, replace_attribute(Attributes, ValueId, NewAttribute)};
-      
-    % Assume this is an array value
-    {ok, {ValueName, ArrayValue}} ->
+    % Array value
+    {ok, {ValueName, ArrayValue}} when is_list(ArrayValue) ->
       case ValueId of 
         % if this is an array value, the ValueName from get_attribute()
         % will match ValueName in the ValueId tuple
@@ -172,16 +163,27 @@ set_value(Attributes, ValueId, NewValue)->
                                                       {ValueName,NewArrayValue})};
             
               % Input or Output value
-              {_OldValue, LinkOrRefs} ->  
+              {_OldValue, DefValOrLinks} ->  
                 NewArrayValue = 
-                  replace_array_value(ArrayValue, ArrayIndex, {NewValue, LinkOrRefs}),
+                  replace_array_value(ArrayValue, ArrayIndex, {NewValue, DefValOrLinks}),
                 {ok, replace_attribute(Attributes, ValueName, {ValueName,NewArrayValue})}
             end;
           true ->
             {error, invalid_index}
           end;
         _InvalidValue -> {error, invalid_value}
-      end
+      end;
+
+    % For non-array values, the ValueId is the attribute value name
+    % Non-array Config or Private value
+    {ok, {ValueId, {_OldValue}}} -> 
+      NewAttribute = {ValueId, {NewValue}},
+      {ok, replace_attribute(Attributes, ValueId, NewAttribute)};
+    
+    % Non-array Input or Output value
+    {ok, {ValueId, {_OldValue, DefValOrLinks}}} ->  
+      NewAttribute = {ValueId, {NewValue, DefValOrLinks}},
+      {ok, replace_attribute(Attributes, ValueId, NewAttribute)}
   end.
 
 
@@ -215,7 +217,7 @@ is_attribute(BlockState, ValueId) ->
 %% Is ValueID an attribute in this list of attributes
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec is_attribute_type(Attribs :: list(attribute()),
+-spec is_attribute_type(Attribs :: attribs(),
                         ValueId :: value_id()) -> boolean().
 
 is_attribute_type(Attribs, ValueId) ->
@@ -226,9 +228,9 @@ is_attribute_type(Attribs, ValueId) ->
 
 
 %% replace a value in the array of values
--spec replace_array_value(ArrayValues :: attr_value_array(), 
+-spec replace_array_value(ArrayValues :: attrib_value_array(), 
                           ArrayIndex :: pos_integer(),
-                          NewValue :: term()) -> attr_value_array().
+                          NewValue :: term()) -> attrib_value_array().
                          
 replace_array_value(ArrayValues, ArrayIndex, NewValue) ->
   lists:sublist(ArrayValues, ArrayIndex-1) 
@@ -242,8 +244,8 @@ replace_array_value(ArrayValues, ArrayIndex, NewValue) ->
 %% All values must belong to the same attribute list
 %% List of attributes may be Config, Inputs, Outputs, or Private
 %%
--spec set_values(Attributes :: list(attribute()), 
-                 Values :: list()) -> {ok, list(attribute())} | attrib_errors().
+-spec set_values(Attributes :: attribs(), 
+                 Values :: block_values()) -> {ok, attribs()} | attrib_errors().
  
 set_values(Attributes, []) ->{ok, Attributes};
 
@@ -261,8 +263,8 @@ set_values(Attributes, [{ValueId, NewValue} | RemainingValues]) ->
 %% Both lists of Attributes must be the same type
 %% Attributes may be Config, Inputs, Outputs, or Private type
 %%
--spec merge_attribute_lists(Attributes :: list(attribute()), 
-                            NewAttributes :: list(attribute())) -> list(attribute()).
+-spec merge_attribute_lists(Attributes :: attribs(), 
+                            NewAttributes :: attribs()) -> attribs().
 
 merge_attribute_lists(Attributes, []) -> Attributes;
 
@@ -275,8 +277,8 @@ merge_attribute_lists(Attributes, [NewAttribute | NewAttributes]) ->
 %% Update the Attribute list with a new attribute
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
--spec update_attribute_list(Attributes :: list(attribute()), 
-                            NewAttribute :: tuple()) -> list(attribute()).
+-spec update_attribute_list(Attributes :: attribs(), 
+                            NewAttribute :: tuple()) -> attribs().
 
 update_attribute_list(Attributes, NewAttribute) ->
   % First element of any attribute value tuple is always the name 
@@ -293,9 +295,9 @@ update_attribute_list(Attributes, NewAttribute) ->
 %% Return the updated Attribute List
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
--spec replace_attribute(Attributes :: list(attribute()), 
+-spec replace_attribute(Attributes :: attribs(), 
                         ValueName :: value_name(), 
-                        NewAttribute :: attribute()) -> list(attribute()).
+                        NewAttribute :: attrib()) -> attribs().
 
 replace_attribute(Attributes, ValueName, NewAttribute) ->
   % ValueName is always the first element in the tuple, regardless of the attributeValue type
@@ -306,8 +308,8 @@ replace_attribute(Attributes, ValueName, NewAttribute) ->
 %% Add a new attribute to the end of the Attribute list 
 %% Attribute list may be Config, Inputs, Outputs, or Private type
 %%
--spec add_attribute(Attributes :: list(attribute()), 
-                    NewAttribute :: attribute()) -> list(attribute()).
+-spec add_attribute(Attributes :: attribs(), 
+                    NewAttribute :: attrib()) -> attribs().
 
 add_attribute(Attributes, Newattribute) ->
   Attributes ++ [Newattribute].
@@ -322,21 +324,21 @@ add_attribute(Attributes, Newattribute) ->
 
 %% Specialized resize function for the case when the excess values don't need 
 %% any extra processing. Just pass in a DeleteExcess function that does nothing. 
--spec resize_attribute_array_value(Attributes :: list(attribute()),
+-spec resize_attribute_array_value(Attributes :: attribs(),
                                    ArrayValueName :: value_name(),
                                    TargQuant :: pos_integer(),
-                                   DefaultValue :: attr_value()) -> list(attribute()).
+                                   DefaultValue :: attrib_value()) -> attribs().
                              
 resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue)->
-  DeleteExcess = fun(_DeleteArrayValues) -> ok end, 
+  DeleteExcess = fun(_DeleteArrayValues, _TargetQuant) -> ok end, 
   resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue, DeleteExcess).
 
 
--spec resize_attribute_array_value(Attributes :: list(attribute()),
+-spec resize_attribute_array_value(Attributes :: attribs(),
                                    ArrayValueName :: value_name(),
                                    TargQuant :: pos_integer(),
-                                   DefaultValue :: attr_value(),
-                                   DeleteExcess :: fun()) -> list(attribute()).
+                                   DefaultValue :: attrib_value(),
+                                   DeleteExcess :: fun()) -> attribs().
                              
 resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue, DeleteExcess)->
   case get_attribute(Attributes, ArrayValueName) of
@@ -348,8 +350,9 @@ resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue
           resize_array_value(ArrayValues, TargQuant, DefaultValue),
       
       % Handle the deletion of the excess array values
-      % i.e. deleted values could be block input values containing links to other blocks
-      DeleteExcess(DeleteArrayValues),
+      % i.e. If inputs, need to delete links to the deleted array value inputs
+      % Starting index of the array values to delete, is target array value quantity plus one
+      DeleteExcess(DeleteArrayValues, (TargQuant + 1)),
       % Update the attribute list with the resized array value
       replace_attribute(Attributes, ArrayValueName, {ArrayValueName, NewArrayValues})
   end.
@@ -360,9 +363,9 @@ resize_attribute_array_value(Attributes, ArrayValueName, TargQuant, DefaultValue
 %% Always add to or delete from the end of the array.
 %% There will always be at least one value in the array. 
 %%  
--spec resize_array_value(ValuesArray :: attr_value_array(),
+-spec resize_array_value(ValuesArray :: attrib_value_array(),
                          TargQuant :: pos_integer(),
-                         DefaultValue :: attr_value()) -> {attr_value_array(), attr_value_array()}.
+                         DefaultValue :: attrib_value()) -> {attrib_value_array(), attrib_value_array()}.
                                      
 resize_array_value(ValuesArray, TargQuant, DefaultValue)->
   ValuesQuant = length(ValuesArray),
@@ -448,7 +451,7 @@ value_id_to_str(ValueId) ->
 %%
 %% Log value error
 %%
--spec log_error(Config :: list(config_attr()),
+-spec log_error(Config :: config_attribs(),
                 ValueId :: value_id(),
                 Reason :: atom()) -> ok.
                   
@@ -458,7 +461,7 @@ log_error(Config, ValueId, Reason) ->
   log_server:error(err_invalid_reason, [BlockName, ValueIdStr, Reason]).
 
 
--spec log_error(Config :: list(config_attr()),
+-spec log_error(Config :: config_attribs(),
                 ValueId :: value_id(),
                 Reason :: atom(),
                 Value :: term()) -> ok.

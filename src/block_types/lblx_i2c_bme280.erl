@@ -27,7 +27,7 @@ version() -> "0.1.0".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: block_name(),
-                      Description :: string()) -> list(config_attr()).
+                      Description :: string()) -> config_attribs().
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -49,7 +49,7 @@ default_configs(BlockName, Description) ->
     ]). 
 
 
--spec default_inputs() -> list(input_attr()).
+-spec default_inputs() -> input_attribs().
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -59,7 +59,7 @@ default_inputs() ->
     ]). 
 
 
--spec default_outputs() -> list(output_attr()).
+-spec default_outputs() -> output_attribs().
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -83,16 +83,16 @@ create(BlockName, Description) ->
 
 -spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs()) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr()), 
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs(), 
              InitOutputs :: list()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
@@ -449,7 +449,7 @@ handle_info(Info, BlockState) ->
 % Configure the sensor
 %
 -spec configure_sensor(I2cRef :: pid(),
-                       Config :: list(config_attr())) -> {ok, byte()} | {error, atom()}.
+                       Config :: config_attribs()) -> {ok, byte()} | {error, atom()}.
 
 configure_sensor(I2cRef, Config) -> 
   case reset_sensor(I2cRef) of
@@ -496,7 +496,7 @@ reset_sensor(I2cRef) ->
 % Set config register. Must do this before leaving sleep mode
 %
 -spec set_config_reg(I2cRef :: pid(), 
-                     Config :: list(config_attr())) -> ok | {error, atom()}.
+                     Config :: config_attribs()) -> ok | {error, atom()}.
 
 set_config_reg(I2cRef, Config) ->
   case get_standby_time(Config) of
@@ -523,7 +523,7 @@ set_config_reg(I2cRef, Config) ->
 % Set Humidity sensor mode
 %
 -spec set_humid_mode(I2cRef :: pid(), 
-                     Config :: list(config_attr())) -> ok | {error, atom()}.
+                     Config :: config_attribs()) -> ok | {error, atom()}.
 
 set_humid_mode(I2cRef, Config) ->
   case get_humid_mode(Config) of
@@ -544,7 +544,7 @@ set_humid_mode(I2cRef, Config) ->
 % Set Temperature sensor mode, Pressure sensor mode, and Read mode
 %
 -spec set_temp_press_read_modes(I2cRef :: pid(), 
-                                Config :: list(config_attr())) -> {ok, byte()} | {error, atom()}.
+                                Config :: config_attribs()) -> {ok, byte()} | {error, atom()}.
 
 set_temp_press_read_modes(I2cRef, Config) ->
   
@@ -580,7 +580,7 @@ set_temp_press_read_modes(I2cRef, Config) ->
 %
 % Get standby time from config values, and convert to sensor bit format
 %
--spec get_standby_time(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
+-spec get_standby_time(Config :: config_attribs()) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_standby_time(Config) ->
   case attrib_utils:get_value(Config, standby_time) of
@@ -603,7 +603,7 @@ get_standby_time(Config) ->
 %
 % Get filter coefficient from config values, and convert to sensor bit format
 %
--spec get_filter_coeff(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
+-spec get_filter_coeff(Config :: config_attribs()) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_filter_coeff(Config) ->
   case attrib_utils:get_value(Config, filter_coeff) of
@@ -623,7 +623,7 @@ get_filter_coeff(Config) ->
 %
 % Get humidity sensor mode from config values, and convert to sensor bit format
 %
--spec get_humid_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
+-spec get_humid_mode(Config :: config_attribs()) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_humid_mode(Config) ->
   case attrib_utils:get_value(Config, humid_mode) of
@@ -644,7 +644,7 @@ get_humid_mode(Config) ->
 %
 % Get temperature sensor mode from config values, and convert to sensor bit format
 %
--spec get_temp_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
+-spec get_temp_mode(Config :: config_attribs()) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_temp_mode(Config) ->
   case attrib_utils:get_value(Config, temp_mode) of
@@ -665,7 +665,7 @@ get_temp_mode(Config) ->
 %
 % Get pressure sensor mode from config values, and convert to sensor bit format
 %
--spec get_press_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
+-spec get_press_mode(Config :: config_attribs()) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_press_mode(Config) ->
   case attrib_utils:get_value(Config, press_mode) of
@@ -686,7 +686,7 @@ get_press_mode(Config) ->
 %
 % Get sensor read mode from config values, and convert to sensor bit format
 %
--spec get_read_mode(Config :: list(config_attr())) -> {ok, non_neg_integer()} | {error, config_err}.
+-spec get_read_mode(Config :: config_attribs()) -> {ok, non_neg_integer()} | {error, config_err}.
 
 get_read_mode(Config) ->
   case attrib_utils:get_value(Config, read_mode) of
@@ -706,7 +706,7 @@ get_read_mode(Config) ->
 % Get sensor calibration values
 %
 -spec get_calibration(I2cRef :: pid(),
-                      Private :: list(private_attr())) -> {ok, list(private_attr())} | {error, atom()}.
+                      Private :: private_attribs()) -> {ok, private_attribs()} | {error, atom()}.
 
 get_calibration(I2cRef, Private) ->
   % Read the first set of calibration data
@@ -779,7 +779,7 @@ get_calibration(I2cRef, Private) ->
 % Read the sensor using forced mode.
 %
 -spec read_sensor_forced(I2cRef :: pid(),
-                  Private :: list(private_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
+                  Private :: private_attribs()) -> {ok, float(), float(), float()} | {error, atom()}.
                    
 read_sensor_forced(I2cRef, Private) ->
 
@@ -840,7 +840,7 @@ wait_for_sleep_mode(TotalWait, I2cRef) ->
 % We are just reading the last values.
 %
 -spec read_sensor(I2cRef :: pid(),
-                  Private :: list(private_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
+                  Private :: private_attribs()) -> {ok, float(), float(), float()} | {error, atom()}.
                    
 read_sensor(I2cRef, Private) ->
 
@@ -867,7 +867,7 @@ read_sensor(I2cRef, Private) ->
 -spec convert_readings(Temp :: float(),
                        Press :: float(),
                        Humid :: float(), 
-                       Config :: list(config_attr())) -> {ok, float(), float(), float()} | {error, atom()}.
+                       Config :: config_attribs()) -> {ok, float(), float(), float()} | {error, atom()}.
                             
 convert_readings(Temp, Press, Humid, Config) ->
   case convert_temp(Temp, Config) of
@@ -893,7 +893,7 @@ convert_readings(Temp, Press, Humid, Config) ->
 % Temperature is originally calculated in Deg C.
 %
 -spec convert_temp(Temp :: float(),
-                   Config :: list(config_attr())) -> {ok, float()} | {error, atom()}.
+                   Config :: config_attribs()) -> {ok, float()} | {error, atom()}.
 
 convert_temp(Temp, Config) ->
   case config_utils:get_float(Config, temp_offset) of
@@ -924,7 +924,7 @@ convert_temp(Temp, Config) ->
 % Pressure is originally calculated in Pa.
 %
 -spec convert_press(Press :: float(),
-                    Config :: list(config_attr())) -> {ok, float()} | {error, atom()}.
+                    Config :: config_attribs()) -> {ok, float()} | {error, atom()}.
 
 convert_press(Press, Config) ->
   case config_utils:get_float(Config, press_offset) of
@@ -953,7 +953,7 @@ convert_press(Press, Config) ->
 % Apply user defined offset to humidity reading
 %
 -spec convert_humid(Humid :: float(),
-                    Config :: list(config_attr())) -> {ok, float()} | {error, atom()}.
+                    Config :: config_attribs()) -> {ok, float()} | {error, atom()}.
 
 convert_humid(Humid, Config) ->
   case config_utils:get_float(Config, humid_offset) of
@@ -985,7 +985,7 @@ convert_humid(Humid, Config) ->
 % }
 %
 -spec compensate_temp(Adc_T :: integer(),
-                      Private :: list(private_attr())) -> {float(), integer()}.
+                      Private :: private_attribs()) -> {float(), integer()}.
 
 compensate_temp(Adc_T, Private) ->
   % Get the calibration values
@@ -1032,7 +1032,7 @@ compensate_temp(Adc_T, Private) ->
 %
 -spec compensate_press(Adc_P :: integer(),
                        T_fine :: integer(),
-                       Private :: list(private_attr())) -> float().
+                       Private :: private_attribs()) -> float().
 
 compensate_press(Adc_P, T_fine, Private) ->
   % Get the calibration values
@@ -1087,7 +1087,7 @@ compensate_press(Adc_P, T_fine, Private) ->
 %
 -spec compensate_humid(Adc_H :: integer(),
                        T_fine :: integer(),
-                       Private :: list(private_attr())) -> float().
+                       Private :: private_attribs()) -> float().
 
 compensate_humid(Adc_H, T_fine, Private) ->
   % Get the calibration values

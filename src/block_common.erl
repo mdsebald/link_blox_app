@@ -21,7 +21,8 @@
           execute/2,
           initialize/1,
           delete/1,
-          update_linked_inputs/4
+          temp_delete/1,
+          update_linked_inputs/2
 ]).
 
 %%
@@ -31,7 +32,7 @@
 -spec configs(Name :: atom(),
               Module :: module(),
               Version :: string(),
-              Description :: string()) -> list(config_attr()).
+              Description :: string()) -> config_attribs().
 
 configs(Name, Module, Version, Description) ->
   [
@@ -53,7 +54,7 @@ configs(Name, Module, Version, Description) ->
 %% Common Input Attributes, 
 %% Inputs may be set to a fixed value or linked to a block output value
 %%
--spec inputs() -> list(input_attr()).
+-spec inputs() -> input_attribs().
 
 inputs() ->
   [
@@ -63,26 +64,26 @@ inputs() ->
     % Default block to disabled, on create. 
     % Set disable input to false in create function if you want block 
     % to begin executing on create.
-    {disable, {true, ?EMPTY_LINK}},
+    {disable, {true, {true}}},
  
    
     % Block will execute as long as freeze input is false/null
     % When freeze input is true, all block outputs remain at last value
     % and block status is set to frozen.  Block will not be executed.
-    {freeze, {false, ?EMPTY_LINK}},
+    {freeze, {false, {false}}},
 
     % Disable true/on value takes precedent over Freeze true/on value.
 
     % Link exec_in to block that will execute this block.
     % May only be linked to the 'exec_out' block output value
     % i.e. implement Control Flow
-    {exec_in, {empty, ?EMPTY_LINK}},  
+    {exec_in, {[], {[]}}},  
 
     % If > 0, execute block every 'exec_interval' milliseconds.
     % Used to execute a block at fixed intervals
     % instead of being executed via exec_out/exec_in link
     % or executed on change of input values
-    {exec_interval, {0, ?EMPTY_LINK}}
+    {exec_interval, {0, {0}}}
 
     % exec_in and exec_interval may both be used to execute the block.
     % They are not mutually exclusive.
@@ -95,7 +96,7 @@ inputs() ->
 %% Common Output Attributes
 %% Block output values are modified upon block execution
 %%
--spec outputs() -> list(output_attr()).
+-spec outputs() -> output_attribs().
 
 outputs() ->
   [
@@ -197,7 +198,7 @@ execute(BlockState, ExecMethod) ->
 
       % Update the block inputs linked to the block outputs 
       % that have just been updated (Data Flow)
-      update_blocks(BlockName, Outputs, Outputs3),
+      update_blocks(Outputs, Outputs3),
     
       % Execute the blocks connected to the exec_out output value (Control Flow)
       update_execute(Outputs3),
@@ -252,8 +253,8 @@ ok_to_execute(BlockStatus, ExecMethod) ->
 %% Update the block execution timer 
 %%
 -spec update_execution_timer(BlockName :: block_name(),
-                             Inputs :: list(input_attr()),
-                             Private :: list(private_attr())) -> {atom(), list(private_attr())}.
+                             Inputs :: input_attribs(),
+                             Private :: private_attribs()) -> {atom(), private_attribs()}.
                              
 update_execution_timer(BlockName, Inputs, Private) ->
 
@@ -310,10 +311,10 @@ set_timer(BlockName, ExecuteInterval) ->
 
 
 %%
-%% Track execute method, time and count
+%% Track execute method and timestamp
 %%
--spec update_execute_track(Outputs :: list(output_attr()), 
-                           ExecMethod :: exec_method()) -> list(output_attr()).
+-spec update_execute_track(Outputs :: output_attribs(), 
+                           ExecMethod :: exec_method()) -> output_attribs().
 
 update_execute_track(Outputs, ExecMethod) ->
 
@@ -333,151 +334,178 @@ update_execute_track(Outputs, ExecMethod) ->
 %% Send an update message to each block linked to any output value that has changed
 %% This assumes CurrentOutputs and NewOutputs, have the same ValueNames and order for all outputs
 %%
--spec update_blocks(FromBlockName :: block_name(), 
-                    CurrentOutputs :: list(output_attr()), 
-                    NewOutputs :: list(output_attr())) -> ok.
+-spec update_blocks(CurrentOutputs :: output_attribs(), 
+                    NewOutputs :: output_attribs()) -> ok.
 
-update_blocks(_FromBlockName, [], [])-> ok;
+update_blocks(CurrentOutputs, NewOutputs) ->
+  update_blocks(CurrentOutputs, NewOutputs, []).
 
-update_blocks(FromBlockName, 
-              [CurrentOutput | CurrentOutputs], 
-              [NewOutput | NewOutputs])->
+% No update messages to send
+update_blocks([], [], []) -> 
+  ok;
+
+% After building the messages, send an update message to each linked block
+update_blocks([], [], BlockUpdateMsgs) -> 
+  lists:foreach(fun({ToBlockName, NewInputValues}) ->
+                    block_server:update(ToBlockName, NewInputValues)
+                end, 
+                BlockUpdateMsgs),
+  ok;
+
+%
+% Build update messages for each block in the links for the output values
+% that have been modified
+% BlockUpdateMsgs = [{BlockName1, [{ValueId11, NewValue11}, {ValueId12, NewValue12}, ...]}, 
+%                    {BlockName2, [{ValueId21, NewValue21}, {ValueId22, NewValue22}, ...]}, 
+%                      ...]
+%
+update_blocks([CurrentOutput | CurrentOutputs], 
+              [NewOutput | NewOutputs], BlockUpdateMsgs)->
 
   case CurrentOutput of
     % Non-array value output
-    {ValueName, {CurrentValue, Refs}} ->
-      {ValueName, {NewValue, Refs}} = NewOutput,
+    {ValueName, {CurrentValue, Links}} ->
+      {ValueName, {NewValue, Links}} = NewOutput,
       
-      % For each output value that changed, call update() to send 
-      % a new value message to each linked block.
+      % For each output value that changed, add the updated value to
+      % The messages that will be sent to the blocks linked to this output
       % Don't check the 'exec_out' output, that is for control flow execution
-      if (ValueName /= exec_out) andalso (CurrentValue /= NewValue) -> 
-        update_linked_inputs(FromBlockName, ValueName, NewValue, Refs);
+      if (CurrentValue /= NewValue) andalso (ValueName /= exec_out) -> 
+        
+        NewBlockUpdateMsgs = 
+          lists:foldl(fun(Link, AccUpdateMsgs) -> 
+                        add_update_msg(AccUpdateMsgs, Link, NewValue) 
+                      end,
+                      BlockUpdateMsgs,
+                      Links);
       true -> 
-        ok % else do nothing
+        % else do nothing
+        NewBlockUpdateMsgs = BlockUpdateMsgs
       end;
       
     % Array value output
     {ValueName, CurrentArrayValues} ->
       {ValueName, NewArrayValues} = NewOutput,
-        check_array_values(FromBlockName, ValueName, 1,
-                           CurrentArrayValues, NewArrayValues) 
+        NewBlockUpdateMsgs = check_array_values(BlockUpdateMsgs, ValueName,
+                                                CurrentArrayValues, NewArrayValues) 
   end,
 
-  update_blocks(FromBlockName, CurrentOutputs, NewOutputs).
+  update_blocks(CurrentOutputs, NewOutputs, NewBlockUpdateMsgs).
 
 
 %%
-%% Check the values in the output array value
+%% Check the values in an array of output values
+%% Loop through each value in the array. If value has changed,
+%% Examine each Link, and add to the current BlockUpdateMsgs
 %% 
--spec check_array_values(FromBlockName :: block_name(),
+-spec check_array_values(BlockUpdateMsgs :: list(),
                          ValueName :: value_name(),
-                         ArrayIndex :: pos_integer(),
                          CurrentArrayValues :: list(), 
-                         NewArrayValues :: list()) -> ok.
+                         NewArrayValues :: list()) -> list().
 
-check_array_values(_FromBlockName, _ValueName, _ArrayIndex, [], []) ->
-  ok;
+check_array_values(BlockUpdateMsgs, _ValueName, [], []) ->
+  BlockUpdateMsgs;
   
-check_array_values(FromBlockName, ValueName, ArrayIndex, 
-                   [{CurrentValue, Refs} | CurrentArrayValues], 
-                   [{NewValue, Refs} | NewArrayValues]) ->
+check_array_values(BlockUpdateMsgs, ValueName,
+                   [{CurrentValue, Links} | CurrentArrayValues], 
+                   [{NewValue, Links} | NewArrayValues]) ->
                    
   if  CurrentValue /= NewValue -> 
-    update_linked_inputs(FromBlockName, {ValueName, ArrayIndex}, NewValue, Refs);
+    NewBlockUpdateMsgs = 
+      lists:foldl(fun(Link, AccUpdateMsgs) -> 
+                    add_update_msg(AccUpdateMsgs, Link, NewValue) 
+                  end,
+                  BlockUpdateMsgs,
+                  Links);
   true -> 
-    ok
+    % else do nothing
+    NewBlockUpdateMsgs = BlockUpdateMsgs
   end,
                    
-  check_array_values(FromBlockName, ValueName, ArrayIndex+1, 
-                       CurrentArrayValues, NewArrayValues).
+  check_array_values(NewBlockUpdateMsgs, ValueName,
+                     CurrentArrayValues, NewArrayValues).
 
 
 %%
-%% update each block input value in the list of block names, 
-%% linked to this block's output value
+%% Add the new ValueId / Value to the block update message for the destination block
+%% Add a new messsage to the list of messages,
+%% if there is not a message already created for the destination block
+%% 
+-spec add_update_msg(BlockUpdateMsgs :: list(),
+                     Link :: link_def(),
+                     NewValue :: value()) -> list().
+
+add_update_msg(BlockUpdateMsgs, {DestBlock, ValueId}, NewValue) ->
+  case lists:keyfind(DestBlock, 1, BlockUpdateMsgs) of
+    % List already contains a message for this destination block,
+    % Add the ValueId/Value tuple to this block's list of values to update
+    % If not already in list of ValueId/Value tuples
+    {DestBlock, ExistingValues} -> 
+      case lists:keyfind(ValueId, 1, ExistingValues) of
+        false -> 
+          NewUpdateMsg = {DestBlock, [{ValueId, NewValue} | ExistingValues]},
+          lists:keyreplace(DestBlock, 1, BlockUpdateMsgs, NewUpdateMsg);
+
+        _AleadyContains -> % List of ValueId/Value tuples already contains this ValueId
+                           % Return the list of messages unchanged.
+          BlockUpdateMsgs
+      end;
+
+    false -> % No message created for this destination block yet.
+             % Just add destination block and list of one ValueId/Value tuple.
+      [{DestBlock, [{ValueId, NewValue}]} | BlockUpdateMsgs]
+  end.
+
+
 %%
--spec update_linked_inputs(FromBlockName :: block_name(),
-                           ValueId :: value_id(),
-                           NewValue :: value(),
-                           Refs :: link_refs()) -> ok.
+%% update each block input value, in the list of links
+%%
+-spec update_linked_inputs(NewValue :: value(),
+                           Links :: link_defs()) -> ok.
                            
-update_linked_inputs(FromBlockName, ValueId, NewValue, Refs) ->
- 
-  BlockNameRefs = get_block_name_refs(Refs),
+update_linked_inputs(NewValue, Links) ->
 
-  % Eliminate duplicate (opt.) NodeName BlockName references, 
-  % One update message to a block, will update all of the linked block input values
-  DedupedBlockRefs = sets:to_list(sets:from_list(BlockNameRefs)),
+  lists:foreach(fun(Link) ->
+                  case Link of
+                    {ToBlockName, ToValueId} ->
+                      block_server:update(ToBlockName, [{ToValueId, NewValue}]);
 
-  lists:foreach(fun(Ref) ->
-                  case Ref of
-                    {ToNodeName, ToBlockName} ->
-                      % If the reference includes a node name
-                      % Include the self node in the source Link.
-                      % The block input linked to this value is on another node
-                      % so we need to include the self node to match the link
-                      % in the input value
-                      Link = {node(), FromBlockName, ValueId},
-                      block_server:update(ToNodeName, ToBlockName, Link, NewValue);
-
-                    ToBlockName ->
-                      % Reference is to a block on the same node
-                      % Source reference is just block_name : value_id
-                      Link = {FromBlockName, ValueId},
-                      block_server:update(ToBlockName, Link, NewValue)
+                    InvalidLink ->
+                      log_server:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
-                DedupedBlockRefs).
+                Links).
 
 
 %%    
 %% Send an exec_out_execute message to each block connected to the 'exec_out' output of this block
 %% This will implement control flow execution, versus data flow done in the update_blocks function. 
 %%
--spec update_execute(Outputs :: list(output_attr())) -> ok.
+-spec update_execute(Outputs :: output_attribs()) -> ok.
 
 update_execute(Outputs) ->
-  {ok, {exec_out,  {_Value, Refs}}} = attrib_utils:get_attribute(Outputs, exec_out),
 
-  BlockNameRefs = get_block_name_refs(Refs),
-  
-  lists:foreach(fun(Ref) ->
-                  case Ref of
-                    {ToNodeName, ToBlockName} ->
-                      % Execute block on another node
-                      block_server:execute(ToNodeName, ToBlockName, exec_out);
-                    
-                    ToBlockName ->
-                      block_server:execute(ToBlockName, exec_out) 
+  % exec_out attribute is never an array, 
+  % Don't need to worry about arrays of values or indexes here
+  {ok, {exec_out,  {_Value, Links}}} = attrib_utils:get_attribute(Outputs, exec_out),
+
+  lists:foreach(fun(Link) ->
+                  case Link of
+                    {ToBlockName, _ToValueId} ->
+                      block_server:execute(ToBlockName, exec_out);
+
+                    InvalidLink ->
+                      log_server:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
-                BlockNameRefs).
+                Links).
 
-
-%%
-%% Eliminate Value Ids from the output references
-%% Only need (opt.) NodeName BlockName to update linked block input values
-%%
--spec get_block_name_refs(Refs :: link_refs()) -> list(block_name() | {node(), block_name()}).
-
-get_block_name_refs(Refs) ->
-  lists:map(fun(Ref) -> 
-             case Ref of
-              {ToNodeName, ToBlockName, _ToValueId} -> 
-                {ToNodeName, ToBlockName};
-
-              {ToBlockName, _ToValueId} -> 
-                ToBlockName
-            end
-          end, 
-          Refs).
 
 %%
 %% Common block delete function, 
 %% Return the updated block state, in case calling function wants to reuse it 
 %%
--spec delete(BlockState :: block_state()) -> block_state().
+-spec delete(BlockState :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) ->
   
@@ -490,11 +518,11 @@ delete({Config, Inputs, Outputs, Private}) ->
     {error, _Reason} -> ok  % Don't care if timer_ref doesn't exist
   end,
     
-  % Scan this block's inputs, and unlink from other block outputs
-  link_utils:unlink_inputs(BlockName, Inputs),
+  % Tell all other blocks on this node to remove any links to this block
+  link_utils:unlink_block(BlockName),
 
-  % Set all linked input values to empty, 
-  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
+  % Set all input values to default value
+  DefaultInputs = input_utils:default_inputs(Inputs),
   
   % Set all output values of this block, including status, to 'empty'
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
@@ -502,16 +530,36 @@ delete({Config, Inputs, Outputs, Private}) ->
   % Update the block inputs linked to this block's outputs 
   % This will set the input value of any block 
   % linked to this deleted block, to 'empty'.
-  update_blocks(BlockName, Outputs, EmptyOutputs),
+  update_blocks(Outputs, EmptyOutputs),
     
   % Execute the blocks connected to the exec_out output value
   % of this block, one last time.
   update_execute(EmptyOutputs),
 
-  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
-    
   % Perform block type specific delete actions
-  BlockModule:delete({Config, EmptyInputs, EmptyOutputs1, Private}).
+  BlockModule:delete({Config, DefaultInputs, EmptyOutputs, Private}).
+
+
+%%
+%% Temporary delete function, 
+%% Go through the motions of deleting a block without unlinking from other blocks
+%% Used when a block needs to be reinitialized
+%%
+-spec temp_delete(BlockState :: block_state()) -> block_defn().
+
+temp_delete({Config, Inputs, Outputs, Private}) ->
+  
+  % Cancel execution timer if it exists
+  case attrib_utils:get_value(Private, timer_ref) of
+    {ok, empty}      -> ok;
+    {ok, TimerRef}   -> erlang:cancel_timer(TimerRef);
+    {error, _Reason} -> ok  % Don't care if timer_ref doesn't exist
+  end,
+
+  {_BlockName, BlockModule} = config_utils:name_module(Config),
+
+  % Perform block type specific delete actions
+  BlockModule:delete({Config, Inputs, Outputs, Private}).
   
 
 %% ====================================================================

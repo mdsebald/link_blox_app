@@ -28,7 +28,7 @@ version() -> "0.1.0".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: block_name(),
-                      Description :: string()) -> list(config_attr()).
+                      Description :: string()) -> config_attribs().
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -51,17 +51,17 @@ default_configs(BlockName, Description) ->
     ]). 
 
 
--spec default_inputs() -> list(input_attr()).
+-spec default_inputs() -> input_attribs().
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {pub_inputs, [{"", ?EMPTY_LINK}]}
+      {pub_inputs, [{"", {""}}]}
     ]). 
 
 
--spec default_outputs() -> list(output_attr()).
+-spec default_outputs() -> output_attribs().
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -84,17 +84,17 @@ create(BlockName, Description) ->
 
 -spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs()) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr()), 
-             InitOutputs :: list(output_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs(), 
+             InitOutputs :: output_attribs()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
@@ -375,7 +375,7 @@ delete({Config, Inputs, Outputs, Private}) ->
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
 %% 
-%% MQTT Publish message from a subscribed to Topic.
+%% MQTT Publish message from a subscribed-to Topic.
 %%
 handle_info({publish, Topic, Payload}, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
@@ -480,7 +480,7 @@ handle_info(Info, BlockState) ->
 % updated options list, to facilitate chaining the functions
 %
 
--spec get_options(Config :: list(config_attr())) -> list(tuple()).
+-spec get_options(Config :: config_attribs()) -> list(tuple()).
 
 get_options(Config) ->
   GetFuns = [
@@ -510,8 +510,8 @@ build_opts([Fun | Funs], {Config, Options}) ->
 %
 % Get host name config
 % 
--spec get_host({Config :: list(config_attr()),
-                Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_host({Config :: config_attribs(),
+                Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_host({Config, Options}) -> 
   case get_string_config(Config, host) of
@@ -522,8 +522,8 @@ get_host({Config, Options}) ->
 %
 % Get port number config
 %
--spec get_port({Config :: list(config_attr()),
-                Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_port({Config :: config_attribs(),
+                Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_port({Config, Options}) -> 
   case get_pos_int_config(Config, port) of
@@ -534,8 +534,8 @@ get_port({Config, Options}) ->
 %
 % Get Client ID config.  Default Client ID to block name
 %
--spec get_client_id({Config :: list(config_attr()),
-                     Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_client_id({Config :: config_attribs(),
+                     Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_client_id({Config, Options}) -> 
   case get_string_config(Config, client_id) of
@@ -551,8 +551,8 @@ get_client_id({Config, Options}) ->
 %
 % Get clean session config.  
 %
--spec get_clean_sess({Config :: list(config_attr()),
-                      Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_clean_sess({Config :: config_attribs(),
+                      Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_clean_sess({Config, Options}) -> 
   case config_utils:get_boolean(Config, clean_sess) of
@@ -566,8 +566,8 @@ get_clean_sess({Config, Options}) ->
 %
 % Get keep alive time config
 %
--spec get_keepalive({Config :: list(config_attr()),
-                     Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_keepalive({Config :: config_attribs(),
+                     Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_keepalive({Config, Options}) -> 
   case get_pos_int_config(Config, keepalive) of
@@ -578,8 +578,8 @@ get_keepalive({Config, Options}) ->
 %
 % Get protocol version config
 %
--spec get_proto_ver({Config :: list(config_attr()),
-                     Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_proto_ver({Config :: config_attribs(),
+                     Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_proto_ver({Config, Options}) -> 
   case get_pos_int_config(Config, proto_ver) of
@@ -590,8 +590,8 @@ get_proto_ver({Config, Options}) ->
 %
 % Get username config
 %
--spec get_username({Config :: list(config_attr()),
-                    Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_username({Config :: config_attribs(),
+                    Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_username({Config, Options}) -> 
   case get_string_config(Config, username) of
@@ -605,8 +605,8 @@ get_username({Config, Options}) ->
 %
 % Get password config
 %
--spec get_password({Config :: list(config_attr()),
-                    Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_password({Config :: config_attribs(),
+                    Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_password({Config, Options}) ->
  case get_string_config(Config, password) of
@@ -623,8 +623,8 @@ get_password({Config, Options}) ->
 % because the rest of the LinkBlox app uses it too.
 % Default logging level to none. 
 %
--spec get_logger({Config :: list(config_attr()),
-                  Options :: list(tuple())}) -> {list(config_attr()), list(tuple())}.
+-spec get_logger({Config :: config_attribs(),
+                  Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
 get_logger({Config, Options}) ->
  case config_utils:get_atom(Config, logger) of
@@ -635,8 +635,8 @@ get_logger({Config, Options}) ->
 %
 % Get a string config value
 %
--spec get_string_config(Config :: list(config_attr()),
-                        ValueName :: value_name()) -> {list(config_attr()), list(tuple())}.
+-spec get_string_config(Config :: config_attribs(),
+                        ValueName :: value_name()) -> {config_attribs(), list(tuple())}.
 
 get_string_config(Config, ValueName) ->
   case config_utils:get_string(Config, ValueName) of
@@ -654,8 +654,8 @@ get_string_config(Config, ValueName) ->
 %
 % Get a positive (1...) integer config value
 %
--spec get_pos_int_config(Config :: list(config_attr()),
-                        ValueName :: value_name()) -> {list(config_attr()), list(tuple())}.
+-spec get_pos_int_config(Config :: config_attribs(),
+                         ValueName :: value_name()) -> {ok, value()} | {error, atom()}.
 
 get_pos_int_config(Config, ValueName) ->
   case config_utils:get_pos_integer(Config, ValueName) of
@@ -669,8 +669,8 @@ get_pos_int_config(Config, ValueName) ->
 %
 % Configure quantity of publish topics and inputs
 %
--spec config_pubs(Config :: list(config_attr()),
-                  Inputs :: list(input_attr())) -> {ok, list(config_attr()), list(input_attr())} | {error, atom()}.
+-spec config_pubs(Config :: config_attribs(),
+                  Inputs :: input_attribs()) -> {ok, config_attribs(), input_attribs()} | {error, atom()}.
 
 config_pubs(Config, Inputs) ->
   case config_utils:get_integer_range(Config, num_of_pubs, 1, 99) of
@@ -683,7 +683,7 @@ config_pubs(Config, Inputs) ->
                                                  pub_topics, NumOfPubs, {""}),
       % Create publish inputs
       Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                                 pub_inputs, NumOfPubs, {empty, ?EMPTY_LINK}),
+                                                 pub_inputs, NumOfPubs, {empty, {empty}}),
       % Return updated Config and Inputs attributes
       {ok, Config1, Inputs1};
 
@@ -695,8 +695,8 @@ config_pubs(Config, Inputs) ->
 %
 % Configure quantity of subscription topics and outputs
 %
--spec config_subs(Config :: list(config_attr()),
-                  Outputs :: list(output_attr())) -> {ok, list(config_attr()), list(output_attr())} | {error, atom()}.
+-spec config_subs(Config :: config_attribs(),
+                  Outputs :: output_attribs()) -> {ok, config_attribs(), output_attribs()} | {error, atom()}.
 
 config_subs(Config, Outputs) ->
   case config_utils:get_integer_range(Config, num_of_subs, 1, 99) of
@@ -707,7 +707,7 @@ config_subs(Config, Outputs) ->
       Config1 = config_utils:resize_attribute_array_value(Config, 
                                                   sub_topics, NumOfSubs, {""}),
       % Create subscribe values outputs
-      Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
+      Outputs1 = output_utils:resize_attribute_array_value(Outputs, 
                                                   sub_values, NumOfSubs, {null, []}),
       % Return updated Config and Outputs attributes
       {ok, Config1, Outputs1};
@@ -720,8 +720,8 @@ config_subs(Config, Outputs) ->
 %
 % Publish pub_inputs values to the topics in the pub_topics config values
 %
--spec pub_topics(Config :: list(config_attr()), 
-                 Inputs :: list(input_attr()),
+-spec pub_topics(Config :: config_attribs(), 
+                 Inputs :: input_attribs(),
                  Client :: pid()) -> ok.
 
 pub_topics(Config, Inputs, Client) ->
@@ -739,8 +739,8 @@ pub_topics(Config, Inputs, Client) ->
 %
 % Get a list of Topics and Input Values to publish
 %
--spec get_pub_topics_values(Config :: list(config_attr()),
-                            Inputs :: list(input_attr())) -> list(tuple()).
+-spec get_pub_topics_values(Config :: config_attribs(),
+                            Inputs :: input_attribs()) -> list(tuple()).
 
 get_pub_topics_values(Config, Inputs) ->
   {ok, NumOfPubs} = config_utils:get_pos_integer(Config, num_of_pubs),
@@ -784,7 +784,7 @@ get_pub_topics_values(Config, Inputs, Index, TopicsValues) ->
 %
 % Subscribe to the topics in the config values
 %
--spec sub_topics(Config :: list(config_attr()), 
+-spec sub_topics(Config :: config_attribs(), 
                  Client :: pid()) -> ok.
 
 sub_topics(Config, Client) ->
@@ -811,7 +811,7 @@ sub_topics(Config, Client) ->
 %
 % Unsubscribe to the topics in the sub_topics config values 
 %
--spec unsub_topics(Config :: list(config_attr()), 
+-spec unsub_topics(Config :: config_attribs(), 
                    Client :: pid()) -> ok.
 
 unsub_topics(Config, Client) ->
@@ -838,9 +838,9 @@ unsub_topics(Config, Client) ->
 %
 % Process received publish messages, and update coresponding sub_values outputs
 %
--spec process_pub_msgs(Config :: list(config_attr()),
-                       Outputs :: list(output_attr()),
-                       Private :: list(private_attr())) -> {list(output_attr()), list(private_attr())}.
+-spec process_pub_msgs(Config :: config_attribs(),
+                       Outputs :: output_attribs(),
+                       Private :: private_attribs()) -> {output_attribs(), private_attribs()}.
 
 process_pub_msgs(Config, Outputs, Private) ->
 
@@ -868,9 +868,9 @@ process_pub_msgs(Config, Outputs, Private) ->
 %
 % Read publish messages and update corresponding sub_values outputs
 %
--spec update_sub_values(Config :: list(config_attr()), 
-                        Outputs :: list(output_attr()), 
-                        PubMsgs :: list(tuple())) -> list(output_attr()).
+-spec update_sub_values(Config :: config_attribs(), 
+                        Outputs :: output_attribs(), 
+                        PubMsgs :: list(tuple())) -> output_attribs().
                       
 % When done reading messages, just return updated Output values
 update_sub_values(_Config, Outputs, []) ->

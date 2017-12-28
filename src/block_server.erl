@@ -19,22 +19,23 @@
 -export([
           start/1, 
           delete/1, 
-          get_value/2, 
+          get_value/2,
+          get_input_value/2,
           set_value/3,
-          set_link/3,
+          add_link/3,
+          del_link/3,
+          add_exec_in/2,
+          del_exec_in/2,
           override/2, 
           get_block/1,
           execute/2,
-          execute/3,
-          update/3,
-          update/4, 
+          update/2,
           init_configure/1, 
           configure/1, 
           reconfigure/2,
-          link/3,
-          link/4,
-          unlink/3,
-          unlink/4
+          unlink_input/2,
+          unlink_block/2,
+          linkblox_publish/3
 ]).
 
 
@@ -51,10 +52,21 @@ delete(BlockName)->
 
 
 %% Get the value of 'Value ID' from this block
+-spec get_value(BlockName :: block_name(),
+                ValueId :: value_id()) -> attrib_result_value().
+
 get_value(BlockName, ValueId)->
   gen_server:call(BlockName, {get_value, ValueId}).
 
 
+%% Get the value of 'Value ID' from this block, must be an input attribute
+-spec get_input_value(BlockName :: block_name(),
+                      ValueId :: value_id()) -> generic_input_value().
+
+get_input_value(BlockName, ValueId)->
+    gen_server:call(BlockName, {get_input_value, ValueId}).
+ 
+  
 %% Set the ValueId= Value in this block
 -spec set_value(BlockName :: block_name(),
                 ValueId :: value_id(),
@@ -64,13 +76,38 @@ set_value(BlockName, ValueId, Value)->
   gen_server:call(BlockName, {set_value, ValueId, Value}).
 
 
-%% Link the Input value of this block, to the given Node/Block/Value (i.e. Link) 
--spec set_link(BlockName :: block_name(),
-               InputValueId :: value_id(),
-               Link :: input_link()) -> term().
+%% Link the Output value of this block, to the given input Block/Value (i.e. Link) 
+-spec add_link(BlockName :: block_name(),
+               ValueId :: value_id(),
+               Link :: link_def()) -> term().
 
-set_link(BlockName, InputValueId, Link) ->
-  gen_server:call(BlockName, {set_link, InputValueId, Link}).
+add_link(BlockName, ValueId, Link) ->
+  gen_server:call(BlockName, {add_link, ValueId, Link}).
+
+%% Unlink the Output value of this block, from the given input Block/Value (i.e. Link) 
+-spec del_link(BlockName :: block_name(),
+               ValueId :: value_id(),
+               Link :: link_def()) -> term().
+
+del_link(BlockName, ValueId, Link) ->
+  gen_server:call(BlockName, {del_link, ValueId, Link}).
+
+
+%% Indicate to this block, that it will be executed via control flow
+%%  by adding the executor block name to its exec_in Value. 
+-spec add_exec_in(BlockName :: block_name(),
+                  ExecutorBlockName :: block_name()) -> ok | {error, atom()}.
+
+add_exec_in(BlockName, ExecutorBlockName) ->
+  gen_server:call(BlockName, {add_exec_in, ExecutorBlockName}).
+
+
+%% Remove the executor block name from this block's exec_in Value. 
+-spec del_exec_in(BlockName :: block_name(),
+                  ExecutorBlockName :: block_name()) -> ok | {error, atom()}.
+
+del_exec_in(BlockName, ExecutorBlockName) ->
+  gen_server:call(BlockName, {del_exec_in, ExecutorBlockName}).
 
 
 %% Override the Value of this block with the given Value
@@ -90,32 +127,14 @@ get_block(BlockName) ->
 execute(BlockName, Reason) ->
   gen_server:cast(BlockName, {execute, Reason}).
 
-%% Execute block on another node
--spec execute(Node :: node(),
-              BlockName :: block_name(),
-              Reason :: exec_method()) -> term().
-
-execute(Node, BlockName, Reason) ->
-  gen_server:call({BlockName, Node}, {execute, Reason}).
-
 
 %% Update block input value 
 %% i.e. Implement Data Flow
 -spec update(BlockName :: block_name(),
-             Link :: input_link(),
-             Value :: attr_value()) -> term().
+             InputValues :: input_attribs()) -> term().
             
-update(BlockName, Link, Value) ->
-  gen_server:cast(BlockName, {update, Link, Value}).
-
-%% Update block input value on another node
--spec update(Node :: node(),
-             BlockName :: block_name(),
-             Link :: input_link(),
-             Value :: attr_value()) -> term().
-
-update(Node, BlockName, Link, Value) ->
-  gen_server:cast({BlockName, Node}, {update, Link, Value}).
+update(BlockName, InputValues) ->
+  gen_server:cast(BlockName, {update, InputValues}).
 
 
 %% Perform initial configuration of the block.  
@@ -135,41 +154,31 @@ reconfigure(BlockName, BlockState)->
   gen_server:cast(BlockName, {reconfigure, BlockState}).
 
 
-%% Link the output value: 'ValueId' of this block 
-%% to to the <Node>:BlockName:InputValueId reference
--spec link(BlockName :: block_name(),
-           ValueId :: value_id(),
-           Reference :: block_name() | {node(), block_name()}) -> term().
+%% Remove this Link from any of the block output values
+-spec unlink_input(BlockName :: block_name(),
+                   Link :: link_def()) -> term().
 
-link(BlockName, ValueId, Reference) ->
-  gen_server:call(BlockName, {link, ValueId, Reference}).
-
-%% Link block on another node
--spec link(Node :: node(),
-           BlockName :: block_name(),
-           ValueId :: value_id(),
-           Reference :: block_name() | {node(), block_name()}) -> term().
-
-link(Node, BlockName, ValueId, Reference) ->
-  gen_server:call({BlockName, Node}, {link, ValueId, Reference}).
+unlink_input(BlockName, Link) ->
+  gen_server:cast(BlockName, {unlink_input, Link}).
 
 
-%% Unlink the output value: 'ValueId' of this block from BlockName:InputValueId reference
--spec unlink(BlockName :: block_name(),
-             ValueId :: value_id(),
-             Reference :: link_ref()) -> term().
+%% Remove any Links in output values using the LinkBlockName
+-spec unlink_block(BlockName :: block_name(),
+                   LinkBlockName :: block_name()) -> term().
 
-unlink(BlockName, ValueId, Reference) ->
-  gen_server:cast(BlockName, {unlink, ValueId, Reference}).
+unlink_block(BlockName, LinkBlockName) ->
+  gen_server:cast(BlockName, {unlink_block, LinkBlockName}).
 
-%% Unlink the block on another node
--spec unlink(Node :: node(),
-             BlockName :: block_name(),
-             ValueId :: value_id(),
-             Reference :: link_ref()) -> term().
 
-unlink(Node, BlockName, ValueId, Reference) ->
-  gen_server:cast({BlockName, Node}, {unlink, ValueId, Reference}).
+%% Publish values to a LinkBlox node and block, using LinkBlox value format
+%% We want this to be processed by the gen_server handle_info() function
+%%   so the message can be directed to the Block Module code to be processed
+-spec linkblox_publish(Node :: node(),
+                       BlockName :: block_name(),
+                       Values :: block_values()) -> term().
+
+linkblox_publish(Node, BlockName, Values) ->
+    {BlockName, Node} ! {linkblox_publish, Values}.
 
 
 %% ====================================================================
@@ -195,14 +204,18 @@ init(BlockState) ->
   log_server:info(initializing_block, [BlockName]),
 
   % Perform block initialization
-  NewBlockState = block_common:initialize(BlockState),
+  NewBlockState1 = block_common:initialize(BlockState),
 
   % Perform intial configuration
   % Basically, tell all blocks to check their input links
   % and link to this block if necessary
-  block_server:init_configure(BlockName),
+  % block_server:init_configure(BlockName),
+  % Should not need to reconfigure all blocks, just update (execute, if necessary) block
+
+  % Update the block
+  NewBlockState2 = update_block(NewBlockState1),
   
-  {ok, NewBlockState}.
+  {ok, NewBlockState2}.
 
 
 %% handle_call/3
@@ -239,6 +252,15 @@ handle_call({get_value, ValueId}, _From, BlockState) ->
 
 
 %% =====================================================================
+%% Get a block input value
+%% =====================================================================    
+handle_call({get_input_value, ValueId}, _From, BlockState) ->
+    {_Config, Inputs, _Outputs, _Private} = BlockState,
+    Result = input_utils:get_any_type(Inputs, ValueId),
+    {reply, Result, BlockState};
+
+
+%% =====================================================================
 %% Set a block value
 %% ===================================================================== 
 handle_call({set_value, ValueId, Value}, _From, BlockState) ->
@@ -246,19 +268,23 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
 
   case attrib_utils:is_attribute_type(Config, ValueId) of
     true ->
-      % Modifying a config value, need to delete and re-initialize the block
+      % Modifying a config value, need to temporarily delete and re-initialize the block
       {Config1, Inputs1, Outputs1} = 
-                             block_common:delete(BlockState),
+                             block_common:temp_delete(BlockState),
 
       case attrib_utils:set_value(Config1, ValueId, Value) of
         {ok, Config2} ->
           {Config3, Inputs2, Outputs2, Private1} = 
                       block_common:initialize({Config2, Inputs1, Outputs1}),
 
-          BlockName = config_utils:name(Config3),
+          %BlockName = config_utils:name(Config3),
           % re-establish the links to other blocks 
-          block_server:init_configure(BlockName),
-          NewBlockState = {Config3, Inputs2, Outputs2, Private1},
+          %block_server:init_configure(BlockName),
+          % Just update block 
+
+          % Update block after initialize
+          NewBlockState = update_block({Config3, Inputs2, Outputs2, Private1}),
+          %NewBlockState = {Config3, Inputs2, Outputs2, Private1},
           Result = ok;
 
         {error, Reason} ->
@@ -285,6 +311,7 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
             true ->
               case attrib_utils:set_value(Outputs, ValueId, Value) of
                 {ok, NewOutputs} ->
+                  % TODO: Update any inputs linked to the output that changed
                   NewBlockState = {Config, Inputs, NewOutputs, Private},
                   Result = ok;
                 {error, Reason} ->
@@ -302,24 +329,16 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
 
 
 %% =====================================================================
-%% Set the link of the given input value to the given link value
+%% Link the given output value to the given input link value
 %% ===================================================================== 
-handle_call({set_link, InputValueId, Link}, _From, BlockState) ->
+handle_call({add_link, ValueId, Link}, _From, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
  
-  BlockName = config_utils:name(Config),
-  case link_utils:set_link(BlockName, Inputs, InputValueId, Link) of
-    {ok, Inputs1} ->
-
-      % Attempt to get the current value from the link
-      % set_link() always defaults the input value to 'empty'
-      % so don't need to call get_value() to get the current input value
-      Inputs2 = link_utils:evaluate_link(BlockName, InputValueId, empty,
-                                         Link, Inputs1),
-
-      % Execute the block because input value may have changed
-      NewBlockState = update_block({Config, Inputs2, Outputs, Private}),
-      Result = ok;
+  case link_utils:add_link(Outputs, ValueId, Link) of
+    {ok, Outputs1} ->
+      % TODO: Set linked input value to current output value?
+      Result = ok,
+      NewBlockState = {Config, Inputs, Outputs1, Private};
 
     {error, Reason} ->
       Result = {error, Reason},
@@ -330,25 +349,62 @@ handle_call({set_link, InputValueId, Link}, _From, BlockState) ->
 
 
 %% =====================================================================
-%% Link the output value 'ValueId' of this block to the block Reference
+%% Link the given output value to the given input link value
+%% ===================================================================== 
+handle_call({del_link, ValueId, Link}, _From, BlockState) ->
+    {Config, Inputs, Outputs, Private} = BlockState,
+   
+    case link_utils:del_link(Outputs, ValueId, Link) of
+      {ok, Outputs1} ->
+        % TODO: Set unlinked input value to empty?
+        Result = ok,
+        NewBlockState = {Config, Inputs, Outputs1, Private};
+  
+      {error, Reason} ->
+        Result = {error, Reason},
+        NewBlockState = {Config, Inputs, Outputs, Private}
+    end,
+    
+    {reply, Result, NewBlockState};
+
+
 %% =====================================================================
-handle_call({link, ValueId, Reference}, _From, BlockState) ->
-
-  {Config, Inputs, Outputs, Private} = BlockState,
-
-  %% Add the block Reference to the output 'ValueId's list of block references
-  NewOutputs = link_utils:add_ref(Outputs, ValueId, Reference),
-
-  % Send the current value of this output to the Reference
-  case attrib_utils:get_value(NewOutputs, ValueId) of 
-    {ok, Value} -> ok;
- 
-    {error, Reason} ->
-      log_server:error(err_fetching_value, [Reason, ValueId]),
-      Value = null
-  end,
-
-  {reply, Value, {Config, Inputs, NewOutputs, Private}};
+%% Add the ExecutorBlockName to the list of block names on the exec_in input
+%% to implement control flow
+%% ===================================================================== 
+handle_call({add_exec_in, ExecutorBlockName}, _From, BlockState) ->
+    {Config, Inputs, Outputs, Private} = BlockState,
+   
+    case input_utils:add_exec_in(Inputs, ExecutorBlockName) of
+      {ok, Inputs1} ->
+        Result = ok,
+        NewBlockState = {Config, Inputs1, Outputs, Private};
+  
+      {error, Reason} ->
+        Result = {error, Reason},
+        NewBlockState = {Config, Inputs, Outputs, Private}
+    end,
+    
+    {reply, Result, NewBlockState};
+  
+%% =====================================================================
+%% Delete the ExecutorBlockName from the list of block names on the exec_in input
+%% to remove a control flow
+%% ===================================================================== 
+handle_call({del_exec_in, ExecutorBlockName}, _From, BlockState) ->
+    {Config, Inputs, Outputs, Private} = BlockState,
+   
+    case input_utils:del_exec_in(Inputs, ExecutorBlockName) of
+      {ok, Inputs1} ->
+        Result = ok,
+        NewBlockState = {Config, Inputs1, Outputs, Private};
+  
+      {error, Reason} ->
+        Result = {error, Reason},
+        NewBlockState = {Config, Inputs, Outputs, Private}
+    end,
+    
+    {reply, Result, NewBlockState};
   
   
 %% =====================================================================
@@ -383,7 +439,7 @@ handle_call(Request, From, BlockState) ->
 
 %% ====================================================================
 %% Execute the block using the current set of Block values,
-%% This message is used to directly execute the block evaluate function, 
+%% This message is used to directly execute the block execute function, 
 %% ====================================================================
 handle_cast({execute, Reason}, BlockState) ->
 
@@ -395,12 +451,12 @@ handle_cast({execute, Reason}, BlockState) ->
 %% ====================================================================
 %% Update this block's input value(s) with the block value received in this message
 %% ====================================================================
-handle_cast({update, Link, Value}, BlockState) ->
+handle_cast({update, NewInputValues}, BlockState) ->
 
   {Config, Inputs, Outputs, Private} = BlockState,
 
   % Update the block input(s), that are linked this value, with the new Value
-  NewInputs = link_utils:update_linked_input_values(Inputs, Link, Value),
+  {ok, NewInputs} = attrib_utils:set_values(Inputs, NewInputValues),
 
   % Execute the block because input values have changed
   NewBlockState = update_block({Config, NewInputs, Outputs, Private}),
@@ -430,13 +486,8 @@ handle_cast(init_configure, BlockState) ->
 %% =====================================================================
 handle_cast(configure, BlockState) ->
 
-  % Link inputs with links to output values of other blocks
-  {Config, Inputs, Outputs, Private} = BlockState,
-  BlockName = config_utils:name(Config),
-  NewInputs = link_utils:link_blocks(BlockName, Inputs),
-  
   % Execute the block because input value(s) may have changed
-  NewBlockState = update_block({Config, NewInputs, Outputs, Private}),
+  NewBlockState = update_block(BlockState),
  
   {noreply, NewBlockState};
 
@@ -458,14 +509,26 @@ handle_cast({reconfigure, NewBlockState}, BlockState) ->
 
 
 %% =====================================================================
-%% Unlink the output value 'ValueId' of this block from 'BlockName:InputValueId' Reference
+%% Revmove the given link if it is in the list of Links of any output value
 %% =====================================================================
-handle_cast({unlink, ValueId, Reference}, BlockState) ->
+handle_cast({unlink_input, Link}, BlockState) ->
 
   {Config, Inputs, Outputs, Private} = BlockState,
+  BlockName = config_utils:name(Config),
+  NewOutputs = link_utils:unlink_outputs(BlockName, Outputs, Link),
 
-  %% Remove Reference from the output ValueId's list of linked blocks References
-  NewOutputs = link_utils:delete_ref(Outputs, ValueId, Reference),
+  {noreply, {Config, Inputs, NewOutputs, Private}};
+
+
+%% =====================================================================
+%% Revmove any link from the output values' list of Links,
+%%   if the link connects to the LinkBlockName block.
+%% =====================================================================
+handle_cast({unlink_block, LinkBlockName}, BlockState) ->
+    
+  {Config, Inputs, Outputs, Private} = BlockState,
+  BlockName = config_utils:name(Config),
+  NewOutputs = link_utils:unlink_outputs_block(BlockName, Outputs, LinkBlockName),
 
   {noreply, {Config, Inputs, NewOutputs, Private}};
 
@@ -556,12 +619,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 update_block({Config, NewInputs, Outputs, Private}) ->
   
-  % Don't execute block if block is executed via timer or executor execution
+  % Don't execute block if block is executed via timer or control flow
+  %   i.e. exec_in list value, contains one or more block names
   % Just update the input values and leave it at that
   {ok, TimerRef} = attrib_utils:get_value(Private, timer_ref),
-  {ok, {exec_in, {_Value, ExecuteLink}}} = attrib_utils:get_attribute(NewInputs, exec_in),
+  {ok, ExecInValue} = attrib_utils:get_value(NewInputs, exec_in),
     
-  if (TimerRef == empty) andalso (ExecuteLink == ?EMPTY_LINK) ->
+  if (TimerRef == empty) andalso (ExecInValue == []) ->
     block_common:execute({Config, NewInputs, Outputs, Private}, input_cos);
 
   true -> % Block will be executed via timer timeout or linked block execution, just return

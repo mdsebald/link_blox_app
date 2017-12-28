@@ -68,11 +68,11 @@ attrib_utils_config_attribs3() ->
   ].
   
 attrib_utils_input_attribs1() ->
-  [ {number_in, {123.45, {}}},
-    {string_in, {"Testing", {}}},
-    {bool_array_in, [{true,{}}, {false,{}}]},
-    {integer_in, {123}},
-    {integer_array_in, [{234,{}}, {456,{}}, {-123,{}}]}
+  [ {number_in, {123.45, {empty}}},
+    {string_in, {"Testing", {empty}}},
+    {bool_array_in, [{true,{empty}}, {false, {empty}}]},
+    {integer_in, {123, {0}}},
+    {integer_array_in, [{234,{0}}, {456,{0}}, {-123,{0}}]}
   ].
 
 
@@ -106,30 +106,30 @@ input_utils_config_attribs1() ->
   ].
 
 input_utils_input_attribs1() ->
-  [ {disable, {true, ?EMPTY_LINK}},
-    {freeze, {false, ?EMPTY_LINK}},
-    {exec_in, {empty, ?EMPTY_LINK}},
-    {exec_interval, {0, ?EMPTY_LINK}},
-    {float_good, {123.45, {null, block1, value}}},
-    {float_bad, {xyz, ?EMPTY_LINK}},
-    {integer_good, {12345, {null, block2, value}}},
-    {integer_bad, {"bad", ?EMPTY_LINK}},
-    {boolean_good, {true, ?EMPTY_LINK}},
-    {boolean_bad, {0.0, ?EMPTY_LINK}},
-    {not_active_good, {null, ?EMPTY_LINK}},
-    {empty_good, {empty, ?EMPTY_LINK}},
-    {empty_bad, {empty, {knot, empty, link}}},
+  [ {disable, {true, {true}}},
+    {freeze, {false, {false}}},
+    {exec_in, {[], {[]}}},
+    {exec_interval, {0, {0}}},
+    {float_good, {123.45, {123.45}}},
+    {float_bad, {xyz, {xyz}}},
+    {integer_good, {12345, {12345}}},
+    {integer_bad, {"bad", {"bad"}}},
+    {boolean_good, {true, {true}}},
+    {boolean_bad, {0.0, {0.0}}},
+    {not_active_good, {null, {empty}}},
+    {empty_good, {empty, {empty}}},
+    {empty_bad, {empty, {empty}}},
     {not_input, {123, [test1,test2]}},
-    {integer_array, [{123, {}}, {789, {null, test_block, test_output}}]}
+    {integer_array, [{123, {0}}, {789, {0}}]}
   ].
   
 input_utils_input_attribs2() ->
   InputList = input_utils_input_attribs1(),
   ModifiedAttribute = {integer_array, 
-                       [{123, {}}, 
-                        {789, {null, test_block, test_output}},
-                        {empty, ?EMPTY_LINK},
-                        {empty, ?EMPTY_LINK}]},
+                       [{123, {0}}, 
+                        {789, {0}},
+                        {empty, {empty}},
+                        {empty, {empty}}]},
    attrib_utils:replace_attribute(InputList, integer_array, 
                             ModifiedAttribute).
 
@@ -142,30 +142,29 @@ output_utils_config_attribs1() ->
   ].
 
 output_utils_input_attribs1() ->
-  [ {disable, {true, ?EMPTY_LINK}},
-    {freeze, {false, ?EMPTY_LINK}},
-    {exec_in, {empty, ?EMPTY_LINK}},
-    {exec_interval, {0, ?EMPTY_LINK}},
-    {float_good, {123.45, {null, block1, value}}},
-    {float_bad, {xyz, ?EMPTY_LINK}},
-    {integer_good, {12345, {null, block2, value}}},
-    {integer_bad, {"bad", ?EMPTY_LINK}},
-    {boolean_good, {true, ?EMPTY_LINK}},
-    {boolean_bad, {0.0, ?EMPTY_LINK}},
-    {not_active_good, {null, ?EMPTY_LINK}},
-    {empty_good, {empty, ?EMPTY_LINK}},
-    {empty_bad, {empty, {knot, empty, link}}},
-    {not_input, {123, [test1,test2]}},
-    {integer_array, [{123, {}}, {789, {null, test_block, test_output}}]}
-  ].
+  [ {disable, {true, {true}}},
+    {freeze, {false, {false}}},
+    {exec_in, {[], {[]}}},
+    {exec_interval, {0, {0}}},
+    {float_good, {123.45, {0.0}}},
+    {float_bad, {xyz, {0.0}}},
+    {integer_good, {12345, {0}}},
+    {integer_bad, {"bad", {"bad"}}},
+    {boolean_good, {true, {true}}},
+    {boolean_bad, {0.0, {false}}},
+    {not_active_good, {null, {empty}}},
+    {empty_good, {empty, {empty}}},
+    {empty_bad, {empty, {empty}}},
+    {not_input, {123, 123}},
+    {integer_array, [{123, {0}}, {789, {0}}]}].
   
 output_utils_input_attribs2() ->
   InputList = output_utils_input_attribs1(),
   ModifiedAttribute = {integer_array, 
                        [{123, {}}, 
                         {789, {null, test_block, test_output}},
-                        {empty, ?EMPTY_LINK},
-                        {empty, ?EMPTY_LINK}]},
+                        {empty, {empty}},
+                        {empty, {empty}}]},
    attrib_utils:replace_attribute(InputList, integer_array, 
                             ModifiedAttribute).
 

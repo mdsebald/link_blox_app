@@ -13,7 +13,6 @@
           parse_value/1,
           get_input/1,
           parse_cli_params/1
-
 ]).
 
 
@@ -157,6 +156,8 @@ is_open_quoted(Word) -> lists:prefix([$"], Word).
 is_close_quoted(Word) -> lists:suffix([$"], Word).
   
 add_to_quoted_str(QuotedStr, Word) -> QuotedStr ++ " " ++ Word.
+
+
 
 
 

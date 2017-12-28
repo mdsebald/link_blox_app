@@ -31,6 +31,8 @@
           ui_set_value/2,
           ui_link_blocks/2,
           ui_unlink_blocks/2,
+          ui_xlink_blocks/2,
+          ui_xunlink_blocks/2,
           ui_status/2,
           ui_valid_block_name/2,
           ui_load_blocks/2,
@@ -164,6 +166,8 @@ cmd_atom_map() ->
     {cmd_set_value,        ?MODULE,  ui_set_value},
     {cmd_link_blocks,      ?MODULE,  ui_link_blocks},
     {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks},
+    {cmd_xlink_blocks,     ?MODULE,  ui_xlink_blocks},
+    {cmd_xunlink_blocks,   ?MODULE,  ui_xunlink_blocks},
     {cmd_status,           ?MODULE,  ui_status},
     {cmd_valid_block_name, ?MODULE,  ui_valid_block_name},
     {cmd_load_blocks,      ?MODULE,  ui_load_blocks},
@@ -257,8 +261,8 @@ show_params(ParamStrAtom) ->
 
 get_string(StringId) ->
   case maps:get(StringId, strings_map()) of
-    {badmap, StringsMap} ->  io:lib("Error: bad strings map: ~p~n", [StringsMap]);
-    {badkey, StringId} -> io:lib("Error, string: ~p not found~n", [StringId]);
+    {badmap, StringsMap} ->  io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
+    {badkey, StringId} -> io_lib:format("Error, string: ~p not found~n", [StringId]);
     String -> String
   end.
 
@@ -624,12 +628,15 @@ format_block_values(BlockState) ->
 
   case BlockState of
     {Config, Inputs, Outputs} ->
+      format_newline(),
       format_out(config_str),
       lists:map(FormatAttribute, Config),
 
+      format_newline(),
       format_out(inputs_str),
       lists:map(FormatAttribute, Inputs),
 
+      format_newline(),
       format_out(outputs_str),
       lists:map(FormatAttribute, Outputs);
 
@@ -641,45 +648,69 @@ format_block_values(BlockState) ->
 % format an attribute name and value into a displayable string
 format_attribute(BlockValue) ->
   case BlockValue of
-    {ValueId, {Value}} ->
+     % Array value attribute
+    {ValueName, ArrayValues} when is_list(ArrayValues) ->
+      format_array_values(ValueName, 1, ArrayValues);
+
+    {ValueId, {Value}} -> % Config attribute
       format_value_id_value(ValueId, Value),
       format_newline();
 
-    {ValueId, {Value, LinkOrRefs}} ->
-      case LinkOrRefs of
-        {} ->
+    {ValueId, {Value, {DefValue}}} -> % Input attribute
+      format_value_id_value_def_value(ValueId, Value, DefValue),
+      format_newline();
+
+    {ValueId, {Value, Links}} -> % Output attribute
+      case Links of
+        [] -> % No Links on this output value
           format_value_id_value(ValueId, Value),
           format_newline();
 
-        [] ->
+        _NotAnEmptyList -> % Must have links
           format_value_id_value(ValueId, Value),
-          format_newline();
-
-        {OutAttribName} ->
-          format_value_id_value(ValueId, Value),
-          format_out(self_link_str, [OutAttribName]),
-          format_newline();
-
-        {BlockName, OutAttribName} ->
-          format_value_id_value(ValueId, Value),
-          format_out(block_link_str, [BlockName, OutAttribName]),
-          format_newline();
-
-        {NodeName, BlockName, OutAttribName} ->
-          format_value_id_value(ValueId, Value),
-          format_out(node_link_str, [NodeName, BlockName, OutAttribName]),
-          format_newline();
-
-        References ->
-          format_value_id_value(ValueId, Value),
-          format_out(reference_str, [References]),
+          format_links(Links),
           format_newline()
-      end;
-
-    {ValueName, ArrayValues} ->
-      format_array_values(ValueName, 1, ArrayValues)
+      end
   end.
 
+
+% Format array values
+format_array_values(_ValueName, _Index, []) ->
+    ok;
+  
+format_array_values(ValueName, Index, ArrayValues) ->
+  io:format("  ~p[~w]:", [ValueName, Index]),
+  [ArrayValue | RemainingArrayValues] = ArrayValues,
+
+  case ArrayValue of
+    {Value} -> % Config attribute
+      format_value(Value),
+      format_newline();
+
+    {Value, {DefValue}}  -> % Input attribute
+      format_value_def_value(Value, DefValue),
+      format_newline();
+
+    % Assume output if Links is a list and value is not a list.  
+    {Value, Links} -> % Output attribute
+    case Links of
+      [] -> % No Links on this output 
+        format_value(Value),
+        format_newline();
+
+      _NotAnEmptyList -> % Must have links
+        format_value(Value),
+        format_links(Links),
+        format_newline()
+    end
+  end,
+  format_array_values(ValueName, (Index + 1), RemainingArrayValues). 
+  
+
+% Format Value ID, value, and default value
+format_value_id_value_def_value(ValueId, Value, DefValue) ->
+  io:format("  ~p:  ~p  (~p)", [ValueId, Value, DefValue]).
+  
 
 % Format one Value ID and value
 format_value_id_value(ValueId, Value) ->
@@ -690,6 +721,11 @@ format_value_id_value(ValueId, Value) ->
       io:format("  ~p:  ~p", [ValueId, Value])
   end.
 
+
+% Format value, and default value
+format_value_def_value(Value, DefValue) ->
+    io:format("  ~p  (~p)", [Value, DefValue]).
+  
 
 % Format a value by itself
 format_value(Value) ->
@@ -711,54 +747,20 @@ format_last_exec(Value) ->
                     [Hour,Minute,Second,Micro]);
     _ ->
       "undef last_exec val"
-  end.  
+  end.
 
+  format_links(Links) ->
+    format_links(Links, "", 0).
+  
+  format_links([], LinkStr, _Count) -> 
+    io:format("~s)", [LinkStr]);
 
-% Format array values
-format_array_values(_ValueName, _Index, []) ->
-  ok;
-
-format_array_values(ValueName, Index, ArrayValues) ->
-  io:format("  ~p[~w]:", [ValueName, Index]),
-  [ArrayValue | RemainingArrayValues] = ArrayValues,
-
-  case ArrayValue of
-    {Value} ->
-      format_value(Value),
-      format_newline();
-
-    {Value, LinkOrRefs}->
-      case LinkOrRefs of
-        {} ->
-          format_value(Value),
-          format_newline();
-
-        [] ->
-          format_value(Value),
-          format_newline();
-
-        {OutAttribName} ->
-          format_value(Value),
-          format_out(self_link_str, [OutAttribName]),
-          format_newline();
-
-        {BlockName, OutAttribName} ->
-          format_value(Value),
-          format_out(block_link_str, [BlockName, OutAttribName]),
-          format_newline();
-
-        {NodeName, BlockName, OutAttribName} ->
-          format_value(Value),
-          format_out(node_link_str, [NodeName, BlockName, OutAttribName]),
-          format_newline();
-
-        References ->
-          format_value(Value),
-          format_out(reference_str, [References]),
-          format_newline()
-      end
-  end,
-  format_array_values(ValueName, (Index + 1), RemainingArrayValues). 
+  format_links([Link | Links], LinkStr, Count) ->
+    case Count of
+      0 -> NewLinkStr = " (";
+      _ -> NewLinkStr = LinkStr ++ ", "
+    end,
+    format_links(Links, NewLinkStr ++ link_utils:format_link(Link), Count + 1).
 
 
 % Process the set value command
@@ -798,36 +800,36 @@ ui_set_value(Params, ParamStrAtom) ->
 
 % Process link blocks command
 ui_link_blocks(Params, ParamStrAtom) ->
-  case check_num_params(Params, 3, 5) of
+  case check_num_params(Params, 4) of
     low -> show_params(ParamStrAtom);
 
     ok ->
       % 1st parameter is block name
-      InputBlockNameStr = lists:nth(1, Params),
-      InputBlockName = list_to_atom(InputBlockNameStr),
+      OutputBlockNameStr = lists:nth(1, Params),
+      OutputBlockName = list_to_atom(OutputBlockNameStr),
 
-      % 2nd parameter is the input value ID
-      InputValueIdStr = lists:nth(2, Params),
-      case attrib_utils:str_to_value_id(InputValueIdStr) of
-        {ok, InputValueId} ->
+      % 2nd parameter is the output value ID
+      OutputValueIdStr = lists:nth(2, Params),
+      case attrib_utils:str_to_value_id(OutputValueIdStr) of
+        {ok, OutputValueId} ->
 
           % The remaining params form the Link
           LinkParams = lists:nthtail(2, Params),
           case parse_link(LinkParams) of
             {ok, Link} ->
-              case linkblox_api:set_link(curr_node(), InputBlockName, InputValueId, Link) of
+              case linkblox_api:add_link(curr_node(), OutputBlockName, OutputValueId, Link) of
                 {error, Reason} ->
-                  format_out(err_linking_input_to_output, 
-                          [Reason, InputBlockNameStr, InputValueIdStr, Link]);
+                  format_out(err_linking_output_to_input, 
+                          [Reason, OutputBlockNameStr, OutputValueIdStr, Link]);
                 ok ->
-                  format_out(ui_block_input_linked_to_block_output, 
-                              [InputBlockNameStr, InputValueIdStr, Link])
+                  format_out(block_output_linked_to_block_input, 
+                    [OutputBlockNameStr ++ ":" ++ OutputValueIdStr, link_utils:format_link(Link)])
               end;
             {error, Reason} ->
               format_out(err_converting_to_link, [Reason, LinkParams])
           end;
         {error, Reason} ->
-          format_out(err_converting_to_input_value_id, [Reason, InputValueIdStr])
+          format_out(err_converting_to_output_value_id, [Reason, OutputValueIdStr])
       end;
 
     high -> format_out(err_too_many_params)
@@ -836,30 +838,89 @@ ui_link_blocks(Params, ParamStrAtom) ->
 
 % Process unlink blocks command
 ui_unlink_blocks(Params, ParamStrAtom) ->
-  case check_num_params(Params, 2) of
+  case check_num_params(Params, 4) of
     low -> show_params(ParamStrAtom);
 
     ok ->
       % 1st parameter is block name
-      InputBlockNameStr = lists:nth(1, Params),
-      InputBlockName = list_to_atom(InputBlockNameStr),
+      OutputBlockNameStr = lists:nth(1, Params),
+      OutputBlockName = list_to_atom(OutputBlockNameStr),
 
-      % 2nd parameter is the input value ID
-      InputValueIdStr = lists:nth(2, Params),
-      case attrib_utils:str_to_value_id(InputValueIdStr) of
-        {ok, InputValueId} ->
-          % Set the input value link to an empty link: {}
-          case linkblox_api:set_link(curr_node(), InputBlockName, InputValueId, {}) of
+      % 2nd parameter is the output value ID
+      OutputValueIdStr = lists:nth(2, Params),
+      case attrib_utils:str_to_value_id(OutputValueIdStr) of
+        {ok, OutputValueId} ->
+          % The remaining params form the Link
+          LinkParams = lists:nthtail(2, Params),
+          case parse_link(LinkParams) of
+            {ok, Link} ->
+              % Delete the output value link to an input, 
+              case linkblox_api:del_link(curr_node(), OutputBlockName, OutputValueId, Link) of
+                {error, Reason} ->
+                  format_out(err_unlinking_output_from_input, 
+                               [Reason, OutputBlockNameStr, OutputValueIdStr, Link]);
+                ok ->
+                  format_out(block_output_unlinked_from_block_input, 
+                               [OutputBlockNameStr ++ ":" ++ OutputValueIdStr, link_utils:format_link(Link)])
+              end;
+
             {error, Reason} ->
-              format_out(err_unlinking_input, [Reason, InputBlockNameStr, InputValueIdStr]);
-              ok ->
-                format_out(block_input_unlinked, [InputBlockNameStr, InputValueIdStr])
+              format_out(err_converting_to_link, [Reason, LinkParams])
           end;
-      
         {error, Reason} ->
-          format_out(err_converting_to_input_value_id, [Reason, InputValueIdStr])
+          format_out(err_converting_to_output_value_id, [Reason, OutputValueIdStr])
       end;
 
+    high -> format_out(err_too_many_params)
+  end.
+
+
+% Process execution link blocks command
+ui_xlink_blocks(Params, ParamStrAtom) ->
+  case check_num_params(Params, 2) of
+    low -> show_params(ParamStrAtom);
+
+    ok ->
+      % 1st parameter is executor block name
+      ExecutorBlockNameStr = lists:nth(1, Params),
+      ExecutorBlockName = list_to_atom(ExecutorBlockNameStr),
+
+      % 2nd parameter is the executee block name
+      ExecuteeBlockNameStr = lists:nth(2, Params),
+      ExecuteeBlockName = list_to_atom(ExecuteeBlockNameStr),
+
+      case linkblox_api:add_exec_link(curr_node(), ExecutorBlockName, ExecuteeBlockName) of
+        {error, Reason} ->
+          format_out(err_adding_execution_link_from_to, 
+                          [Reason, ExecutorBlockNameStr, ExecuteeBlockNameStr]);
+        ok ->
+          format_out(block_execution_linked_to_block, [ExecutorBlockName, ExecuteeBlockName])
+      end;
+    high -> format_out(err_too_many_params)
+  end.
+
+
+% Process execution unlink blocks command
+ui_xunlink_blocks(Params, ParamStrAtom) ->
+  case check_num_params(Params, 2) of
+    low -> show_params(ParamStrAtom);
+
+    ok ->
+      % 1st parameter is executor block name
+      ExecutorBlockNameStr = lists:nth(1, Params),
+      ExecutorBlockName = list_to_atom(ExecutorBlockNameStr),
+
+      % 2nd parameter is the executee block name
+      ExecuteeBlockNameStr = lists:nth(2, Params),
+      ExecuteeBlockName = list_to_atom(ExecuteeBlockNameStr),
+
+      case linkblox_api:del_exec_link(curr_node(), ExecutorBlockName, ExecuteeBlockName) of
+        {error, Reason} ->
+          format_out(err_deleting_execution_link_from_to, 
+                          [Reason, ExecutorBlockName, ExecuteeBlockName]);
+        ok ->
+          format_out(block_execution_unlinked_from_block, [ExecutorBlockName, ExecuteeBlockName])
+      end;
     high -> format_out(err_too_many_params)
   end.
 
@@ -867,28 +928,17 @@ ui_unlink_blocks(Params, ParamStrAtom) ->
 % Parse the params into a Link tuple
 parse_link(LinkParams) ->
 
-  % Output Value ID is always the last parameter
-  % So work backward to construct the link
-  [OutputValueIdStr | OutputBlockNameAndNodeNameList] = lists:reverse(LinkParams),
-  case attrib_utils:str_to_value_id(OutputValueIdStr) of
-    {ok, OutputValueId} ->
-      if 0 < length(OutputBlockNameAndNodeNameList) ->
-        [OutputBlockNameStr | NodeNameList] = OutputBlockNameAndNodeNameList,
-        OutputBlockName = list_to_atom(OutputBlockNameStr),
-        if 0 < length(NodeNameList) ->
-          [NodeNameStr] = NodeNameList,
-          NodeName = list_to_atom(NodeNameStr),
+  % Links should consist of a Block Name and Value ID
+  case LinkParams of
+    [BlockNameStr, ValueIdStr] ->
+      BlockName = list_to_atom(BlockNameStr),
 
-          {ok, {NodeName, OutputBlockName, OutputValueId}};
-
-        true ->
-          {ok, {OutputBlockName, OutputValueId}}
-        end;
-
-      true ->
-        {ok, {OutputValueId}}
+      case attrib_utils:str_to_value_id(ValueIdStr) of
+        {ok, ValueId}   -> {ok, {BlockName, ValueId}};
+        {error, Reason} -> {error, Reason}
       end;
-   {error, Reason} -> {error, Reason}
+    _Invalid ->
+      {error, invalid}
   end.
 
 

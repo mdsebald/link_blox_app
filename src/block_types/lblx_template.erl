@@ -45,7 +45,7 @@ version() -> "0.1.0".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: block_name(),
-                      Description :: string()) -> list(config_attr()).
+                      Description :: string()) -> config_attribs().
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -60,22 +60,21 @@ default_configs(BlockName, Description) ->
     ]). 
 
 
--spec default_inputs() -> list(input_attr()).
+-spec default_inputs() -> input_attribs().
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       % INTRUCTIONS: Insert block type specific input attribute tuples here
-      % Input attribute tuples consist of a value name, a value, and a link
-      % Example: {hi_limit, {100, ?EMPTY_LINK}}
-      % Array Example: {inputs, [{empty, ?EMPTY_LINK}]}
-      % Inputs may be fixed values, or linked to a block output value 
-      {input1, {"Example Input Value", ?EMPTY_LINK}}
+      % Input attribute tuples consist of a value name, a value, and a default value
+      % Example: {hi_limit, {100, {100}}}
+      % Array Example: {inputs, [{empty, {empty}}, {empty, {empty}}]}
+      {input1, {"Example Input Value", {"Example Input Value"}}}
     ]). 
 
 
--spec default_outputs() -> list(output_attr()).
+-spec default_outputs() -> output_attribs().
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -83,10 +82,10 @@ default_outputs() ->
     [
       % INTRUCTIONS: Insert block type specific output attribute tuples here
       % Output attribute tuples consist of a value name, a calculated value, 
-      % and a list of blocks that reference (have links to) this output value
-      % Output values are always set to 'not_actve' and empty reference list on creation
+      % and a list of links to block input values
+      % Output values are always set to 'null' and empty link list on creation
       % Example: {dwell, {null, []}}
-      % Array Example: {digit, [{null, []}]} 
+      % Array Example: {digit, [{null, []}, {null, []}]} 
       {output1, {null, []}} 
     ]). 
 
@@ -104,17 +103,17 @@ create(BlockName, Description) ->
 
 -spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs()) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr()), 
-             InitOutputs :: list(output_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs(), 
+             InitOutputs :: output_attribs()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 

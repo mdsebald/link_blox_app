@@ -294,13 +294,14 @@ block_values(BlockNames, BlockValuesList) ->
 
 
 %%
-%% Clean block values of linked Input and calculated Output values,
+%% Clean block values of calculated Output values,
 %% to make the block values suitable for saving to a file 
 %%
 clean_block_values({Config, Inputs, Outputs}) ->
-  EmptyInputs = link_utils:empty_linked_inputs(Inputs),
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, no_input),
-  EmptyOutputs1 = output_utils:clear_output_refs(EmptyOutputs),
  
+  % TODO: Reset linked input values to default values?
+  %   that would require determining if there are any links to each input attribute of each block
+
   % Cleaned block values
-  {Config, EmptyInputs, EmptyOutputs1}.
+  {Config, Inputs, EmptyOutputs}.

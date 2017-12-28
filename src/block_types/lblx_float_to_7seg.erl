@@ -29,7 +29,7 @@ version() -> "0.1.0".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: block_name(),
-                      Description :: string()) -> list(config_attr()).
+                      Description :: string()) -> config_attribs().
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -39,22 +39,22 @@ default_configs(BlockName, Description) ->
     ]). 
 
 
--spec default_inputs() -> list(input_attr()).
+-spec default_inputs() -> input_attribs().
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
       % Number of digits to the right of the decimal point for positive values
-      {pos_precision, {2, ?EMPTY_LINK}}, 
+      {pos_precision, {2, {2}}}, 
       % Number of digits to the right of the decimal point for negative values
-      {neg_precision, {1, ?EMPTY_LINK}},
+      {neg_precision, {1, {1}}},
       % The value to display.
-      {input, {empty, ?EMPTY_LINK}}
+      {input, {empty, {empty}}}
      ]). 
 
 
--spec default_outputs() -> list(output_attr()).
+-spec default_outputs() -> output_attribs().
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -79,16 +79,16 @@ create(BlockName, Description) ->
 
 -spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs()) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr()), 
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs(), 
              InitOutputs :: list()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
@@ -141,8 +141,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   case config_utils:get_integer_range(Config, num_of_digits, 2, 99) of
     {ok, NumOfDigits} ->
       % Create a digit output for each digit
-      BlockName = config_utils:name(Config),
-      Outputs1 = output_utils:resize_attribute_array_value(BlockName, Outputs, 
+      Outputs1 = output_utils:resize_attribute_array_value(Outputs, 
                                        digits, NumOfDigits, {null, []}),
       Value = null,
       Status = initialed;
@@ -263,7 +262,7 @@ handle_info(Info, BlockState) ->
 %
 -spec format_number(InValue :: float(),
                     NumOfDigits :: integer(),
-                    Inputs :: list(input_attr())) -> 
+                    Inputs :: input_attribs()) -> 
                        {ok, list(byte()), integer()} | {error, too_big | input_errors(), boolean()}.
 
 format_number(InValue, NumOfDigits, Inputs) ->

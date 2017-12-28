@@ -1,6 +1,6 @@
 {application, 'LinkBlox',
- [{description, "Build IoT Devices by Creating and Linking Blocks of Functionality"},
-  {vsn, "0.1.0"},
+ [{description, "Linking Blocks of Functionality"},
+  {vsn, "0.2.0"},
   {registered, []},
   {mod, {'LinkBlox_app', ["LinkBloxConfig", lang_en_us]}},
   {applications,

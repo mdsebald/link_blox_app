@@ -20,8 +20,8 @@
           set_array_value/3,
           set_tristate_outputs/4,
           update_all_outputs/3,
-          clear_output_refs/1,
-          resize_attribute_array_value/5
+          % clear_output_refs/1,
+          resize_attribute_array_value/4
 ]).
 
 
@@ -30,9 +30,9 @@
 %% Block output value and status attributes are often set at the same time.
 %% This is a shortcut to do that.
 %% 
--spec set_value_status(Outputs :: list(output_attr()), 
+-spec set_value_status(Outputs :: output_attribs(), 
                        Value :: value(), 
-                       Status :: block_status()) -> list(output_attr()).
+                       Status :: block_status()) -> output_attribs().
 
 set_value_status(Outputs, Value, Status) ->
   {ok, Outputs1} = attrib_utils:set_values(Outputs, 
@@ -44,8 +44,8 @@ set_value_status(Outputs, Value, Status) ->
 %% When setting the output value block status is usually normal.
 %% This is a shortcut to do that.
 %% 
--spec set_value_normal(Outputs :: list(output_attr()), 
-                       Value :: value()) -> list(output_attr()).
+-spec set_value_normal(Outputs :: output_attribs(), 
+                       Value :: value()) -> output_attribs().
 
 set_value_normal(Outputs, Value) ->
   {ok, Outputs1} = attrib_utils:set_values(Outputs, 
@@ -55,8 +55,8 @@ set_value_normal(Outputs, Value) ->
 %%
 %% Set status output value
 %% 
--spec set_status(Outputs :: list(output_attr()), 
-                 Status :: block_status()) -> list(output_attr()).
+-spec set_status(Outputs :: output_attribs(), 
+                 Status :: block_status()) -> output_attribs().
 
 set_status(Outputs, Status) ->
   {ok, Outputs1} = attrib_utils:set_value(Outputs, status, Status),
@@ -66,7 +66,7 @@ set_status(Outputs, Status) ->
 %%
 %% Get status output value
 %% 
--spec get_status(Outputs :: list(output_attr())) -> block_status().
+-spec get_status(Outputs :: output_attribs()) -> block_status().
 
 get_status(Outputs) ->
   case attrib_utils:get_value(Outputs, status) of
@@ -80,9 +80,9 @@ get_status(Outputs) ->
 %% Number of values in ArrayValues, must match the number of array values
 %% in the ArrayValueName output value
 %% 
--spec set_array_value(Outputs :: list(output_attr()), 
+-spec set_array_value(Outputs :: output_attribs(), 
                       ArrayValueName :: value_name(),
-                      ArrayValues :: list(attr_value_array())) -> list(output_attr()).
+                      ArrayValues :: attrib_value_array()) -> output_attribs().
 
 set_array_value(Outputs, ArrayValueName, ArrayValues) ->
   set_array_value(Outputs, ArrayValueName, 1, ArrayValues).
@@ -100,8 +100,8 @@ set_array_value(Outputs, ArrayValueName, Index, [Value | ArrayValues]) ->
 %%
 -spec set_tristate_outputs(InputValId :: value_id(),  % Only needed for error logging
                            OutputVal :: {ok, boolean()} | {error, atom()},
-                           Config :: list(config_attr()),  % Only Needed for error logging
-                           Outputs :: list(output_attr())) -> {ok, list(output_attr)}.
+                           Config :: config_attribs(),  % Only Needed for error logging
+                           Outputs :: output_attribs()) -> {ok, list(output_attr)}.
 
 set_tristate_outputs(InputValId, OutputVal, Config, Outputs) ->
   case OutputVal of
@@ -140,9 +140,9 @@ set_tristate_outputs(InputValId, OutputVal, Config, Outputs) ->
 %% except update status output to the New Staus value
 %% Used to mass update block outputs in disabled or error conditions
 %% 
--spec update_all_outputs(Outputs :: list(output_attr()), 
+-spec update_all_outputs(Outputs :: output_attribs(), 
                          NewValue :: value(), 
-                         NewStatus :: block_status()) -> list(output_attr()).
+                         NewStatus :: block_status()) -> output_attribs().
 
 update_all_outputs(Outputs, NewValue, NewStatus) ->
   lists:map(
@@ -163,8 +163,8 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
 %%
 %% Set all of the values in ArrayValues to NewValue
 %%
--spec update_all_array_values(ArrayValues :: list(attr_value_array()),
-                              NewValue :: value()) -> list(attr_value_array()).
+-spec update_all_array_values(ArrayValues :: attrib_value_array(),
+                              NewValue :: value()) -> attrib_value_array().
                                 
 update_all_array_values(ArrayValues, NewValue) ->
   lists:map(fun({_Value, Refs}) -> {NewValue, Refs} end, ArrayValues).
@@ -174,30 +174,30 @@ update_all_array_values(ArrayValues, NewValue) ->
 %% Clear references to other blocks in the Output values
 %% Used to mass update block outputs in disabled or error conditions
 %% 
--spec clear_output_refs(Outputs :: list(output_attr())) -> list(output_attr()).
+% -spec clear_output_refs(Outputs :: output_attribs()) -> output_attribs().
 
-clear_output_refs(Outputs) ->
-  lists:map(
-    fun(Output) ->
-      case Output of 
-        {ValueName, {Value, _Refs}} ->
-           {ValueName, {Value, []}};
+% clear_output_refs(Outputs) ->
+%   lists:map(
+%     fun(Output) ->
+%       case Output of 
+%         {ValueName, {Value, _Refs}} ->
+%            {ValueName, {Value, []}};
 
-        {ValueName, ArrayValues} ->
-          {ValueName, clear_array_output_refs(ArrayValues)}      
-      end  
-    end,
-    Outputs).
+%         {ValueName, ArrayValues} ->
+%           {ValueName, clear_array_output_refs(ArrayValues)}      
+%       end  
+%     end,
+%     Outputs).
 
  
 %%
 %% Clear references to other blocks, in output arrray values
 %%
--spec clear_array_output_refs(ArrayValues :: list(attr_value_array())) -> 
-                                      list(attr_value_array()).
+% -spec clear_array_output_refs(ArrayValues :: list(atrib_value_array())) -> 
+%                                       list(atrib_value_array()).
                                 
-clear_array_output_refs(ArrayValues) ->
-  lists:map(fun({Value, _Refs}) -> {Value, []} end, ArrayValues).  
+% clear_array_output_refs(ArrayValues) ->
+%   lists:map(fun({Value, _Refs}) -> {Value, []} end, ArrayValues).  
 
 
 %%
@@ -205,39 +205,24 @@ clear_array_output_refs(ArrayValues) ->
 %% to match the target quantity
 %% Returns updated Outputs attribute list
 %%
--spec resize_attribute_array_value(BlockName :: block_name(),
-                                   Outputs :: list(output_attr()),
+-spec resize_attribute_array_value(Outputs :: output_attribs(),
                                    ArrayValueName :: value_name(),
                                    TargQuant :: pos_integer(),
-                                   DefaultValue :: output_value()) -> list(output_attr()).
+                                   DefaultValue :: output_value()) -> output_attribs().
                              
-resize_attribute_array_value(BlockName, Outputs, ArrayValueName, TargQuant, DefaultValue)->
-   % Function to dereference the delete array values' references to input block values
-   DeleteExcess = fun(DeleteArrayValues) -> 
-      lists:map(
-        fun(DeleteValue) -> 
-          {_Value, Refs} = DeleteValue,
-          link_utils:unlink_output(BlockName, ArrayValueName, Refs)
+resize_attribute_array_value(Outputs, ArrayValueName, TargQuant, DefaultValue)->
+   % Function to remove the delete array values' Links to input block values
+   DeleteExcess = fun(DeleteArrayValues, StartIndex) -> 
+      lists:foldl(fun(DeleteValue, Index) -> 
+          {_Value, Links} = DeleteValue,
+          block_common:update_linked_inputs(empty, Links),
+          Index + 1
           end, 
+          StartIndex,
           DeleteArrayValues) end,
   
   attrib_utils:resize_attribute_array_value(Outputs, ArrayValueName, TargQuant, 
                                             DefaultValue, DeleteExcess).
-
-
-% TODO: Delete, not used
-%%
-%% Log output value error
-%%
-%-spec log_error(Config :: list(config_attr()),
-%                ValueId :: value_id(),
-%                Reason :: atom()) -> ok.
-                  
-%log_error(Config, ValueId, Reason) ->
-%  BlockName = config_utils:name(Config),
-%  ValueIdStr = attrib_utils:value_id_to_str(ValueId),
-%  log_server:error(err_invalid_output_value, [BlockName, ValueIdStr, Reason]),
-%  ok.
   
   
 %% ====================================================================
@@ -296,7 +281,6 @@ update_all_outputs_test() ->
 %
 %   Test input array attribute doesn't change size
 resize_attribute_array_value_nochange_test() ->
-  BlockName = test_output_utils,
   Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 3,
@@ -304,13 +288,12 @@ resize_attribute_array_value_nochange_test() ->
   
   ExpectedResult = test_data:output_attribs1(),
   
-  Result = resize_attribute_array_value(BlockName, Outputs, 
+  Result = resize_attribute_array_value(Outputs, 
                          ArrayValueName, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
   
 %   Test input array attribute increases in size
 resize_attribute_array_value_increase_test() ->
-  BlockName = testt_utils_output_utils,
   Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
   TargQuant = 6,
@@ -318,22 +301,11 @@ resize_attribute_array_value_increase_test() ->
   
   ExpectedResult = test_data:output_utils_output_attribs2(),
   
-  Result = resize_attribute_array_value(BlockName, Outputs, 
+  Result = resize_attribute_array_value(Outputs, 
                          ArrayValueName, TargQuant, DefaultValue),
                          
   ?assertEqual(ExpectedResult, Result).
 
-% TODO: Delete not used
-% ====================================================================
-% Test log_error()
-%     
-%log_error_test() ->
-%  Config = test_data:output_utils_config_attribs1(),
-  
-%  ExpectedResult =  ok,
-  
-%  Result = log_error(Config, value_name, bad_value),
-%  ?assertEqual(ExpectedResult, Result) .
 % ====================================================================
 
 -endif.

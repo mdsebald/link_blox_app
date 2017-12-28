@@ -35,6 +35,8 @@ cmds_map() ->
     {"set",       cmd_set_value,        cmd_set_value_params,     cmd_set_value_help},
     {"link",      cmd_link_blocks,      cmd_link_blocks_params,   cmd_link_blocks_help},
     {"unlink",    cmd_unlink_blocks,    cmd_link_blocks_params,   cmd_unlink_blocks_help},
+    {"xlink",     cmd_xlink_blocks,     cmd_xlink_blocks_params,  cmd_xlink_blocks_help},
+    {"xunlink",   cmd_xunlink_blocks,   cmd_xlink_blocks_params,  cmd_xunlink_blocks_help},
     {"status",    cmd_status,           cmd_blank_params,         cmd_status_help},
     {"valid",     cmd_valid_block_name, cmd_block_name_param,     cmd_valid_block_name_help},
     {"load",      cmd_load_blocks,      cmd_file_name_params,     cmd_load_blocks_help},
@@ -48,8 +50,6 @@ cmds_map() ->
   ].
 
 
--spec strings_map() -> map().
-
 strings_map() -> #{
   welcome_str => "~n   W E L C O M E  T O  L i n k B l o x !~n~n",
   enter_command_str => "Enter command\n",
@@ -59,7 +59,8 @@ strings_map() -> #{
   cmd_copy_block_params => "source-block-name dest-block-name",
   cmd_rename_block_params => "current-block-name new-block-name",
   cmd_set_value_params => "block-name value-name value",
-  cmd_link_blocks_params => "output-block-name output-value-name <input-node-name <input-block-name>> input-value-name",
+  cmd_link_blocks_params => "output-block-name output-value-name input-block-name input-value-name",
+  cmd_xlink_blocks_params => "output-block-name input-block-name",
   cmd_block_name_param => "block-name",
   cmd_file_name_params => "file-name | blank",
   cmd_node_name_params => "node-name",
@@ -94,13 +95,9 @@ strings_map() -> #{
   no_help_for => "No help for: ~s~n",
   enter_str => "Enter", 
 
-  config_str => "Config:~n",
-  inputs_str => "Inputs:~n",
-  outputs_str => "Outputs:~n",
-  self_link_str => "  Link: ~p",
-  block_link_str => "  Link: ~p:~p",
-  node_link_str => "  Link: ~p:~p:~p",
-  reference_str => "  Refs: ~p",
+  config_str => "Config Values:~n",
+  inputs_str => "Input Values: (Default)~n",
+  outputs_str => "Output Values: (Links)~n",
   block_value_set_to_str => "~s:~s Set to: ~s~n",
   block_exists => "Block: ~s exists~n",
   block_does_not_exist => "Block ~p does not exist~n",
@@ -111,8 +108,11 @@ strings_map() -> #{
   block_enabled => "Block ~s Enabled~n",
   block_frozen => "Block ~s Frozen~n",
   block_thawed => "Block ~s Thawed~n",
-  ui_block_input_linked_to_block_output => "Block Input: ~s:~s Linked to Block Output: ~p~n",
-  block_input_unlinked => "Block Input: ~s:~s Unlinked~n",
+  block_output_linked_to_block_input => "Block Output: ~s Linked to Block Input: ~s~n",
+  block_output_unlinked_from_block_input => "Block Output: ~s Unlinked from Block Input: ~s~n",
+  block_execution_linked_to_block => "Block: ~s execution Linked to Block: ~s~n",
+  block_execution_unlinked_from_block => "Block: ~s execution Unlinked from Block: ~s~n",
+  block_output_unlinked => "Block Output: ~s:~s Unlinked~n",
   block_config_file_loaded => "Block config file: ~s loaded~n",
   block_config_file_saved => "Block config file: ~s saved~n",
   enter_config_file_name => "Enter file name, or press <Enter> for default: 'LinkBloxConfig': ",
@@ -136,14 +136,17 @@ strings_map() -> #{
   err_block_not_found => "Error: Block ~s not found~n",
   err_block_value_not_found => "Error: Attribute: ~s does not exist~n",
   err_setting_block_value => "Error: ~p Setting: ~s:~s to ~s~n",
-  err_source_block_does_not_exist => "Error: Source Block ~s does not exists~n",
+  err_source_block_does_not_exist => "Error: Source Block ~s does not exist~n",
   err_invalid_value_id => "Error: ~s is not a value of block: ~s~n",
   err_retrieving_value => "Error: ~p retrieving value: ~s:~s~n",
   err_invalid_value_id_str => "Error: Invalid Value Id string: ~s~n",
-  err_linking_input_to_output => "Error: ~p Linking Input: ~s:~s to Output: ~p~n",
-  err_unlinking_input => "Error: ~p Unlinking Input: ~s:~s~n",
+  err_linking_output_to_input => "Error: ~p Linking Output: ~s:~s to Input: ~p~n",
+  err_unlinking_output_from_input => "Error: ~p Unlinking Output: ~s:~s from Input: ~p~n",
+  err_adding_execution_link_from_to => "Error: ~p Adding execution link from:~s to: ~s~n",
+  err_deleting_execution_link_from_to => "Error: ~p Deleting execution link from:~s to: ~s~n",
+
   err_converting_to_link => "Error: ~p Converting ~p to a Link~n",
-  err_converting_to_input_value_id => "Error: ~p Converting ~s to Input Value ID~n",
+  err_converting_to_output_value_id => "Error: ~p Converting ~s to Output Value ID~n",
   err_too_many_params => "Error: Too many parameters~n",
   unk_cmd_str => "Unknown command string: ~p~n",
   unk_cmd_atom => "Unknown command atom: ~p~n",
@@ -199,6 +202,7 @@ strings_map() -> #{
   loading_demo_config => "Loading Demo config... ~n",
   negative_exec_interval_value => "~p Negative exec_interval value: ~p ~n",
   invalid_exec_interval_value => "~p Invalid exec_interval value: ~p ~n",
+  err_updating => "Error: ~p updating ~p~n",
   err_updating_is_this_an_mqtt_pub_sub_block => "Error: ~p updating ~p. Is this an mqtt_pub_sub block?~n",
   %  err_parsing_publish_msg_from_MQTT_broker => "Error: ~p, parsing publish message from MQTT broker~n",
   err_updating_output_on_MQTT_broker_connect_msg => "Error: ~p, updating output on MQTT broker connect message~n",
@@ -268,10 +272,10 @@ strings_map() -> #{
   mqtt_client_shutdown => "~p MQTT client shutdown: ~p~n",
 
   err_unrecognized_link => "Error: unrecognized link: ~p~n",
-  add_ref_err_doesnt_exist_for_this_block => "add_ref() Error. ~p Doesn't exist for this block~n",
-  add_ref_err_invalid_array_index => "add_ref() Error. Invalid array index ~p~n",
-  delete_ref_err_doesnt_exist_for_this_block => "delete_ref() Error. ~p Doesn't exist for this block~n",
-  delete_ref_err_invalid_array_index => "delete_ref() Error. Invalid array index ~p~n",
+  add_link_err_doesnt_exist_for_this_block => "add_link() Error. ~p Doesn't exist for this block~n",
+  add_link_err_invalid_array_index => "add_link() Error. Invalid array index ~p~n",
+  del_link_err_doesnt_exist_for_this_block => "del_link() Error. ~p Doesn't exist for this block~n",
+  del_link_err_invalid_array_index => "del_link() Error. Invalid array index ~p~n",
   block_input_linked_to_block_output => "Block Input: ~p:~p Linked to Block Output: ~p:~p~n",
   block_input_linked_to_node_block_output => "Block Input: ~p:~p Linked to Block Output: ~p:~p:~p~n",
   block_input_unlinked_from_block_output => "Block Input: ~p:~p Unlinked from Block Output: ~p:~p~n",
@@ -285,6 +289,7 @@ strings_map() -> #{
   err_starting_MQTT_client => "Error: ~p starting MQTT client~n",
   err_configuring_pub_inputs => "Error: ~p configuring pub inputs~n",
   err_configuring_sub_outputs => "Error: ~p configuring sub outputs~n"
+
 
 }.
  

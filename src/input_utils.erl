@@ -23,6 +23,9 @@
           get_boolean/2,
           get_string/2,
           get_value/3,
+          add_exec_in/2,
+          del_exec_in/2,
+          default_inputs/1,
           resize_attribute_array_value/5,
           log_error/3
 ]).
@@ -31,7 +34,7 @@
 %%
 %% Get input value of any type and check for errors.
 %%
--spec get_any_type(Inputs :: list(input_attr()),
+-spec get_any_type(Inputs :: input_attribs(),
                    ValueId :: value_id()) -> generic_input_value().
 
 get_any_type(Inputs, ValueId) ->
@@ -43,7 +46,7 @@ get_any_type(Inputs, ValueId) ->
 %%
 %% Get a number (float or integer) input value and check for errors.
 %%
--spec get_number(Inputs :: list(input_attr()), 
+-spec get_number(Inputs :: input_attribs(), 
                   ValueId :: value_id()) -> integer_input_value().
 
 get_number(Inputs, ValueId) ->
@@ -54,7 +57,7 @@ get_number(Inputs, ValueId) ->
 %%
 %% Get an integer input value and check for errors.
 %%
--spec get_integer(Inputs :: list(input_attr()), 
+-spec get_integer(Inputs :: input_attribs(), 
                   ValueId :: value_id()) -> integer_input_value().
 
 get_integer(Inputs, ValueId) ->
@@ -65,7 +68,7 @@ get_integer(Inputs, ValueId) ->
 %%
 %% Get an integer input value greater than minimum, and check for errors.
 %%
--spec get_integer_greater_than(Inputs :: list(input_attr()), 
+-spec get_integer_greater_than(Inputs :: input_attribs(), 
                                ValueId :: value_id(),
                                Min :: integer()) -> integer_input_value().
 
@@ -87,7 +90,7 @@ get_integer_greater_than(Inputs, ValueId, Min) ->
 %%
 %% Get an integer input value less than maximum, and check for errors.
 %%
--spec get_integer_less_than(Inputs :: list(input_attr()), 
+-spec get_integer_less_than(Inputs :: input_attribs(), 
                             ValueId :: value_id(),
                             Max :: integer()) -> integer_input_value().
 
@@ -109,7 +112,7 @@ get_integer_less_than(Inputs, ValueId, Max) ->
 %%
 %% Get an integer input value in a range, and check for errors.
 %%
--spec get_integer_range(Inputs :: list(input_attr()), 
+-spec get_integer_range(Inputs :: input_attribs(), 
                         ValueId :: value_id(),
                         Min :: integer(),
                         Max :: integer()) -> integer_input_value().
@@ -132,7 +135,7 @@ get_integer_range(Inputs, ValueId, Min, Max) ->
 %%
 %% Get a floating point input value and check for errors.
 %%
--spec get_float(Inputs :: list(input_attr()), 
+-spec get_float(Inputs :: input_attribs(), 
                 ValueId :: value_id()) -> float_input_value().
 
 get_float(Inputs, ValueId) ->
@@ -143,7 +146,7 @@ get_float(Inputs, ValueId) ->
 %%
 %% Get a boolean input value and check for errors
 %%
--spec get_boolean(Inputs :: list(input_attr()), 
+-spec get_boolean(Inputs :: input_attribs(), 
                   ValueId :: value_id()) -> boolean_input_value().
 
 get_boolean(Inputs, ValueId) ->
@@ -154,7 +157,7 @@ get_boolean(Inputs, ValueId) ->
 %%
 %% Get a string input value and check for errors
 %%
--spec get_string(Inputs :: list(input_attr()), 
+-spec get_string(Inputs :: input_attribs(), 
                  ValueId :: value_id()) -> string_input_value().
 
 get_string(Inputs, ValueId) ->
@@ -165,7 +168,7 @@ get_string(Inputs, ValueId) ->
 %%
 %% Generic get input value, check for errors.
 %%
--spec get_value(Inputs :: list(input_attr()),
+-spec get_value(Inputs :: input_attribs(),
                 ValueId :: value_id(),
                 CheckType :: fun()) -> term().
                 
@@ -175,8 +178,8 @@ get_value(Inputs, ValueId, CheckType) ->
     {error, not_found}  -> {error, not_found};
     
     % If this is a non-array value, check it
-    {ok, {_ValueName, {Value, Link}}} ->
-      check_value(Value, Link, CheckType);
+    {ok, {_ValueName, {Value, {_DefValue}}}} ->
+      check_value(Value, CheckType);
 
     % if this is an array value, check the index, and get the nth element
     {ok, {ValueName, ArrayValue}} ->
@@ -185,8 +188,8 @@ get_value(Inputs, ValueId, CheckType) ->
       case ValueId of
         {ValueName, ArrayIndex} ->
           if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
-            {Value, Link} = lists:nth(ArrayIndex, ArrayValue),
-            check_value(Value, Link, CheckType);
+            {Value, {_DefValue}} = lists:nth(ArrayIndex, ArrayValue),
+            check_value(Value, CheckType);
 
           true->  % array index is out of bounds
             {error, invalid_index}
@@ -195,22 +198,13 @@ get_value(Inputs, ValueId, CheckType) ->
       end
   end.
 
-%% Check the value and link for both non-array and array values
-check_value(Value, Link, CheckType) ->
+%% Check the value using the CheckType fun
+check_value(Value, CheckType) ->
   case Value of
     % null is a valid value
     null -> {ok, null};
         
-    empty ->   
-      case Link of
-        % if the input value is empty and the link is empty
-        % treat this like a null value
-        ?EMPTY_LINK -> {ok, null};
-
-        % input is linked to another block but value is empty,
-        % this is an error
-         _ -> {error, bad_link}
-      end;
+    empty -> {ok, null};
 
     Value ->
       case CheckType(Value) of
@@ -221,27 +215,95 @@ check_value(Value, Link, CheckType) ->
 
 
 %%
+%% Add a source block name to the list of block names
+%% in the exec_in input value, to implement control flow
+%%
+-spec add_exec_in(Inputs :: input_attribs(),
+                  SrcBlockName :: block_name()) -> {ok, input_attribs()} | {error, atom()}.
+
+add_exec_in(Inputs, SrcBlockName) ->
+  case attrib_utils:get_value(Inputs, exec_in) of
+    {ok, ExecIns} ->
+      case lists:member(SrcBlockName, ExecIns) of
+        false ->
+          NewExecIns = [SrcBlockName | ExecIns],
+          attrib_utils:set_value(Inputs, exec_in, NewExecIns);
+        true ->
+          {error, already_contains}
+      end;
+    {error, Reason} -> {error, Reason}
+  end.
+
+
+%%
+%% Delete a source block name to the list of block names
+%% in the exec_in input value,
+%%
+-spec del_exec_in(Inputs :: input_attribs(),
+                  SrcBlockName :: block_name()) -> {ok, input_attribs()} | {error, atom()}.
+
+del_exec_in(Inputs, SrcBlockName) ->
+  case attrib_utils:get_value(Inputs, exec_in) of
+    {ok, ExecIns} ->
+      case lists:member(SrcBlockName, ExecIns) of
+        true ->
+          NewExecIns = lists:delete(SrcBlockName, ExecIns),
+          attrib_utils:set_value(Inputs, exec_in, NewExecIns);
+        false ->
+          {error, value_not_found}
+      end;
+    {error, Reason} -> {error, Reason}
+  end.
+
+
+%% 
+%% Set all inputs to their default value,
+%% 
+-spec default_inputs(Inputs :: input_attribs()) -> input_attribs().
+
+default_inputs(Inputs) ->
+  lists:map(fun(Input) ->
+              case Input of 
+                {ValueName, {_Value, {DefValue}}} -> 
+                    {ValueName, {DefValue, {DefValue}}};
+
+                {ValueName, ArrayValues} ->
+                    {ValueName, update_all_array_values(ArrayValues)}
+              end  
+            end,
+            Inputs).
+
+
+%%
+%% Set all of the values in ArrayValues to their default value
+%%
+-spec update_all_array_values(ArrayValues :: input_value_array()) -> input_value_array().
+  
+update_all_array_values(ArrayValues) ->
+  lists:map(fun({_Value, {DefValue}}) -> {DefValue, {DefValue}} end, ArrayValues).
+
+
+%%
 %% Resize an array value in the Inputs attribute list
 %% to match the target quantity
 %% Returns updated Inputs attribute list
 %%
 -spec resize_attribute_array_value(BlockName :: block_name(),
-                                   Inputs :: list(input_attr()),
+                                   Inputs :: input_attribs(),
                                    ArrayValueName :: value_name(),
                                    TargQuant :: pos_integer(),
-                                   DefaultValue :: input_value()) -> list(input_attr()).
+                                   DefaultValue :: input_value()) -> input_attribs().
                              
 resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, DefaultValue)->
-  % Function to unlink the deleted array values if they are linked to an output value
-  DeleteExcess = fun(DeleteArrayValues) ->
-     lists:foldl(
-        fun(DeleteValue, Index) -> 
-          {_Value, Link} = DeleteValue,
-          % ValueName and Index form a ValueId
-          link_utils:unlink_input(BlockName, {ArrayValueName, Index}, Link),
-          Index+1 
-          end, 
-          1, DeleteArrayValues) end,
+  % Function to unlink any outputs linked to the array of inputs being deleted.
+  DeleteExcess = fun(DeleteArrayValues, StartIndex) ->
+    lists:foldl(fun(_DeleteValue, Index) -> 
+                  % Don't care what the value of the deleted input is 
+                  % BlockName, ValueName and Index form a Link
+                  link_utils:unlink_input({BlockName, {ArrayValueName, Index}}),
+                  Index+1 
+                end, 
+                StartIndex, DeleteArrayValues) end,
           
   attrib_utils:resize_attribute_array_value(Inputs, ArrayValueName, TargQuant, 
                                               DefaultValue, DeleteExcess).
@@ -250,7 +312,7 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
 %%
 %% Log input value error
 %%
--spec log_error(Config :: list(config_attr()),
+-spec log_error(Config :: config_attribs(),
                 ValueId :: value_id(),
                 Reason :: atom()) -> {null, input_err}.
                   
@@ -293,7 +355,7 @@ resize_attribute_array_value_nochange_test() ->
   Inputs = test_data:input_utils_input_attribs1(),
   ArrayValueName = integer_array,
   TargQuant = 2,
-  DefaultValue = {empty, ?EMPTY_LINK},
+  DefaultValue = {empty, {empty}},
   
   ExpectedResult = test_data:input_utils_input_attribs1(),
   
@@ -307,7 +369,7 @@ resize_attribute_array_value_increase_test() ->
   Inputs = test_data:input_utils_input_attribs1(),
   ArrayValueName = integer_array,
   TargQuant = 4,
-  DefaultValue = {empty, ?EMPTY_LINK},
+  DefaultValue = {empty, {empty}},
   
   ExpectedResult = test_data:input_utils_input_attribs2(),
   

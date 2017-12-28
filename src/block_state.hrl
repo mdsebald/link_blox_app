@@ -8,107 +8,92 @@
 % Block definition.  Used for creating or saving a block 
 
 -type block_defn() :: {
-                        Config :: list(config_attr()),
-                        Inputs :: list(input_attr()),
-                        Outputs :: list(output_attr())
+                        Config :: config_attribs(),
+                        Inputs :: input_attribs(),
+                        Outputs :: output_attribs()
                       }.
 
 
 % Block state. Used for retaining state between block execution
 
 -type block_state() :: { 
-                         Config :: list(config_attr()),
-                         Inputs :: list(input_attr()),
-                         Outputs :: list(output_attr()),
-                         Private :: list(private_attr())
+                         Config :: config_attribs(),
+                         Inputs :: input_attribs(),
+                         Outputs :: output_attribs(),
+                         Private :: private_attribs()
                        }.
 
 % Types used for storing block values
 
--type attribute() :: config_attr() | input_attr() | output_attr() | private_attr().
+-type attribs() :: config_attribs() | input_attribs() | output_attribs() | private_attribs().
+-type config_attribs()  :: list(config_attrib()).
+-type input_attribs()   :: list(input_attrib()).
+-type output_attribs()  :: list(output_attrib()).
+-type private_attribs() :: list(private_attrib()).
 
--type config_attr() :: {value_id(), config_value() | config_value_array()}.
-                        
--type input_attr() :: {value_id(), input_value() | input_value_array()}.
+-type attrib() :: config_attrib() | input_attrib() | output_attrib() | private_attrib().
+-type config_attrib()  :: {value_name(), config_value()  | config_value_array()}.
+-type input_attrib()   :: {value_name(), input_value()   | input_value_array()}.
+-type output_attrib()  :: {value_name(), output_value()  | output_value_array()}.                 
+-type private_attrib() :: {value_name(), private_value() | private_value_array()}.
 
--type output_attr() :: {value_id(), output_value() | output_value_array()}.                 
-
--type private_attr() :: {value_id(), private_value() | private_value_array()}.
-
-
--type value_name() :: atom().
--type block_name() :: atom().
--type type_name() :: atom().
-
--type attr_value() :: config_value() | input_value() | output_value().
--type attr_value_array() ::  config_value_array() | input_value_array() | output_value_array() | private_value_array().
+-type attrib_value_array() :: list(attrib_value()).
+-type attrib_value() :: config_value() | input_value() | output_value() | private_value().
 
 -type config_value_array() :: list(config_value()).
 -type config_value() :: {value()}.
 
 -type input_value_array() :: list(input_value()).
--type input_value() ::  {value(), input_link()}.
+-type input_value() ::  {value(), {value()}}.  % Second value() is the default value
 
 -type output_value_array() :: list(output_value()).
--type output_value() :: {value(), link_refs()}.
+-type output_value() :: {value(), link_defs()}.
 
 -type private_value_array() :: list(private_value()).
 -type private_value() :: {any()}.
 
-
--type input_link() :: empty_link() | self_link() | local_link() | global_link(). 
-                      
+-type link_defs() :: list(link_def()).
+-type link_def() :: {block_name(), value_id()}.
 -type empty_link() :: {}.
 -define (EMPTY_LINK, {}).
 
--type self_link() :: {value_id()}.
-                       
--type local_link() :: {block_name(), value_id()}.
-                        
--type global_link() :: {node(), block_name(), value_id()}.
-                        
+-type block_values() :: list(block_value()).
+-type block_value() :: {value_id(), value()}.
+
 -type value_id() :: value_name() |
                     {value_name(), ArrayIndex :: pos_integer()}.
                         
--type link_ref() :: {block_name(), value_id()} | {node(), block_name(), value_id()}.
--type link_refs() :: list(link_ref()).
+-type value_name() :: atom().
+-type block_name() :: atom().
+-type type_name() :: atom().
+
+-type attrib_result_value() :: {ok, value()} | attrib_errors().
+
+-type attrib_errors() :: {error, not_found | invalid_value | invalid_index }.                          
 
 -type value() :: atom() | integer() | float() | boolean() | 
-                 string() | tuple() | list() | reference() | pid().
-
--type attrib_errors() :: {error, not_found | invalid_value | invalid_index }.
-                          
--type attrib_value() :: {ok, value()} | attrib_errors().
-
+                 string() | tuple() | list() | reference() | pid() | node().
 
 % Used to read block input values
 
 -type input_errors() :: {error, not_found | bad_link | range | bad_type | not_input}.
-                          
--type generic_input_value() :: {ok, value()} | {ok, null} | input_errors().
 
+-type generic_input_value() :: {ok, value()}   | {ok, null} | input_errors().
 -type integer_input_value() :: {ok, integer()} | {ok, null} | input_errors().
-
--type float_input_value() :: {ok, float()} | {ok, null} | input_errors().
-
+-type float_input_value()   :: {ok, float()}   | {ok, null} | input_errors().
 -type boolean_input_value() :: {ok, boolean()} | {ok, null} | input_errors().
-
--type string_input_value() :: {ok, string()} | {ok, null} | input_errors().
+-type string_input_value()  :: {ok, string()}  | {ok, null} | input_errors().
 
 
 % Used to read block configuration values
        
 -type config_errors() :: {error, not_found | range | bad_type | not_config}.
                                            
--type generic_config_value() :: {ok, value()} | config_errors().
-
--type integer_config_value() :: {ok, integer()} |  config_errors().
-
--type float_config_value() :: {ok, float()} | config_errors().
-
+-type generic_config_value() :: {ok, value()}   | config_errors().
+-type integer_config_value() :: {ok, integer()} | config_errors().
+-type float_config_value()   :: {ok, float()}   | config_errors().
 -type boolean_config_value() :: {ok, boolean()} | config_errors().
-                      
--type string_config_value() :: {ok, string()} | config_errors().
+-type string_config_value()  :: {ok, string()}  | config_errors().
 
                       
 %%
@@ -141,10 +126,10 @@
 %%  proc_err:   There is an error outside of the block code that is preventing the block from executing
 %%  no_input:   One or more input values are missing, so the block cannot calculate an output
 %%  override:   One or more block output values have been set manually, instead of being calculated 
-%%   
+%%  empty:      Block is about to be deleted 
    
 -type block_status() :: created | initialed | normal |  disabled | frozen | 
-                        error | input_err | config_err | proc_err | no_input | override.
+                        error | input_err | config_err | proc_err | no_input | override | empty.
 
 
 %%

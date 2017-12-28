@@ -25,7 +25,10 @@
           get_boolean/2,
           get_string/2,
           get_atom/2,
-          get_value/3, 
+          get_node/2,
+          get_value/3,
+          init_i2c/2,
+          init_gpio/4,
           resize_attribute_array_value/4,
           log_error/3
 ]).
@@ -33,7 +36,7 @@
 %%
 %%  Get block name from Config attribute values
 %%
--spec name(Config :: list(config_attr()) |
+-spec name(Config :: config_attribs() |
            block_defn() | 
            block_state()) -> block_name().
 
@@ -53,7 +56,7 @@ name(Config) ->
 %%
 %% Get block module from Config attribute values 
 %%
--spec module(Config :: list(config_attr()) | 
+-spec module(Config :: config_attribs() | 
              block_defn() | 
              block_state()) -> module().
 
@@ -73,7 +76,7 @@ module(Config) ->
 %%
 %%  Get block name and module from Config attribute values
 %%
--spec name_module(Config :: list(config_attr()) |
+-spec name_module(Config :: config_attribs() |
                   block_defn() | 
                   block_state()) -> {block_name(), module()}.
 
@@ -96,7 +99,7 @@ name_module(Config) ->
 %%
 %%  Get block name, module, and version from Config attribute values
 %%
--spec name_module_version(Config :: list(config_attr()) |
+-spec name_module_version(Config :: config_attribs() |
                           block_defn() | 
                           block_state()) -> {block_name(), module(), string()}.
 
@@ -122,7 +125,7 @@ name_module_version(Config) ->
 %%
 %% Get configuration value of any type and check for errors.
 %%
--spec get_any_type(Config :: list(config_attr()),
+-spec get_any_type(Config :: config_attribs(),
                    ValueId :: value_id()) -> generic_config_value().
 
 get_any_type(Config, ValueId) ->
@@ -134,7 +137,7 @@ get_any_type(Config, ValueId) ->
 %%
 %% Get an integer configuration value and check for errors.
 %%
--spec get_integer_range(Config :: list(config_attr()), 
+-spec get_integer_range(Config :: config_attribs(), 
                         ValueId :: value_id(),
                         Min :: integer(),
                         Max :: integer()) -> integer_config_value().
@@ -156,7 +159,7 @@ get_integer_range(Config, ValueId, Min, Max) ->
 %%
 %% Get a a postitive (1...) integer configuration value and check for errors.
 %%
--spec get_pos_integer(Config :: list(config_attr()), 
+-spec get_pos_integer(Config :: config_attribs(), 
                       ValueId :: value_id()) -> integer_config_value().
 
 get_pos_integer(Config, ValueId) ->
@@ -173,7 +176,7 @@ get_pos_integer(Config, ValueId) ->
   end.
 
 
--spec get_integer(Config :: list(config_attr()), 
+-spec get_integer(Config :: config_attribs(), 
                   ValueId :: value_id()) -> integer_config_value().
 
 get_integer(Config, ValueId) ->
@@ -184,7 +187,7 @@ get_integer(Config, ValueId) ->
 %%
 %% Get a floating point configuration value and check for errors.
 %%
--spec get_float(Config :: list(config_attr()), 
+-spec get_float(Config :: config_attribs(), 
                 ValueId :: value_id()) -> float_config_value().
 
 get_float(Config, ValueId) ->
@@ -195,7 +198,7 @@ get_float(Config, ValueId) ->
 %%
 %% Get a boolean configuration value and check for errors
 %%
--spec get_boolean(Config :: list(config_attr()), 
+-spec get_boolean(Config :: config_attribs(), 
                   ValueId :: value_id()) -> boolean_config_value().
 
 get_boolean(Config, ValueId) ->
@@ -206,7 +209,7 @@ get_boolean(Config, ValueId) ->
 %%
 %% Get a string configuration value and check for errors
 %%
--spec get_string(Config :: list(config_attr()), 
+-spec get_string(Config :: config_attribs(), 
                 ValueId :: value_id()) -> string_config_value().
 
 get_string(Config, ValueId) ->
@@ -217,19 +220,29 @@ get_string(Config, ValueId) ->
 %%
 %% Get an atom configuration value and check for errors
 %%
--spec get_atom(Config :: list(config_attr()), 
+-spec get_atom(Config :: config_attribs(), 
                ValueId :: value_id()) -> string_config_value().
 
 get_atom(Config, ValueId) ->
   CheckType = fun is_atom/1,  
   get_value(Config, ValueId, CheckType).
 
+%%
+%% Get a node configuration value and check for errors.
+%%
+-spec get_node(Config :: config_attribs(),
+               ValueId :: value_id()) -> node().
 
+get_node(Config, ValueId) ->
+  % TODO: Create CheckType to check for node value types
+  % currently any value is acceptable
+  CheckType = fun(_Value) -> true end,
+  get_value(Config, ValueId, CheckType).
 
 %%
 %% Generic get configuration value, check for errors.
 %%
--spec get_value(Config :: list(config_attr()),
+-spec get_value(Config :: config_attribs(),
                 ValueId :: value_id(),
                 CheckType :: fun()) -> term().
                 
@@ -263,17 +276,67 @@ get_value(Config, ValueId, CheckType) ->
         _ -> {error, invalid_value}
       end
   end.
+
+
+%%
+%% Initialize I2C Bus Connection
+%%
+-spec init_i2c(Config :: config_attribs(),
+               Private :: private_attribs()) -> {ok, private_attribs()} | {error, atom()}.
+
+% TODO: Convert all I2C block types to use this init function
+init_i2c(Config, Private) ->
  
+ % TODO: Validate I2C Device and Address values
+ {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
+ {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
+
+ case i2c_utils:start_link(I2cDevice, I2cAddr) of
+    {ok, I2cRef} ->
+      {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}})};
+
+    {error, Reason} ->
+      log_server:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+      {error, Reason}
+  end.
+
+
+%%
+%% Initialize a GPIO pin before use
+%%
+-spec init_gpio(Config :: config_attribs(),
+                Private :: private_attribs(),
+                Name :: value_name(),
+                Direction :: atom()) -> {ok, private_attribs()} | {error, atom()}.
+              
+init_gpio(Config, Private, Name, Direction) ->
+
+  case config_utils:get_integer_range(Config, Name, 1, 40) of
+    {ok, PinNumber} ->
+      case gpio_utils:start_link(PinNumber, Direction) of
+        {ok, GpioPinRef} ->
+          {ok, attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}})};
+        
+        {error, Reason} ->
+          BlockName = config_utils:name(Config),
+          log_server:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber])
+      end;
+
+    {error, Reason} ->
+      log_error(Config, Name, Reason),
+      {error, Reason}
+  end.
+
 
 %%
 %% Resize an array value in the Config attribute list
 %% to match the target quantity
 %% Returns updated Config attribute list
 %%
--spec resize_attribute_array_value(Config :: list(config_attr()),
+-spec resize_attribute_array_value(Config :: config_attribs(),
                                    ArrayValueName :: value_name(),
                                    TargQuant :: pos_integer(),
-                                   DefaultValue :: config_value()) -> list(config_attr()).
+                                   DefaultValue :: config_value()) -> config_attribs().
                              
 resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
   attrib_utils:resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue).
@@ -282,7 +345,7 @@ resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
 %%
 %% Log config value error
 %%
--spec log_error(Config :: list(),
+-spec log_error(Config :: config_attribs(),
                 ValueId :: value_id(),
                 Reason :: atom()) -> {null, config_err}.
                   

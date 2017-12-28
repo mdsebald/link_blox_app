@@ -27,7 +27,7 @@ version() -> "0.1.0".
 %% with the common Config, Input, and Output attributes, that all block types have
  
 -spec default_configs(BlockName :: block_name(),
-                      Description :: string()) -> list(config_attr()).
+                      Description :: string()) -> config_attribs().
 
 default_configs(BlockName, Description) -> 
   attrib_utils:merge_attribute_lists(
@@ -43,22 +43,22 @@ default_configs(BlockName, Description) ->
     ]). 
 
 
--spec default_inputs() -> list(input_attr()).
+-spec default_inputs() -> input_attribs().
 
 default_inputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display, {true, ?EMPTY_LINK}},
-      {clear, {false, ?EMPTY_LINK}},
-      {cursor, {true, ?EMPTY_LINK}},
-      {blink_cursor, {true, ?EMPTY_LINK}},
-      {backlight, {true, ?EMPTY_LINK}},
-      {inputs, [{"Input", ?EMPTY_LINK}]}
+      {display, {true, {true}}},
+      {clear, {false, {false}}},
+      {cursor, {true, {true}}},
+      {blink_cursor, {true, {true}}},
+      {backlight, {true, {true}}},
+      {inputs, [{"Input", {"Input"}}]}
     ]). 
 
 
--spec default_outputs() -> list(output_attr()).
+-spec default_outputs() -> output_attribs().
                             
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
@@ -80,17 +80,17 @@ create(BlockName, Description) ->
 
 -spec create(BlockName :: block_name(),
              Description :: string(),  
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs()) -> block_defn().
    
 create(BlockName, Description, InitConfig, InitInputs) -> 
   create(BlockName, Description, InitConfig, InitInputs, []).
 
 -spec create(BlockName :: block_name(),
              Description :: string(), 
-             InitConfig :: list(config_attr()), 
-             InitInputs :: list(input_attr()), 
-             InitOutputs :: list(output_attr())) -> block_defn().
+             InitConfig :: config_attribs(), 
+             InitInputs :: input_attribs(), 
+             InitOutputs :: output_attribs()) -> block_defn().
 
 create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 
@@ -165,7 +165,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                   field_widths, NumOfInputs, {80}),
 
           Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  inputs, NumOfInputs, {"Input", ?EMPTY_LINK}),
+                                  inputs, NumOfInputs, {"Input", "Input"}),
           Status = initialed,
           Value = 0;
 

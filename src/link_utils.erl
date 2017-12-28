@@ -13,420 +13,223 @@
 %% API functions
 %% ====================================================================
 -export([
-          set_link/4,
-          link_blocks/2,
-          evaluate_link/5, 
-          unlink_inputs/2,
-          empty_linked_inputs/1,
-          unlink_input/3,
-          unlink_output/3,
-          add_ref/3,
-          delete_ref/3,
-          update_linked_input_values/3
+          format_link/1,
+          unlink_input/1,
+          unlink_block/1,
+          unlink_outputs/3,
+          unlink_outputs_block/3,
+          validate_link/2,
+          add_link/3,
+          del_link/3
 ]).
 
 
 %%
-%% Set the Link in input attribute: ValueId
+%% Translate a Link tuple into a string
 %%
--spec set_link(BlockName :: block_name(),
-               Inputs :: list(input_attr()), 
-               ValueId :: value_id(), 
-               Link :: input_link()) -> {ok, list(input_attr())} | attrib_errors().
-              
-set_link(BlockName, Inputs, ValueId, Link)->
-  case attrib_utils:get_attribute(Inputs, ValueId) of
-    {error, not_found} -> 
-      {error, not_found};
-    
-    % Non-array Input value
-    {ok, {ValueName, {_OldValue, OldLink}}} ->
-      % Unlink current link on this input (if any)
-      unlink_input(BlockName, ValueId, OldLink),
+-spec format_link(Link :: link_def()) -> string().
 
-      % Default the input value to 'empty'  
-      NewAttribute = {ValueName, {empty, Link}},
-      NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, NewAttribute),
-      {ok, NewInputs};
-      
-    % Assume this is an array value
-    {ok, {ValueName, ArrayValue}} ->
-      case ValueId of 
-        % if this is an array value, the ValueName from get_attribute()
-        % will match ValueName in the ValueId tuple
-        {ValueName, ArrayIndex} ->
-          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
-            {_OldValue, OldLink} = lists:nth(ArrayIndex, ArrayValue),
-            unlink_input(BlockName, ValueId, OldLink),
-            NewArrayValue = attrib_utils:replace_array_value(ArrayValue, ArrayIndex, {empty, Link}),
-            NewInputs = attrib_utils:replace_attribute(Inputs, ValueName, 
-                                                       {ValueName, NewArrayValue}),
-            {ok, NewInputs};
-          true ->
-            {error, invalid_index}
-          end;
-        _InvalidValue -> 
-          {error, invalid_value}
-      end
-  end.
-
-
-%%
-%% Send a link message to each block linked to the inputs of this block
-%%
--spec link_blocks(BlockName :: block_name(),
-                  Inputs :: list(input_attr())) -> list(input_attr()).
-
-link_blocks(BlockName, Inputs)->
-  link_blocks(BlockName, Inputs, Inputs).
-
-link_blocks(_BlockName, [], UpdatedInputs)->
-  UpdatedInputs;
-
-link_blocks(BlockName, [Input | RemainingInputs], UpdatedInputs) ->
-
-  case Input of
-    % Non-array value
-    {ValueName, {Value, Link}} ->
-      NewUpdatedInputs = evaluate_link(BlockName, ValueName, Value, Link, UpdatedInputs);
-      
-    % Array value  
-    {ValueName, ArrayValues} ->
-      NewUpdatedInputs = 
-          process_array_input(BlockName, ValueName, 1, ArrayValues, UpdatedInputs)
-  end,                 
-  link_blocks(BlockName, RemainingInputs, NewUpdatedInputs).
-
-
-%%
-%%  Check the link on each value of an input array value
-%%
--spec process_array_input(BlockName :: block_name(),
-                          ValueName :: value_name(),
-                          ArrayIndex :: pos_integer(),
-                          ArrayValues :: attr_value_array(),
-                          UpdatedInputs :: list(input_attr())) -> list(input_attr()).
-
-process_array_input(_BlockName, _ValueName, _ArrayIndex, [], UpdatedInputs) ->
-  UpdatedInputs;
+format_link({BlockName, {ValueName, Index}}) ->
+  io_lib:format("~p:~p[~w]", [BlockName, ValueName, Index]);
   
-process_array_input(BlockName, ValueName, ArrayIndex, [ArrayValue| RemainingArrayValues], Inputs) ->
-  {Value, Link} = ArrayValue,
-  UpdatedInputs = evaluate_link(BlockName, {ValueName, ArrayIndex}, Value, Link, Inputs),
-  process_array_input(BlockName, ValueName, (ArrayIndex+1), RemainingArrayValues, UpdatedInputs).
+format_link({BlockName, ValueName}) ->
+  io_lib:format("~p:~p", [BlockName, ValueName]);
+
+format_link(InvalidLink) ->
+  io_lib:format("Invalid link: ~p", [InvalidLink]).
+
+  
+%%
+%% Send a message to all blocks to remove this Link
+%%   from their output values Links list
+%%
+-spec unlink_input(Link :: link_def()) -> ok.  
+  
+unlink_input(Link) ->
+
+  BlockNames = block_supervisor:block_names(),
+
+  lists:foreach(fun(BlockName) ->
+                  block_server:unlink_input(BlockName, Link)
+                end,
+                BlockNames).
 
 
 %%
-%% Evaluate the link on this input attribute, and decide what to do
+%% Send a message to all blocks to remove any Links to this BlockName
+%%   from their output values list of Links
 %%
--spec evaluate_link(BlockName ::block_name(), 
-                    ValueId :: value_id(),
-                    Value :: value(),
-                    Link :: input_link(), 
-                    Inputs :: list(input_attr())) -> list(input_attr()).
-                  
-evaluate_link(BlockName, ValueId, Value, Link, Inputs) ->
+-spec unlink_block(InputBlockName :: block_name()) -> ok.  
 
+unlink_block(InputBlockName) ->
+
+  BlockNames = block_supervisor:block_names(),
+
+  lists:foreach(fun(BlockName) ->
+                  block_server:unlink_block(BlockName, InputBlockName)
+                end,
+                BlockNames).
+
+
+%%
+%% Search list of output attributres and remove the given Link
+%%   from their list of links
+%%
+-spec unlink_outputs(BlockName :: block_name(),
+                     Outputs :: output_attribs(),
+                     Link :: link_def()) -> output_attribs().
+
+unlink_outputs(BlockName, Outputs, Link) ->
+
+  lists:map(fun(Output) ->
+              case Output of 
+                {ValueName, {Value, Links}} ->
+                  case lists:member(Link, Links) of
+                    true ->
+                      log_server:info(block_output_unlinked_from_block_input, 
+                                      [format_link({BlockName, ValueName}), format_link(Link)]),
+                      % Return updated output attribute
+                      {ValueName, {Value, lists:delete(Link, Links)}};
+
+                    false -> % Does not contain target link, return attribute unchanged
+                      Output
+                  end;
+
+                {ValueName, ArrayValues} -> % Array type value
+                  {NewArrayValues, _Index} = 
+                    lists:mapfoldl(fun({Value, Links}, Index) -> {
+                      case lists:member(Link, Links) of
+                        true ->
+                          log_server:info(block_output_unlinked_from_block_input, 
+                                          [format_link({BlockName, {ValueName, Index}}), format_link(Link)]),
+                          {Value, lists:delete(Link, Links)};
+    
+                        false -> % Does not contain target link, return value unchanged
+                          {Value, Links}
+                      end,
+                      Index + 1}
+                    end,
+                    1,
+                    ArrayValues),
+                  % Return updated array value attribute 
+                  {ValueName, NewArrayValues}
+              end
+            end,
+            Outputs).
+
+
+%%
+%% Search list of output attributes and remove any link
+%%   from their list of links, that uses the given block
+%%
+-spec unlink_outputs_block(BlockName :: block_name(),
+                           Outputs :: output_attribs(),
+                           LinkBlockName :: block_name()) -> output_attribs().
+
+unlink_outputs_block(BlockName, Outputs, LinkBlockName) ->
+
+  lists:map(fun(Output) ->
+              case Output of 
+                {ValueName, {Value, Links}} ->
+                  NewLinks = filter_links(BlockName, ValueName, Links, LinkBlockName),
+                  {ValueName, {Value, NewLinks}};
+
+                {ValueName, ArrayValues} -> % Array type value
+                  {NewArrayValues, _Index} = 
+                      lists:mapfoldl(fun({Value, Links}, Index) ->
+                        NewLinks = filter_links(BlockName, {ValueName, Index}, Links, LinkBlockName),
+                        {{Value, NewLinks}, Index + 1}
+                      end,
+                      1,
+                      ArrayValues),
+
+                  {ValueName, NewArrayValues}
+              end
+            end,
+            Outputs).
+
+
+%%
+%% Filter out links that use the LinkBlockName
+%%
+-spec filter_links(BlockName :: block_name(),
+                   ValueId :: value_id(),
+                   Links :: link_defs(),
+                   LinkBlockName :: block_name()) -> link_defs().
+
+filter_links(BlockName, ValueId, Links, LinkBlockName) ->
+  lists:filter(fun(Link) ->
+        {BlockNameInLink, _ValueIdInLink} = Link,
+        case (BlockNameInLink == LinkBlockName) of
+          true ->
+            log_server:info(block_output_unlinked_from_block_input, 
+                [format_link({BlockName, ValueId}), format_link(Link)]),
+            false;  % remove this link, it uses LinkBlockName
+
+          false ->  % Keep this link, 
+            true
+        end
+    end,
+    Links).
+
+
+%%
+%% Check if the link is valid for the given block and output value ID
+%% Support for the linkblox_api module
+%%
+-spec validate_link(BlockName ::block_name(), 
+                    Link :: link_def()) -> ok | {error, atom()}.
+
+validate_link(BlockName, Link) ->
   case Link of
-    ?EMPTY_LINK ->
-      % Input is not linked to another block, nothing to do
-      Inputs;
-        
-    {_LinkValueId} ->
-      % Input is linked to an output of its own block  
-      % TODO need to link to output without using messages or we will have deadlock?
-      Inputs;
-      
     {LinkBlockName, LinkValueId} ->
-      % Input is linked to the output of another block on this node
       case system_server:is_block(LinkBlockName) of
         true ->
           % Linked block exists,
-          % if the block input value is empty, 
-        case Value of
-          empty ->
-            % send a link message to the linked block, get current linked value back
-            UpdatedValue = block_server:link(LinkBlockName, LinkValueId, {BlockName, ValueId}),
-            
-            
-            case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
-              {ok, UpdatedInputs} -> 
-                log_server:info(block_input_linked_to_block_output, 
-                        [BlockName, ValueId, LinkBlockName, LinkValueId]),
-                        
-                UpdatedInputs;
-
-              _ ->
-                % Set value failed, return Inputs, unchanged
-                Inputs 
-            end;
-
-          _ ->
-            % Value is not empty, link must already be established, nothing to do
-            Inputs
+          % Check that the value id is a valid input of block "LinkBlockName" 
+          case block_server:get_input_value(LinkBlockName, LinkValueId) of
+            {ok, _Value} -> ok;
+            {error, Reason} -> {error, Reason}
           end;
-
-        _ ->
-          % Log warning, block doesn't exist 
-          % or user may have misspelled the Linked block name
-          log_server:warning(linked_block_does_not_exist, [LinkBlockName]),
-
-          % If linked block does not exist, input value should be empty
-          case attrib_utils:set_value(Inputs, ValueId, empty) of
-            {ok, UpdatedInputs} -> 
-              UpdatedInputs;
-
-            _ ->
-              % Set value failed, return Inputs, unchanged
-              Inputs
-          end
+        _False ->
+          {error, linked_block_does_not_exist}
       end;
-         
-    {NodeName, LinkBlockName, LinkValueId} ->
-      % Input is linked the output of a block on another node 
-      case net_adm:ping(NodeName) of
-        pong ->
-          % Connected to remote node
-          case system_server:is_block(NodeName, LinkBlockName) of
-            true ->
-              % Linked block exists,
 
-              case Value of
-                empty ->
-                  % block input value is empty, 
-                  % send a link message to the linked block, get current linked value back
-                  UpdatedValue = block_server:link(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
-            
-                  case attrib_utils:set_value(Inputs, ValueId, UpdatedValue) of
-                    {ok, UpdatedInputs} -> 
-                      log_server:info(block_input_linked_to_node_block_output, 
-                                  [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
-                      UpdatedInputs;
-
-                    _ ->
-                      % Set value failed, return Inputs, unchanged
-                      Inputs 
-                  end;
-
-                _ ->
-                  % Value is not empty, link must already be established, nothing to do
-                  Inputs
-              end;
-         
-            _ ->
-              % Log warning, block doesn't exist 
-              % or user may have misspelled the Linked block name
-              log_server:warning(linked_node_block_does_not_exist, [NodeName, LinkBlockName]),
-
-              % If linked block does not exist, input value should be empty
-              case attrib_utils:set_value(Inputs, ValueId, empty) of
-                {ok, UpdatedInputs} -> 
-                  UpdatedInputs;
-
-                _ ->
-                  % Set value failed, return Inputs, unchanged
-                  Inputs 
-              end
-          end;  
-        _ -> 
-          % Unable to connect to node, return Inputs unchanged
-          log_server:warning(unable_to_connect_to_node, [NodeName]),
-          Inputs 
-      end;
-    _ ->
-      % Urecognized link return Inputs, unchanged
-      log_server:error(err_unrecognized_link, [Link]),
-      Inputs 
+    _InvalidLink ->
+      {error, invalid_link}
   end.
 
 
 %%
-%% Send an unlink message to each block linked to the inputs of this block
+%% Add a new link to the list of links to block inputs 
+%% in this ValueId output attribute
 %%
--spec unlink_inputs(BlockName :: block_name(),
-                    Inputs :: list(input_attr())) -> ok.
+-spec add_link(Outputs :: output_attribs(), 
+               ValueId :: value_id(), 
+               Link :: link_def()) -> {ok, output_attribs()} | {error, atom()}.
 
-unlink_inputs(_BlockName, [])-> ok;
-
-unlink_inputs(BlockName, [Input | RemainingInputs])->
-
-  case Input of
-    % Non-array value
-    {ValueName, {_Value, Link}} ->
-      % Note ValueName == ValueId for non-arry values
-      unlink_input(BlockName, ValueName, Link);
-      
-    % Array value  
-    {ValueName, ArrayValues} ->
-      unlink_array_input(BlockName, ValueName, ArrayValues)
-  end,
-
-  unlink_inputs(BlockName, RemainingInputs).
-
-
-%%
-%%  Unlink each value of an input array value
-%%
--spec unlink_array_input(BlockName :: block_name(),
-                         ValueName :: value_name(),
-                         ArrayValues :: attr_value_array()) -> ok.
-
-unlink_array_input(BlockName, ValueName, ArrayValues) ->
-  lists:foldl(fun(ArrayValue, Index) -> 
-                {_Value, Link} = ArrayValue,
-                % ValueName and Index form a ValueId
-                unlink_input(BlockName, {ValueName, Index}, Link),
-                Index+1 
-                end, 
-                1, ArrayValues),
-  ok.
-
-  
-%%
-%% Unlink one input value link
-%%
--spec unlink_input(BlockName :: block_name(),
-                   ValueId :: value_id(),
-                   Link :: input_link()) -> ok.  
-  
-unlink_input(BlockName, ValueId, Link) ->
-
-  case Link of
-    ?EMPTY_LINK ->
-      % Input is not linked, do nothing
-      ok;
-
-    {_LinkValueId} ->
-      % TODO: Handle reference to self block
-      ok;  
-       
-    {LinkBlockName, LinkValueId} ->
-      % Input is linked to the output of another block on this node
-      case system_server:is_block(LinkBlockName) of
-        true ->
-          block_server:unlink(LinkBlockName, LinkValueId, {BlockName, ValueId}),
-          log_server:info(block_input_unlinked_from_block_output, 
-                            [BlockName, ValueId, LinkBlockName, LinkValueId]),
-          ok;
-
-        _ ->
-          log_server:warning(unlink_input_linked_block_does_not_exist,[LinkBlockName]),
-          ok
-      end;
-
-    {NodeName, LinkBlockName, LinkValueId} ->
-      % Input is linked the output of a block on another node 
-      case net_adm:ping(NodeName) of
-        pong ->
-           % Connected to remote node
-          case system_server:is_block(NodeName, LinkBlockName) of
-            true ->
-              % Linked block exists,
-              block_server:unlink(NodeName, LinkBlockName, LinkValueId, {node(), BlockName, ValueId}),
-              log_server:info(block_input_unlinked_from_node_block_output, 
-                            [BlockName, ValueId, NodeName, LinkBlockName, LinkValueId]),
-              ok;
-
-            _ ->
-              log_server:warning(unlink_input_linked_node_block_does_not_exist, 
-                                    [NodeName, LinkBlockName]),
-              ok
-          end;
-
-        _ -> 
-          % Unable to connect to node, do nothing
-          log_server:warning(unable_to_connect_to_node, [NodeName]),
-          ok
-      end;
-
-    _ ->
-      % Urecognized link, nothing to do
-      log_server:error(err_unrecognized_link, [Link]),
-      ok
-  end.
-
-
-%%
-%% Set the value of each input linked to another block, to 'empty'
-%%
--spec empty_linked_inputs(Inputs :: list(input_attr())) -> list(input_attr()).
-
-empty_linked_inputs(Inputs) ->
-  lists:map(
-    fun(Input) ->
-      case Input of 
-        {ValueName, {Value, Link}} ->
-          case Link of
-            ?EMPTY_LINK   -> {ValueName, {Value, Link}};
-            _NonEmptyLink -> {ValueName, {empty, Link}}
-          end;
-        {ValueName, ArrayValues} ->
-          {ValueName, empty_array_values(ArrayValues)}      
-      end  
-    end,
-    Inputs).
-
-
-%%
-%% Set the value of each linked input in ArrayValues, to empty
-%%
--spec empty_array_values(ArrayValues :: list({value(), input_link()})) -> 
-                          list({value(), input_link()}).
-                                
-empty_array_values(ArrayValues) ->
-  lists:map(
-    fun({Value, Link}) -> 
-      case Link of
-        ?EMPTY_LINK   -> {Value, Link};
-        _NonEmptyLink -> {empty, Link}
-      end
-    end, 
-    ArrayValues).
-
-
-
-%%
-%% Set all input values linked to this output to 'empty'
-%%
--spec unlink_output(BlockName :: block_name(),
-                    ValueName :: value_name(),
-                    Refs :: link_refs()) -> ok.  
-  
-unlink_output(BlockName, ValueName, Refs) ->
-
-  block_common:update_linked_inputs(BlockName, ValueName, empty, Refs).
- 
-
-%%
-%% Add Reference to the list of referenced block inputs 
-%% in the ValueId output attribute
-%%
--spec add_ref(Outputs :: list(output_attr()), 
-              ValueId :: value_id(), 
-              Reference :: link_ref()) -> list(output_attr()).
-
-add_ref(Outputs, ValueId, Reference) ->
+add_link(Outputs, ValueId, Link) ->
 
   case attrib_utils:get_attribute(Outputs, ValueId) of
 
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
-      % Just return the original Outputs list
-      log_server:error(add_ref_err_doesnt_exist_for_this_block, [ValueId]),
-      Outputs;
+      log_server:error(add_link_err_doesnt_exist_for_this_block, [ValueId]),
+      {error, not_found};
 
     % Non-array value
-    {ok, {ValueName, {Value, References}}} ->
+    {ok, {ValueName, {Value, Links}}} ->
 
-      % Add Reference to list of block references for this output
+      % Add Link to list of Links for this output
       % If not already added, Return updated Outputs list
-      case lists:member(Reference, References) of 
+      case lists:member(Link, Links) of 
         false ->
-          NewRefs = [Reference | References],
-          NewOutput = {ValueName, {Value, NewRefs}},
-          attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+          NewLinks = [Link | Links],
+          NewOutput = {ValueName, {Value, NewLinks}},
+          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+          
         true ->
-          Outputs
+          {error, already_exists}
       end;
 
     % Array value
@@ -435,50 +238,50 @@ add_ref(Outputs, ValueId, Reference) ->
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
       if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-        {Value, References} = lists:nth(ArrayIndex, ArrayValues),
-        % Add Reference to list of block references for this output
+        {Value, Links} = lists:nth(ArrayIndex, ArrayValues),
+        % Add Link to list of block Links for this output
         % If not already added, Return updated Outputs list
-        case lists:member(Reference, References) of
+        case lists:member(Link, Links) of
           false ->
-            NewRefs = [Reference | References],
-            NewArrayValue = {Value, NewRefs},
+            NewLinks = [Link | Links],
+            NewArrayValue = {Value, NewLinks},
             NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
             NewOutput = {ValueName, NewArrayValues}, 
-            attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+            {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
           true ->
-            Outputs
+            {error, already_exists}
         end;
       true ->
-        log_server:error(add_ref_err_invalid_array_index, [ValueId]),
-        Outputs
+        log_server:error(add_link_err_invalid_array_index, [ValueId]),
+        {error, invalid_array_index}
       end
   end.
 
 
 %%
-%% Delete Reference from the list of References to linked blocks 
+%% Delete Link from the list of Links to block inputs 
 %% in the ValueId output attribute
 %%
--spec delete_ref(Outputs :: list(output_attr()), 
-                 ValueId :: value_id(), 
-                 Reference :: link_ref()) -> list(output_attr()).
+-spec del_link(Outputs :: output_attribs(), 
+               ValueId :: value_id(), 
+               Link :: link_def()) -> {ok, output_attribs()} | {error, atom()}.
 
-delete_ref(Outputs, ValueId, Reference) ->
+del_link(Outputs, ValueId, Link) ->
 
   case attrib_utils:get_attribute(Outputs, ValueId) of
 
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
-      % Just return the original Outputs list
-      log_server:error(delete_ref_err_doesnt_exist_for_this_block, [ValueId]),
-      Outputs;
+      log_server:error(del_link_err_doesnt_exist_for_this_block, [ValueId]),
+      {error, not_found};
 
     % Non-Array value
-    {ok, {ValueName, {Value, References}}} ->  
-      % Delete the Reference from the list of References to linked blocks, if it exists
-      NewRefs = lists:delete(Reference, References),
-      NewOutput = {ValueName, {Value, NewRefs}},
-      attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+    {ok, {ValueName, {Value, Links}}} ->  
+      % Delete the Link from the list of Links to block inputs, if it exists
+      % TODO: v0.2.0 Check if link exists, first.  Error if not.
+      NewLinks = lists:delete(Link, Links),
+      NewOutput = {ValueName, {Value, NewLinks}},
+      {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
 
     % Array value  
     {ok, {ValueName, ArrayValues}} ->
@@ -486,69 +289,19 @@ delete_ref(Outputs, ValueId, Reference) ->
       % will match ValueName in the ValueId tuple
       {ValueName, ArrayIndex} = ValueId,
       if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-        {Value, References} = lists:nth(ArrayIndex, ArrayValues),
-        % Delete the Reference from the list of References to linked blocks, if it exists
-        NewRefs = lists:delete(Reference, References),
-        NewArrayValue = {Value, NewRefs},
+        {Value, Links} = lists:nth(ArrayIndex, ArrayValues),
+        % Delete the Link from the list of Links to block inputs, if it exists
+        % TODO: v0.2.0 Check if link exists, first.  Error if not.
+        NewLinks = lists:delete(Link, Links),
+        NewArrayValue = {Value, NewLinks},
         NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
         NewOutput = {ValueName, NewArrayValues}, 
-        attrib_utils:replace_attribute(Outputs, ValueName, NewOutput);
+        {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
       true ->
-        log_server:error(delete_ref_err_invalid_array_index, [ValueId]),
-        Outputs
+        log_server:error(del_link_err_invalid_array_index, [ValueId]),
+        {error, invalid_array_index}
       end
   end.
-
-
-%%    
-%% Update the value of every input in this block linked to the 
-%% 'NodeName:FromBlockName:ValueName' output value
-%%
--spec update_linked_input_values(Inputs :: list(input_attr()),
-                                 TargetLink :: input_link(),
-                                 NewValue :: input_value()) -> list(input_attr()).
-
-update_linked_input_values(Inputs, TargetLink, NewValue) ->
-
-  % Update the value of each input record pointing at the given value 
-  lists:map(
-    fun(Input) -> 
-      case Input of
-        % Non-array value
-        {ValueName, {_Value, Link}} ->
-          case Link == TargetLink of
-            % Matching links, update the input attribute value
-            true  -> {ValueName, {NewValue, Link}};
-            % Links don't match don't change the input value 
-            false -> Input
-          end;
-        % Array value  
-        {ValueName, ArrayValues} ->
-          {ValueName, 
-           update_linked_array_values(ArrayValues, TargetLink, NewValue)}
-      end
-    end, 
-    Inputs).
-
-
-%%
-%% Update array values with a link matching TargetLink
-%%
--spec  update_linked_array_values(ArrayValues :: list(), 
-                                  TargetLink :: input_link(), 
-                                  NewValue :: value()) -> list(). 
-                                  
-update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
-  lists:map(
-    fun({Value, Link}) ->
-      case Link == TargetLink of
-        % Matching links, update the value
-        true  -> {NewValue, Link};
-        % Links don't match, don't change the array value
-        false -> {Value, Link}
-      end
-    end,
-    ArrayValues).
 
 
 %% ====================================================================
@@ -562,47 +315,47 @@ update_linked_array_values(ArrayValues, TargetLink, NewValue) ->
 % Test set_link()
 % 
 %   Test set_link() non-array input ok
-set_link_non_array_ok_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = number_in,
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {number_in, {empty, {node_name, link_block, link_output}}},
+% set_link_non_array_ok_test() ->
+%   InputAttribs = test_data:attrib_utils_input_attribs1(),
+%   InputValueId = number_in,
+%   Link = {node_name, link_block, link_output},
+%   ExpectedResult = {number_in, {empty, {node_name, link_block, link_output}}},
   
-  {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
-  {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
-  ?assertEqual(ExpectedResult, Result).
+%   {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
+%   {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
+%   ?assertEqual(ExpectedResult, Result).
 
-% Test set_link() non-array input ok
-set_link_non_array_bad_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = invalid_input_name,
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {error, not_found},
+% % Test set_link() non-array input ok
+% set_link_non_array_bad_test() ->
+%   InputAttribs = test_data:attrib_utils_input_attribs1(),
+%   InputValueId = invalid_input_name,
+%   Link = {node_name, link_block, link_output},
+%   ExpectedResult = {error, not_found},
   
-  Result = set_link(unit_test, InputAttribs, InputValueId, Link),
-  ?assertEqual(ExpectedResult, Result).
+%   Result = set_link(unit_test, InputAttribs, InputValueId, Link),
+%   ?assertEqual(ExpectedResult, Result).
 
-  %   Test set_link() array input ok
-set_link_array_ok_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = {integer_array_in, 3},
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {integer_array_in, [{234,{}}, {456,{}}, 
-                                     {empty,{node_name, link_block, link_output}}]},
+%   %   Test set_link() array input ok
+% set_link_array_ok_test() ->
+%   InputAttribs = test_data:attrib_utils_input_attribs1(),
+%   InputValueId = {integer_array_in, 3},
+%   Link = {node_name, link_block, link_output},
+%   ExpectedResult = {integer_array_in, [{234,{}}, {456,{}}, 
+%                                      {empty,{node_name, link_block, link_output}}]},
   
-  {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
-  {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
-  ?assertEqual(ExpectedResult, Result).
+%   {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
+%   {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
+%   ?assertEqual(ExpectedResult, Result).
 
-% Test set_link() array input bad
-set_link_array_bad_test() ->
-  InputAttribs = test_data:attrib_utils_input_attribs1(),
-  InputValueId = {bool_array_in, 0}, % valid input name, invalid index
-  Link = {node_name, link_block, link_output},
-  ExpectedResult = {error, invalid_index},
+% % Test set_link() array input bad
+% set_link_array_bad_test() ->
+%   InputAttribs = test_data:attrib_utils_input_attribs1(),
+%   InputValueId = {bool_array_in, 0}, % valid input name, invalid index
+%   Link = {node_name, link_block, link_output},
+%   ExpectedResult = {error, invalid_index},
   
-  Result = set_link(unit_test, InputAttribs, InputValueId, Link),
-  ?assertEqual(ExpectedResult, Result).
+%   Result = set_link(unit_test, InputAttribs, InputValueId, Link),
+%   ?assertEqual(ExpectedResult, Result).
 
 
 

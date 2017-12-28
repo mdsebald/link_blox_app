@@ -287,7 +287,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 get_string(StringId, StringsMap) ->
   case maps:get(StringId, StringsMap) of
-    {badmap, StringsMap} ->  io:lib("Error: bad strings map: ~p~n", [StringsMap]);
-    {badkey, StringId} -> io:lib("Error, string: ~p not found~n", [StringId]);
+    {badmap, StringsMap} ->  io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
+    {badkey, StringId} -> io_lib:format("Error, string: ~p not found~n", [StringId]);
     String -> String
   end.
