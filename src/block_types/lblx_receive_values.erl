@@ -1,12 +1,13 @@
 
 %%% @doc 
-%%% Block Type:  Node Export/Import
-%%% Description: Export values to and import values from other LinkBlox Nodes  
+%%% Block Type:  Receive block values from other nodes
+%%% Description: Receive block values from other LinkBlox nodes,
+%%%              transmitted by send_values block types
 %%%               
 %%% @end 
 
 
--module(lblx_node_exp_imp).  
+-module(lblx_receive_values).  
   
 -author("Mark Sebald").
 
@@ -16,11 +17,12 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]). 
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([handle_cast/2]).
 
-groups() -> [input, output, comm].
+groups() -> [input, comm].
 
-description() -> "Export and import node values".
+description() -> "Receive values from other nodes".
 
 version() -> "0.1.0".
 
@@ -32,10 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_nodes, {1}},
-      {export_nodes, [{null}]},
-      {num_of_exports, {1}},
-      {num_of_imports, {1}}
+      {num_of_values, {1}}
     ]). 
 
 
@@ -45,7 +44,6 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {export_values, [{empty, {empty}}]}
     ]). 
 
 
@@ -55,8 +53,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {exp_nodes_state, [{null, []}]},
-      {import_values, [{null, []}]}
+       {receive_values, [{null, []}]}
     ]). 
 
 
@@ -133,55 +130,26 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % Add a private attribute, to hold values published by other node_exp_imp block types.
+  % Add a private attribute, to hold values published by send_values block types.
   Private1 = attrib_utils:add_attribute(Private, {publish_values, {[]}}),
 
-  BlockName = config_utils:name(Config),
   % Check the config values
-  case config_utils:get_integer_range(Config, num_of_nodes, 1, 99) of
-    {ok, NumOfNodes} ->              
-      % Create array of node names
-      Config1 = config_utils:resize_attribute_array_value(Config, 
-                                      export_nodes, NumOfNodes, {null}),
-      
+  case config_utils:get_integer_range(Config, num_of_values, 1, 99) of
+    {ok, NumOfValues} ->              
+      % Create array of outputs to import values from other nodes
       Outputs1 = output_utils:resize_attribute_array_value(Outputs, 
-                                      exp_nodes_state, NumOfNodes, {null, []}),
-
-      case config_utils:get_integer_range(Config1, num_of_exports, 1, 99) of
-        {ok, NumOfExports} ->              
-          % Create array of inputs to export values to other nodes
-          Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                            export_values, NumOfExports, {empty, {empty}}),
-          
-          case config_utils:get_integer_range(Config1, num_of_imports, 1, 99) of
-            {ok, NumOfImports} ->              
-              % Create array of outputs to import values from other nodes
-              Outputs2 = output_utils:resize_attribute_array_value(Outputs1, 
-                                            import_values, NumOfImports, {null, []}),
-              % All config values are OK      
-              % Initialize output value
-              Value = null, Status = initialed;
-
-            {error, Reason} ->
-              {Value, Status} = config_utils:log_error(Config1, num_of_imports, Reason),
-              Outputs2 = Outputs
-          end;
-        {error, Reason} ->
-          {Value, Status} = config_utils:log_error(Config1, num_of_exports, Reason),
-          Inputs1 = Inputs,
-          Outputs2 = Outputs
-      end;
+                                    receive_values, NumOfValues, {null, []}),
+      Value = true, Status = normal;
+      
     {error, Reason} ->
-      {Value, Status} = config_utils:log_error(Config, num_ofnodes, Reason),
-      Config1 = Config,
-      Inputs1 = Inputs,
-      Outputs2 = Outputs
+      {Value, Status} = config_utils:log_error(Config, num_of_values, Reason),
+      Outputs1 = Outputs
   end,
-
-  Outputs3 = output_utils:set_value_status(Outputs2, Value, Status),
+       
+  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % This is the block state
-  {Config1, Inputs1, Outputs3, Private1}.
+  {Config, Inputs, Outputs2, Private1}.
 
 
 %%
@@ -191,24 +159,28 @@ initialize({Config, Inputs, Outputs, Private}) ->
               ExecMethod :: exec_method()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
-
+  % Only update outputs if we get a publish_values message
   case ExecMethod of
     message ->
+      % Received updated values, reset the exec_interval timer, if set
+      BlockName = config_utils:name(Config),
+      {_Status, Private1} = block_common:update_execution_timer(BlockName, Inputs, Private), 
+    
       % Received a publish message from another node_exp_imp block type
       % Write the values to the import_values[x] outputs
       {ok, Values} = attrib_utils:get_value(Private, publish_values),
-      {ok, Private1} = attrib_utils:set_value(Private, publish_values, []),
+      {ok, Private2} = attrib_utils:set_value(Private1, publish_values, []),
 
       case length(Values) of
         0 ->  % Nothing to write
           Outputs2 = Outputs;
 
         ValuesQty ->
-          {ok, ImportQty} = config_utils:get_pos_integer(Config, num_of_imports),
+          {ok, BlockQty} = config_utils:get_pos_integer(Config, num_of_values),
       
-          case ImportQty < ValuesQty of
+          case BlockQty < ValuesQty of
             true -> % Too many values, truncate Values list
-              {TruncValues, _Remainder} = lists:split(ImportQty, Values), 
+              {TruncValues, _Remainder} = lists:split(BlockQty, Values), 
               % Update the output values
               case attrib_utils:set_values(Outputs, TruncValues) of
                 {ok, Outputs1} -> 
@@ -216,7 +188,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
                   Outputs2 = output_utils:set_value_status(Outputs1, true, normal);
 
                 {error, Reason} ->
-                  attrib_utils:log_error(Config, import_values, invalid, Reason),
+                  attrib_utils:log_error(Config, receive_values, invalid, Reason),
                   Outputs2 = output_utils:set_value_status(Outputs, null, proc_err)
               end;
               
@@ -228,45 +200,32 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
                   Outputs2 = output_utils:set_value_status(Outputs1, true, normal);
 
                 {error, Reason} ->
-                    attrib_utils:log_error(Config, import_values, invalid, Reason),
-                    Outputs2 = output_utils:set_value_status(Outputs, null, proc_err)
+                  attrib_utils:log_error(Config, receive_values, invalid, Reason),
+                  Outputs2 = output_utils:set_value_status(Outputs, null, proc_err)
               end
           end
       end,
       % Return updated block state
-      {Config, Inputs, Outputs2, Private1};
-    
-    _DontCare ->
-      % For all other exec methods, read the input values and publish to other nodes
+      {Config, Inputs, Outputs2, Private2};
 
-      % Number of nodes to export values to
-      {ok, NumOfNodes} = attrib_utils:get_value(Config, num_of_nodes),
-
-      % Number of input values to export to other nodes
-      {ok, NumOfExports} = attrib_utils:get_value(Config, num_of_exports),
-
-      % Read the inputs
-      case read_inputs(Config, Inputs, 1, NumOfExports, []) of
-        {ok, Values} ->
-          % The name of the block on the other node(s) 
-          % is the same as the name of the block on this node
-          BlockName = config_utils:name(Config),
-          case publish_values(Config, 1, NumOfNodes, BlockName, Values) of
-            ok -> Value = true, Status = normal;
-
-            {error, Reason} ->
-              attrib_utils:log_error(Config, export_nodes, Reason),
-              Value = null, Status = config_err
-          end;
+    % Exec timer timed out before receiving updated values, set output values to null
+    timer ->
+      case attrib_utils:set_array_value(Outputs, receive_values, null) of
+        {ok, Outputs1} -> 
+          % Update the status and main output
+          Outputs2 = output_utils:set_value_status(Outputs1, false, timeout);
 
         {error, Reason} ->
-          {Value, Status} = input_utils:log_error(Config, export_values, Reason)
+          attrib_utils:log_error(Config, receive_values, invalid, Reason),
+          Outputs2 = output_utils:set_value_status(Outputs, null, proc_err)
       end,
-
-      Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
-
       % Return updated block state
-      {Config, Inputs, Outputs1, Private}
+      {Config, Inputs, Outputs2, Private};
+
+    % Nothing to do, if block is executed for any other reason
+    _DontCare ->
+      % Return block state unchanged
+      {Config, Inputs, Outputs, Private}
   end.
 
 
@@ -281,95 +240,42 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 
 %% 
-%% Handle Info messages 
+%% Handle cast messages 
 %%
--spec handle_info(Info :: term(), 
+-spec handle_cast(Msg :: term(), 
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
 %% 
-%% LinkBlox publish message from another node_exp_imp block type.
+%% Handle publish_values message from a send_values block type.
 %%
-handle_info({linkblox_publish, Values}, BlockState) ->
+handle_cast({publish_values, Values}, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
   BlockName = config_utils:name(Config),
-  log_server:debug("Rx LinkBlox publish message: ~p Values: ~p~n", 
+  log_server:debug("Rx publish_values message: ~p Values: ~p~n", 
                       [BlockName, Values]),
 
   % Save values in private attribute space and execute the block 
-  %   to update the block import_values[x] output attributes
+  %   to update the block receive_values[x] output attributes
   {ok, NewPrivate} = attrib_utils:set_value(Private, publish_values, Values),
   NewBlockState = block_common:execute({Config, Inputs, Outputs, NewPrivate}, message),
 
   {noreply, NewBlockState};
 
 %%
-%% Unknown Info message, just log a warning
+%% Unkown cast message
 %%
-handle_info(Info, BlockState) ->
-  log_server:warning(block_server_unknown_info_msg, [Info]),
-  {noreply, BlockState}.
+handle_cast(Msg, BlockState) ->
 
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  log_server:warning(block_type_name_unknown_cast_msg, [BlockModule, BlockName, Msg]),
+  {noreply, BlockState}.
+    
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-%
-% Read all of block export values inputs
-%
-read_inputs(Config, Inputs, Index, NumOfExports, Values) when Index =< NumOfExports ->
 
-  case input_utils:get_any_type(Inputs, {export_values, Index}) of
-     
-    % Build a list of input values to export.
-    {ok, Value} -> 
-      % Rename Value ID to import_values, to match the output attributes of the destination node block
-      read_inputs(Config, Inputs, Index+1, NumOfExports, [{{import_values, Index}, Value} | Values]);
-
-    % Error input value, stop looking, put block in error state
-    {error, Reason} -> 
-      input_utils:log_error(Config, {export_values, Index}, Reason),
-      {error, Reason}
-  end;
-
-read_inputs(_Config, _Inputs, _Index, _NumOfExports, Values) ->
-  {ok, Values}.
-
-
-%
-% Publish the export values inputs
-%
-publish_values(Config, Index, NumOfNodes, BlockName, Values) when Index =< NumOfNodes ->
-
-  ValueId = {export_nodes, Index},
-
-  case config_utils:get_node(Config, ValueId) of
-    {ok, null} -> % Ignore null export node values
-      publish_values(Config, Index+1, NumOfNodes, BlockName, Values);
-
-    {ok, Node} ->
-      % Check if already connected to this node, nodes() is Erlang BIF
-      case lists:member(Node, nodes()) of
-        true -> % Already connected to node, send values
-          block_server:linkblox_publish(Node, BlockName, Values);
-        false -> % Not connected to node yet, see if we can connect
-          case net_adm:ping(Node) of
-            pong -> % Connected, send values
-              block_server:linkblox_publish(Node, BlockName, Values);
-            pang -> % Unable to connect, do nothing
-              ok
-          end
-      end,
-      publish_values(Config, Index+1, NumOfNodes, BlockName, Values);
-
-    % Error reading node values, stop sending and put block in error state  
-    {error, Reason} -> 
-      attrib_utils:log_error(Config, ValueId, Reason),
-      {error, Reason}
-  end;
-
-publish_values(_Config, _Index, _NumOfNodes, _BlockName, _Values) -> 
-  ok.
 
 
 %% ====================================================================

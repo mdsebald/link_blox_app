@@ -22,6 +22,7 @@
           initialize/1,
           delete/1,
           temp_delete/1,
+          update_execution_timer/3,
           update_linked_inputs/2
 ]).
 

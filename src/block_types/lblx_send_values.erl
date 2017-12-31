@@ -1,12 +1,12 @@
 
 %%% @doc 
-%%% Block Type:  Minimum On Time
-%%% Description:  Block output will follow block binary input value but will remain true
-%%%               for the minimum specified amount of time
+%%% Block Type:  Send Input values 
+%%% Description: Export values to LinkBlox Nodes  
 %%%               
 %%% @end 
 
--module(lblx_timer_min_on).  
+
+-module(lblx_send_values).  
   
 -author("Mark Sebald").
 
@@ -17,25 +17,14 @@
 %% ====================================================================
 -export([groups/0, description/0, version/0]). 
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
--export([handle_info/2]).
 
+groups() -> [output, comm].
 
-groups() -> [timing].
+description() -> "Send Values to other nodes".
 
-description() -> "Output remain on for minimum specified time".
-
-% Use pattern: Major.Minor.Patch
-% When a block is created, the Config version attribute value 
-% is set to this version.
-% When a block is loaded from a config file, the version attribute value
-% is compared to this.  
-% If the versions are different, the upgrade() function is called.
 version() -> "0.1.0".
 
 
-%% Merge the block type specific, Config, Input, and Output attributes
-%% with the common Config, Input, and Output attributes, that all block types have
- 
 -spec default_configs(BlockName :: block_name(),
                       Description :: string()) -> config_attribs().
 
@@ -43,7 +32,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-
+      {num_of_nodes, {1}},
+      {nodes, [{null}]},
+      {num_of_values, {1}}
     ]). 
 
 
@@ -53,8 +44,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {min_on_time, {1000, {1000}}},
-      {input, {empty, {empty}}}
+      {send_values, [{empty, {empty}}]}
     ]). 
 
 
@@ -64,7 +54,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
+      {nodes_state, [{null, []}]}
     ]). 
 
 
@@ -115,7 +105,7 @@ create(BlockName, Description, InitConfig, InitInputs, InitOutputs) ->
 -spec upgrade(BlockDefn :: block_defn()) -> {ok, block_defn()} | {error, atom()}.
 
 upgrade({Config, Inputs, Outputs}) ->
-
+  
   ModuleVer = version(),
   {BlockName, BlockModule, ConfigVer} = config_utils:name_module_version(Config),
   BlockType = type_utils:type_name(BlockModule),
@@ -140,16 +130,42 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-    
 
-  Private1 = attrib_utils:add_attribute(Private, {min_on_timer_ref, {empty}}),
-  
-  % No config values to check
- 
-  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
+  BlockName = config_utils:name(Config),
+  % Check the config values
+  case config_utils:get_integer_range(Config, num_of_nodes, 1, 99) of
+    {ok, NumOfNodes} ->              
+      % Create array of node names
+      Config1 = config_utils:resize_attribute_array_value(Config, 
+                                      nodes, NumOfNodes, {null}),
+      
+      Outputs1 = output_utils:resize_attribute_array_value(Outputs, 
+                                      nodes_state, NumOfNodes, {null, []}),
+
+      case config_utils:get_integer_range(Config1, num_of_values, 1, 99) of
+        {ok, NumOfValues} ->              
+          % Create array of input values to send to other nodes
+          Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
+                                            send_values, NumOfValues, {empty, {empty}}),
+          % All config values are OK      
+          % Initialize output value
+          Value = null, Status = initialed;
+          
+        {error, Reason} ->
+          {Value, Status} = config_utils:log_error(Config1, num_of_exports, Reason),
+          Inputs1 = Inputs
+      end;
+    {error, Reason} ->
+      {Value, Status} = config_utils:log_error(Config, num_ofnodes, Reason),
+      Config1 = Config,
+      Inputs1 = Inputs,
+      Outputs1 = Outputs
+  end,
+
+  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config1, Inputs1, Outputs2, Private}.
 
 
 %%
@@ -160,58 +176,38 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
-  % Timer reference shows block is in min time on mode)
-  {ok, MinOnTimerRef} = attrib_utils:get_value(Private, min_on_timer_ref),
-  {ok, CurrValue} = attrib_utils:get_value(Outputs, value),
+  % Read the input values and publish to other nodes
 
-  case input_utils:get_integer_greater_than(Inputs, min_on_time, -1) of
-    {ok, MinOnTime} ->
+  % Number of nodes to export values to
+  {ok, NumOfNodes} = attrib_utils:get_value(Config, num_of_nodes),
 
-      case input_utils:get_boolean(Inputs, input) of
+  % Number of input values to export to other nodes
+  {ok, NumOfValues} = attrib_utils:get_value(Config, num_of_values),
 
-        % If input is true, start min on time timer if not started already
-        % Set output to true if input is true
-        {ok, true} ->
-          Value = true, Status = normal, 
-          case MinOnTimerRef of
-            empty -> 
-              BlockName = config_utils:name(Config),
-              if (is_integer(MinOnTime) andalso (MinOnTime > 0)) ->
-                NewTimerRef = set_min_on_timer(BlockName, MinOnTime), 
-                {ok, Private1} = attrib_utils:set_value(Private, min_on_timer_ref, NewTimerRef);
-              true -> 
-                Private1 = Private
-              end;
-            _Pid -> 
-                Private1 = Private
-          end;
+  % Read the inputs
+  case read_inputs(Config, Inputs, 1, NumOfValues, []) of
+    {ok, Values} ->
+      % The name of the block receiving values on the other node(s) 
+      %   is the same as the name of the block on this node
+      BlockName = config_utils:name(Config),
+      case publish_values(Config, Outputs, 1, NumOfNodes, BlockName, Values) of
+        {ok, Outputs1} -> 
+          Value = true, Status = normal;
 
-        % Input is null or false, if min-on timer has expired, set output to null or false
-        % Otherwise leave output unchanged
-        {ok, NullFalse} ->
-          case MinOnTimerRef of
-            empty -> 
-              Value = NullFalse, Status = normal;
-            _Pid -> 
-              Value = CurrValue, Status = normal
-          end,
-          Private1 = Private;
-
-        {error, Reason} ->
-          input_utils:log_error(Config, input, Reason),
-          Value = null, Status = input_err,
-          Private1 = Private
+        {error, Reason, Outputs1} ->
+          attrib_utils:log_error(Config, export_nodes, Reason),
+          Value = null, Status = config_err
       end;
+
     {error, Reason} ->
-        input_utils:log_error(Config, min_on_time, Reason),
-        Value = null, Status = input_err,
-        Private1 = Private
+      Outputs1 = Outputs,
+      {Value, Status} = input_utils:log_error(Config, send_values, Reason)
   end,
-      
-  Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
+
+  Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % Return updated block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs2, Private}.
 
 
 %% 
@@ -219,61 +215,101 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 %%	
 -spec delete(BlockState :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, Private}) -> 
-
-  % Cancel min on timer if it exists
-  case attrib_utils:get_value(Private, min_on_timer_ref) of
-    {ok, empty}      -> ok;
-    {ok, TimerRef}   -> erlang:cancel_timer(TimerRef);
-    {error, _Reason} -> ok  % Don't care if timer_ref doesn't exist
-  end,
+delete({Config, Inputs, Outputs, _Private}) -> 
   
   {Config, Inputs, Outputs}.
-
-
-%% 
-%% Info message, from min on timer expiring
-%% 
--spec handle_info(Info :: term(), 
-                  BlockState :: block_state()) -> {noreply, block_state()}.
-
-handle_info(min_on_timer, {Config, Inputs, Outputs, Private}) ->
-  
-  % Indicate min on timer has expired by clearing timer reference
-  {ok, Private1} = attrib_utils:set_value(Private, min_on_timer_ref, empty),
-  % Execute the block 
-  NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, timer),
-  {noreply, NewBlockState};
-
-handle_info(Info, BlockState) ->
-
-  {BlockName, BlockModule} = config_utils:name_module(BlockState),
-  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
-  {noreply, BlockState}.
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-%%
-%% Set minimum on time, timer
-%% 
--spec set_min_on_timer(BlockName :: block_name(),
-                       MinOnTime :: pos_integer()) -> reference().
+%
+% Read all of block export values inputs
+%
+-spec read_inputs(Config :: config_attribs(), 
+                  Inputs :: input_attribs(), 
+                  Index :: pos_integer(), 
+                  NumOfValues :: pos_integer(), 
+                  Values :: list()) -> {ok, list()} | {error, atom()}.
 
-set_min_on_timer(BlockName, MinOnTime) ->
-  erlang:send_after(MinOnTime, BlockName, min_on_timer).
+read_inputs(Config, Inputs, Index, NumOfValues, Values) when Index =< NumOfValues ->
+
+  case input_utils:get_any_type(Inputs, {send_values, Index}) of
+     
+    % Build a list of input values to export.
+    {ok, Value} -> 
+      % Rename Value ID to receive_values, to match the output attributes of the destination node block
+      read_inputs(Config, Inputs, Index+1, NumOfValues, [{{receive_values, Index}, Value} | Values]);
+
+    % Error input value, stop looking, put block in error state
+    {error, Reason} -> 
+      input_utils:log_error(Config, {send_values, Index}, Reason),
+      {error, Reason}
+  end;
+
+read_inputs(_Config, _Inputs, _Index, _NumOfValues, Values) ->
+  {ok, Values}.
+
+
+%
+% Publish the export values inputs
+%
+-spec publish_values(Config :: config_attribs(),
+                     Outputs :: output_attribs(),
+                     Index :: pos_integer(),
+                     NumOfNodes :: pos_integer(),
+                     BlockName :: block_name(),
+                     Values :: list()) -> {ok, output_attribs()} | {error, atom(), output_attribs()}.
+
+publish_values(Config, Outputs, Index, NumOfNodes, BlockName, Values) when Index =< NumOfNodes ->
+
+  ValueId = {nodes, Index},
+
+  case config_utils:get_node(Config, ValueId) of
+    {ok, null} -> % Ignore null export node values
+      {ok, NewOutputs} = attrib_utils:set_value(Outputs, {nodes_state, Index}, null),
+      publish_values(Config, NewOutputs, Index+1, NumOfNodes, BlockName, Values);
+
+    {ok, Node} ->
+      % Check if already connected to this node, nodes() is an Erlang BIF
+      case lists:member(Node, nodes()) of
+        true -> % Already connected to node, send values
+          block_server:publish_values(Node, BlockName, Values),
+          {ok, NewOutputs} = attrib_utils:set_value(Outputs, {nodes_state, Index}, connected);
+
+        false -> % Not connected to node yet, see if we can connect
+          case net_adm:ping(Node) of
+            pong -> % Connected, send values
+              block_server:publish_values(Node, BlockName, Values),
+              {ok, NewOutputs} = attrib_utils:set_value(Outputs, {nodes_state, Index}, connected);
+
+            pang -> % Unable to connect, do nothing
+              {ok, NewOutputs} = attrib_utils:set_value(Outputs, {nodes_state, Index}, not_connected)
+          end
+      end,
+      publish_values(Config, NewOutputs, Index+1, NumOfNodes, BlockName, Values);
+
+    % Error reading node values, stop sending and put block in error state  
+    {error, Reason} -> 
+      attrib_utils:log_error(Config, ValueId, Reason),
+      {error, Reason, Outputs}
+  end;
+
+publish_values(_Config, Outputs, _Index, _NumOfNodes, _BlockName, _Values) -> 
+  {ok, Outputs}.
 
 
 %% ====================================================================
 %% Tests
 %% ====================================================================
 
-% INSTRUCTIONS:  Create unit tests here.  
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+
+% INSTRUCTIONS: At the very least,  invoke a minimal block test, 
+%   which calls the block's create(), upgrade(), initialize(), execute(), and delete() functions
 
 block_test() ->
   unit_test_utils:min_block_test(?MODULE).

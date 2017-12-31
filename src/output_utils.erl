@@ -18,9 +18,9 @@
           set_status/2,
           get_status/1,
           set_array_value/3,
+          set_array_values/3,
           set_tristate_outputs/4,
           update_all_outputs/3,
-          % clear_output_refs/1,
           resize_attribute_array_value/4
 ]).
 
@@ -73,26 +73,47 @@ get_status(Outputs) ->
     {ok, Status} -> Status;
     {error, _Reason} -> error
   end.
- 
+
+
+%%
+%% Set all of the values in an array of output values to the same value
+%% 
+-spec set_array_value(Outputs :: output_attribs(), 
+                      ArrayValueName :: value_name(),
+                      NewValue :: value()) -> {ok, output_attribs()} | {error, atom()}.
+
+set_array_value(Outputs, ArrayValueName, NewValue) ->
+
+  case attrib_utils:get_attribute(Outputs, ArrayValueName) of
+    {ok, {ArrayValueName, ArrayValues}} ->
+      NewArrayValues = 
+        lists:map(fun({_Value, Links}) -> {NewValue, Links} end, ArrayValues),
+      NewAttribute = {ArrayValueName, NewArrayValues},
+      NewOutputs = attrib_utils:replace_attribute(Outputs, ArrayValueName, NewAttribute),
+      {ok, NewOutputs};
+
+    {error, Reason} -> {error, Reason}
+  end.
+
 
 %%
 %% Set an array of output values to ArrayValues
 %% Number of values in ArrayValues, must match the number of array values
 %% in the ArrayValueName output value
 %% 
--spec set_array_value(Outputs :: output_attribs(), 
+-spec set_array_values(Outputs :: output_attribs(), 
                       ArrayValueName :: value_name(),
                       ArrayValues :: attrib_value_array()) -> output_attribs().
 
-set_array_value(Outputs, ArrayValueName, ArrayValues) ->
-  set_array_value(Outputs, ArrayValueName, 1, ArrayValues).
+set_array_values(Outputs, ArrayValueName, ArrayValues) ->
+  set_array_values(Outputs, ArrayValueName, 1, ArrayValues).
   
-set_array_value(Outputs, _ArrayValueName, _Index, []) ->
+set_array_values(Outputs, _ArrayValueName, _Index, []) ->
   Outputs;
 
-set_array_value(Outputs, ArrayValueName, Index, [Value | ArrayValues]) ->
+set_array_values(Outputs, ArrayValueName, Index, [Value | ArrayValues]) ->
   {ok, NewOutputs} = attrib_utils:set_value(Outputs, {ArrayValueName, Index}, Value),
-  set_array_value(NewOutputs, ArrayValueName, (Index + 1), ArrayValues).
+  set_array_values(NewOutputs, ArrayValueName, (Index + 1), ArrayValues).
 
 
 %%
@@ -170,36 +191,6 @@ update_all_array_values(ArrayValues, NewValue) ->
   lists:map(fun({_Value, Refs}) -> {NewValue, Refs} end, ArrayValues).
 
 
-%% 
-%% Clear references to other blocks in the Output values
-%% Used to mass update block outputs in disabled or error conditions
-%% 
-% -spec clear_output_refs(Outputs :: output_attribs()) -> output_attribs().
-
-% clear_output_refs(Outputs) ->
-%   lists:map(
-%     fun(Output) ->
-%       case Output of 
-%         {ValueName, {Value, _Refs}} ->
-%            {ValueName, {Value, []}};
-
-%         {ValueName, ArrayValues} ->
-%           {ValueName, clear_array_output_refs(ArrayValues)}      
-%       end  
-%     end,
-%     Outputs).
-
- 
-%%
-%% Clear references to other blocks, in output arrray values
-%%
-% -spec clear_array_output_refs(ArrayValues :: list(atrib_value_array())) -> 
-%                                       list(atrib_value_array()).
-                                
-% clear_array_output_refs(ArrayValues) ->
-%   lists:map(fun({Value, _Refs}) -> {Value, []} end, ArrayValues).  
-
-
 %%
 %% Resize an array value in the Outputs attribute list
 %% to match the target quantity
@@ -248,7 +239,7 @@ get_value_test() ->
 % ====================================================================
 
 % ====================================================================
-% Test set_array_value()  
+% Test set_array_values()
 set_array_value_test() ->
   Outputs = test_data:output_attribs1(),
   ArrayValueName = integer_array_out,
@@ -256,7 +247,7 @@ set_array_value_test() ->
   
   ExpectedResult = test_data:output_utils_output_attribs3(),
   
-  Result = set_array_value(Outputs, ArrayValueName, ArrayValues),
+  Result = set_array_values(Outputs, ArrayValueName, ArrayValues),
   ?assertEqual(ExpectedResult, Result). 
   
 % ====================================================================

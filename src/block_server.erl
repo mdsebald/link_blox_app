@@ -35,7 +35,7 @@
           reconfigure/2,
           unlink_input/2,
           unlink_block/2,
-          linkblox_publish/3
+          publish_values/3
 ]).
 
 
@@ -170,15 +170,15 @@ unlink_block(BlockName, LinkBlockName) ->
   gen_server:cast(BlockName, {unlink_block, LinkBlockName}).
 
 
-%% Publish values to a LinkBlox node and block, using LinkBlox value format
-%% We want this to be processed by the gen_server handle_info() function
-%%   so the message can be directed to the Block Module code to be processed
--spec linkblox_publish(Node :: node(),
-                       BlockName :: block_name(),
-                       Values :: block_values()) -> term().
+%% Publish block values to a node and block.
+%% block_server does not handle this message.
+%% The message will be directed to the receive_values block module to be processed
+-spec publish_values(Node :: node(),
+                     BlockName :: block_name(),
+                     Values :: block_values()) -> term().
 
-linkblox_publish(Node, BlockName, Values) ->
-    {BlockName, Node} ! {linkblox_publish, Values}.
+publish_values(Node, BlockName, Values) ->
+    gen_server:cast({BlockName, Node}, {publish_values, Values}).
 
 
 %% ====================================================================
@@ -277,14 +277,8 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
           {Config3, Inputs2, Outputs2, Private1} = 
                       block_common:initialize({Config2, Inputs1, Outputs1}),
 
-          %BlockName = config_utils:name(Config3),
-          % re-establish the links to other blocks 
-          %block_server:init_configure(BlockName),
-          % Just update block 
-
           % Update block after initialize
           NewBlockState = update_block({Config3, Inputs2, Outputs2, Private1}),
-          %NewBlockState = {Config3, Inputs2, Outputs2, Private1},
           Result = ok;
 
         {error, Reason} ->
@@ -422,12 +416,19 @@ handle_call(stop, _From, BlockState) ->
     
   
 %% =====================================================================
-%% Unknown Call message
+%% For all other Call messages:
+%%  Invoke the block type specific handle_call() function, if it exists
 %% =====================================================================      
 handle_call(Request, From, BlockState) ->
-  BlockName = config_utils:name(BlockState),
-  log_server:warning(block_server_unknown_call_msg_from, [BlockName, Request, From]),
-  {reply, ok, BlockState}.
+  Module = config_utils:module(BlockState),
+  case erlang:function_exported(Module, handle_call, 3) of
+    true ->
+      Module:handle_call(Request, From, BlockState);
+    false ->
+      BlockName = config_utils:name(BlockState),
+      log_server:warning(block_server_unknown_call_msg_from, [BlockName, Request, From]),
+      {reply, ok, BlockState}
+  end.
 
 
 %%
@@ -534,12 +535,19 @@ handle_cast({unlink_block, LinkBlockName}, BlockState) ->
 
 
 %% =====================================================================
-%% Unknown Cast message
+%% For all other Cast messages:
+%%  Invoke the block type specific handle_cast() function, if it exists
 %% =====================================================================      
 handle_cast(Msg, BlockState) ->
-  BlockName = config_utils:name(BlockState),
-  log_server:warning(block_server_unknown_cast_msg, [BlockName,Msg]),
-  {noreply, BlockState}.
+  Module = config_utils:module(BlockState),
+  case erlang:function_exported(Module, handle_cast, 2) of
+    true ->
+      Module:handle_cast(Msg, BlockState);
+    false ->
+      BlockName = config_utils:name(BlockState),
+      log_server:warning(block_server_unknown_cast_msg, [BlockName, Msg]),
+      {noreply, BlockState}
+  end.
 
 
 %% ====================================================================
@@ -567,12 +575,19 @@ handle_info(timer_execute, BlockState) ->
 
 
 %% ======================================================================
-%% For all other Info Messages, 
-%% Call the Block Type's internal handle_info() function
+%% For all other Info messages:
+%%  Invoke the block type specific handle_info() function, if it exists
 %% ======================================================================
 handle_info(Info, BlockState) ->
   Module = config_utils:module(BlockState),
-  Module:handle_info(Info, BlockState).
+  case erlang:function_exported(Module, handle_info, 2) of
+    true ->
+      Module:handle_info(Info, BlockState);
+    false ->
+      BlockName = config_utils:name(BlockState),
+      log_server:warning(block_server_unknown_info_msg, [BlockName, Info]),
+      {noreply, BlockState}
+  end.
 
 
 %% terminate/2

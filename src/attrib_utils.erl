@@ -317,7 +317,7 @@ add_attribute(Attributes, Newattribute) ->
 
 %%
 %% Resize an array value in an attribute list
-%% to match the target quantity, which is alway > zero
+%% to match the target quantity, which is always > zero
 %% Returns updated attribute list
 %% Works for Config, Input, Output, and Private array attributes
 %%

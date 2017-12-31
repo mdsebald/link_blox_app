@@ -14,7 +14,8 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([handle_info/2]).
 
 groups() -> [digital, input].
 
@@ -217,8 +218,9 @@ handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
 %% Unknown Info message, just log a warning
 %% 
 handle_info(Info, BlockState) ->
-  log_server:warning(block_server_unknown_info_msg, [Info]),
-  {noreply, BlockState}.
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  {noreply, BlockState}.  
 
 
 %% ====================================================================

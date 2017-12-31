@@ -16,7 +16,7 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
 groups() -> [conversion].
 
@@ -219,9 +219,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
         % Determine if leading digits should be zero or blank
         NumBlankDigits = NumOfDigits - LenInValueStr,
         if LeadingZeros ->
-            LeadDigits = lists:duplicate(NumBlankDigits, $0);
+          LeadDigits = lists:duplicate(NumBlankDigits, $0);
         true ->
-            LeadDigits = lists:duplicate(NumBlankDigits, 32)
+          LeadDigits = lists:duplicate(NumBlankDigits, 32)
         end,
         Digits = LeadDigits ++ InValueStr  
       end,
@@ -232,7 +232,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                    block_utils:char_to_segments(Digit, false) end, Digits)
   end,
   
-  Outputs1 = output_utils:set_array_value(Outputs, digits, Digits7Seg),
+  Outputs1 = output_utils:set_array_values(Outputs, digits, Digits7Seg),
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
 
   % Return updated block state
@@ -246,17 +246,6 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
 delete({Config, Inputs, Outputs, _Private}) -> 
   {Config, Inputs, Outputs}.
-
-
-%% 
-%% Unknown Info message, just log a warning
-%% 
--spec handle_info(Info :: term(), 
-                  BlockState :: block_state()) -> {noreply, block_state()}.
-
-handle_info(Info, BlockState) ->
-  log_server:warning(block_server_unknown_info_msg, [Info]),
-  {noreply, BlockState}.
 
 
 %% ====================================================================

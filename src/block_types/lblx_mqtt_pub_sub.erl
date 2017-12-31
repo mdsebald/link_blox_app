@@ -15,7 +15,8 @@
 %% API functions
 %% ====================================================================
 -export([groups/0, description/0, version/0]).
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([handle_info/2]).
 
 groups() -> [web].
 
@@ -457,8 +458,10 @@ handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
 %% Unknown Info message, just log a warning
 %% 
 handle_info(Info, BlockState) ->
-  log_server:warning(block_server_unknown_info_msg, [Info]),
-  {noreply, BlockState}.
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  {noreply, BlockState}.  
+
 
 
 %% ====================================================================
@@ -701,7 +704,6 @@ config_pubs(Config, Inputs) ->
 config_subs(Config, Outputs) ->
   case config_utils:get_integer_range(Config, num_of_subs, 1, 99) of
     {ok, NumOfSubs} ->      
-      BlockName = config_utils:name(Config),
       % Create subscribe topic config values, 
       % one topic string for each subscribed output value 
       Config1 = config_utils:resize_attribute_array_value(Config, 

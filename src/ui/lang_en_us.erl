@@ -184,9 +184,13 @@ strings_map() -> #{
 
   block_server_unknown_call_msg_from => "block_server(~p) Unknown call message: ~p From: ~p~n",
   block_server_unknown_cast_msg => "block_server(~p) Unknown cast message: ~p~n",
-  block_server_unknown_info_msg => "block_server, Unknown info message: ~p~n",
+  block_server_unknown_info_msg => "block_server(~p), Unknown info message: ~p~n",
   initializing_block => "Initializing: ~p~n",
   err_fetching_value => "Error: ~p fetching value: ~p~n",
+
+  block_type_name_unknown_call_msg_from => "block(~p:~p) Unknown call message: ~p From: ~p~n",
+  block_type_name_unknown_cast_msg => "block(~p:~p) Unknown cast message: ~p~n",
+  block_type_name_unknown_info_msg => "block(~p:~p), Unknown info message: ~p~n",
 
   linkblox_api_unknown_call_msg_from => "linkblox_api, Unknown call message: ~p From: ~p~n",
   linkblox_api_unknown_cast_msg => "linkblox_api, Unknown cast message: ~p~n",

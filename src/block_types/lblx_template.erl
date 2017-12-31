@@ -21,8 +21,16 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
+
+% INSTRUCTIONS: The following 10 functions must be implemented and exported by all block types
 -export([groups/0, description/0, version/0]). 
--export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1, handle_info/2]).
+-export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+
+% INSTRUCTIONS: Optional custom message handling functions.
+% If the block type needs to handle custom messages, not currently handled by block_server(),
+% export the necessary function(s) here, and create the function(s) below. 
+% Otherwise, delete this line.
+-export([handle_call/3, handle_cast/2, handle_info/2]).
 
 
 % INSTRUCTIONS: Classify block type, by assigning it to one or more groups
@@ -188,7 +196,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % INSTRUCTIONS: Perform block type specific actions here, 
   % read input value(s) calculate new output value(s)
-  % set block output status value
+  % set block output status and value
 
   % Example block execution: 
   %  read input1 and set value output to same, and set status output to normal, 
@@ -211,7 +219,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
 delete({Config, Inputs, Outputs, _Private}) -> 
   % INSTRUCTIONS: Perform any block type specific delete functionality here
-  % Return block definition, (Block state - Private values)
+  % Return block definition, (Block state less Private values)
   % in case calling function wants to reuse them.
   %
   % Private values are created in the block initialization routine
@@ -220,19 +228,50 @@ delete({Config, Inputs, Outputs, _Private}) ->
   {Config, Inputs, Outputs}.
 
 
+% INSTRUCTIONS: If needed, implement block type specific message handling functions here.
+% These function(s) are typically requrired for block types that 
+%   interact with 3rd party libraries, external hardware, blocks on other nodes, or timers.
+% See: lblx_mqtt_pub_sub and lblx_gpio_di block types for examples
+% If all of the messages are already handled in the block_server module,
+%   these handle_*() functions are not required, and may be deleted.
+
 %% 
-%% Unknown Info message, just log a warning
+%% Handle block type specific call message(s)
+%%
+-spec handle_call(Request :: term(),
+                  From :: {pid(), Tag :: term()}, 
+                  BlockState :: block_state()) -> {reply, ok, block_state()}.
+
+handle_call(Request, From, BlockState) ->
+
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  log_server:warning(block_type_name_unknown_call_msg_from, [BlockModule, BlockName, Request, From]),
+  {reply, ok, BlockState}.
+
+
+%% 
+%% Handle block type specific cast message(s)
+%%
+-spec handle_cast(Msg :: term(), 
+                  BlockState :: block_state()) -> {noreply, block_state()}.
+ 
+handle_cast(Msg, BlockState) ->
+
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  log_server:warning(block_type_name_unknown_cast_msg, [BlockModule, BlockName, Msg]),
+  {noreply, BlockState}.
+
+
+%% 
+%% Handle block type specific info message(s)
 %% 
 -spec handle_info(Info :: term(), 
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
 handle_info(Info, BlockState) ->
-  % INSTRUCTIONS: This function will only need to be modified
-  % for special block types, that interface with processes that
-  % send info messages.  (See mqtt_pub_sub block type for an example.)
-  % The remaining block types are not expecting info message.
-  % This function may be left as is.
-  log_server:warning(block_server_unknown_info_msg, [Info]),
+  
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
   {noreply, BlockState}.
 
 
