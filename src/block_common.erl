@@ -278,13 +278,13 @@ update_execution_timer(BlockName, Inputs, Private) ->
       true -> % Execute Interval input value is negative
         Status = input_err, 
         NewTimerRef = empty,
-        log_server:error(negative_exec_interval_value, [BlockName, ExecuteInterval])
+        logger:error(negative_exec_interval_value, [BlockName, ExecuteInterval])
       end
     end;
   true ->  % Execute Interval input value is not an integer
     Status = input_err, 
     NewTimerRef = empty,
-    log_server:error(invalid_exec_interval_value, [BlockName, ExecuteInterval])
+    logger:error(invalid_exec_interval_value, [BlockName, ExecuteInterval])
   end,
   {ok, Private1} = attrib_utils:set_value(Private, timer_ref, NewTimerRef),
   {Status, Private1}.
@@ -472,7 +472,7 @@ update_linked_inputs(NewValue, Links) ->
                       block_server:update(ToBlockName, [{ToValueId, NewValue}]);
 
                     InvalidLink ->
-                      log_server:error(err_unrecognized_link, [InvalidLink])
+                      logger:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
                 Links).
@@ -496,7 +496,7 @@ update_execute(Outputs) ->
                       block_server:execute(ToBlockName, exec_out);
 
                     InvalidLink ->
-                      log_server:error(err_unrecognized_link, [InvalidLink])
+                      logger:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
                 Links).

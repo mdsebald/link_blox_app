@@ -95,7 +95,7 @@ block_processes() ->
   Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
-  log_server:info(starting_linkblox_block_supervisor),
+  logger:info(starting_linkblox_block_supervisor),
 
   case block_utils:get_blocks_from_file(BlockValuesFile) of
     {ok, BlockValuesList} ->
@@ -106,7 +106,7 @@ init(BlockValuesFile) ->
       {ok, {SupFlags, BlockSpecs}};
       
     {error, _Reason} ->
-      log_server:error(loading_demo_config),
+      logger:info(loading_demo_config),
 
       BlockSpecs = create_block_specs(demo_config:create_demo_config()),
              
@@ -129,7 +129,7 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
 
   {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockState),
   BlockType = type_utils:type_name(BlockModule),
-  log_server:info(creating_type_version, [BlockName, BlockType, Version]),
+  logger:info(creating_type_version, [BlockName, BlockType, Version]),
 
   BlockSpec = #{id => BlockName, restart => transient,
               start => {block_server, start, [BlockState]}},

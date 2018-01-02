@@ -125,12 +125,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -173,12 +173,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
                       case emqttc:start_link(Options) of 
                         {ok, Client} ->
                           {ok, Private2} = attrib_utils:set_value(Private1, client, Client),
-                          log_server:info(started_MQTT_client),
+                          logger:info(started_MQTT_client),
                           Status = initialed,
                           Value = null;
 
                         {error, Reason} ->
-                          log_server:error(err_starting_MQTT_client, [Reason]),
+                          logger:error(err_starting_MQTT_client, [Reason]),
                           Status = proc_err,
                           Value = null,
                           Private2 = Private1
@@ -211,7 +211,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           end;
 
         {error, Reason} ->
-          log_server:error(err_configuring_sub_outputs, [Reason]),
+          logger:error(err_configuring_sub_outputs, [Reason]),
           Status = config_err,
           Value = null, 
           Config2 = Config1,
@@ -220,7 +220,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       end;
 
     {error, Reason} ->
-      log_server:error(err_configuring_pub_inputs, [Reason]),
+      logger:error(err_configuring_pub_inputs, [Reason]),
       Status = config_err,
       Value = null, 
       Config2 = Config,
@@ -244,7 +244,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
 
   BlockName = config_utils:name(Config),
-  log_server:debug("Executing: ~p Exec Method: ~p", [BlockName, ExecMethod]),
+  logger:debug("Executing: ~p Exec Method: ~p", [BlockName, ExecMethod]),
 
   % Block is enabled at this point, 
   % Start MQTT client if not already started
@@ -254,7 +254,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
       case emqttc:start_link(Options) of 
         {ok, Client} ->
           {ok, Private1} = attrib_utils:set_value(Private, client, Client),
-          log_server:info(started_MQTT_client),
+          logger:info(started_MQTT_client),
 
           % Update the status and main output
           Outputs1 = output_utils:set_value_status(Outputs, null, normal),
@@ -262,7 +262,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
           {Config, Inputs, Outputs1, Private1};
 
         {error, Reason} ->
-          log_server:error(err_starting_MQTT_client, [Reason]),
+          logger:error(err_starting_MQTT_client, [Reason]),
           % Update the status and main output
           Outputs1 = output_utils:set_value_status(Outputs, null, proc_err),
           % Return updated block state
@@ -320,7 +320,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
               {Config, Inputs, Outputs2, Private2};
             
             ExecMethod ->
-              log_server:debug("Ignoring Exec Method: ~p", [ExecMethod]),
+              logger:debug("Ignoring Exec Method: ~p", [ExecMethod]),
               % Update the status and main output
               Outputs1 = output_utils:set_value_status(Outputs, true, normal),
               % Return updated block state
@@ -381,7 +381,7 @@ delete({Config, Inputs, Outputs, Private}) ->
 handle_info({publish, Topic, Payload}, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
   BlockName = config_utils:name(Config),
-  log_server:debug("~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
+  logger:debug("~p Rx MQTT pub msg Topic: ~p Payload: ~p", 
                       [BlockName, Topic, Payload]),
 
   % Add the message topic and payload to the front of the list of pub messages,
@@ -392,7 +392,7 @@ handle_info({publish, Topic, Payload}, BlockState) ->
       NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
     {error, Reason} ->
-      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+      logger:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
       NewBlockState = BlockState
   end,
   {noreply, NewBlockState};
@@ -403,7 +403,7 @@ handle_info({publish, Topic, Payload}, BlockState) ->
 handle_info({mqttc, _Client, connected}, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
   BlockName = config_utils:name(Config),
-  log_server:info(connected_to_MQTT_broker, [BlockName]),
+  logger:info(connected_to_MQTT_broker, [BlockName]),
 
   % Update the connection state in the block values and execute the block
   case attrib_utils:set_value(Private, conn_state, true) of
@@ -411,7 +411,7 @@ handle_info({mqttc, _Client, connected}, BlockState) ->
       NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
     {error, Reason} ->
-      log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+      logger:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
       NewBlockState = BlockState
   end,
   {noreply, NewBlockState};
@@ -422,7 +422,7 @@ handle_info({mqttc, _Client, connected}, BlockState) ->
 handle_info({mqttc, _Client,  disconnected}, BlockState) ->
     {Config, Inputs, Outputs, Private} = BlockState,
     BlockName = config_utils:name(Config),
-    log_server:info(disconnected_from_MQTT_broker, [BlockName]),
+    logger:info(disconnected_from_MQTT_broker, [BlockName]),
     
     % Update the connection state in the block values, and execute the block
     case attrib_utils:set_value(Private, conn_state, false) of
@@ -430,7 +430,7 @@ handle_info({mqttc, _Client,  disconnected}, BlockState) ->
         NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
       {error, Reason} ->
-        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+        logger:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
         NewBlockState = BlockState
     end,
     {noreply, NewBlockState};
@@ -441,7 +441,7 @@ handle_info({mqttc, _Client,  disconnected}, BlockState) ->
 handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
     {Config, Inputs, Outputs, Private} = BlockState,
     BlockName = config_utils:name(Config),
-    log_server:info(mqtt_client_shutdown, [BlockName, ShutdownReason]),
+    logger:info(mqtt_client_shutdown, [BlockName, ShutdownReason]),
     
     % Reset the client reference, to indicate MQTT client needs to be restarted
     case attrib_utils:set_value(Private, client, null) of
@@ -449,7 +449,7 @@ handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
         NewBlockState = block_common:execute({Config, Inputs, Outputs, Private1}, message);
 
       {error, Reason} ->
-        log_server:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
+        logger:error(err_updating_is_this_an_mqtt_pub_sub_block, [Reason, BlockName]),
         NewBlockState = BlockState
     end,
     {noreply, NewBlockState};
@@ -459,7 +459,7 @@ handle_info({'EXIT', _Client, {shutdown, ShutdownReason}}, BlockState) ->
 %% 
 handle_info(Info, BlockState) ->
   {BlockName, BlockModule} = config_utils:name_module(BlockState),
-  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  logger:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
   {noreply, BlockState}.  
 
 
@@ -503,7 +503,7 @@ get_options(Config) ->
 % Use the Chain pattern to build list of options for MQTT client
 %
 build_opts([], {_Config, Options}) ->
-  log_server:debug("MQTT client options: ~p", [Options]),
+  logger:debug("MQTT client options: ~p", [Options]),
   Options;
 
 build_opts([Fun | Funs], {Config, Options}) ->
@@ -734,7 +734,7 @@ pub_topics(Config, Inputs, Client) ->
   % PubTopicsValues is of the form: [{<<"TopicA">>,<<"TopicAValue">>}, ...]
 
   lists:foreach(fun({PubTopicBin, PubValueBin}) -> 
-                     log_server:debug("MQTT Client: ~p publishing value: ~p  to topic: ~p", [Client, PubValueBin, PubTopicBin]),
+                     logger:debug("MQTT Client: ~p publishing value: ~p  to topic: ~p", [Client, PubValueBin, PubTopicBin]),
                      emqttc:publish(Client, PubTopicBin, PubValueBin)
                      end, PubTopicsValues). 
 
@@ -799,7 +799,7 @@ sub_topics(Config, Client) ->
                       case block_utils:is_string(SubTopic) andalso (string:len(SubTopic) > 0) of
                         true ->
                           SubTopicBin = list_to_binary(SubTopic),
-                          log_server:debug("MQTT Client: ~p subscribing to: ~p", [Client, SubTopicBin]),
+                          logger:debug("MQTT Client: ~p subscribing to: ~p", [Client, SubTopicBin]),
                           emqttc:subscribe(Client, SubTopicBin);
                         false -> 
                           ok % nothing to subscribe to
@@ -826,7 +826,7 @@ unsub_topics(Config, Client) ->
                       case block_utils:is_string(SubTopic) andalso (string:len(SubTopic) > 0) of
                         true ->
                           SubTopicBin = list_to_binary(SubTopic),
-                          log_server:debug("MQTT Client: ~p unsubscribing from: ~p", [Client, SubTopicBin]),
+                          logger:debug("MQTT Client: ~p unsubscribing from: ~p", [Client, SubTopicBin]),
                           emqttc:unsubscribe(Client, SubTopicBin);
                         false -> 
                           ok % nothing to unsubscribe from
@@ -895,7 +895,7 @@ update_sub_values(Config, InitOutputs, [{PubMsgTopic, PubMsgValue} | PubMsgs]) -
                             true ->
                               DebugStr = lists:flatten(io_lib:format("Topic: ~s Set sub_values[~b] to ~p", 
                                                                        [PubMsgTopicStr, Index, PubMsgValueStr])),
-                              log_server:debug(DebugStr),
+                              logger:debug(DebugStr),
                               {ok, UpdOutputs} = attrib_utils:set_value(NewOutputs, {sub_values, Index}, PubMsgValueStr),
                               {UpdOutputs, Index + 1};
                             

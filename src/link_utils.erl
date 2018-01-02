@@ -86,7 +86,7 @@ unlink_outputs(BlockName, Outputs, Link) ->
                 {ValueName, {Value, Links}} ->
                   case lists:member(Link, Links) of
                     true ->
-                      log_server:info(block_output_unlinked_from_block_input, 
+                      logger:info(block_output_unlinked_from_block_input, 
                                       [format_link({BlockName, ValueName}), format_link(Link)]),
                       % Return updated output attribute
                       {ValueName, {Value, lists:delete(Link, Links)}};
@@ -100,7 +100,7 @@ unlink_outputs(BlockName, Outputs, Link) ->
                     lists:mapfoldl(fun({Value, Links}, Index) -> {
                       case lists:member(Link, Links) of
                         true ->
-                          log_server:info(block_output_unlinked_from_block_input, 
+                          logger:info(block_output_unlinked_from_block_input, 
                                           [format_link({BlockName, {ValueName, Index}}), format_link(Link)]),
                           {Value, lists:delete(Link, Links)};
     
@@ -162,7 +162,7 @@ filter_links(BlockName, ValueId, Links, LinkBlockName) ->
         {BlockNameInLink, _ValueIdInLink} = Link,
         case (BlockNameInLink == LinkBlockName) of
           true ->
-            log_server:info(block_output_unlinked_from_block_input, 
+            logger:info(block_output_unlinked_from_block_input, 
                 [format_link({BlockName, ValueId}), format_link(Link)]),
             false;  % remove this link, it uses LinkBlockName
 
@@ -214,7 +214,7 @@ add_link(Outputs, ValueId, Link) ->
 
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
-      log_server:error(add_link_err_doesnt_exist_for_this_block, [ValueId]),
+      logger:error(add_link_err_doesnt_exist_for_this_block, [ValueId]),
       {error, not_found};
 
     % Non-array value
@@ -252,7 +252,7 @@ add_link(Outputs, ValueId, Link) ->
             {error, already_exists}
         end;
       true ->
-        log_server:error(add_link_err_invalid_array_index, [ValueId]),
+        logger:error(add_link_err_invalid_array_index, [ValueId]),
         {error, invalid_array_index}
       end
   end.
@@ -272,7 +272,7 @@ del_link(Outputs, ValueId, Link) ->
 
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
-      log_server:error(del_link_err_doesnt_exist_for_this_block, [ValueId]),
+      logger:error(del_link_err_doesnt_exist_for_this_block, [ValueId]),
       {error, not_found};
 
     % Non-Array value
@@ -298,7 +298,7 @@ del_link(Outputs, ValueId, Link) ->
         NewOutput = {ValueName, NewArrayValues}, 
         {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
       true ->
-        log_server:error(del_link_err_invalid_array_index, [ValueId]),
+        logger:error(del_link_err_invalid_array_index, [ValueId]),
         {error, invalid_array_index}
       end
   end.

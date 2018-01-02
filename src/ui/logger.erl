@@ -4,7 +4,7 @@
 %%%
 %%% @end
 
--module(log_server).
+-module(logger).
 
 -author("Mark Sebald").
 
@@ -37,7 +37,7 @@
 -spec start(LangMod :: module()) -> {ok, pid()} | ignore | {error, term()}.
 
 start(LangMod) ->
-  gen_server:start_link({local, log_server}, ?MODULE, LangMod, []).
+  gen_server:start_link({local, logger}, ?MODULE, {self(), LangMod}, []).
 
 
 %%
@@ -45,8 +45,7 @@ start(LangMod) ->
 %%
 -spec stop() -> ok.
 
-stop() ->
-  gen_server:call(?MODULE, stop).
+stop() -> gen_server:call(?MODULE, stop).
 
 
 %%
@@ -54,15 +53,15 @@ stop() ->
 %%
 -spec error(LogMsgId :: atom()) -> ok.
 
-error(LogMsgId) ->
-  gen_server:cast(?MODULE, {error, LogMsgId}).
+error(LogMsgId) -> 
+  gen_server:cast(?MODULE, {error, self(), LogMsgId}).
 
 
 -spec error(LogMsgId :: atom(),
             Args :: list(term())) -> ok.
 
-error(LogMsgId, Args) ->
-  gen_server:cast(?MODULE, {error, LogMsgId, Args}).
+error(LogMsgId, Args) -> 
+  gen_server:cast(?MODULE, {error, self(), LogMsgId, Args}).
 
 
 %%
@@ -70,15 +69,15 @@ error(LogMsgId, Args) ->
 %%
 -spec warning(LogMsgId :: atom()) -> ok.
 
-warning(LogMsgId) ->
-  gen_server:cast(?MODULE, {warning, LogMsgId}).
+warning(LogMsgId) -> 
+  gen_server:cast(?MODULE, {warning, self(), LogMsgId}).
 
 
 -spec warning(LogMsgId :: atom(),
               Args :: list(term())) -> ok.
 
-warning(LogMsgId, Args) ->
-  gen_server:cast(?MODULE, {warning, LogMsgId, Args}).
+warning(LogMsgId, Args) -> 
+  gen_server:cast(?MODULE, {warning, self(), LogMsgId, Args}).
 
 
 %%
@@ -86,15 +85,15 @@ warning(LogMsgId, Args) ->
 %%
 -spec info(LogMsgId :: atom()) -> ok.
 
-info(LogMsgId) ->
-  gen_server:cast(?MODULE, {info, LogMsgId}).
+info(LogMsgId) -> 
+  gen_server:cast(?MODULE, {info, self(), LogMsgId}).
 
 
 -spec info(LogMsgId :: atom(),
            Args :: list(term())) -> ok.
 
-info(LogMsgId, Args) ->
-  gen_server:cast(?MODULE, {info, LogMsgId, Args}).
+info(LogMsgId, Args) -> 
+  gen_server:cast(?MODULE, {info, self(), LogMsgId, Args}).
 
 %%
 %% Log debug messages
@@ -102,15 +101,15 @@ info(LogMsgId, Args) ->
 %%
 -spec debug(LogMsg :: string()) -> ok.
 
-debug(LogMsg) ->
-  gen_server:cast(?MODULE, {debug, LogMsg}).
+debug(LogMsg) -> 
+  gen_server:cast(?MODULE, {debug, self(), LogMsg}).
 
 
 -spec debug(LogMsg :: string(),
             Args :: list(term())) -> ok.
 
-debug(LogMsg, Args) ->
-  gen_server:cast(?MODULE, {debug, LogMsg, Args}).
+debug(LogMsg, Args) -> 
+  gen_server:cast(?MODULE, {debug, self(), LogMsg, Args}).
 
 
 %% ====================================================================
@@ -131,10 +130,11 @@ debug(LogMsg, Args) ->
   State :: term(),
   Timeout :: non_neg_integer() | infinity.
 
-init(LangMod) ->
-  StringsMap = LangMod:strings_map(),
-  String = get_string(starting_log_server, StringsMap),
-  error_logger:info_msg(String, [LangMod]),
+init({Pid,LangMod}) ->
+  lager:start(),
+  StringsMap = LangMod:log_strings(),
+  String = get_string(starting_logger, StringsMap),
+  lager:log(info, Pid, String, [LangMod]),
   {ok, StringsMap}.
 
 
@@ -160,8 +160,8 @@ handle_call(stop, _From, StringsMap) ->
   {stop, normal, ok, StringsMap};
 
 handle_call(Msg, _From, StringsMap) ->
-  String = get_string(unknown_log_server_call_msg, StringsMap),
-  error_logger:error_msg(String, [Msg]),
+  String = get_string(unknown_logger_call_msg, StringsMap),
+  lager:log(error, self(), String, [Msg]),
   {noreply, StringsMap}.
 
 
@@ -177,50 +177,66 @@ handle_call(Msg, _From, StringsMap) ->
   Timeout :: non_neg_integer() | infinity,
   Reason :: term().
 
-handle_cast({error, StringId}, StringsMap) ->
+handle_cast({debug, Pid, String}, StringsMap) ->
+  lager:log(debug, Pid, String),
+  {noreply, StringsMap};
+
+handle_cast({debug, Pid, String, Args}, StringsMap) ->
+  lager:log(debug, Pid, String, Args),
+  {noreply, StringsMap};
+
+handle_cast({LogLevel, Pid, StringId}, StringsMap) ->
   String = get_string(StringId, StringsMap),
-  error_logger:error_msg(String),
+  lager:log(LogLevel, Pid, String),
   {noreply, StringsMap};
 
-handle_cast({error, StringId, Args}, StringsMap) ->
+handle_cast({LogLevel, Pid, StringId, Args}, StringsMap) ->
   String = get_string(StringId, StringsMap),
-  error_logger:error_msg(String, Args),
+  lager:log(LogLevel, Pid, String, Args),
   {noreply, StringsMap};
 
-handle_cast({warning, StringId}, StringsMap) ->
-  String = get_string(StringId, StringsMap),
-  error_logger:warning_msg(String),
-  {noreply, StringsMap};
 
-handle_cast({warning, StringId, Args}, StringsMap) ->
-  String = get_string(StringId, StringsMap),
-  error_logger:warning_msg(String, Args),
-  {noreply, StringsMap};
+% handle_cast({error, Pid, StringId}, StringsMap) ->
+%   String = get_string(StringId, StringsMap),
+%   lager:error(String),
+%   {noreply, StringsMap};
 
-handle_cast({info, StringId}, StringsMap) ->
-  String = get_string(StringId, StringsMap),
-  error_logger:info_msg(String),
-  {noreply, StringsMap};
+% handle_cast({error, StringId, Args}, StringsMap) ->
+%   String = get_string(StringId, StringsMap),
+%   lager:error(String, Args),
+%   {noreply, StringsMap};
 
-handle_cast({info, StringId, Args}, StringsMap) ->
-  String = get_string(StringId, StringsMap),
-  error_logger:info_msg(String, Args),
-  {noreply, StringsMap};
+% handle_cast({warning, StringId}, StringsMap) ->
+%   String = get_string(StringId, StringsMap),
+%   lager:warning(String),
+%   {noreply, StringsMap};
 
-% Prefix string with "[debug] " to differentiate from info messages
-handle_cast({debug, String}, StringsMap) ->
-  error_logger:info_msg("[debug] " ++ String),
-  {noreply, StringsMap};
+% handle_cast({warning, StringId, Args}, StringsMap) ->
+%   String = get_string(StringId, StringsMap),
+%   lager:warning(String, Args),
+%   {noreply, StringsMap};
 
-handle_cast({debug, String, Args}, StringsMap) ->
-  DebugString = "[debug] " ++ String,
-  error_logger:info_msg(DebugString, Args),
-  {noreply, StringsMap};
+% handle_cast({info, StringId}, StringsMap) ->
+%   String = get_string(StringId, StringsMap),
+%   lager:info(String),
+%   {noreply, StringsMap};
 
+% handle_cast({info, StringId, Args}, StringsMap) ->
+%   String = get_string(StringId, StringsMap),
+%   lager:info(String, Args),
+%   {noreply, StringsMap};
+
+% handle_cast({debug, String}, StringsMap) ->
+%   lager:debug(String),
+%   {noreply, StringsMap};
+
+% handle_cast({debug, String, Args}, StringsMap) ->
+%   lager:debug(String, Args),
+%   {noreply, StringsMap};
 
 handle_cast(Msg, StringsMap) ->
-  String = get_string(unknown_log_server_cast_msg, StringsMap),
-  error_logger:warning_msg(String, [Msg]),
+  String = get_string(unknown_logger_cast_msg, StringsMap),
+  lager:log(warning, self(), String, [Msg]),
   {noreply, StringsMap}.
 
 
@@ -237,8 +253,8 @@ handle_cast(Msg, StringsMap) ->
   Timeout :: non_neg_integer() | infinity.
 
 handle_info(Msg, StringsMap) ->
-  String = get_string(unknown_log_server_info_msg, StringsMap),
-  error_logger:warning_msg(String, [Msg]),
+  String = get_string(unknown_logger_info_msg, StringsMap),
+  lager:log(warning, self(), String, [Msg]),
   {noreply, StringsMap}.
 
 
@@ -256,8 +272,8 @@ terminate(normal, _StringsMap) ->
   ok;
     
 terminate(Reason, StringsMap) ->
-  String = get_string(log_server_abnormal_termination, StringsMap),
-  error_logger:error_msg(String, [Reason]),
+  String = get_string(logger_abnormal_termination, StringsMap),
+  lager:log(error, self(), String, [Reason]),
   ok.
 
 

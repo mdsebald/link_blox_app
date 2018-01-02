@@ -201,7 +201,7 @@ publish_values(Node, BlockName, Values) ->
 init(BlockState) ->
   BlockName = config_utils:name(BlockState),
 
-  log_server:info(initializing_block, [BlockName]),
+  logger:info(initializing_block, [BlockName]),
 
   % Perform block initialization
   NewBlockState1 = block_common:initialize(BlockState),
@@ -407,7 +407,7 @@ handle_call({del_exec_in, ExecutorBlockName}, _From, BlockState) ->
 handle_call(stop, _From, BlockState) ->
 
   BlockName = config_utils:name(BlockState),    
-  log_server:info(deleting_block, [BlockName]),
+  logger:info(deleting_block, [BlockName]),
     
   % Perform common block delete actions
   block_common:delete(BlockState),
@@ -426,7 +426,7 @@ handle_call(Request, From, BlockState) ->
       Module:handle_call(Request, From, BlockState);
     false ->
       BlockName = config_utils:name(BlockState),
-      log_server:warning(block_server_unknown_call_msg_from, [BlockName, Request, From]),
+      logger:warning(block_server_unknown_call_msg_from, [BlockName, Request, From]),
       {reply, ok, BlockState}
   end.
 
@@ -500,7 +500,7 @@ handle_cast({reconfigure, NewBlockState}, BlockState) ->
   % TODO: Sanity check make sure new block name, type and version 
   % match old block name, type and version/(same major rev)
   BlockName = config_utils:name(BlockState), 
-  log_server:info(reconfiguring_block, [BlockName]),
+  logger:info(reconfiguring_block, [BlockName]),
 
   % Replace current state Block values with new values and configure block again
   % Check that new block values match the current block type and block name that is running
@@ -545,7 +545,7 @@ handle_cast(Msg, BlockState) ->
       Module:handle_cast(Msg, BlockState);
     false ->
       BlockName = config_utils:name(BlockState),
-      log_server:warning(block_server_unknown_cast_msg, [BlockName, Msg]),
+      logger:warning(block_server_unknown_cast_msg, [BlockName, Msg]),
       {noreply, BlockState}
   end.
 
@@ -585,7 +585,7 @@ handle_info(Info, BlockState) ->
       Module:handle_info(Info, BlockState);
     false ->
       BlockName = config_utils:name(BlockState),
-      log_server:warning(block_server_unknown_info_msg, [BlockName, Info]),
+      logger:warning(block_server_unknown_info_msg, [BlockName, Info]),
       {noreply, BlockState}
   end.
 
@@ -605,7 +605,7 @@ terminate(normal, _BlockValues) ->
 terminate(Reason, BlockState) ->
   BlockName = config_utils:name(BlockState),
 
-  log_server:error(block_server_abnormal_termination, [BlockName, Reason]),
+  logger:error(block_server_abnormal_termination, [BlockName, Reason]),
   ok.
 
 

@@ -123,12 +123,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -197,8 +197,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                       Value = Temp,
                       ok;
                     {error, Reason} ->
-                      log_server:error(err_converting_sensor_values, 
-                              [Reason]),
+                      logger:error(err_converting_sensor_values, [Reason]),
                       Status = config_err,
                       Value = null,
                       Temp = null,
@@ -207,8 +206,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   end;    
 
                 {error, Reason} ->
-                  log_server:error(err_reading_sensor, 
-                              [Reason]),
+                  logger:error(err_reading_sensor, [Reason]),
                   Status = proc_err,
                   Value = null,
                   Temp = null,
@@ -217,7 +215,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
               end;
 
             {error, Reason} ->
-              log_server:error(err_reading_sensor_calibration, [Reason]),
+              logger:error(err_reading_sensor_calibration, [Reason]),
               Status = config_err,
               Value = null,
               Temp = null,
@@ -227,7 +225,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           end;
   
         {error, Reason} ->
-          log_server:error(err_configuring_sensor, [Reason]),
+          logger:error(err_configuring_sensor, [Reason]),
           Status = config_err,
           Value = null,
           Temp = null,
@@ -237,8 +235,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       end;
 
     {error, Reason} ->
-      log_server:error(err_initiating_I2C_address, 
-                              [Reason, I2cAddr]),
+      logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
       Status = proc_err,
       Value = null,
       Temp = null,
@@ -288,8 +285,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
               Value = Temp,
               ok;
             {error, Reason} ->
-              log_server:error(err_converting_sensor_values, 
-                                  [Reason]),
+              logger:error(err_converting_sensor_values, [Reason]),
               Status = config_err,
               Value = null,
               Temp = null,
@@ -298,8 +294,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
           end;
 
         {error, Reason} ->
-          log_server:error(err_reading_sensor_forced_mode, 
-                                  [Reason]),
+          logger:error(err_reading_sensor_forced_mode, [Reason]),
           Status = proc_err,
           Value = null,
           Temp = null,
@@ -316,7 +311,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
               Value = Temp,
               ok;
             {error, Reason} ->
-              log_server:error(err_converting_sensor_values, [Reason]),
+              logger:error(err_converting_sensor_values, [Reason]),
               Status = config_err,
               Value = null,
               Temp = null,
@@ -325,7 +320,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
           end;
 
         {error, Reason} ->
-          log_server:error(err_reading_sensor, [Reason]),
+          logger:error(err_reading_sensor, [Reason]),
           Status = proc_err,
           Value = null,
           Temp = null,
@@ -477,7 +472,7 @@ reset_sensor(I2cRef) ->
       ok;
 
     {error, Reason} ->
-      log_server:error(err_resetting_sensor, [Reason]),
+      logger:error(err_resetting_sensor, [Reason]),
       {error, Reason}
   end. 
 
@@ -498,7 +493,7 @@ set_config_reg(I2cRef, Config) ->
             ok -> ok;
 
             {error, Reason} ->
-              log_server:error(err_setting_sensor_config_register, [Reason]),
+              logger:error(err_setting_sensor_config_register, [Reason]),
               {error, Reason}
           end;
 
@@ -522,7 +517,7 @@ set_humid_mode(I2cRef, Config) ->
         ok -> ok;
 
         {error, Reason} ->
-          log_server:error(err_setting_humidity_mode, [Reason]),
+          logger:error(err_setting_humidity_mode, [Reason]),
           {error, Reason}
       end;
 
@@ -551,7 +546,7 @@ set_temp_press_read_modes(I2cRef, Config) ->
                 ok -> {ok, SensorMode};
 
                 {error, Reason} ->
-                  log_server:error(err_setting_temperature_pressure_or_read_mode, [Reason]),
+                  logger:error(err_setting_temperature_pressure_or_read_mode, [Reason]),
                   {error, Reason}
               end;
 
@@ -582,10 +577,10 @@ get_standby_time(Config) ->
     {ok, 10.0} -> {ok, ?STANDBY_TIME_10};
     {ok, 20.0} -> {ok, ?STANDBY_TIME_20};
     {ok, InvalidVal} ->
-      log_server:error(err_is_an_invalid_standby_time_value, [InvalidVal]),
+      logger:error(err_is_an_invalid_standby_time_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      log_server:error(err_reading_standby_time_value, [Reason]),
+      logger:error(err_reading_standby_time_value, [Reason]),
       {error, config_err}
   end.
 
@@ -602,10 +597,10 @@ get_filter_coeff(Config) ->
     {ok, 8}  -> {ok, ?FILTER_COEFF_8};
     {ok, 16} -> {ok, ?FILTER_COEFF_16};
     {ok, InvalidVal} ->
-      log_server:error(err_is_an_invalid_filter_coefficient_value, [InvalidVal]),
+      logger:error(err_is_an_invalid_filter_coefficient_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      log_server:error(err_reading_filter_coefficient_value, [Reason]),
+      logger:error(err_reading_filter_coefficient_value, [Reason]),
       {error, config_err}
   end.
 
@@ -623,10 +618,10 @@ get_humid_mode(Config) ->
     {ok, 8}  -> {ok, ?OSRS_HUMID_OVSAMPL_8X};
     {ok, 16} -> {ok, ?OSRS_HUMID_OVSAMPL_16X};
     {ok, InvalidVal} ->
-      log_server:error(err_is_an_invalid_humidity_mode_value, [InvalidVal]),
+      logger:error(err_is_an_invalid_humidity_mode_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      log_server:error(err_reading_humidity_mode_value, [Reason]),
+      logger:error(err_reading_humidity_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -644,10 +639,10 @@ get_temp_mode(Config) ->
     {ok, 8}  -> {ok, ?OSRS_TEMP_OVSAMPL_8X};
     {ok, 16} -> {ok, ?OSRS_TEMP_OVSAMPL_16X};
     {ok, InvalidVal} ->
-      log_server:error(err_is_an_invalid_temperature_mode_value, [InvalidVal]),
+      logger:error(err_is_an_invalid_temperature_mode_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      log_server:error(err_reading_temperature_mode_value, [Reason]),
+      logger:error(err_reading_temperature_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -665,10 +660,10 @@ get_press_mode(Config) ->
     {ok, 8}  -> {ok, ?OSRS_PRESS_OVSAMPL_8X};
     {ok, 16} -> {ok, ?OSRS_PRESS_OVSAMPL_16X};
     {ok, InvalidVal} ->
-      log_server:error(err_is_an_invalid_pressure_mode_value, [InvalidVal]),
+      logger:error(err_is_an_invalid_pressure_mode_value, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      log_server:error(err_reading_pressure_mode_value, [Reason]),
+      logger:error(err_reading_pressure_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -683,10 +678,10 @@ get_read_mode(Config) ->
     {ok, forced} -> {ok, ?SENSOR_MODE_FORCED};
     {ok, normal} -> {ok, ?SENSOR_MODE_NORMAL};
     {ok, InvalidVal} ->
-      log_server:error(err_is_an_invalid_read_mode_value_sleep_normal_forced, [InvalidVal]),
+      logger:error(err_is_an_invalid_read_mode_value_sleep_normal_forced, [InvalidVal]),
       {error, config_err};
     {error, Reason} ->
-      log_server:error(err_reading_read_mode_value, [Reason]),
+      logger:error(err_reading_read_mode_value, [Reason]),
       {error, config_err}
   end.
 
@@ -784,12 +779,12 @@ read_sensor_forced(I2cRef, Private) ->
           read_sensor(I2cRef, Private);
 
         {error, Reason} ->
-          log_server:error(err_waiting_for_sleep_mode, [Reason]),
+          logger:error(err_waiting_for_sleep_mode, [Reason]),
           {error, Reason}
       end;
 
     {error, Reason} ->
-      log_server:error(err_setting_forced_read_mode, [Reason]),
+      logger:error(err_setting_forced_read_mode, [Reason]),
       {error, Reason}
   end.
 
@@ -898,12 +893,12 @@ convert_temp(Temp, Config) ->
           {ok, ConvTemp};
         
         {error, Reason} ->
-          log_server:error(err_reading_deg_f_config_value, [Reason]),
+          config_utils:log_error(Config, deg_f, Reason),
           {error, Reason}
       end;
 
     {error, Reason} ->
-      log_server:error(err_reading_temp_offset_config_value, [Reason]),
+      config_utils:log_error(Config, temp_offset, Reason),
       {error, Reason}
   end.
 
@@ -929,12 +924,12 @@ convert_press(Press, Config) ->
           {ok, ConvPress};
         
         {error, Reason} ->
-          log_server:error(err_reading_inch_merc_config_value, [Reason]),
+          config_utils:log_error(Config, inch_merc, Reason),
           {error, Reason}
       end;
 
     {error, Reason} ->
-      log_server:error(err_reading_press_offset_config_value, [Reason]),
+      config_utils:log_error(Config, press_offset, Reason),
       {error, Reason}
   end.
 
@@ -951,7 +946,7 @@ convert_humid(Humid, Config) ->
       {ok, ConvHumid};
 
     {error, Reason} ->
-      log_server:error(err_reading_humid_offset_config_value, [Reason]),
+      config_utils:log_error(Config, humid_offset, Reason),
       {error, Reason}
   end.
 

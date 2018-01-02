@@ -112,12 +112,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -146,24 +146,18 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   set_led_value(LedId, DefaultValue, InvertOutput);
             
                 false ->
-                  log_server:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
+                  logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
                   Status = proc_err,
                   Value = null
               end;
             {error, Reason} ->
-              log_server:error(err_reading_invert_output_value, [Reason]),
-              Status = config_err,
-              Value = null
+              {Value, Status} = config_utils:log_error(Config, invert_output, Reason)
           end;
         {error, Reason} ->
-          log_server:error(err_reading_default_value, [Reason]),
-          Status = config_err,
-          Value = null
+          {Value, Status} = config_utils:log_error(Config, default_value, Reason)
       end;
     {error, Reason} ->
-      log_server:error(err_reading_LED_id, [Reason]),
-      Status = config_err,
-      Value = null
+      {Value, Status} = config_utils:log_error(Config, led_id, Reason)
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),

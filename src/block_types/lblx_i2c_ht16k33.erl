@@ -117,12 +117,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -150,7 +150,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef);
       
     {error, Reason} ->
-      log_server:error(err_initializing_LED_driver_I2C_address, [Reason, I2cAddr]),
+      logger:error(err_initializing_LED_driver_I2C_address, [Reason, I2cAddr]),
       Status = proc_err,
       Value = null,
       Private2 = Private1

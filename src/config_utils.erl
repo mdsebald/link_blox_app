@@ -296,7 +296,7 @@ init_i2c(Config, Private) ->
       {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}})};
 
     {error, Reason} ->
-      log_server:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+      logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
       {error, Reason}
   end.
 
@@ -319,7 +319,7 @@ init_gpio(Config, Private, Name, Direction) ->
         
         {error, Reason} ->
           BlockName = config_utils:name(Config),
-          log_server:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber])
+          logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber])
       end;
 
     {error, Reason} ->
@@ -352,7 +352,7 @@ resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
 log_error(Config, ValueId, Reason) ->
   BlockName = name(Config),
   ValueIdStr = attrib_utils:value_id_to_str(ValueId),
-  log_server:error(err_invalid_config_value, [BlockName, ValueIdStr, Reason]),
+  logger:error(err_invalid_config_value, [BlockName, ValueIdStr, Reason]),
   {null, config_err}.
   
   

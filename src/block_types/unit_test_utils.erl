@@ -57,7 +57,7 @@ block_setup(Module, PreInitConfigVals, PostInitConfigVals) ->
 % Create the initial BlockState i.e. {Config, Inputs, Outputs, Private}   
 %
 common_setup(Module) ->
-  log_server:start(lang_en_us),
+  logger:start(lang_en_us),
   TestBlockTypeStr = atom_to_list(Module),
   TestBlockName = list_to_atom("test_" ++ TestBlockTypeStr),
   TestBlockDescription = "Unit testing block type: " ++ TestBlockTypeStr,
@@ -79,7 +79,7 @@ common_setup(Module) ->
 %
 block_cleanup(Module, BlockState) -> 
   Module:delete(BlockState),
-  log_server:stop().
+  logger:stop().
 
 %
 %  Create a test that sets Config and Inputs test values, Executes the block, 

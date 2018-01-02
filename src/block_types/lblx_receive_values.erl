@@ -111,12 +111,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -251,7 +251,7 @@ delete({Config, Inputs, Outputs, _Private}) ->
 handle_cast({publish_values, Values}, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
   BlockName = config_utils:name(Config),
-  log_server:debug("Rx publish_values message: ~p Values: ~p~n", 
+  logger:debug("Rx publish_values message: ~p Values: ~p~n", 
                       [BlockName, Values]),
 
   % Save values in private attribute space and execute the block 
@@ -267,7 +267,7 @@ handle_cast({publish_values, Values}, BlockState) ->
 handle_cast(Msg, BlockState) ->
 
   {BlockName, BlockModule} = config_utils:name_module(BlockState),
-  log_server:warning(block_type_name_unknown_cast_msg, [BlockModule, BlockName, Msg]),
+  logger:warning(block_type_name_unknown_cast_msg, [BlockModule, BlockName, Msg]),
   {noreply, BlockState}.
     
 

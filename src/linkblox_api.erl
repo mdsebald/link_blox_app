@@ -271,7 +271,7 @@ is_block_type(Node, BlockType) ->
   Timeout :: non_neg_integer() | infinity.
 
 init(null) ->
-  log_server:info(starting_linkblox_API_server),
+  logger:info(starting_linkblox_API_server),
   {ok, []}.
 
 %% ====================================================================
@@ -296,7 +296,7 @@ init(null) ->
 %% Stop the API server
 %% =====================================================================
 handle_call(stop, _From, State) ->  
-  log_server:info(stopping_linkblox_API_server),
+  logger:info(stopping_linkblox_API_server),
 
   {stop, normal, ok, State};
 
@@ -654,7 +654,7 @@ handle_call({load_block_data, BlockData}, _From, State) ->
 %% Unknown Call message
 %% =====================================================================      
 handle_call(Request, From, State) ->
-  log_server:warning(linkblox_api_unknown_call_msg_from, [Request, From]),
+  logger:warning(linkblox_api_unknown_call_msg_from, [Request, From]),
   {reply, ok, State}.
 
 
@@ -675,7 +675,7 @@ handle_call(Request, From, State) ->
 %% Unknown Cast message
 %% =====================================================================      
 handle_cast(Msg, State) ->
-  log_server:warning(linkblox_api_unknown_cast_msg, [Msg]),
+  logger:warning(linkblox_api_unknown_cast_msg, [Msg]),
   {noreply, State}.
 
 
@@ -695,7 +695,7 @@ handle_cast(Msg, State) ->
 %% Unknown Info message
 %% =====================================================================
 handle_info(Info, State) ->
-  log_server:warning(linkblox_api_unknown_info_msg, [Info]),
+  logger:warning(linkblox_api_unknown_info_msg, [Info]),
   {noreply, State}.
 
 
@@ -712,7 +712,7 @@ terminate(normal, _State) ->
   ok;
     
 terminate(Reason, _State) ->
-  log_server:error(linkblox_API_server_abnormal_termination, [Reason]),
+  logger:error(linkblox_API_server_abnormal_termination, [Reason]),
   ok.
 
 

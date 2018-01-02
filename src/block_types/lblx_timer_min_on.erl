@@ -122,12 +122,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -248,7 +248,7 @@ handle_info(min_on_timer, {Config, Inputs, Outputs, Private}) ->
 handle_info(Info, BlockState) ->
 
   {BlockName, BlockModule} = config_utils:name_module(BlockState),
-  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  logger:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
   {noreply, BlockState}.
 
 

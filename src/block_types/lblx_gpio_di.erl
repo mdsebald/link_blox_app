@@ -113,12 +113,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -149,21 +149,17 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
         {error, ErrorResult} ->
           BlockName = config_utils:name(Config),
-          log_server:error(err_initiating_GPIO_pin, 
+          logger:error(err_initiating_GPIO_pin, 
                               [BlockName, ErrorResult, PinNumber]),
           Status = proc_err,
           Value = null,
           Private2 = Private1
       end;
     {error, Reason} ->
-      BlockName = config_utils:name(Config),
-      log_server:error(err_reading_GPIO_pin_number, [BlockName, Reason]),
-      Status = config_err,
-      Value = null,
+      {Value, Status} = config_utils:log_error(Config, gpio_pin, Reason),
       Private2 = Private1
   end,
-    
-    
+      
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   {Config, Inputs, Outputs1, Private2}.
@@ -210,7 +206,7 @@ delete({Config, Inputs, Outputs, Private}) ->
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
 handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
-  log_server:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
+  logger:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
   NewBlockState = block_common:execute(BlockState, hardware),
   {noreply, NewBlockState};
 
@@ -219,7 +215,7 @@ handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
 %% 
 handle_info(Info, BlockState) ->
   {BlockName, BlockModule} = config_utils:name_module(BlockState),
-  log_server:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  logger:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
   {noreply, BlockState}.  
 
 

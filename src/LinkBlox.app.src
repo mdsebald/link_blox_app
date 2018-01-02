@@ -9,7 +9,8 @@
     runtime_tools,
     ssh,
     erlang_ale,
-    emqttc
+    emqttc,
+    lager
    ]},
   {env,[]},
   {modules, []},

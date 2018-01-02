@@ -116,12 +116,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      log_server:info(block_type_upgraded_from_ver_to, 
+      logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      log_server:error(err_upgrading_block_type_from_ver_to, 
+      logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -293,7 +293,7 @@ delete({Config, Inputs, Outputs, Private}) ->
 
 log_gpio_error(Config, Reason, PinNumber) ->
   BlockName = config_utils:name(Config),
-  log_server:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
+  logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
   
   {null, proc_err}.
 

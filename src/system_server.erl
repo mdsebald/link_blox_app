@@ -67,7 +67,7 @@ is_block(Node, BlockName)->
   Timeout :: non_neg_integer() | infinity.
 
 init(null) ->
-  log_server:info(starting_system_server),
+  logger:info(starting_system_server),
   {ok, []}.
 
 
@@ -96,7 +96,7 @@ handle_call({is_block, BlockName}, _From, State)->
   {reply, IsMember, State};
 
 handle_call(Msg, _From, State) ->
-  log_server:warning(unknown_system_server_call_msg, [Msg]),
+  logger:warning(unknown_system_server_call_msg, [Msg]),
   {noreply, State}.
 
 
@@ -113,7 +113,7 @@ handle_call(Msg, _From, State) ->
   Reason :: term().
 
 handle_cast(Msg, State) ->
-  log_server:warning(unknown_system_server_cast_msg,[Msg]),
+  logger:warning(unknown_system_server_cast_msg,[Msg]),
   {noreply, State}.
 
 
@@ -130,7 +130,7 @@ handle_cast(Msg, State) ->
   Timeout :: non_neg_integer() | infinity.
 
 handle_info(Msg, State) ->
-  log_server:warning(unknown_system_server_info_msg, [Msg]),
+  logger:warning(unknown_system_server_info_msg, [Msg]),
   {noreply, State}.
 
 
@@ -148,7 +148,7 @@ terminate(normal, _State) ->
   ok;
     
 terminate(Reason, _State) ->
-  log_server:warning(log_server_abnormal_termination, [Reason]),
+  logger:warning(system_server_abnormal_termination, [Reason]),
   ok.
 
 

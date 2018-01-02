@@ -53,7 +53,7 @@ start(Port, LangMod) ->
     start(Port, LangMod, []).
 
 start(Port, LangMod, Options) ->
-    log_server:info(starting_SSH_CLI_user_interface_on_port_language_module, [Port, LangMod]),
+    logger:info(starting_SSH_CLI_user_interface_on_port_language_module, [Port, LangMod]),
     crypto:start(),
     ssh:start(),
     ssh:daemon(any, Port, [{shell, fun(U, H) -> start_shell(U, H, LangMod) end} | Options]).
@@ -271,13 +271,13 @@ get_string(StringId) ->
 % Store the strings map and commands map in the process dictionary
 %
 strings_map(LangMod) ->
-  put(mod_strings_map, LangMod:strings_map()).
+  put(mod_strings_map, LangMod:ui_strings()).
 
 strings_map() ->
   get(mod_strings_map).
 
 cmds_map(LangMod) ->
-  put(mod_cmds_map, LangMod:cmds_map()).
+  put(mod_cmds_map, LangMod:ui_cmds()).
 
 cmds_map() ->
   get(mod_cmds_map).

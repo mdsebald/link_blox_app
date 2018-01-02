@@ -45,9 +45,10 @@ start_link([BlockValuesFile, LangMod]) ->
 
 init([BlockValuesFile, LangMod]) ->
 
-  log_server:start(LangMod),
+  logger:start(LangMod),
+
   start_user_interface(LangMod),
-  log_server:info(host_name, [net_adm:localhost()]),
+  logger:info(host_name, [net_adm:localhost()]),
   
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
