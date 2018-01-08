@@ -36,7 +36,7 @@ default_configs(BlockName, Description) ->
       {i2c_device, {"i2c-1"}},
       {i2c_addr, {16#18}},
       {deg_f, {true}},
-      {offset, {0.0}}
+      {temp_offset, {0.0}}
     ]). 
 
 
@@ -144,7 +144,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       
       
       {ok, DegF} = attrib_utils:get_value(Config, deg_f),
-      {ok, Offset} = attrib_utils:get_value(Config, offset),
+      {ok, Offset} = attrib_utils:get_value(Config, temp_offset),
   
       % Read the ambient temperature
       case read_ambient(I2cRef, DegF, Offset) of
@@ -187,7 +187,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   
   {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
   {ok, DegF} = attrib_utils:get_value(Config, deg_f),
-  {ok, Offset} = attrib_utils:get_value(Config, offset),
+  {ok, Offset} = attrib_utils:get_value(Config, temp_offset),
   
   % Read the ambient temperature
   case read_ambient(I2cRef, DegF, Offset) of
