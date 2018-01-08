@@ -73,9 +73,9 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs_3, {empty, {empty}}},
-      {inputs_2, {empty, {empty}}},
-      {inputs_1, {empty, {empty}}}
+      {input3, {empty, {empty}}},
+      {input2, {empty, {empty}}},
+      {input1, {empty, {empty}}}
     ]). 
 
 
@@ -205,13 +205,13 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 get_output_value(Config, Inputs) ->
 
-  case input_utils:get_boolean(Inputs, inputs_3) of
+  case input_utils:get_boolean(Inputs, input3) of
 
     {ok, Input3} ->
-      case input_utils:get_boolean(Inputs, inputs_2) of
+      case input_utils:get_boolean(Inputs, input2) of
 
         {ok, Input2} ->
-          case input_utils:get_boolean(Inputs, inputs_1) of
+          case input_utils:get_boolean(Inputs, input1) of
 
             {ok, Input1} ->
               ValueName = maps:get({Input3, Input2, Input1}, in_out_value_map()),
@@ -220,15 +220,15 @@ get_output_value(Config, Inputs) ->
               {Value, normal};
 
             {error, Reason} ->
-              input_utils:log_error(Config, inputs_1, Reason)
+              input_utils:log_error(Config, input1, Reason)
           end;
 
         {error, Reason} ->
-          input_utils:log_error(Config, inputs_2, Reason)
+          input_utils:log_error(Config, input2, Reason)
       end;
  
     {error, Reason} ->
-      input_utils:log_error(Config, inputs_3, Reason)
+      input_utils:log_error(Config, input3, Reason)
   end.
  
 
@@ -301,20 +301,20 @@ test_io(BlockState) ->
 test_sets()->
   [
     % Test null/empty input values
-    {[{inputs_3, false}, {inputs_2, false}, {inputs_1, null}],  [{status, normal}, {value, "Input 1 Null"}]},
-    {[{inputs_3, false}, {inputs_2, empty}, {inputs_1, false}], [{status, normal}, {value, "Input 2 Null"}]},
-    {[{inputs_3, null},  {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, "Input 3 Null"}]},
-    {[{inputs_3, null},  {inputs_2, null},  {inputs_1, empty}], [{status, normal}, {value, "All Null"}]},
+    {[{input3, false}, {input2, false}, {input1, null}],  [{status, normal}, {value, "Input 1 Null"}]},
+    {[{input3, false}, {input2, empty}, {input1, false}], [{status, normal}, {value, "Input 2 Null"}]},
+    {[{input3, null},  {input2, false}, {input1, false}], [{status, normal}, {value, "Input 3 Null"}]},
+    {[{input3, null},  {input2, null},  {input1, empty}], [{status, normal}, {value, "All Null"}]},
     % Test bad input values
-    {[{inputs_3, false}, {inputs_2, true},  {inputs_1, "bad"}], [{status, input_err}, {value, null}]},
-    {[{inputs_3, true},  {inputs_2, "bad"}, {inputs_1, true}],  [{status, input_err}, {value, null}]},
-    {[{inputs_3, "bad"}, {inputs_2, true},  {inputs_1, false}], [{status, input_err}, {value, null}]},
+    {[{input3, false}, {input2, true},  {input1, "bad"}], [{status, input_err}, {value, null}]},
+    {[{input3, true},  {input2, "bad"}, {input1, true}],  [{status, input_err}, {value, null}]},
+    {[{input3, "bad"}, {input2, true},  {input1, false}], [{status, input_err}, {value, null}]},
     % Test normal input values
-    {[{inputs_3, false}, {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 0}]},
-    {[{inputs_3, false}, {inputs_2, false}, {inputs_1, true}],  [{status, normal}, {value, 1}]},
-    {[{inputs_3, false}, {inputs_2, true},  {inputs_1, false}], [{status, normal}, {value, 2}]},
-    {[{inputs_3, true},  {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 4}]},
-    {[{inputs_3, true},  {inputs_2, true},  {inputs_1, true}],  [{status, normal}, {value, 7}]}
+    {[{input3, false}, {input2, false}, {input1, false}], [{status, normal}, {value, 0}]},
+    {[{input3, false}, {input2, false}, {input1, true}],  [{status, normal}, {value, 1}]},
+    {[{input3, false}, {input2, true},  {input1, false}], [{status, normal}, {value, 2}]},
+    {[{input3, true},  {input2, false}, {input1, false}], [{status, normal}, {value, 4}]},
+    {[{input3, true},  {input2, true},  {input1, true}],  [{status, normal}, {value, 7}]}
  ].
 
 

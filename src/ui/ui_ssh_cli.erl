@@ -241,26 +241,13 @@ curr_node(Node) ->
 %
 
 format_out(StringId) ->
-  io:format(get_string(StringId)).
+  io:format(ui_utils:get_ui_string(StringId)).
 
 format_out(StringId, Args) ->
-  io:format(get_string(StringId), Args).
+  io:format(ui_utils:get_ui_string(StringId), Args).
 
 show_params(ParamStrAtom) ->
-  io:format("~s ~s~n", [get_string(enter_str), get_string(ParamStrAtom)]).
-
-
-%
-% Get the string corresponding to the string ID
-%
--spec get_string(StringId :: atom()) -> string().
-
-get_string(StringId) ->
-  case maps:get(StringId, ui_utils:get_ui_strings()) of
-    {badmap, StringsMap} ->  io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
-    {badkey, StringId} -> io_lib:format("Error, string: ~p not found~n", [StringId]);
-    String -> String
-  end.
+  io:format("~s ~s~n", [ui_utils:get_ui_string(enter_str), ui_utils:get_ui_string(ParamStrAtom)]).
 
 
 % Process block create command
@@ -1133,7 +1120,8 @@ ui_help(Params, _ParamStrAtom) ->
           format_out(linkblox_help),
           lists:map(fun(Cmd) -> 
                       {CmdStr, _CmdAtom, _CmdParamAtom, CmdHelpAtom} = Cmd,
-                      io:format("~s:  ~s~n", [CmdStr, get_string(CmdHelpAtom)])
+                      io:format("~s:  ~s~n", 
+                          [CmdStr, ui_util:get_ui_string(CmdHelpAtom)])
                     end,
                     CmdList);
         1 ->
@@ -1144,7 +1132,9 @@ ui_help(Params, _ParamStrAtom) ->
               format_out(no_help_for, [CmdHelp]);
 
             {_CmdAtom, ParamStrAtom, HelpStrAtom} -> 
-                io:format("~s:  ~s~n  ~s~n", [CmdHelp, get_string(HelpStrAtom), get_string(ParamStrAtom)])
+                io:format("~s:  ~s~n  ~s~n", 
+                     [CmdHelp, ui_utils:get_ui_string(HelpStrAtom), 
+                               ui_utils:get_ui_string(ParamStrAtom)])
           end
       end;
     high ->

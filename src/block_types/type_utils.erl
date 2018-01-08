@@ -66,7 +66,7 @@ types_info() ->
 -spec type_info(module()) -> {string(), string(), string()}.
     
 type_info(Module) ->
-  {atom_to_list(type_name(Module)), Module:version(), Module:description()}.
+  {atom_to_list(type_name(Module)), Module:version(), ui_utils:get_block_type_descr(Module)}.
 
 
 %%

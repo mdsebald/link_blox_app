@@ -30,10 +30,12 @@
 -spec format_link(Link :: link_def()) -> string().
 
 format_link({BlockName, {ValueName, Index}}) ->
-  io_lib:format("~p:~p[~w]", [BlockName, ValueName, Index]);
+  ValueNameStr = ui_utils:get_attrib_string(ValueName),
+  io_lib:format("~p:~s[~w]", [BlockName, ValueNameStr, Index]);
   
 format_link({BlockName, ValueName}) ->
-  io_lib:format("~p:~p", [BlockName, ValueName]);
+  ValueNameStr = ui_utils:get_attrib_string(ValueName),
+  io_lib:format("~p:~s", [BlockName, ValueNameStr]);
 
 format_link(InvalidLink) ->
   io_lib:format("Invalid link: ~p", [InvalidLink]).

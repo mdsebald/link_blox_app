@@ -14,8 +14,11 @@
           get_ssh_port/0,
           set_lang_mod/1,
           get_lang_mod/0,
-          get_ui_strings/0,
-          get_log_strings/0,
+          get_ui_string/1,
+          get_log_string/1,
+          get_attrib_string/1,
+          get_block_type_descr/1,
+          get_map_string/2,
           get_ui_cmds/0,
           get_yes/0,
           parse_value/1,
@@ -89,6 +92,7 @@ set_lang_mod(LangMod) ->
   % Language Module is an entry of the config table
   ets:insert(config, {lang_mod, LangMod}).
 
+
 %%
 %% Get the language module currently loaded
 %%
@@ -105,26 +109,74 @@ get_lang_mod() ->
 %%
 %% Get the UI strings map
 %%
--spec get_ui_strings() -> map() | undefined.
+-spec get_ui_string(UiStringId :: atom()) -> string().
 
-get_ui_strings() ->
+get_ui_string(UiStringId) ->
   case get_lang_mod() of
-    undefined -> undefined;
+    undefined ->
+      "Error: Language module not found~n";
 
-    LangMod -> LangMod:ui_strings()
+    LangMod -> 
+      get_map_string(UiStringId, LangMod:ui_strings())
   end.
 
 
 %%
 %% Get the logging strings map
 %%
--spec get_log_strings() -> map() | undefined.
+-spec get_log_string(LogStringId :: atom()) -> string().
 
-get_log_strings() ->
+get_log_string(LogStringId) ->
   case get_lang_mod() of
-    undefined -> undefined;
+    undefined ->
+      "Error: Language module not found~n";
 
-    LangMod -> LangMod:log_strings()
+    LangMod -> 
+      get_map_string(LogStringId, LangMod:log_strings())
+  end.
+
+
+%%
+%% Get an attribute name string from attribute ID
+%%
+-spec get_attrib_string(AttribStringId :: atom()) -> string().
+
+get_attrib_string(AttribStringId) ->
+  case get_lang_mod() of
+    undefined -> 
+      "Error: Language module not found~n";
+
+    LangMod -> 
+      get_map_string(AttribStringId, LangMod:attrib_strings())
+  end.
+
+
+%%
+%% Get the block type description, corresponding to the block module
+%%
+-spec get_block_type_descr(BlockModule :: atom()) -> string().
+
+get_block_type_descr(BlockModule) ->
+  case get_lang_mod() of
+    undefined -> 
+      "Error: Language module not found~n";
+
+    LangMod -> 
+      get_map_string(BlockModule, LangMod:block_type_descrs())
+  end.
+
+
+%%
+%% Get the string specified by the string ID, from the given strings map
+%%
+-spec get_map_string(StringId :: atom(),
+                     StringsMap :: map()) -> string().
+
+get_map_string(StringId, StringsMap) ->
+  case maps:get(StringId, StringsMap) of
+      {badmap, StringsMap} ->  io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
+      {badkey, StringId} -> io_lib:format("Error, string: ~p not found~n", [StringId]);
+      String -> String
   end.
 
 

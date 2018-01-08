@@ -11,7 +11,9 @@
 -export([
           ui_cmds/0,
           ui_strings/0,
-          log_strings/0
+          log_strings/0,
+          attrib_strings/0,
+          block_type_descrs/0
 ]).
 
 
@@ -51,6 +53,9 @@ ui_cmds() ->
   ].
 
 
+%%
+%%  Map of user interface string ids to actual strings
+%%
 ui_strings() -> #{
   welcome_str => "~n   W E L C O M E  T O  L i n k B l o x !~n~n",
   enter_command_str => "Enter command\n",
@@ -161,6 +166,10 @@ ui_strings() -> #{
   err_parsing_cmd_line => "Error: Parsing command: ~s"
 }.
 
+
+%%
+%% Map of log string ids to actual strings
+%%
 log_strings() -> #{
   starting_linkblox_lang_mod => "Starting LinkBlox app, using Language Module: ~p",
   starting_SSH_CLI_user_interface_on_port => "Starting SSH CLI User Interface on port: ~p",
@@ -223,7 +232,7 @@ log_strings() -> #{
 
   block_output_linked_to_block_input => "Block Output: ~s Linked to Block Input: ~s",
   block_output_unlinked_from_block_input => "Block Output: ~s Unlinked from Block Input: ~s",
-    add_link_err_doesnt_exist_for_this_block => "add_link() Error. ~p Doesn't exist for this block",
+  add_link_err_doesnt_exist_for_this_block => "add_link() Error. ~p Doesn't exist for this block",
   add_link_err_invalid_array_index => "add_link() Error. Invalid array index ~p",
   del_link_err_doesnt_exist_for_this_block => "del_link() Error. ~p Doesn't exist for this block",
   del_link_err_invalid_array_index => "del_link() Error. Invalid array index ~p",
@@ -283,4 +292,244 @@ log_strings() -> #{
   err_configuring_sub_outputs => "Error: ~p configuring sub outputs",
   err_updating_is_this_an_mqtt_pub_sub_block => "Error: ~p updating ~p. Is this an mqtt_pub_sub block?"
 }.
- 
+
+
+%%
+%% Map of attribute string ids to actual strings
+%% Order alphabetically by the attribute string id
+%% 
+attrib_strings() -> #{
+  '0_out' => "0_out", % Output value for false input
+  '1_out' => "1_out", % Output value for true input
+  'X_out' => "X_out", % Output value for null input
+
+  '0_0_out' => "0_0_out", % Output value for input 2 = false & 1 = false
+  '0_1_out' => "0_1_out", % Output value for input 2 = false & 1 = true
+  '0_X_out' => "0_X_out", % Output value for input 2 = false & 1 = null
+  '1_0_out' => "1_0_out", % Output value for input 2 = true & 1 = false
+  '1_1_out' => "1_1_out", % Output value for input 2 = true & 1 = true
+  '1_X_out' => "1_X_out", % Output value for input 2 = true & 1 = null
+  'X_0_out' => "X_0_out", % Output value for input 2 = null & 1 = false
+  'X_1_out' => "X_1_out", % Output value for input 2 = null & 1 = true
+  'X_X_out' => "X_X_out", % Output value for input 2 = null & 1 = null
+
+  '0_0_0_out' => "0_0_0_out", % Output value for input 3 = false & 2 = false & 1 = false
+  '0_0_1_out' => "0_0_1_out", % Output value for input 3 = false & 2 = false & 1 = true
+  '0_0_X_out' => "0_0_X_out", % Output value for input 3 = false & 2 = false & 1 = null
+  '0_1_0_out' => "0_1_0_out", % Output value for input 3 = false & 2 = true & 1 = false
+  '0_1_1_out' => "0_1_1_out", % Output value for input 3 = false & 2 = true & 1 = true
+  '0_1_X_out' => "0_1_X_out", % Output value for input 3 = false & 2 = true & 1 = null
+  '0_1_X_out' => "0_1_X_out", % Output value for input 3 = false & 2 = null & 1 = false
+  '0_1_X_out' => "0_1_X_out", % Output value for input 3 = false & 2 = null & 1 = true
+  '0_X_X_out' => "0_X_X_out", % Output value for input 3 = false & 2 = null & 1 = null
+
+  '1_0_0_out' => "1_0_0_out", % Output value for input 3 = true & 2 = false & 1 = false
+  '1_0_1_out' => "1_0_1_out", % Output value for input 3 = true & 2 = false & 1 = true
+  '1_0_X_out' => "1_0_X_out", % Output value for input 3 = true & 2 = false & 1 = null
+  '1_1_0_out' => "1_1_0_out", % Output value for input 3 = true & 2 = true & 1 = false
+  '1_1_1_out' => "1_1_1_out", % Output value for input 3 = true & 2 = true & 1 = true
+  '1_1_X_out' => "1_1_X_out", % Output value for input 3 = true & 2 = true & 1 = null
+  '1_X_0_out' => "1_X_0_out", % Output value for input 3 = true & 2 = null & 1 = false
+  '1_X_1_out' => "1_X_1_out", % Output value for input 3 = true & 2 = null & 1 = true
+  '1_X_X_out' => "1_X_X_out", % Output value for input 3 = true & 2 = null & 1 = null
+
+  'X_0_0_out' => "X_0_0_out", % Output value for input 3 = null & 2 = false & 1 = false
+  'X_0_1_out' => "X_0_1_out", % Output value for input 3 = null & 2 = false & 1 = true
+  'X_0_X_out' => "X_0_X_out", % Output value for input 3 = null & 2 = false & 1 = null
+  'X_1_0_out' => "X_1_0_out", % Output value for input 3 = null & 2 = true & 1 = false
+  'X_1_1_out' => "X_1_1_out", % Output value for input 3 = null & 2 = true & 1 = true
+  'X_1_X_out' => "X_1_X_out", % Output value for input 3 = null & 2 = true & 1 = null
+  'X_X_0_out' => "X_X_0_out", % Output value for input 3 = null & 2 = null & 1 = false
+  'X_X_1_out' => "X_X_1_out", % Output value for input 3 = null & 2 = null & 1 = true
+  'X_X_X_out' => "X_X_X_out", % Output value for input 3 = null & 2 = null & 1 = null
+
+  '0_0_0_0_out' => "0_0_0_0_out", % Output value for input 4 = false & 3 = false & 2 = false & 1 = false
+  '0_0_0_1_out' => "0_0_0_1_out", % Output value for input 4 = false & 3 = false & 2 = false & 1 = true
+  '0_0_1_0_out' => "0_0_1_0_out", % Output value for input 4 = false & 3 = false & 2 = true & 1 = false
+  '0_0_1_1_out' => "0_0_1_1_out", % Output value for input 4 = false & 3 = false & 2 = true & 1 = true
+  '0_1_0_0_out' => "0_1_0_0_out", % Output value for input 4 = false & 3 = true & 2 = false & 1 = false
+  '0_1_0_1_out' => "0_1_0_1_out", % Output value for input 4 = false & 3 = true & 2 = false & 1 = true
+  '0_1_1_0_out' => "0_1_1_0_out", % Output value for input 4 = false & 3 = true & 2 = true & 1 = false
+  '0_1_1_1_out' => "0_1_1_1_out", % Output value for input 4 = false & 3 = true & 2 = true & 1 = true
+  '1_0_0_0_out' => "1_0_0_0_out", % Output value for input 4 = true & 3 = false & 2 = false & 1 = false
+  '1_0_0_1_out' => "1_0_0_1_out", % Output value for input 4 = true & 3 = false & 2 = false & 1 = true
+  '1_0_1_0_out' => "1_0_1_0_out", % Output value for input 4 = true & 3 = false & 2 = true & 1 = false
+  '1_0_1_1_out' => "1_0_1_1_out", % Output value for input 4 = true & 3 = false & 2 = true & 1 = true
+  '1_1_0_0_out' => "1_1_0_0_out", % Output value for input 4 = true & 3 = true & 2 = false & 1 = false
+  '1_1_0_1_out' => "1_1_0_1_out", % Output value for input 4 = true & 3 = true & 2 = false & 1 = true
+  '1_1_1_0_out' => "1_1_1_0_out", % Output value for input 4 = true & 3 = true & 2 = true & 1 = false
+  '1_1_1_1_out' => "1_1_1_1_out",  % Output value for input 4 = true & 3 = true & 2 = true & 1 = true
+
+  active_true => "active_true",
+  active_false => "active_false",
+  backlight => "backlight",
+  blink_cursor => "blink_cursor",
+  blink_rate => "blink_rate",
+  block_name => "block_name",
+  block_module => "block_module",
+  brightness => "brightness",
+  broker => "broker", % MQTT server URL
+  carry => "carry",
+  clear => "clear",
+  clean_sess => "clean_sess",
+  client_id => "client_id",
+  colon => "colon",
+  cursor => "cursor",
+  dec_pnt => "dec_pnt", % Decimal Point
+  default_value => "default_value",
+  deg_f => "deg_f", % Degrees Fahrenheit
+  description => "description",
+  digits => "digits",
+  digit1 => "digit1",
+  digit2 => "digit2",
+  digit3 => "digit3",
+  digit4 => "digit4",
+  disable => "disable",
+  display => "display",
+  display_on => "display_on",
+  exec_in =>"exec_in",
+  exec_interval => "exec_interval",
+  exec_method => "exec_method",
+  exec_out => "exec_out",
+  false_input => "false_input",
+  field_width => "field_width",
+  field_widths => "field_widths",
+  filter_coeff => "filter_coeff",
+  final_value => "final_value",
+  freeze => "freeze",
+  gpio_pin => "gpio_pin",
+  gpio_pin_phase_A => "gpio_pin_phase_A",
+  gpio_pin_phase_B => "gpio_pin_phase_B",
+  gpio_pin_switch => "gpio_pin_switch",
+  high_limit => "high_limit",
+  humid => "humid", % Humidity
+  humid_mode => "humid_mode", % Humidity Mode
+  humid_offset => "humid_offset", % Humidity Offset
+  i2c_addr => "i2c_addr",
+  i2c_device => "i2c_device",
+  ignore_nulls => "ignore_nulls",
+  inch_merc => "inch_merc", % Inches of Mercury (barometric pressure)
+  initial_state => "initial_state",
+  initial_value => "initial_value",
+  input => "input",
+  input1 => "input1",
+  input2 => "input2",
+  input3 => "input3",
+  input4 => "input4",
+  inputs => "inputs",
+  input_a => "input_a",
+  input_b => "input_b",
+  input_j => "input_j",
+  input_k => "input_k",
+  invert_output => "invert_output",
+  keepalive => "keepalive",
+  last_exec => "last_exec",
+  leading_zeros => "leading_zeros",
+  led_id => "led_id",
+  left_justify => "left_justify",
+  logger => "logger",
+  low_limit => "low_limit",
+  min_on_time => "min_on_time",
+  neg_overflow => "neg_overflow",
+  neg_precision => "neg_precision",
+  nodes => "nodes",
+  nodes_state => "nodes_state",
+  not_active_str => "not_active_str",
+  null_input => "null_input",
+  number_base => "number_base",
+  num_of_digits => "num_of_digits",
+  num_of_inputs => "num_of_inputs",
+  num_of_nodes => "num_of_nodes",
+  num_of_pubs => "num_of_pubs", % MQTT quantity of topics to publish
+  num_of_subs => "num_of_subs", % MQTT quantity of topics to subscribe to
+  num_of_values => "num_of_values",
+  password => "password",
+  phase_int_edge => "phase_int_edge",
+  port => "port", % MQTT server port number
+  pos_overflow => "pos_overflow",
+  pos_precision => "pos_precision",
+  precision => "precision",
+  press => "press", % Pressure
+  press_mode => "press_mode", % Pressure Mode
+  press_offset => "press_offset", % Pressure Offset
+  proto_ver => "proto_ver", % MQTT protocol version
+  pub_inputs => "pub_inputs", % MQTT values to publis
+  pub_topics => "pub_topics", % MQTT topics to publish
+  read_mode => "read_mode",
+  receive_values => "receive_values",
+  reset => "reset",
+  rollover => "rollover",
+  seg_a => "seg_a",
+  seg_b => "seg_b",
+  seg_c => "seg_c",
+  seg_d => "seg_d",
+  seg_e => "seg_e",
+  seg_f => "seg_f",
+  seg_g => "seg_g",
+  seg_dp => "seg_dp",
+  segments => "segments",
+  select => "select",
+  send_values => "send_values",
+  standby_time => "standby_time",
+  start_cols => "start_cols",
+  start_rows => "start_rows",
+  status => "status",
+  sub_topics => "sub_topics", % MQTT topics to subscribe to
+  sub_values => "sub_values", % MQTT value of subscribed topics
+  switch => "switch",
+  switch_int_edge => "switch_int_edge",
+  temp => "temp",
+  temp_mode => "temp_mode", % Temperature Mode
+  temp_offset => "temp_offset", % Temperature Offset
+  true_input => "true_input",
+  username => "username",
+  value => "value",
+  version => "version"
+}.
+
+block_type_descrs() -> #{
+  lblx_exec_count => "Incr/Decr counter output value on block execution",
+  lblx_float_to_7seg => "Convert floating point value input to multiple 7 segment digits outputs",
+  lblx_float_to_str => "Convert floating point value to a string",
+  lblx_gpio_di => "GPIO digital input",
+  lblx_gpio_do => "GPIO digital output",
+  lblx_i2c_bme280 => "Bosch temperature, pressure, and humidity sensor with I2C interface",
+  lblx_i2c_hd44780 => "4 Row X 20 Col LCD display with I2C interface",
+  lblx_i2c_ht16k33 => "4 digit 7 segment LED display with I2C interface",
+  lblx_i2c_mcp9808 => "Precision temp sensor with I2C interface",
+  lblx_i2c_pca9685 => "PCA9685 16 Channel 12 bit PWM Output with I2C interface",
+  lblx_identity => "Output value is identical to input value",
+  lblx_int_to_7seg => "Convert integer input to multiple 7 segment digits outputs",
+  lblx_logic_and => "AND of All of the Binary Inputs",
+  lblx_logic_config1 => "1 Input Configurable Logic Gate",
+  lblx_logic_config1n => "1 Input Configurable Logic Gate, Null Values Allowed",
+  lblx_logic_config2 => "2 Input Configurable Logic Gate",
+  lblx_logic_config2n => "2 Input Configurable Logic Gate, Null Values Allowed",
+  lblx_logic_config3 => "3 Input Configurable Logic Gate",
+  lblx_logic_config3n => "3 Input Configurable Logic Gate, Null Values Allowed",
+  lblx_logic_config4 => "4 Input Configurable Logic Gate",
+  lblx_logic_jk_ff => "JK Flip-Flop",
+  lblx_logic_nand => "NAND of All of the Binary Inputs",
+  lblx_logic_nor => "NOR of All of the Binary Inputs",
+  lblx_logic_not => "Invert boolean value",
+  lblx_logic_or => "OR of All of the Binary Inputs",
+  lblx_logic_toggle => "Toggle binary output value on block execution",
+  lblx_logic_tristate => "Tri-State a Binary Input Value",
+  lblx_logic_xnor => "XNOR of the Binary Inputs",
+  lblx_logic_xor => "XOR of the Binary Inputs",
+  lblx_math_avg => "Average All Input Values",
+  lblx_math_limit => "Limit Input Value",
+  lblx_math_sum => "Sum All Input Values",
+  lblx_mqtt_pub_sub => "Publish and Subscribe values to and from an MQTT Broker",
+  lblx_one_digit_7seg => "Single digit 7 segment LED driver",
+  lblx_receive_values => "Receive values from other nodes",
+  lblx_rotary_encoder => "Rotary encoder with optional switch",
+  lblx_rpi_led => "Control Raspi on-board LED",
+  lblx_select_bin => "Binary Input Selects the True or False Input Value",
+  lblx_select_n => "Select 1 of N Inputs",
+  lblx_select_pri => "Select Highest Priority Active Input Value",
+  lblx_select_tri => "Trinary Select True, False, or Null Input Value",
+  lblx_send_values => "Send Values to other nodes",
+  lblx_template => "Short description of block function",
+  lblx_timer_min_on => "Output remain on for minimum specified time"
+}.

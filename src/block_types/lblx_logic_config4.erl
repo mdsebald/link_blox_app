@@ -42,7 +42,7 @@ default_configs(BlockName, Description) ->
       {'0_1_0_0_out', {null}}, % Output value for input 4 = false & 3 = true & 2 = false & 1 = false
       {'0_1_0_1_out', {null}}, % Output value for input 4 = false & 3 = true & 2 = false & 1 = true
       {'0_1_1_0_out', {null}}, % Output value for input 4 = false & 3 = true & 2 = true & 1 = false
-      {'0_1_1_1_out', {null}},  % Output value for input 4 = false & 3 = true & 2 = true & 1 = true
+      {'0_1_1_1_out', {null}}, % Output value for input 4 = false & 3 = true & 2 = true & 1 = true
       {'1_0_0_0_out', {null}}, % Output value for input 4 = true & 3 = false & 2 = false & 1 = false
       {'1_0_0_1_out', {null}}, % Output value for input 4 = true & 3 = false & 2 = false & 1 = true
       {'1_0_1_0_out', {null}}, % Output value for input 4 = true & 3 = false & 2 = true & 1 = false
@@ -60,10 +60,10 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs_4, {empty, {empty}}},
-      {inputs_3, {empty, {empty}}},
-      {inputs_2, {empty, {empty}}},
-      {inputs_1, {empty, {empty}}}
+      {input4, {empty, {empty}}},
+      {input3, {empty, {empty}}},
+      {input2, {empty, {empty}}},
+      {input1, {empty, {empty}}}
     ]). 
 
 
@@ -193,25 +193,25 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 get_output_value(Config, Inputs) ->
 
-  case input_utils:get_boolean(Inputs, inputs_4) of
+  case input_utils:get_boolean(Inputs, input4) of
     {ok, null} ->
       % input value null, set output value null
       {null, normal};
 
     {ok, Input4}->
-      case input_utils:get_boolean(Inputs, inputs_3) of
+      case input_utils:get_boolean(Inputs, input3) of
         {ok, null} ->
           % input value null, set output value null
           {null, normal};
 
         {ok, Input3} ->
-          case input_utils:get_boolean(Inputs, inputs_2) of
+          case input_utils:get_boolean(Inputs, input2) of
             {ok, null} ->
               % input value null, set output value null
               {null, normal};
 
             {ok, Input2} ->
-              case input_utils:get_boolean(Inputs, inputs_1) of
+              case input_utils:get_boolean(Inputs, input1) of
                 {ok, null} ->
                   % input value null, set output value null
                   {null, normal};
@@ -223,19 +223,19 @@ get_output_value(Config, Inputs) ->
                   {Value, normal};
 
                 {error, Reason} ->
-                  input_utils:log_error(Config, inputs_1, Reason)
+                  input_utils:log_error(Config, input1, Reason)
               end;
 
             {error, Reason} ->
-              input_utils:log_error(Config, inputs_2, Reason)
+              input_utils:log_error(Config, input2, Reason)
           end;
  
         {error, Reason} ->
-          input_utils:log_error(Config, inputs_3, Reason)
+          input_utils:log_error(Config, input3, Reason)
       end;
   
     {error, Reason} ->
-      input_utils:log_error(Config, inputs_4, Reason)
+      input_utils:log_error(Config, input4, Reason)
   end.  
  
 
@@ -294,22 +294,22 @@ test_io(BlockState) ->
 test_sets()->
   [
     % Test null/empty input values
-    {[{inputs_4, false}, {inputs_3, false}, {inputs_2, true},  {inputs_1, null}], [{status, normal}, {value, null}]},
-    {[{inputs_4, false}, {inputs_3, false}, {inputs_2, empty}, {inputs_1, true}], [{status, normal}, {value, null}]},
-    {[{inputs_4, false}, {inputs_3, null},  {inputs_2, false}, {inputs_1, true}], [{status, normal}, {value, null}]},
-    {[{inputs_4, null},  {inputs_3, false}, {inputs_2, false}, {inputs_1, true}], [{status, normal}, {value, null}]},
+    {[{input4, false}, {input3, false}, {input2, true},  {input1, null}], [{status, normal}, {value, null}]},
+    {[{input4, false}, {input3, false}, {input2, empty}, {input1, true}], [{status, normal}, {value, null}]},
+    {[{input4, false}, {input3, null},  {input2, false}, {input1, true}], [{status, normal}, {value, null}]},
+    {[{input4, null},  {input3, false}, {input2, false}, {input1, true}], [{status, normal}, {value, null}]},
     % Test bad input values
-    {[{inputs_4, false}, {inputs_3, false}, {inputs_2, true},  {inputs_1, "bad"}], [{status, input_err}, {value, null}]},
-    {[{inputs_4, false}, {inputs_3, true},  {inputs_2, "bad"}, {inputs_1, true}],  [{status, input_err}, {value, null}]},
-    {[{inputs_4, false}, {inputs_3, "bad"}, {inputs_2, true},  {inputs_1, false}], [{status, input_err}, {value, null}]},
-    {[{inputs_4, "bad"}, {inputs_3, false}, {inputs_2, true},  {inputs_1, false}], [{status, input_err}, {value, null}]},
+    {[{input4, false}, {input3, false}, {input2, true},  {input1, "bad"}], [{status, input_err}, {value, null}]},
+    {[{input4, false}, {input3, true},  {input2, "bad"}, {input1, true}],  [{status, input_err}, {value, null}]},
+    {[{input4, false}, {input3, "bad"}, {input2, true},  {input1, false}], [{status, input_err}, {value, null}]},
+    {[{input4, "bad"}, {input3, false}, {input2, true},  {input1, false}], [{status, input_err}, {value, null}]},
     % Test normal input values
-    {[{inputs_4, false}, {inputs_3, false}, {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 0}]},
-    {[{inputs_4, false}, {inputs_3, false}, {inputs_2, false}, {inputs_1, true}],  [{status, normal}, {value, 1}]},
-    {[{inputs_4, false}, {inputs_3, false}, {inputs_2, true},  {inputs_1, false}], [{status, normal}, {value, 2}]},
-    {[{inputs_4, false}, {inputs_3, true},  {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 4}]},
-    {[{inputs_4, true},  {inputs_3, false}, {inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 8}]},
-    {[{inputs_4, true},  {inputs_3, true},  {inputs_2, true},  {inputs_1, true}],  [{status, normal}, {value, 15}]}
+    {[{input4, false}, {input3, false}, {input2, false}, {input1, false}], [{status, normal}, {value, 0}]},
+    {[{input4, false}, {input3, false}, {input2, false}, {input1, true}],  [{status, normal}, {value, 1}]},
+    {[{input4, false}, {input3, false}, {input2, true},  {input1, false}], [{status, normal}, {value, 2}]},
+    {[{input4, false}, {input3, true},  {input2, false}, {input1, false}], [{status, normal}, {value, 4}]},
+    {[{input4, true},  {input3, false}, {input2, false}, {input1, false}], [{status, normal}, {value, 8}]},
+    {[{input4, true},  {input3, true},  {input2, true},  {input1, true}],  [{status, normal}, {value, 15}]}
  ].
 
 -endif.

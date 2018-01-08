@@ -48,8 +48,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs_2, {empty, {empty}}},
-      {inputs_1, {empty, {empty}}}
+      {input2, {empty, {empty}}},
+      {input1, {empty, {empty}}}
     ]). 
 
 
@@ -179,13 +179,13 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 get_output_value(Config, Inputs) ->
 
- case input_utils:get_boolean(Inputs, inputs_2) of
+ case input_utils:get_boolean(Inputs, input2) of
     {ok, null} ->
       % input value null, set output value null
       {null, normal};
 
     {ok, Input2} ->
-      case input_utils:get_boolean(Inputs, inputs_1) of
+      case input_utils:get_boolean(Inputs, input1) of
         {ok, null} ->
           % input value null, set output value null
           {null, normal};
@@ -197,11 +197,11 @@ get_output_value(Config, Inputs) ->
           {Value, normal};
 
         {error, Reason} ->
-          input_utils:log_error(Config, inputs_1, Reason)
+          input_utils:log_error(Config, input1, Reason)
       end;
 
     {error, Reason} ->
-      input_utils:log_error(Config, inputs_2, Reason)
+      input_utils:log_error(Config, input2, Reason)
   end.
 
 
@@ -246,12 +246,12 @@ test_io(BlockState) ->
 
 test_sets()->
   [
-    {[{inputs_2, empty}, {inputs_1, true}], [{status, normal}, {value, null}]},
-    {[{inputs_2, true}, {inputs_1, null}], [{status, normal}, {value, null}]},
-    {[{inputs_2, "bad"}, {inputs_1, true}], [{status, input_err}, {value, null}]},
-    {[{inputs_2, true}, {inputs_1, "bad"}], [{status, input_err}, {value, null}]},
-    {[{inputs_2, false}, {inputs_1, false}], [{status, normal}, {value, 0}]},
-    {[{inputs_2, true}, {inputs_1, true}], [{status, normal}, {value, 3}]}
+    {[{input2, empty}, {input1, true}], [{status, normal}, {value, null}]},
+    {[{input2, true}, {input1, null}], [{status, normal}, {value, null}]},
+    {[{input2, "bad"}, {input1, true}], [{status, input_err}, {value, null}]},
+    {[{input2, true}, {input1, "bad"}], [{status, input_err}, {value, null}]},
+    {[{input2, false}, {input1, false}], [{status, normal}, {value, 0}]},
+    {[{input2, true}, {input1, true}], [{status, normal}, {value, 3}]}
   ].
 
 -endif.

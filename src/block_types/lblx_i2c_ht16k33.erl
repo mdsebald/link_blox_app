@@ -47,11 +47,11 @@ default_inputs() ->
       {display_on, {true, {true}}},
       {blink_rate, {0, {0}}},
       {brightness, {0, {0}}},
-      {digit_segs_1, {16#FF, {16#FF}}},
-      {digit_segs_2, {16#FF, {16#FF}}},
+      {digit1, {16#FF, {16#FF}}},
+      {digit2, {16#FF, {16#FF}}},
       {colon, {true, {true}}},
-      {digit_segs_3, {16#FF, {16#FF}}},
-      {digit_segs_4, {16#FF, {16#FF}}}
+      {digit3, {16#FF, {16#FF}}},
+      {digit4, {16#FF, {16#FF}}}
     ]). 
 
 
@@ -198,9 +198,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
             {ok, Brightness} ->
               set_brightness(I2cRef, Brightness),
               
-              case input_utils:get_integer(Inputs, digit_segs_1) of
+              case input_utils:get_integer(Inputs, digit1) of
                 {error, Reason} ->
-                  input_utils:log_error(Config, digit_segs_1, Reason),
+                  input_utils:log_error(Config, digit1, Reason),
                   Value = null, Status = input_err;
                   
                 {ok, null} -> 
@@ -209,9 +209,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                 {ok, Segments1} ->
                   write_segments(I2cRef, 1, Segments1),
                   
-                  case input_utils:get_integer(Inputs, digit_segs_2) of
+                  case input_utils:get_integer(Inputs, digit2) of
                     {error, Reason} ->
-                      input_utils:log_error(Config, digit_segs_2, Reason),
+                      input_utils:log_error(Config, digit2, Reason),
                       Value = null, Status = input_err;
                       
                     {ok, null} -> 
@@ -231,9 +231,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                         {ok, ColonState} ->
                           set_colon(I2cRef, ColonState),
                            
-                          case input_utils:get_integer(Inputs, digit_segs_3) of
+                          case input_utils:get_integer(Inputs, digit3) of
                             {error, Reason} ->
-                              input_utils:log_error(Config, digit_segs_3, Reason),
+                              input_utils:log_error(Config, digit3, Reason),
                               Value = null, Status = input_err;
                               
                             {ok, null} -> 
@@ -242,9 +242,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                             {ok, Segments3} ->
                               write_segments(I2cRef, 3, Segments3),
                               
-                              case input_utils:get_integer(Inputs, digit_segs_4) of
+                              case input_utils:get_integer(Inputs, digit4) of
                                 {error, Reason} ->
-                                  input_utils:log_error(Config, digit_segs_4, Reason),
+                                  input_utils:log_error(Config, digit4, Reason),
                                   Value = null, Status = input_err;
                                   
                                 {ok, null} -> 

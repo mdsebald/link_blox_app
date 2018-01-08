@@ -49,8 +49,6 @@ init([BlockValuesFile, LangMod]) ->
   ui_utils:set_lang_mod(LangMod),
   ui_utils:set_ssh_port(1111),
 
-  logger:start(),
-
   logger:info(starting_linkblox_lang_mod, [LangMod]),
 
   ui_ssh_cli:start([{system_dir, "/etc/ssh"}]),
