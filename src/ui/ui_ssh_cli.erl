@@ -14,7 +14,7 @@
 %% ====================================================================
 %% UI functions
 %% ====================================================================
--export([start/2, start/3]).
+-export([start/1]).
 
 % Functions must be exported in order to be invoked via Module:Function(Args)
 -export([
@@ -49,22 +49,18 @@
 %%
 %% Start the SSH daemon
 %%
-start(Port, LangMod) ->
-    start(Port, LangMod, []).
-
-start(Port, LangMod, Options) ->
-    logger:info(starting_SSH_CLI_user_interface_on_port_language_module, [Port, LangMod]),
+start(Options) ->
+    SshPort = ui_utils:get_ssh_port(),
+    logger:info(starting_SSH_CLI_user_interface_on_port, [SshPort]),
     crypto:start(),
     ssh:start(),
-    ssh:daemon(any, Port, [{shell, fun(U, H) -> start_shell(U, H, LangMod) end} | Options]).
+    ssh:daemon(any, SshPort, [{shell, fun(U, H) -> start_shell(U, H) end} | Options]).
 
 %% 
 %% Start user input loop
 %%
-start_shell(User, Peer, LangMod) ->
+start_shell(User, Peer) ->
   spawn(fun() ->
-    cmds_map(LangMod),
-    strings_map(LangMod),
 	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
     format_out(welcome_str),
 		format_out(enter_command_str),
@@ -130,7 +126,7 @@ eval_input(Line) ->
 %% This indirection allows command strings to be in different languages,
 %%
 cmd_string_to_cmd_atom(Command) ->
-  case lists:keyfind(Command, 1, cmds_map()) of
+  case lists:keyfind(Command, 1, ui_utils:get_ui_cmds()) of
 	  {Command, CmdAtom, ParamStrAtom, HelpStrAtom} -> {CmdAtom, ParamStrAtom, HelpStrAtom};
 	  false -> unknown_cmd
   end.
@@ -194,7 +190,7 @@ expand([$  | _]) ->
   {no, "", []};
 expand(RevBefore) ->
   Before = lists:reverse(RevBefore),
-    case longest_prefix(cmds_map(), Before) of
+    case longest_prefix(ui_utils:get_ui_cmds(), Before) of
 	    {prefix, P, [_]} -> {yes, P ++ " ", []};
 	    {prefix, "", M}  -> {yes, "", M};
 	    {prefix, P, _M}  -> {yes, P, []};
@@ -260,27 +256,11 @@ show_params(ParamStrAtom) ->
 -spec get_string(StringId :: atom()) -> string().
 
 get_string(StringId) ->
-  case maps:get(StringId, strings_map()) of
+  case maps:get(StringId, ui_utils:get_ui_strings()) of
     {badmap, StringsMap} ->  io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
     {badkey, StringId} -> io_lib:format("Error, string: ~p not found~n", [StringId]);
     String -> String
   end.
-
-
-%
-% Store the strings map and commands map in the process dictionary
-%
-strings_map(LangMod) ->
-  put(mod_strings_map, LangMod:ui_strings()).
-
-strings_map() ->
-  get(mod_strings_map).
-
-cmds_map(LangMod) ->
-  put(mod_cmds_map, LangMod:ui_cmds()).
-
-cmds_map() ->
-  get(mod_cmds_map).
 
 
 % Process block create command
@@ -820,7 +800,7 @@ ui_link_blocks(Params, ParamStrAtom) ->
               case linkblox_api:add_link(curr_node(), OutputBlockName, OutputValueId, Link) of
                 {error, Reason} ->
                   format_out(err_linking_output_to_input, 
-                          [Reason, OutputBlockNameStr, OutputValueIdStr, Link]);
+                          [OutputBlockNameStr, OutputValueIdStr, link_utils:format_link(Link), Reason]);
                 ok ->
                   format_out(block_output_linked_to_block_input, 
                     [OutputBlockNameStr ++ ":" ++ OutputValueIdStr, link_utils:format_link(Link)])
@@ -858,7 +838,7 @@ ui_unlink_blocks(Params, ParamStrAtom) ->
               case linkblox_api:del_link(curr_node(), OutputBlockName, OutputValueId, Link) of
                 {error, Reason} ->
                   format_out(err_unlinking_output_from_input, 
-                               [Reason, OutputBlockNameStr, OutputValueIdStr, Link]);
+                               [OutputBlockNameStr, OutputValueIdStr, link_utils:format_link(Link), Reason]);
                 ok ->
                   format_out(block_output_unlinked_from_block_input, 
                                [OutputBlockNameStr ++ ":" ++ OutputValueIdStr, link_utils:format_link(Link)])
@@ -892,7 +872,7 @@ ui_xlink_blocks(Params, ParamStrAtom) ->
       case linkblox_api:add_exec_link(curr_node(), ExecutorBlockName, ExecuteeBlockName) of
         {error, Reason} ->
           format_out(err_adding_execution_link_from_to, 
-                          [Reason, ExecutorBlockNameStr, ExecuteeBlockNameStr]);
+                      [ExecutorBlockNameStr, ExecuteeBlockNameStr, Reason]);
         ok ->
           format_out(block_execution_linked_to_block, [ExecutorBlockName, ExecuteeBlockName])
       end;
@@ -917,7 +897,7 @@ ui_xunlink_blocks(Params, ParamStrAtom) ->
       case linkblox_api:del_exec_link(curr_node(), ExecutorBlockName, ExecuteeBlockName) of
         {error, Reason} ->
           format_out(err_deleting_execution_link_from_to, 
-                          [Reason, ExecutorBlockName, ExecuteeBlockName]);
+                          [ExecutorBlockName, ExecuteeBlockName, Reason]);
         ok ->
           format_out(block_execution_unlinked_from_block, [ExecutorBlockName, ExecuteeBlockName])
       end;
@@ -1147,7 +1127,7 @@ ui_exit(_Params, _ParamStrAtom) ->
 ui_help(Params, _ParamStrAtom) ->
   case check_num_params(Params, 0, 1) of
     ok -> 
-      CmdList = cmds_map(),
+      CmdList = ui_utils:get_ui_cmds(),
       case length(Params) of  
         0 ->
           format_out(linkblox_help),

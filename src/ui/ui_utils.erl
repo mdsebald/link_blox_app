@@ -9,11 +9,136 @@
 -author("Mark Sebald").
 
 -export([
+          create_config/0,
+          set_ssh_port/1,
+          get_ssh_port/0,
+          set_lang_mod/1,
+          get_lang_mod/0,
+          get_ui_strings/0,
+          get_log_strings/0,
+          get_ui_cmds/0,
           get_yes/0,
           parse_value/1,
           get_input/1,
           parse_cli_params/1
 ]).
+
+
+%%
+%% Create a configuration values store
+%%
+-spec create_config() -> ok.
+
+create_config() ->
+  % Create an ets table named 'config'
+  % Delete current table if it already exists
+  case ets:info(config) of
+    undefined -> ok;
+
+    _AlreadyExists -> ets:delete(config)
+  end,
+  ets:new(config, [set, named_table, public]).
+
+
+%%
+%% Set the port number used by the SSH Daemon
+%%
+-spec set_ssh_port(SshPort :: pos_integer()) -> true.
+
+set_ssh_port(SshPort) ->
+  % Create an ets table named 'config'
+  % if it doesn't already exist
+  case ets:info(config) of
+    undefined -> create_config();
+
+    _AlreadyExists -> ok
+  end,
+  
+  % PortNum is an entry of the config table
+  ets:insert(config, {ssh_port, SshPort}).
+
+
+%%
+%% Get the port number used by the SSH daemon
+%%
+-spec get_ssh_port() -> pos_integer() | undefined.
+
+get_ssh_port() ->
+  case ets:lookup(config, ssh_port) of
+    [{ssh_port, SshPort}] -> SshPort;
+
+    _NotFound -> undefined
+  end.
+
+%%
+%% Set the language module used 
+%% LangMod is the name of the module containing the string maps
+%% LangMod will change depending on the language used
+%%
+-spec set_lang_mod(LangMod :: atom()) -> true.
+
+set_lang_mod(LangMod) ->
+  % Create an ets table named 'config'
+  % if it doesn't already exist
+  case ets:info(config) of
+    undefined -> create_config();
+
+    _AlreadyExists -> ok
+  end,
+  
+  % Language Module is an entry of the config table
+  ets:insert(config, {lang_mod, LangMod}).
+
+%%
+%% Get the language module currently loaded
+%%
+-spec get_lang_mod() -> atom() | undefined.
+
+get_lang_mod() ->
+  case ets:lookup(config, lang_mod) of
+    [{lang_mod, LangMod}] -> LangMod;
+
+    _NotFound -> undefined
+  end.
+
+
+%%
+%% Get the UI strings map
+%%
+-spec get_ui_strings() -> map() | undefined.
+
+get_ui_strings() ->
+  case get_lang_mod() of
+    undefined -> undefined;
+
+    LangMod -> LangMod:ui_strings()
+  end.
+
+
+%%
+%% Get the logging strings map
+%%
+-spec get_log_strings() -> map() | undefined.
+
+get_log_strings() ->
+  case get_lang_mod() of
+    undefined -> undefined;
+
+    LangMod -> LangMod:log_strings()
+  end.
+
+
+%%
+%% Get the UI commands list
+%%
+-spec get_ui_cmds() -> term() | undefined.
+
+get_ui_cmds() ->
+  case get_lang_mod() of
+    undefined -> undefined;
+
+    LangMod -> LangMod:ui_cmds()
+  end.
 
 
 %%

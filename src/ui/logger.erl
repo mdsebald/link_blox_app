@@ -17,7 +17,7 @@
 %% ====================================================================
 
 -export([
-          start/1,
+          start/0,
           stop/0,
           error/1,
           error/2,
@@ -34,10 +34,10 @@
 %%
 %% Start logging server
 %%
--spec start(LangMod :: module()) -> {ok, pid()} | ignore | {error, term()}.
+-spec start() -> {ok, pid()} | ignore | {error, term()}.
 
-start(LangMod) ->
-  gen_server:start_link({local, logger}, ?MODULE, {self(), LangMod}, []).
+start() ->
+  gen_server:start_link({local, logger}, ?MODULE, self(), []).
 
 
 %%
@@ -130,11 +130,12 @@ debug(LogMsg, Args) ->
   State :: term(),
   Timeout :: non_neg_integer() | infinity.
 
-init({Pid,LangMod}) ->
+init(Pid) ->
   lager:start(),
-  StringsMap = LangMod:log_strings(),
+  LangMod = ui_utils:get_lang_mod(),
+  StringsMap = ui_utils:get_log_strings(),
   String = get_string(starting_logger, StringsMap),
-  lager:log(info, Pid, String, [LangMod]),
+  lager:log(info, Pid, String),
   {ok, StringsMap}.
 
 
@@ -186,53 +187,16 @@ handle_cast({debug, Pid, String, Args}, StringsMap) ->
   {noreply, StringsMap};
 
 handle_cast({LogLevel, Pid, StringId}, StringsMap) ->
+  
   String = get_string(StringId, StringsMap),
   lager:log(LogLevel, Pid, String),
   {noreply, StringsMap};
 
 handle_cast({LogLevel, Pid, StringId, Args}, StringsMap) ->
+
   String = get_string(StringId, StringsMap),
   lager:log(LogLevel, Pid, String, Args),
   {noreply, StringsMap};
-
-
-% handle_cast({error, Pid, StringId}, StringsMap) ->
-%   String = get_string(StringId, StringsMap),
-%   lager:error(String),
-%   {noreply, StringsMap};
-
-% handle_cast({error, StringId, Args}, StringsMap) ->
-%   String = get_string(StringId, StringsMap),
-%   lager:error(String, Args),
-%   {noreply, StringsMap};
-
-% handle_cast({warning, StringId}, StringsMap) ->
-%   String = get_string(StringId, StringsMap),
-%   lager:warning(String),
-%   {noreply, StringsMap};
-
-% handle_cast({warning, StringId, Args}, StringsMap) ->
-%   String = get_string(StringId, StringsMap),
-%   lager:warning(String, Args),
-%   {noreply, StringsMap};
-
-% handle_cast({info, StringId}, StringsMap) ->
-%   String = get_string(StringId, StringsMap),
-%   lager:info(String),
-%   {noreply, StringsMap};
-
-% handle_cast({info, StringId, Args}, StringsMap) ->
-%   String = get_string(StringId, StringsMap),
-%   lager:info(String, Args),
-%   {noreply, StringsMap};
-
-% handle_cast({debug, String}, StringsMap) ->
-%   lager:debug(String),
-%   {noreply, StringsMap};
-
-% handle_cast({debug, String, Args}, StringsMap) ->
-%   lager:debug(String, Args),
-%   {noreply, StringsMap};
 
 handle_cast(Msg, StringsMap) ->
   String = get_string(unknown_logger_cast_msg, StringsMap),

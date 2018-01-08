@@ -45,9 +45,16 @@ start_link([BlockValuesFile, LangMod]) ->
 
 init([BlockValuesFile, LangMod]) ->
 
-  logger:start(LangMod),
+  ui_utils:create_config(),
+  ui_utils:set_lang_mod(LangMod),
+  ui_utils:set_ssh_port(1111),
 
-  start_user_interface(LangMod),
+  logger:start(),
+
+  logger:info(starting_linkblox_lang_mod, [LangMod]),
+
+  ui_ssh_cli:start([{system_dir, "/etc/ssh"}]),
+
   logger:info(host_name, [net_adm:localhost()]),
   
   % Listen for nodes connecting an disconnecting
@@ -80,12 +87,3 @@ init([BlockValuesFile, LangMod]) ->
 %% Internal functions
 %% ====================================================================
 
-% Start up the SSH command line interface
-start_user_interface(LangMod) ->
-  % TODO: Should be configurable,
-  %       Start up SSH CLI or not
-  %       SSH port number,
-  %       system_dir,
-  %       Used because we get a nice shell UI experience, 
-  %       (i.e command history, line editing, tab completion, etc)
-  ui_ssh_cli:start(1111, LangMod, [{system_dir, "/etc/ssh"}]).
