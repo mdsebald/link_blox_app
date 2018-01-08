@@ -327,8 +327,9 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
 %% ===================================================================== 
 handle_call({add_link, ValueId, Link}, _From, BlockState) ->
   {Config, Inputs, Outputs, Private} = BlockState,
- 
-  case link_utils:add_link(Outputs, ValueId, Link) of
+  
+  BlockName = config_utils:name(Config),
+  case link_utils:add_link(BlockName, Outputs, ValueId, Link) of
     {ok, Outputs1} ->
       % TODO: Set linked input value to current output value?
       Result = ok,
@@ -343,12 +344,13 @@ handle_call({add_link, ValueId, Link}, _From, BlockState) ->
 
 
 %% =====================================================================
-%% Link the given output value to the given input link value
+%% Unlink the given output value from the given input link value
 %% ===================================================================== 
 handle_call({del_link, ValueId, Link}, _From, BlockState) ->
     {Config, Inputs, Outputs, Private} = BlockState,
-   
-    case link_utils:del_link(Outputs, ValueId, Link) of
+
+    BlockName = config_utils:name(Config),
+    case link_utils:del_link(BlockName, Outputs, ValueId, Link) of
       {ok, Outputs1} ->
         % TODO: Set unlinked input value to empty?
         Result = ok,

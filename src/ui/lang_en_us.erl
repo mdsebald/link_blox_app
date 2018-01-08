@@ -109,15 +109,13 @@ ui_strings() -> #{
   block_enabled => "Block ~s Enabled~n",
   block_frozen => "Block ~s Frozen~n",
   block_thawed => "Block ~s Thawed~n",
-  block_output_linked_to_block_input => "Block Output: ~s Linked to Block Input: ~s~n",
-  block_output_unlinked_from_block_input => "Block Output: ~s Unlinked from Block Input: ~s~n",
   block_execution_linked_to_block => "Block: ~s execution Linked to Block: ~s~n",
   block_execution_unlinked_from_block => "Block: ~s execution Unlinked from Block: ~s~n",
-  block_output_unlinked => "Block Output: ~s:~s Unlinked~n",
   block_config_file_loaded => "Block config file: ~s loaded~n",
   block_config_file_saved => "Block config file: ~s saved~n",
   enter_config_file_name => "Enter file name, or press <Enter> for default: 'LinkBloxConfig': ",
   config_file_overwrite_warning => "This will overwrite ~s if the file exists. OK to continue? (Y/N): ",
+  block_does_not_exist_warning => "Block: ~s does not exist. OK to continue? (Y/N): ",  
   node_prompt_str => "Node: ~p~n",
   nodes_prompt_str => "Nodes: ~p~n",
   enter_node_name => "Enter node-name or local~n",
@@ -141,10 +139,14 @@ ui_strings() -> #{
   err_invalid_value_id => "Error: ~s is not a value of block: ~s~n",
   err_retrieving_value => "Error: ~p retrieving value: ~s:~s~n",
   err_invalid_value_id_str => "Error: Invalid Value Id string: ~s~n",
-  err_linking_output_to_input => "Error: ~p Linking Output: ~s:~s to Input: ~p~n",
-  err_unlinking_output_from_input => "Error: ~p Unlinking Output: ~s:~s from Input: ~p~n",
-  err_adding_execution_link_from_to => "Error: ~p Adding execution link from:~s to: ~s~n",
-  err_deleting_execution_link_from_to => "Error: ~p Deleting execution link from:~s to: ~s~n",
+  block_output_linked_to_block_input => "Block Output: ~s Linked to Block Input: ~s~n",
+  block_output_unlinked_from_block_input => "Block Output: ~s Unlinked from Block Input: ~s~n",
+  block_output_already_linked_to_block_input => "Block Output: ~s is already Linked to Block Input: ~s~n",
+  block_output_is_not_linked_to_block_input => "Block Output: ~s is not Linked to Block Input: ~s~n",
+  err_linking_output_to_input => "Error linking Output: ~s:~s to Input: ~s, ~p~n",
+  err_unlinking_output_from_input => "Error unlinking Output: ~s:~s from Input: ~s, ~p~n",
+  err_adding_execution_link_from_to => "Error adding execution link from: ~s to: ~s, ~p~n",
+  err_deleting_execution_link_from_to => "Error deleting execution link from:~s to: ~s, ~p~n",
 
   err_converting_to_link => "Error: ~p Converting ~p to a Link~n",
   err_converting_to_output_value_id => "Error: ~p Converting ~s to Output Value ID~n",
@@ -160,14 +162,15 @@ ui_strings() -> #{
 }.
 
 log_strings() -> #{
-  starting_SSH_CLI_user_interface_on_port_language_module => "Starting SSH CLI User Interface on port: ~p Language Module: ~p",
+  starting_linkblox_lang_mod => "Starting LinkBlox app, using Language Module: ~p",
+  starting_SSH_CLI_user_interface_on_port => "Starting SSH CLI User Interface on port: ~p",
 
   linkblox_startup_complete => "LinkBlox startup complete",
   err_starting_linkblox => "Error: ~p starting LinkBlox",
 
   host_name => "Host name: ~p",
 
-  starting_logger => "Starting logger, Language Module: ~p",
+  starting_logger => "Starting logger",
   unknown_logger_call_msg => "logger, Unknown call message: ~p",
   unknown_logger_cast_msg => "logger, Unknown cast message: ~p",
   unknown_logger_info_msg => "logger, Unknown info message: ~p",
@@ -218,7 +221,9 @@ log_strings() -> #{
   reconfiguring_block => "Reconfiguring block: ~p",
   err_creating_block => "Error: ~p creating block ~s",
 
-  add_link_err_doesnt_exist_for_this_block => "add_link() Error. ~p Doesn't exist for this block",
+  block_output_linked_to_block_input => "Block Output: ~s Linked to Block Input: ~s",
+  block_output_unlinked_from_block_input => "Block Output: ~s Unlinked from Block Input: ~s",
+    add_link_err_doesnt_exist_for_this_block => "add_link() Error. ~p Doesn't exist for this block",
   add_link_err_invalid_array_index => "add_link() Error. Invalid array index ~p",
   del_link_err_doesnt_exist_for_this_block => "del_link() Error. ~p Doesn't exist for this block",
   del_link_err_invalid_array_index => "del_link() Error. Invalid array index ~p",
@@ -235,7 +240,7 @@ log_strings() -> #{
 
   block_type_upgraded_from_ver_to => "Block: ~p type: ~p upgraded from ver: ~s to: ~s",
   err_upgrading_block_type_from_ver_to => "Error: ~p upgrading block: ~p type: ~p from ver: ~s to: ~s",
-
+  
   err_initiating_GPIO_pin => "~p Error: ~p intitiating GPIO pin: ~p",
   err_initiating_I2C_address => "Error: ~p intitiating I2C address: ~p",
 

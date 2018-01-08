@@ -18,9 +18,9 @@
           unlink_block/1,
           unlink_outputs/3,
           unlink_outputs_block/3,
-          validate_link/2,
-          add_link/3,
-          del_link/3
+          validate_link/1,
+          add_link/4,
+          del_link/4
 ]).
 
 
@@ -87,7 +87,7 @@ unlink_outputs(BlockName, Outputs, Link) ->
                   case lists:member(Link, Links) of
                     true ->
                       logger:info(block_output_unlinked_from_block_input, 
-                                      [format_link({BlockName, ValueName}), format_link(Link)]),
+                            [format_link({BlockName, ValueName}), format_link(Link)]),
                       % Return updated output attribute
                       {ValueName, {Value, lists:delete(Link, Links)}};
 
@@ -101,7 +101,7 @@ unlink_outputs(BlockName, Outputs, Link) ->
                       case lists:member(Link, Links) of
                         true ->
                           logger:info(block_output_unlinked_from_block_input, 
-                                          [format_link({BlockName, {ValueName, Index}}), format_link(Link)]),
+                                [format_link({BlockName, {ValueName, Index}}), format_link(Link)]),
                           {Value, lists:delete(Link, Links)};
     
                         false -> % Does not contain target link, return value unchanged
@@ -177,10 +177,9 @@ filter_links(BlockName, ValueId, Links, LinkBlockName) ->
 %% Check if the link is valid for the given block and output value ID
 %% Support for the linkblox_api module
 %%
--spec validate_link(BlockName ::block_name(), 
-                    Link :: link_def()) -> ok | {error, atom()}.
+-spec validate_link(Link :: link_def()) -> ok | {error, atom()}.
 
-validate_link(BlockName, Link) ->
+validate_link(Link) ->
   case Link of
     {LinkBlockName, LinkValueId} ->
       case system_server:is_block(LinkBlockName) of
@@ -204,17 +203,17 @@ validate_link(BlockName, Link) ->
 %% Add a new link to the list of links to block inputs 
 %% in this ValueId output attribute
 %%
--spec add_link(Outputs :: output_attribs(), 
+-spec add_link(BlockName :: block_name(),
+               Outputs :: output_attribs(), 
                ValueId :: value_id(), 
                Link :: link_def()) -> {ok, output_attribs()} | {error, atom()}.
 
-add_link(Outputs, ValueId, Link) ->
+add_link(BlockName, Outputs, ValueId, Link) ->
 
   case attrib_utils:get_attribute(Outputs, ValueId) of
 
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
-      logger:error(add_link_err_doesnt_exist_for_this_block, [ValueId]),
       {error, not_found};
 
     % Non-array value
@@ -226,8 +225,9 @@ add_link(Outputs, ValueId, Link) ->
         false ->
           NewLinks = [Link | Links],
           NewOutput = {ValueName, {Value, NewLinks}},
-          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
-          
+          logger:info(block_output_linked_to_block_input,
+                      [format_link({BlockName, ValueName}), format_link(Link)]),
+          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};          
         true ->
           {error, already_exists}
       end;
@@ -247,12 +247,13 @@ add_link(Outputs, ValueId, Link) ->
             NewArrayValue = {Value, NewLinks},
             NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
             NewOutput = {ValueName, NewArrayValues}, 
+            logger:info(block_output_linked_to_block_input, 
+                     [format_link({BlockName, {ValueName, ArrayIndex}}), format_link(Link)]),
             {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
           true ->
             {error, already_exists}
         end;
       true ->
-        logger:error(add_link_err_invalid_array_index, [ValueId]),
         {error, invalid_array_index}
       end
   end.
@@ -262,26 +263,32 @@ add_link(Outputs, ValueId, Link) ->
 %% Delete Link from the list of Links to block inputs 
 %% in the ValueId output attribute
 %%
--spec del_link(Outputs :: output_attribs(), 
+-spec del_link(BlockName :: block_name(),
+               Outputs :: output_attribs(), 
                ValueId :: value_id(), 
                Link :: link_def()) -> {ok, output_attribs()} | {error, atom()}.
 
-del_link(Outputs, ValueId, Link) ->
+del_link(BlockName, Outputs, ValueId, Link) ->
 
   case attrib_utils:get_attribute(Outputs, ValueId) of
 
     {error, not_found} ->
       % This block doesn't have an output 'ValueId'
-      logger:error(del_link_err_doesnt_exist_for_this_block, [ValueId]),
       {error, not_found};
 
     % Non-Array value
     {ok, {ValueName, {Value, Links}}} ->  
       % Delete the Link from the list of Links to block inputs, if it exists
-      % TODO: v0.2.0 Check if link exists, first.  Error if not.
-      NewLinks = lists:delete(Link, Links),
-      NewOutput = {ValueName, {Value, NewLinks}},
-      {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+      case lists:member(Link, Links) of 
+        true ->
+          NewLinks = lists:delete(Link, Links),
+          NewOutput = {ValueName, {Value, NewLinks}},
+          logger:info(block_output_unlinked_from_block_input, 
+                      [format_link({BlockName, ValueName}), format_link(Link)]),
+          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+        false ->
+          {error, not_linked}
+      end;
 
     % Array value  
     {ok, {ValueName, ArrayValues}} ->
@@ -291,14 +298,19 @@ del_link(Outputs, ValueId, Link) ->
       if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
         {Value, Links} = lists:nth(ArrayIndex, ArrayValues),
         % Delete the Link from the list of Links to block inputs, if it exists
-        % TODO: v0.2.0 Check if link exists, first.  Error if not.
-        NewLinks = lists:delete(Link, Links),
-        NewArrayValue = {Value, NewLinks},
-        NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
-        NewOutput = {ValueName, NewArrayValues}, 
-        {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+        case lists:member(Link, Links) of 
+          true ->
+            NewLinks = lists:delete(Link, Links),
+            NewArrayValue = {Value, NewLinks},
+            NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+            NewOutput = {ValueName, NewArrayValues}, 
+            logger:info(block_output_unlinked_from_block_input, 
+                [format_link({BlockName, {ValueName, ArrayIndex}}), format_link(Link)]),
+            {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+          false ->
+            {error, not_linked}
+        end;
       true ->
-        logger:error(del_link_err_invalid_array_index, [ValueId]),
         {error, invalid_array_index}
       end
   end.

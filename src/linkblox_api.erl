@@ -486,7 +486,7 @@ handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
 handle_call({add_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
   case system_server:is_block(OutputBlockName) of
     true ->
-      case link_utils:validate_link(OutputBlockName, Link) of
+      case link_utils:validate_link(Link) of
         ok ->
           Result = block_server:add_link(OutputBlockName, OutputValueId, Link);
 
@@ -505,7 +505,7 @@ handle_call({add_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
 handle_call({del_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
   case system_server:is_block(OutputBlockName) of
     true ->
-      case link_utils:validate_link(OutputBlockName, Link) of
+      case link_utils:validate_link(Link) of
         ok ->
           Result = block_server:del_link(OutputBlockName, OutputValueId, Link);
   
@@ -524,7 +524,7 @@ handle_call({add_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State)
   case system_server:is_block(ExecutorBlockName) of
     true ->
       % Execution links are hard coded from exec_out output to exec_in input attributes
-      case link_utils:validate_link(ExecutorBlockName, {ExecuteeBlockName, exec_in}) of
+      case link_utils:validate_link({ExecuteeBlockName, exec_in}) of
         ok ->
           case block_server:add_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
             ok ->
@@ -550,7 +550,7 @@ handle_call({del_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State)
   case system_server:is_block(ExecutorBlockName) of
     true ->
       % Execution links are hard coded from exec_out output to exec_in input attributes
-      case link_utils:validate_link(ExecutorBlockName, {ExecuteeBlockName, exec_in}) of
+      case link_utils:validate_link({ExecuteeBlockName, exec_in}) of
         ok ->
           case block_server:del_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
             ok ->
