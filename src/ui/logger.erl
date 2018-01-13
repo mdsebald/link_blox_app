@@ -28,76 +28,85 @@
 %%
 %% Log error messages
 %%
--spec error(LogMsgId :: atom()) -> ok.
+-spec error(LogMsg :: string() | atom()) -> ok.
 
-error(LogMsgId) ->
-  log_message(error, self(), LogMsgId).
+error(LogMsg) ->
+  log_message(error, self(), LogMsg).
 
 
--spec error(LogMsgId :: atom(),
+-spec error(LogMsg :: string() | atom(),
             Args :: list(term())) -> ok.
 
-error(LogMsgId, Args) -> 
-  log_message(error, self(), LogMsgId, Args).
+error(LogMsg, Args) -> 
+  log_message(error, self(), LogMsg, Args).
 
 
 %%
 %% Log warning messages
 %%
--spec warning(LogMsgId :: atom()) -> ok.
+-spec warning(LogMsg :: string() | atom()) -> ok.
 
-warning(LogMsgId) -> 
-  log_message(warning, self(), LogMsgId).
+warning(LogMsg) -> 
+  log_message(warning, self(), LogMsg).
 
 
--spec warning(LogMsgId :: atom(),
+-spec warning(LogMsg :: string() | atom(),
               Args :: list(term())) -> ok.
 
-warning(LogMsgId, Args) ->
-  log_message(warning, self(), LogMsgId, Args).
+warning(LogMsg, Args) ->
+  log_message(warning, self(), LogMsg, Args).
 
 
 %%
 %% Log info messages
 %%
--spec info(LogMsgId :: atom()) -> ok.
+-spec info(LogMsg :: string() | atom()) -> ok.
 
-info(LogMsgId) ->
-  log_message(info, self(), LogMsgId).
+info(LogMsg) ->
+  log_message(info, self(), LogMsg).
 
 
--spec info(LogMsgId :: atom(),
+-spec info(LogMsg :: string() | atom(),
            Args :: list(term())) -> ok.
 
-info(LogMsgId, Args) -> 
-  log_message(info, self(), LogMsgId, Args).
+info(LogMsg, Args) -> 
+  log_message(info, self(), LogMsg, Args).
 
 %%
 %% Log debug messages
-%% For debugging purposes, don't use string map, just pass in string
 %%
--spec debug(LogMsg :: string()) -> ok.
+-spec debug(LogMsg :: string() | atom()) -> ok.
 
 debug(LogMsg) ->
-  lager:log(debug, self(), LogMsg).
+  log_message(debug, self(), LogMsg).
 
 
--spec debug(LogMsg :: string(),
+-spec debug(LogMsg :: string() | atom(),
             Args :: list(term())) -> ok.
 
 debug(LogMsg, Args) ->
-  lager:log(debug, self(), LogMsg, Args).
+  log_message(debug, self(), LogMsg, Args).
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
-
-log_message(LogLevel, Pid, LogMsgId) ->
+%%
+%% If LogMsgId is an atom, look up the string in the log_string Map
+%% Otherwise assume LogMsg is already a string
+%%
+log_message(LogLevel, Pid, LogMsgId) when is_atom(LogMsgId) ->
   LogMsg = ui_utils:get_log_string(LogMsgId),
+  lager:log(LogLevel, Pid, LogMsg);
+
+log_message(LogLevel, Pid, LogMsg) ->
   lager:log(LogLevel, Pid, LogMsg).
+    
 
-log_message(LogLevel, Pid, LogMsgId, Args) ->
+log_message(LogLevel, Pid, LogMsgId, Args) when is_atom(LogMsgId) ->
   LogMsg = ui_utils:get_log_string(LogMsgId),
+  lager:log(LogLevel, Pid, LogMsg, Args);
+
+log_message(LogLevel, Pid, LogMsg, Args) ->
   lager:log(LogLevel, Pid, LogMsg, Args).
