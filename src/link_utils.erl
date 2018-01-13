@@ -184,7 +184,7 @@ filter_links(BlockName, ValueId, Links, LinkBlockName) ->
 validate_link(Link) ->
   case Link of
     {LinkBlockName, LinkValueId} ->
-      case system_server:is_block(LinkBlockName) of
+      case block_supervisor:is_block(LinkBlockName) of
         true ->
           % Linked block exists,
           % Check that the value id is a valid input of block "LinkBlockName" 

@@ -8,6 +8,8 @@
 
 -author("Mark Sebald").
 
+-include("block_state.hrl").
+
 -behaviour(supervisor).
 
 -export([init/1]).
@@ -19,6 +21,7 @@
           start_link/1, 
           start_block/1, 
           delete_block/1,
+          is_block/1,
           block_names/0, 
           block_processes/0
 ]).
@@ -43,7 +46,17 @@ delete_block(BlockName) ->
   % Delete the block's child spec, 
   % so a block using the same name may be created later
   supervisor:delete_child(?MODULE, BlockName).
-    
+
+
+%%
+%% Determine if BlockName is a valid block name
+%%
+-spec is_block(BlockName :: block_name()) -> boolean().
+
+is_block(BlockName) ->
+  lists:member(BlockName, block_names()).
+
+
 %% 
 %% Get the block names of currently running processes
 %%
