@@ -15,21 +15,12 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([groups/0, description/0, version/0]). 
+-export([groups/0, version/0]). 
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 -export([handle_info/2]).
 
-
 groups() -> [timing].
 
-description() -> "Output remain on for minimum specified time".
-
-% Use pattern: Major.Minor.Patch
-% When a block is created, the Config version attribute value 
-% is set to this version.
-% When a block is loaded from a config file, the version attribute value
-% is compared to this.  
-% If the versions are different, the upgrade() function is called.
 version() -> "0.1.0".
 
 

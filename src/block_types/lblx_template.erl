@@ -11,6 +11,13 @@
 % INSTRUCTIONS: Modify to match new block type module name
 % All block type module names must begin with "lblx_" 
 % to uniquely identify them as LinkBlox block type modules.
+%
+% To allow the user to identify and create blocks, in each language module used: 
+% add a <module name => block type name string> pair 
+%   to the block_type_names() map in each Language Module, 
+% Add a <module name => block type description> string pair 
+%   to the block_type_descrs() map in each Language Module, 
+
 -module(lblx_template).  
   
 -author("Your Name").
@@ -23,7 +30,7 @@
 %% ====================================================================
 
 % INSTRUCTIONS: The following 10 functions must be implemented and exported by all block types
--export([groups/0, description/0, version/0]). 
+-export([groups/0, version/0]). 
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
 % INSTRUCTIONS: Optional custom message handling functions.
@@ -36,8 +43,7 @@
 % INSTRUCTIONS: Classify block type, by assigning it to one or more groups
 groups() -> [none].
 
-% INSTRUCTIONS: String describing block function
-description() -> "Short description of block function".
+% INSTRUCTIONS: Add a block type description string  to each Language Module, 
 
 % INSTRUCTIONS: Set block type version number.
 % Use pattern: Major.Minor.Patch

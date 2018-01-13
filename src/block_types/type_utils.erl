@@ -66,7 +66,7 @@ types_info() ->
 -spec type_info(module()) -> {string(), string(), string()}.
     
 type_info(Module) ->
-  {atom_to_list(type_name(Module)), Module:version(), ui_utils:get_block_type_descr(Module)}.
+  {ui_utils:get_block_type_name(Module), Module:version(), ui_utils:get_block_type_descr(Module)}.
 
 
 %%
@@ -85,7 +85,7 @@ type_names() ->
     
 type_name(Module) ->
   ModuleStr = atom_to_list(Module),
-  % Module always starts with "type_"  
+  % Module always starts with "lblx_"  
   % Removing that leaves the block type name 
   list_to_atom(string:substr(ModuleStr, 6)).
 

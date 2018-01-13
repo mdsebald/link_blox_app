@@ -13,6 +13,7 @@
           ui_strings/0,
           log_strings/0,
           attrib_strings/0,
+          block_type_names/0,
           block_type_descrs/0
 ]).
 
@@ -190,12 +191,6 @@ log_strings() -> #{
   node_has_disconnected => "Node ~p has disconnected",
   node_watcher_received_unexpected_msg => "node_watcher, Received unexpected message: ~p",
 
-  starting_system_server => "Starting system_server",
-  unknown_system_server_call_msg => "system_server, Unknown call message: ~p",
-  unknown_system_server_cast_msg => "system_server, Unknown cast message: ~p",
-  unknown_system_server_info_msg => "system_server, Unknown info message: ~p",
-  system_server_abnormal_termination => "system_server, Abnormal termination, reason: ~p",
-
   starting_linkblox_API_server => "Starting LinkBlox API server",
   stopping_linkblox_API_server => "Stopping LinkBlox API server",
   linkblox_API_server_abnormal_termination => "LinkBlox API server, Abnormal Termination: ~p",
@@ -297,6 +292,9 @@ log_strings() -> #{
 %%
 %% Map of attribute string ids to actual strings
 %% Order alphabetically by the attribute string id
+%% Add a map entry for each unique attribute id
+%% Attribute strings must be unique and not contain any spaces
+%% The attribute strings are used to look up the attribute IDs and visa-versa
 %% 
 attrib_strings() -> #{
   '0_out' => "0_out", % Output value for false input
@@ -487,6 +485,65 @@ attrib_strings() -> #{
   version => "version"
 }.
 
+
+%%
+%% Map block type module name to block type name strings
+%% Add a map entry for each block type
+%% Block type name strings must be unique and not contain any spaces
+%% Block type name strings are used to look up the block type module names and visa-versa
+%%
+block_type_names() -> #{
+  lblx_exec_count => "exec_count",
+  lblx_float_to_7seg => "float_to_7seg",
+  lblx_float_to_str => "float_to_str",
+  lblx_gpio_di => "gpio_di",
+  lblx_gpio_do => "gpio_do",
+  lblx_i2c_bme280 => "i2c_bme280",
+  lblx_i2c_hd44780 => "i2c_hd44780",
+  lblx_i2c_ht16k33 => "i2c_ht16k33",
+  lblx_i2c_mcp9808 => "i2c_mcp9808",
+  lblx_i2c_pca9685 => "i2c_pca9685",
+  lblx_identity => "identity",
+  lblx_int_to_7seg => "int_to_7seg",
+  lblx_logic_and => "logic_and",
+  lblx_logic_config1 => "logic_config1",
+  lblx_logic_config1n => "logic_config1n",
+  lblx_logic_config2 => "logic_config2",
+  lblx_logic_config2n => "logic_config2n",
+  lblx_logic_config3 => "logic_config3",
+  lblx_logic_config3n => "logic_config3n",
+  lblx_logic_config4 => "logic_config4",
+  lblx_logic_jk_ff => "logic_jk_ff",
+  lblx_logic_nand => "logic_nand",
+  lblx_logic_nor => "logic_nor",
+  lblx_logic_not => "logic_not",
+  lblx_logic_or => "logic_or",
+  lblx_logic_toggle => "logic_toggle",
+  lblx_logic_tristate => "logic_tristate",
+  lblx_logic_xnor => "logic_xnor",
+  lblx_logic_xor => "logic_xor",
+  lblx_math_avg => "math_avg",
+  lblx_math_limit => "math_limit",
+  lblx_math_sum => "math_sum",
+  lblx_mqtt_pub_sub => "mqtt_pub_sub",
+  lblx_one_digit_7seg => "one_digit_7seg",
+  lblx_receive_values => "receive_values",
+  lblx_rotary_encoder => "rotary_encoder",
+  lblx_rpi_led => "rpi_led",
+  lblx_select_bin => "select_bin",
+  lblx_select_n => "select_n",
+  lblx_select_pri => "select_pri",
+  lblx_select_tri => "select_tri",
+  lblx_send_values => "send_values",
+  lblx_template => "template",
+  lblx_timer_min_on => "timer_min_on"
+}.
+
+
+%%
+%% Map block type module name to block type description strings
+%% Add a map entry for each block type
+%%
 block_type_descrs() -> #{
   lblx_exec_count => "Incr/Decr counter output value on block execution",
   lblx_float_to_7seg => "Convert floating point value input to multiple 7 segment digits outputs",

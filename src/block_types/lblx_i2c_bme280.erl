@@ -13,12 +13,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([groups/0, description/0, version/0]).
+-export([groups/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
 
 groups() -> [input, sensor, i2c_device].
-
-description() -> "Bosch temperature, pressure, and humidity sensor with I2C interface".
 
 version() -> "0.1.0".
 
