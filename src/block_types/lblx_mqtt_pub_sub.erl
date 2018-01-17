@@ -158,10 +158,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
       case config_subs(Config1, Outputs) of
         {ok, Config2, Outputs1} ->
 
-          % if host name config is invalid, or zero length, this is a config error
-          case config_utils:get_string(Config2, host) of
-            {ok, Host} ->
-              case string:len(Host) > 0 of
+          % if broker name config is invalid, or zero length, this is a config error
+          case config_utils:get_string(Config2, broker) of
+            {ok, Broker} ->
+              case string:len(Broker) > 0 of
                 true ->
 
                   case input_utils:get_boolean(Inputs1, disable) of
@@ -197,14 +197,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   end;
 
                 false ->
-                  % Host config value is empty
-                  {Value, Status} = config_utils:log_error(Config, host, empty),
+                  % Broker config value is empty
+                  {Value, Status} = config_utils:log_error(Config, broker, empty),
                   Private2 = Private1
               end;
 
             {error, Reason} ->
-              % Error reading host config value
-              {Value, Status} = config_utils:log_error(Config, host, Reason),
+              % Error reading broker config value
+              {Value, Status} = config_utils:log_error(Config, broker, Reason),
               Private2 = Private1
           end;
 
@@ -493,7 +493,7 @@ get_options(Config) ->
     fun get_clean_sess/1,
     fun get_client_id/1,
     fun get_port/1,
-    fun get_host/1],
+    fun get_broker/1],
 
   build_opts(GetFuns, {Config, []}).
 
@@ -509,15 +509,15 @@ build_opts([Fun | Funs], {Config, Options}) ->
 
 
 %
-% Get host name config
+% Get broker name config
 % 
--spec get_host({Config :: config_attribs(),
-                Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
+-spec get_broker({Config :: config_attribs(),
+                  Options :: list(tuple())}) -> {config_attribs(), list(tuple())}.
 
-get_host({Config, Options}) -> 
-  case get_string_config(Config, host) of
-    {ok, Host} -> {Config, [{host, Host} | Options]};
-             _ -> {Config, Options}
+get_broker({Config, Options}) -> 
+  case get_string_config(Config, broker) of
+    {ok, Broker} -> {Config, [{host, Broker} | Options]};
+               _ -> {Config, Options}
   end.
 
 %
