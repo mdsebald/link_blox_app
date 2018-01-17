@@ -61,7 +61,7 @@ default_configs(BlockName, Description) ->
       {'X_1_X_out', {null}}, % Output value for input 3 = null & 2 = true & 1 = null
       {'X_X_0_out', {null}}, % Output value for input 3 = null & 2 = null & 1 = false
       {'X_X_1_out', {null}}, % Output value for input 3 = null & 2 = null & 1 = true
-      {'X_X_X_out', {null}} % Output value for input 3 = null & 2 = null & 1 = null
+      {'X_X_X_out', {null}}  % Output value for input 3 = null & 2 = null & 1 = null
     ]). 
 
 
