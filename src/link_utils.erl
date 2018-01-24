@@ -31,14 +31,14 @@
 
 format_link({BlockName, {ValueName, Index}}) ->
   ValueNameStr = ui_utils:get_attrib_string(ValueName),
-  io_lib:format("~p:~s[~w]", [BlockName, ValueNameStr, Index]);
+  lists:flatten(io_lib:format("~p:~s[~w]", [BlockName, ValueNameStr, Index]));
   
 format_link({BlockName, ValueName}) ->
   ValueNameStr = ui_utils:get_attrib_string(ValueName),
-  io_lib:format("~p:~s", [BlockName, ValueNameStr]);
+  lists:flatten(io_lib:format("~p:~s", [BlockName, ValueNameStr]));
 
 format_link(InvalidLink) ->
-  io_lib:format("Invalid link: ~p", [InvalidLink]).
+  lists:flatten(io_lib:format("Invalid link: ~p", [InvalidLink])).
 
   
 %%
@@ -325,52 +325,33 @@ del_link(BlockName, Outputs, ValueId, Link) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
+% format_link/1,
+% unlink_input/1,
+% unlink_block/1,
+% unlink_outputs/3,
+% unlink_outputs_block/3,
+% validate_link/1,
+% add_link/4,
+% del_link/4
+
+
 % ====================================================================
-% Test set_link()
+% Test format_link()
 % 
-%   Test set_link() non-array input ok
-% set_link_non_array_ok_test() ->
-%   InputAttribs = test_data:attrib_utils_input_attribs1(),
-%   InputValueId = number_in,
-%   Link = {node_name, link_block, link_output},
-%   ExpectedResult = {number_in, {empty, {node_name, link_block, link_output}}},
-  
-%   {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
-%   {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
-%   ?assertEqual(ExpectedResult, Result).
+format_link_non_array_ok_test() ->
+  ExpectedResult = "unit_test:input",
+  Result = format_link({unit_test, input}),
+  ?assertEqual(ExpectedResult, Result).
 
-% % Test set_link() non-array input ok
-% set_link_non_array_bad_test() ->
-%   InputAttribs = test_data:attrib_utils_input_attribs1(),
-%   InputValueId = invalid_input_name,
-%   Link = {node_name, link_block, link_output},
-%   ExpectedResult = {error, not_found},
-  
-%   Result = set_link(unit_test, InputAttribs, InputValueId, Link),
-%   ?assertEqual(ExpectedResult, Result).
+format_link_array_ok_test() ->
+  ExpectedResult = "unit_test:input[1]",
+  Result = format_link({unit_test, {input, 1}}),
+  ?assertEqual(ExpectedResult, Result).
 
-%   %   Test set_link() array input ok
-% set_link_array_ok_test() ->
-%   InputAttribs = test_data:attrib_utils_input_attribs1(),
-%   InputValueId = {integer_array_in, 3},
-%   Link = {node_name, link_block, link_output},
-%   ExpectedResult = {integer_array_in, [{234,{}}, {456,{}}, 
-%                                      {empty,{node_name, link_block, link_output}}]},
-  
-%   {ok, NewInputAttribs} = set_link(unit_test, InputAttribs, InputValueId, Link),
-%   {ok, Result} = attrib_utils:get_attribute(NewInputAttribs, InputValueId), 
-%   ?assertEqual(ExpectedResult, Result).
-
-% % Test set_link() array input bad
-% set_link_array_bad_test() ->
-%   InputAttribs = test_data:attrib_utils_input_attribs1(),
-%   InputValueId = {bool_array_in, 0}, % valid input name, invalid index
-%   Link = {node_name, link_block, link_output},
-%   ExpectedResult = {error, invalid_index},
-  
-%   Result = set_link(unit_test, InputAttribs, InputValueId, Link),
-%   ?assertEqual(ExpectedResult, Result).
-
-
+format_link_invalid_test() ->
+  ExpectedResult = "Invalid link: bad_link",
+  Result = format_link(bad_link),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
 
 -endif.
