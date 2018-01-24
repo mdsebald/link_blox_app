@@ -292,25 +292,25 @@ block_test() ->
 
 
 % INSTRUCTIONS: Use this test fixture to exercise the block's input to output functionality
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-          % test_io_x(BlockState)
-        ]}
-      end} 
-  }.
+% block_test_() ->
+%   {"Input to Output tests for: " ++ atom_to_list(?MODULE),
+%    {setup, 
+%       fun setup/0, 
+%       fun cleanup/1,
+%       fun (BlockState) -> 
+%         {inorder,
+%         [
+%           test_io(BlockState)
+%           % test_io_x(BlockState)
+%         ]}
+%       end} 
+%   }.
 
-setup() ->
-  % INSTRUCTIONS: Call one of the following 3 block_setup() functions:
+% setup() ->
+%   % INSTRUCTIONS: Call one of the following 3 block_setup() functions:
 
-  % INSTRUCTIONS: Use this setup if default block config values do not need to be set before running I/O tests
-  unit_test_utils:block_setup(?MODULE).
+%   % INSTRUCTIONS: Use this setup if default block config values do not need to be set before running I/O tests
+%   unit_test_utils:block_setup(?MODULE).
 
   % INSTRUCTIONS: Use this setup if default block config values need to be set before running I/O tests
   % PreInitConfigVals = [{config1, "config1 value"}, {config2, 2}],  % Example config values
@@ -321,11 +321,11 @@ setup() ->
   % PostInitConfigVals = [{{config, 24}, "24th Config Value"}]  % Example post-init config values 
   % unit_test_utils:block_setup(?MODULE, PreInitConfigVals, PostInitConfigVals).
 
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
+% cleanup(BlockState) ->
+%   unit_test_utils:block_cleanup(?MODULE, BlockState).
 
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+% test_io(BlockState) ->
+%   unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
 
 % INSTRUCTIONS: 
 %  test_sets() is a list of tuples.  
@@ -341,10 +341,10 @@ test_io(BlockState) ->
 %  Any input value IDs not specified in the input list, will not be modified before the test
 %  Any output value IDs not specified in the output list, will not be compared after the test
 
-test_sets() ->
-  [
-    {[{input1, "I/O Unit Test 1"}], [{status, normal}, {value, "I/O Unit Test 1"}]},
-    {[{input1, "I/O Unit Test 2"}], [{status, normal}, {value, "I/O Unit Test 2"}]}
-  ].
+% test_sets() ->
+%   [
+%     {[{input1, "I/O Unit Test 1"}], [{status, normal}, {value, "I/O Unit Test 1"}]},
+%     {[{input1, "I/O Unit Test 2"}], [{status, normal}, {value, "I/O Unit Test 2"}]}
+%   ].
 
 -endif.
