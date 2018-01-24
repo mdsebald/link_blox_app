@@ -412,7 +412,7 @@ str_to_value_id(ValueIdStr) ->
           if length(Rest) == 0 ->
             if ArrayIndex > 0 -> 
               ValueNameStr = string:substr(ValueIdStr, 1, LeftBracket-1),
-              ValueName = list_to_atom(ValueNameStr),
+              ValueName = ui_utils:get_attrib_id(ValueNameStr),
               {ok, {ValueName, ArrayIndex}};
             true -> % ArrayIndex =< 0
               {error, invalid}
@@ -427,7 +427,7 @@ str_to_value_id(ValueIdStr) ->
     end;
 
   true ->  % No left bracket found, assume a non array value id
-    {ok, list_to_atom(ValueIdStr)}
+    {ok, ui_utils:get_attrib_id(ValueIdStr)}
   end.
 
 
@@ -441,10 +441,10 @@ str_to_value_id(ValueIdStr) ->
 value_id_to_str(ValueId) ->
   case ValueId of
     {ValueName, Index} ->
-      lists:flatten(io_lib:format("~p[~b]", [ValueName, Index]));
+      ValueNameStr = ui_utils:get_attrib_string(ValueName),
+      lists:flatten(io_lib:format("~s[~b]", [ValueNameStr, Index]));
   
-    ValueId -> 
-      atom_to_list(ValueId)
+    ValueId -> ui_utils:get_attrib_string(ValueId)
   end.
 
 
@@ -550,7 +550,7 @@ get_value_input_array_invalid_index_test() ->
 %   Test get_value() config array value 0 index
 get_value_config_array_0_index_test() ->
   Attributes = test_data:attrib_utils_config_attribs1(),
-  ValueName = string1,
+  ValueName = integer_array,
   ArrayIndex = 0,
   ExpectedResult = {error, invalid_index},
   
@@ -720,37 +720,37 @@ resize_array_value_decrease_test() ->
 % 
 %   Test good non-array value id
 str_to_value_id_valuename_valid_test() ->
-  Result = str_to_value_id("good_value"),
-  ExpectedResult = {ok, good_value},
+  Result = str_to_value_id("input"),
+  ExpectedResult = {ok, input},
   ?assertEqual(ExpectedResult, Result).
 
 %   Test good array value id 1
 str_to_value_id_valuename_array_valid1_test() ->
-  Result = str_to_value_id("good_array[10]"),
-  ExpectedResult = {ok, {good_array, 10}},
+  Result = str_to_value_id("input[10]"),
+  ExpectedResult = {ok, {input, 10}},
   ?assertEqual(ExpectedResult, Result).
 
 %   Test good array value id 2
 str_to_value_id_valuename_array_valid2_test() ->
-  Result = str_to_value_id("good_array[010]"),
-  ExpectedResult = {ok, {good_array, 10}},
+  Result = str_to_value_id("input[010]"),
+  ExpectedResult = {ok, {input, 10}},
   ?assertEqual(ExpectedResult, Result).
 
 %   Test bad array value id 2
 str_to_value_id_valuename_array_invalid2_test() ->
-  Result = str_to_value_id("bad_array[0]"),
+  Result = str_to_value_id("input[0]"),
   ExpectedResult = {error, invalid},
   ?assertEqual(ExpectedResult, Result).
 
 %   Test bad array value id 3
 str_to_value_id_valuename_array_invalid3_test() ->
-  Result = str_to_value_id("bad_array[-123]"),
+  Result = str_to_value_id("input[-123]"),
   ExpectedResult = {error, invalid},
   ?assertEqual(ExpectedResult, Result).
 
 %   Test bad array value id 4
 str_to_value_id_valuename_array_invalid4_test() ->
-  Result = str_to_value_id("bad_array[12.34]"),
+  Result = str_to_value_id("input[12.34]"),
   ExpectedResult = {error, invalid},
   ?assertEqual(ExpectedResult, Result).
 % ====================================================================
