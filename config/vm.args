@@ -1,4 +1,4 @@
--sname LinkBlox
+# -sname LinkBlox
 -noshell
 -setcookie LinkBlox_cookie
 
