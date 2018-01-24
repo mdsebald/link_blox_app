@@ -28,14 +28,14 @@
 -spec start(Type :: normal | {takeover, Node} | {failover, Node}, Args :: term()) ->
   {ok, Pid :: pid()} | {error, Reason :: term()}.
 
-start(normal, [BlockValuesFile, LangMod]) ->
-  case linkblox_supervisor:start_link([BlockValuesFile, LangMod]) of
+start(normal, Options) ->
+  case linkblox_supervisor:start_link(Options) of
     {ok, Pid} ->
       logger:info(linkblox_startup_complete),
       {ok, Pid};
 
     Error ->
-      logger:error(err_starting_linkblox, [Error]),
+      logger:error("~p Starting LinkBlox", [Error]),
       Error
   end.
 
