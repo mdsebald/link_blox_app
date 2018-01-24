@@ -19,8 +19,8 @@
 %% API functions
 %% ====================================================================
 
-start_link([BlockValuesFile, LangMod]) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [BlockValuesFile, LangMod]).
+start_link(Options) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, Options).
 
 %% ====================================================================
 %% Behavioural functions
@@ -43,17 +43,25 @@ start_link([BlockValuesFile, LangMod]) ->
            | temporary,
   Modules :: [module()] | dynamic.
 
-init([BlockValuesFile, LangMod]) ->
+init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
+  lager:set_loglevel(lager_console_backend, LogLevel),
 
   ui_utils:create_config(),
   ui_utils:set_lang_mod(LangMod),
-  ui_utils:set_ssh_port(1111),
+  ui_utils:set_ssh_port(SSH_Port),
 
   logger:info(starting_linkblox_lang_mod, [LangMod]),
 
-  ui_ssh_cli:start([{system_dir, "/etc/ssh"}]),
+  HostName = net_adm:localhost(),
+  logger:info(host_name, [HostName]),
 
-  logger:info(host_name, [net_adm:localhost()]),
+  % This app should crash if node not started
+  {ok, NodeName} = start_node(BaseNodeName, 1),
+
+  BlockValuesFile = atom_to_list(NodeName) ++ "Config",
+  logger:info(block_values_file, [BlockValuesFile]),
+  
+  ui_ssh_cli:start([{system_dir, "/etc/ssh"}]),
   
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
@@ -79,3 +87,19 @@ init([BlockValuesFile, LangMod]) ->
 %% Internal functions
 %% ====================================================================
 
+-spec start_node(BaseNodeName :: atom(),
+                 Index :: pos_integer()) -> {ok, atom()}.
+
+start_node(BaseNodeName, Index) ->
+  IndexStr = io_lib:format("~2..0w", [Index]),
+  BaseNodeNameStr = atom_to_list(BaseNodeName),
+  NodeName = list_to_atom(lists:flatten(BaseNodeNameStr ++ IndexStr)),
+  logger:info("Node Name: ~p", [NodeName]),
+
+  case net_kernel:start([NodeName, shortnames]) of
+    {ok, _Pid} -> 
+      logger:info(distributed_node_started, [NodeName]),
+      {ok, NodeName};
+    {error, _Error} ->
+      start_node(BaseNodeName, Index + 1)
+  end.
