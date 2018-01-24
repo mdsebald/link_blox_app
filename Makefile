@@ -1,28 +1,28 @@
-
-SDCARD_LOCATION=/dev/sdc
+# removing nerves related stuff.  Nerves is handled in nerves_link_blox project
+#SDCARD_LOCATION=/dev/sdc
 
 DIALYZER_OPTS = -Wrace_conditions -Wunderspecs
 
 all:
 	rebar get-deps compile
-	if [ -n "$(NERVES_ROOT)" ]; then $(NERVES_ROOT)/scripts/rel2fw.sh _rel/LinkBlox; fi
+#	if [ -n "$(NERVES_ROOT)" ]; then $(NERVES_ROOT)/scripts/rel2fw.sh _rel/LinkBlox; fi
 
 relsync:
 	rebar compile
 	../relsync/relsync --destnode demo@nerves --hooks relsync_hooks.erl --cookie democookie --sname relsync
 
-burn-complete: burn
-burn:
-	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -a -i $(firstword $(wildcard *.fw)) -t complete
+#burn-complete: burn
+#burn:
+#	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -a -i $(firstword $(wildcard *.fw)) -t complete
 
 # Upgrade the image on the SDCard (app data won't be removed)
 # This is usually the fastest way to update an SDCard that's already
 # been programmed. It won't update bootloaders, so if something is
 # really messed up, burn-complete may be better.
-burn-upgrade:
-	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -a -i $(firstword $(wildcard *.fw)) -t upgrade
-	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -y -a -i /tmp/finalize.fw -t on-reboot
-	sudo rm /tmp/finalize.fw
+#burn-upgrade:
+#	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -a -i $(firstword $(wildcard *.fw)) -t upgrade
+#	sudo ../nerves-system-br/buildroot/output/host/usr/bin/fwup -y -a -i /tmp/finalize.fw -t on-reboot
+#	sudo rm /tmp/finalize.fw
 
 
 DEPSOLVER_PLT=$(CURDIR)/.depsolver_plt
