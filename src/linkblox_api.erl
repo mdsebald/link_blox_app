@@ -58,15 +58,15 @@ stop(Node) ->
 %% Process API calls
 %%
 
-%% Create a block
+%% Create a block named BlockNameStr of type BlockModuleStr, 
 -spec create_block(Node :: node(),
-                   BlockType :: type_name(),
-                   BlockName :: block_name(),
+                   BlockModuleStr :: string(),
+                   BlockNameStr :: string(),
                    Description :: string()) -> term().
 
-create_block(Node, BlockType, BlockName, Description) ->
+create_block(Node, BlockModuleStr, BlockNameStr, Description) ->
   gen_server:call({?MODULE, Node}, 
-                  {create_block, BlockType, BlockName, Description}).
+                  {create_block, BlockModuleStr, BlockNameStr, Description}).
 
 
 %% create a block from a set of existing block values
@@ -80,43 +80,43 @@ create_block(Node, BlockDefn) ->
 
 %% Create a copy of a block
 -spec copy_block(Node :: node(),
-                 BlockName :: block_name(),
+                 BlockNameStr :: string(),
                  BlockDefn :: block_defn(),
                  InitAttribs :: list()) -> term().
 
-copy_block(Node, BlockName, BlockDefn, InitAttribs) ->
+copy_block(Node, BlockNameStr, BlockDefn, InitAttribs) ->
   gen_server:call({?MODULE, Node}, 
-                  {copy_block, BlockName, BlockDefn, InitAttribs}).
+                  {copy_block, BlockNameStr, BlockDefn, InitAttribs}).
 
 
 %% Delete a block
 -spec delete_block(Node :: node(),
-                   BlockName :: block_name()) -> term().
+                   BlockNameStr :: string()) -> term().
 
-delete_block(Node, BlockName) ->
+delete_block(Node, BlockNameStr) ->
   gen_server:call({?MODULE, Node}, 
-                  {delete_block, BlockName}).
+                  {delete_block, BlockNameStr}).
 
 
 %% Get block values
 -spec get_block(Node :: node(),
-                BlockName :: block_name()) -> term().
+                BlockNameStr :: string()) -> term().
 
-get_block(Node, BlockName) ->
-  gen_server:call({?MODULE, Node}, {get_block, BlockName}).
+get_block(Node, BlockNameStr) ->
+  gen_server:call({?MODULE, Node}, {get_block, BlockNameStr}).
 
 
 %% Get a block value
 -spec get_value(Node :: node(),
-                BlockName :: block_name(),
-                ValueId :: value_id()) -> term().
+                BlockNameStr :: string(),
+                ValueIdStr :: string()) -> term().
 
-get_value(Node, BlockName, ValueId) ->
-  gen_server:call({?MODULE, Node}, {get_value, BlockName, ValueId}).
+get_value(Node, BlockNameStr, ValueIdStr) ->
+  gen_server:call({?MODULE, Node}, {get_value, BlockNameStr, ValueIdStr}).
 
 
 %% Get list of block names
--spec get_block_names(Node :: node()) -> term().
+-spec get_block_names(Node :: node()) -> list(string()).
 
 get_block_names(Node) ->
   gen_server:call({?MODULE, Node}, get_block_names).
@@ -131,58 +131,58 @@ get_types_info(Node) ->
 
 %% Get the block type information for the given block
 -spec get_type_info(Node :: node(),
-                    BlockName :: block_name()) -> term().
+                    BlockNameStr :: string()) -> term().
 
-get_type_info(Node, BlockName) ->
-  gen_server:call({?MODULE, Node}, {get_type_info, BlockName}).
+get_type_info(Node, BlockNameStr) ->
+  gen_server:call({?MODULE, Node}, {get_type_info, BlockNameStr}).
 
 
 %% Set a block value
 -spec set_value(Node :: node(),
-                BlockName :: block_name(),
-                ValueId :: value_id(),
+                BlockNameStr :: string(),
+                ValueIdStr :: string(),
                 Value :: value()) -> ok | {error, atom()}.
 
-set_value(Node, BlockName, ValueId, Value) ->
-  gen_server:call({?MODULE, Node}, {set_value, BlockName, ValueId, Value}).
+set_value(Node, BlockNameStr, ValueIdStr, Value) ->
+  gen_server:call({?MODULE, Node}, {set_value, BlockNameStr, ValueIdStr, Value}).
 
 
 %% Link a block output to a block input
 -spec add_link(Node :: node(),
-               OutputBlockName :: block_name(),
-               OutputValueId :: value_id(),
-               Link :: link_def()) -> term().
+               OutputBlockNameStr :: string(),
+               OutputValueIdStr :: string(),
+               LinkStrs :: list(string())) -> term().
 
-add_link(Node, OutputBlockName, OutputValueId, Link) ->
-  gen_server:call({?MODULE, Node}, {add_link, OutputBlockName, OutputValueId, Link}).
+add_link(Node, OutputBlockNameStr, OutputValueIdStr, LinkStrs) ->
+  gen_server:call({?MODULE, Node}, {add_link, OutputBlockNameStr, OutputValueIdStr, LinkStrs}).
 
 
 %% Unlink a block output from a block input
 -spec del_link(Node :: node(),
-               OutputBlockName :: block_name(),
-               OutputValueId :: value_id(),
-               Link :: link_def()) -> term().
+               OutputBlockNameStr :: string(),
+               OutputValueIdStr :: string(),
+               LinkStr :: list(string())) -> term().
 
-del_link(Node, OutputBlockName, OutputValueId, Link) ->
-  gen_server:call({?MODULE, Node}, {del_link, OutputBlockName, OutputValueId, Link}).
+del_link(Node, OutputBlockNameStr, OutputValueIdStr, LinkStrs) ->
+  gen_server:call({?MODULE, Node}, {del_link, OutputBlockNameStr, OutputValueIdStr, LinkStrs}).
 
 
 %% Create execution link from Executor to Executee block
 -spec add_exec_link(Node :: node(),
-                    ExecutorBlockName :: block_name(),
-                    ExecuteeBlockName :: block_name()) -> term().
+                    ExecutorBlockNameStr :: string(),
+                    ExecuteeBlockNameStr :: string()) -> term().
 
-add_exec_link(Node, ExecutorBlockName, ExecuteeBlockName) ->
-  gen_server:call({?MODULE, Node}, {add_exec_link, ExecutorBlockName, ExecuteeBlockName}).
+add_exec_link(Node, ExecutorBlockNameStr, ExecuteeBlockNameStr) ->
+  gen_server:call({?MODULE, Node}, {add_exec_link, ExecutorBlockNameStr, ExecuteeBlockNameStr}).
 
 
 %% Delete execution link from Executor to Executee block
 -spec del_exec_link(Node :: node(),
-                    ExecutorBlockName :: block_name(),
-                    ExecuteeBlockName :: block_name()) -> term().
+                    ExecutorBlockNameStr :: string(),
+                    ExecuteeBlockNameStr :: string()) -> term().
 
-del_exec_link(Node, ExecutorBlockName, ExecuteeBlockName) ->
-  gen_server:call({?MODULE, Node}, {del_exec_link, ExecutorBlockName, ExecuteeBlockName}).
+del_exec_link(Node, ExecutorBlockNameStr, ExecuteeBlockNameStr) ->
+  gen_server:call({?MODULE, Node}, {del_exec_link, ExecutorBlockNameStr, ExecuteeBlockNameStr}).
 
 
 %% Get all of the current created blocks on this node 
@@ -227,27 +227,27 @@ load_block_data(Node, BlockData) ->
 
 %% Execute the block
 -spec execute_block(Node :: node(),
-                    BlockName :: block_name(),
+                    BlockNameStr :: string(),
                     Reason :: exec_method()) -> term().
 
-execute_block(Node, BlockName, Reason) ->
-  gen_server:call({?MODULE, Node}, {execute_block, BlockName, Reason}).
+execute_block(Node, BlockNameStr, Reason) ->
+  gen_server:call({?MODULE, Node}, {execute_block, BlockNameStr, Reason}).
 
 
 %% Is BlockName a valid block name?
 -spec is_block_name(Node :: node(),
-                    BlockName :: block_name()) -> term().
+                    BlockNameStr :: string()) -> term().
 
-is_block_name(Node, BlockName) ->
-  gen_server:call({?MODULE,Node}, {is_block_name, BlockName}).
+is_block_name(Node, BlockNameStr) ->
+  gen_server:call({?MODULE,Node}, {is_block_name, BlockNameStr}).
 
-
+% TODO: Not Used? 
 %% Is BlockTypeStr a valid block type name?
 -spec is_block_type(Node :: node(),
-                    BlockType :: type_name()) -> term().
+                    BlockTypeStr :: string()) -> term().
 
-is_block_type(Node, BlockType) ->
-  gen_server:call({?MODULE, Node}, {is_block_type, BlockType}).
+is_block_type(Node, BlockTypeStr) ->
+  gen_server:call({?MODULE, Node}, {is_block_type, BlockTypeStr}).
 
 %command(Command, Args)->
  % gen_server:call(?MODULE, {comand, Command, Args}).
@@ -303,19 +303,28 @@ handle_call(stop, _From, State) ->
 %% =====================================================================
 %% Create a block from block type and block name
 %% =====================================================================    
-handle_call({create_block, BlockType, BlockName, Description}, _From, State) ->
-  case lists:member(BlockType, type_utils:type_names()) of
-    true ->
-      BlockModule = type_utils:type_to_module(BlockType),
-      case system_server:is_block(BlockName) of
-        false ->
-          BlockDefn = BlockModule:create(BlockName, Description),
-          Result = block_utils:create_block(BlockDefn);
-        _ ->
-          Result = {error, block_exists}
+handle_call({create_block, BlockModuleStr, BlockNameStr, Description}, _From, State) ->
+
+  BlockName = list_to_atom(BlockNameStr),
+
+  Result = case block_supervisor:is_block(BlockName) of
+    false ->
+      BlockModule = type_utils:type_module(BlockModuleStr),
+      % Check if a module of this name exists
+      case type_utils:module_exists(BlockModule) of
+        true ->
+          try BlockModule:create(BlockName, Description) of
+            BlockDefn -> block_utils:create_block(BlockDefn),
+            ok
+          catch
+            error:{undef, Function} -> 
+              logger:error("Invalid block module: ~p, ", [Function]),
+              {error, invalid_block_type}
+          end;
+
+        false -> {error, invalid_block_type}
       end;
-    _ ->
-      Result = {error, invalid_block_type}
+    true -> {error, block_exists}
   end,
   {reply, Result, State};
 
@@ -332,7 +341,7 @@ handle_call({create_block, BlockDefn}, _From, State) ->
 %% Copy a block
 %% =====================================================================    
 % TODO: Set initial attribute values
-handle_call({copy_block, BlockName, BlockState, _InitAttribs}, _From, State) ->
+handle_call({copy_block, BlockNameStr, BlockState, _InitAttribs}, _From, State) ->
   % Make sure the block values to be copied are the correct form
   case BlockState of
     {Config, Inputs, Outputs} ->
@@ -343,7 +352,8 @@ handle_call({copy_block, BlockName, BlockState, _InitAttribs}, _From, State) ->
           case lists:member(BlockModule, type_utils:modules()) of
             true ->
               % Make sure the block name is not already used
-              case system_server:is_block(BlockName) of
+              BlockName = list_to_atom(BlockNameStr),
+              case block_supervisor:is_block(BlockName) of
                 false ->
                   % Create the block, but ignore the created block state
                   % Use the source block state for the new block state
@@ -378,17 +388,12 @@ handle_call({copy_block, BlockName, BlockState, _InitAttribs}, _From, State) ->
 %% =====================================================================
 %% Delete a block
 %% =====================================================================    
-handle_call({delete_block, BlockName}, _From, State) ->
-  case system_server:is_block(BlockName) of
-    true ->
-      case block_supervisor:delete_block(BlockName) of
-        ok -> 
-          Result = ok;
-        {error, Reason} -> 
-          Result = {error, Reason}
-      end;
-    _ ->
-      Result = {error, block_not_found}
+handle_call({delete_block, BlockNameStr}, _From, State) ->
+  BlockName = list_to_atom(BlockNameStr),
+  Result = case block_supervisor:is_block(BlockName) of
+    true -> block_supervisor:delete_block(BlockName);
+  
+    false -> {error, block_not_found}
   end,
   {reply, Result, State};
 
@@ -396,13 +401,14 @@ handle_call({delete_block, BlockName}, _From, State) ->
 %% =====================================================================
 %% Get all block values
 %% =====================================================================    
-handle_call({get_block, BlockName}, _From, State) ->
-  case system_server:is_block(BlockName) of
+handle_call({get_block, BlockNameStr}, _From, State) ->
+  BlockName = list_to_atom(BlockNameStr),
+  case block_supervisor:is_block(BlockName) of
     true ->
       {Config, Inputs, Outputs, _Private} = block_server:get_block(BlockName),
       % Strip private values,
       Result = {ok, {Config, Inputs, Outputs}};
-    _ ->
+    false -> 
       Result = {error, block_not_found}
   end,
   {reply, Result, State};
@@ -411,22 +417,19 @@ handle_call({get_block, BlockName}, _From, State) ->
 %% =====================================================================
 %% Get a block value
 %% =====================================================================    
-handle_call({get_value, BlockName, ValueId}, _From, State) ->
-  case system_server:is_block(BlockName) of
+handle_call({get_value, BlockNameStr, ValueIdStr}, _From, State) ->
+  BlockName = list_to_atom(BlockNameStr),
+  Result = case block_supervisor:is_block(BlockName) of
     true ->
-      case block_server:get_value(BlockName, ValueId) of
-        {ok, CurrentValue} ->
-          Result = {ok, CurrentValue};
+      case attrib_utils:str_to_value_id(ValueIdStr) of
+        {ok, ValueId} ->
+          block_server:get_value(BlockName, ValueId);
 
-        {error, not_found} ->
-          Result = {error, value_not_found};
-
-        {error, Reason} ->
-          Result = {error, Reason}
+        {error, Reason} -> {error, Reason}
       end;
-    _ ->
-      Result = {error, block_not_found}
+    false -> {error, block_not_found}
   end,
+
   {reply, Result, State};
 
 
@@ -434,7 +437,9 @@ handle_call({get_value, BlockName, ValueId}, _From, State) ->
 %% Get a list of all block names
 %% =====================================================================    
 handle_call(get_block_names, _From, State) ->
-  Result = block_supervisor:block_names(),
+  BlockNames = block_supervisor:block_names(),
+  % Convert blocknames to strings
+  Result = lists:map(fun(BlockName) -> atom_to_list(BlockName) end, BlockNames),
   {reply, Result, State};
 
 
@@ -449,9 +454,10 @@ handle_call(get_types_info, _From, State) ->
 %% =====================================================================
 %% Get the type info for the given block name 
 %% =====================================================================    
-handle_call({get_type_info, BlockName}, _From, State) ->
+handle_call({get_type_info, BlockNameStr}, _From, State) ->
   % Get the block_module (i.e. block code), for the given block
   % Block type info is in there.
+  BlockName = list_to_atom(BlockNameStr),
   case block_server:get_value(BlockName, block_module) of
     {ok, BlockModule} ->
       Result = type_utils:type_info(BlockModule);
@@ -465,17 +471,21 @@ handle_call({get_type_info, BlockName}, _From, State) ->
 %% =====================================================================
 %% Set a block value 
 %% =====================================================================    
-handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
-  case system_server:is_block(BlockName) of
+handle_call({set_value, BlockNameStr, ValueIdStr, Value}, _From, State) ->
+  BlockName = list_to_atom(BlockNameStr),
+  Result = case block_supervisor:is_block(BlockName) of
     true ->
-      case read_only_attrib(ValueId) of
-        false ->
-          Result = block_server:set_value(BlockName, ValueId, Value);
-        _ ->
-          Result = {error, read_only}
+      case attrib_utils:str_to_value_id(ValueIdStr) of
+        {ok, ValueId} ->
+          case read_only_attrib(ValueId) of
+            false -> block_server:set_value(BlockName, ValueId, Value);
+
+            true -> {error, read_only}
+          end;
+
+        {error, Reason} -> {error, Reason}
       end;
-    _ ->
-      Result = {error, block_not_found}
+    false -> {error, block_not_found}
   end,
   {reply, Result, State};  
 
@@ -483,18 +493,28 @@ handle_call({set_value, BlockName, ValueId, Value}, _From, State) ->
 %% =====================================================================
 %% Add a link to an input value from a block output
 %% =====================================================================    
-handle_call({add_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
-  case system_server:is_block(OutputBlockName) of
+handle_call({add_link, OutputBlockNameStr, OutputValueIdStr, LinkStrs}, _From, State) ->
+OutputBlockName = list_to_atom(OutputBlockNameStr),
+Result = case block_supervisor:is_block(OutputBlockName) of
     true ->
-      case link_utils:validate_link(Link) of
-        ok ->
-          Result = block_server:add_link(OutputBlockName, OutputValueId, Link);
+      case parse_link(LinkStrs) of
+        {ok, Link} ->
+          case link_utils:validate_link(Link) of
+            ok ->
+              case attrib_utils:str_to_value_id(OutputValueIdStr) of
+                {ok, OutputValueId} ->
+                  block_server:add_link(OutputBlockName, OutputValueId, Link);
 
-        {error, Reason} ->
-          Result = {error, Reason}
+                {error, Reason} -> {error, Reason}
+              end;
+
+            {error, Reason} -> {error, Reason}
+          end;
+
+        {error, Reason} -> {error, Reason}
       end;
-    _False ->
-      Result = {error, block_not_found}
+
+    false -> {error, block_not_found}
   end,      
   {reply, Result, State};
 
@@ -502,17 +522,28 @@ handle_call({add_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
 %% =====================================================================
 %% Delete a link to an input value from a block output
 %% =====================================================================    
-handle_call({del_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
-  case system_server:is_block(OutputBlockName) of
+handle_call({del_link, OutputBlockNameStr, OutputValueIdStr, LinkStrs}, _From, State) ->
+  OutputBlockName = list_to_atom(OutputBlockNameStr),
+  Result = case block_supervisor:is_block(OutputBlockName) of
     true ->
-      case link_utils:validate_link(Link) of
-        ok ->
-          Result = block_server:del_link(OutputBlockName, OutputValueId, Link);
-  
-        {error, Reason} -> Result = {error, Reason}
+      case parse_link(LinkStrs) of
+        {ok, Link} ->
+          case link_utils:validate_link(Link) of
+            ok -> 
+              case attrib_utils:str_to_value_id(OutputValueIdStr) of
+                {ok, OutputValueId} ->
+                  block_server:del_link(OutputBlockName, OutputValueId, Link);
+
+                {error, Reason} -> {error, Reason}
+              end;
+
+            {error, Reason} -> {error, Reason}
+          end;
+
+        {error, Reason} -> {error, Reason}
       end;
-    _False ->
-      Result = {error, block_not_found}        
+      
+    false -> {error, block_not_found}        
   end,
   {reply, Result, State};  
 
@@ -520,25 +551,23 @@ handle_call({del_link, OutputBlockName, OutputValueId, Link}, _From, State) ->
 %% =====================================================================
 %% Create execution link from Executor to Executee block
 %% =====================================================================    
-handle_call({add_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State) ->
-  case system_server:is_block(ExecutorBlockName) of
+handle_call({add_exec_link, ExecutorBlockNameStr, ExecuteeBlockNameStr}, _From, State) ->
+  ExecutorBlockName = list_to_atom(ExecutorBlockNameStr),
+  Result = case block_supervisor:is_block(ExecutorBlockName) of
     true ->
+      ExecuteeBlockName = list_to_atom(ExecuteeBlockNameStr),
       % Execution links are hard coded from exec_out output to exec_in input attributes
       case link_utils:validate_link({ExecuteeBlockName, exec_in}) of
         ok ->
           case block_server:add_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
-            ok ->
-              Result = block_server:add_exec_in(ExecuteeBlockName, ExecutorBlockName);
+            ok -> block_server:add_exec_in(ExecuteeBlockName, ExecutorBlockName);
 
-            {error, Reason} ->
-              Result = {error, Reason}
+            {error, Reason} -> {error, Reason}
           end;
 
-        {error, Reason} ->
-          Result = {error, Reason}
+        {error, Reason} -> {error, Reason}
       end;
-    _False ->
-      Result = {error, block_not_found}
+    false -> {error, block_not_found}
   end,      
   {reply, Result, State};
 
@@ -546,25 +575,23 @@ handle_call({add_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State)
 %% =====================================================================
 %% Delete execution link from Executor to Executee block
 %% =====================================================================    
-handle_call({del_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State) ->
-  case system_server:is_block(ExecutorBlockName) of
+handle_call({del_exec_link, ExecutorBlockNameStr, ExecuteeBlockNameStr}, _From, State) ->
+  ExecutorBlockName = list_to_atom(ExecutorBlockNameStr),
+  Result = case block_supervisor:is_block(ExecutorBlockName) of
     true ->
+      ExecuteeBlockName = list_to_atom(ExecuteeBlockNameStr),
       % Execution links are hard coded from exec_out output to exec_in input attributes
       case link_utils:validate_link({ExecuteeBlockName, exec_in}) of
         ok ->
           case block_server:del_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
-            ok ->
-              Result = block_server:del_exec_in(ExecuteeBlockName, ExecutorBlockName);
+            ok -> block_server:del_exec_in(ExecuteeBlockName, ExecutorBlockName);
               
-            {error, Reason} ->
-              Result = {error, Reason}
+            {error, Reason} -> {error, Reason}
           end;
 
-        {error, Reason} ->
-          Result = {error, Reason}
+        {error, Reason} -> {error, Reason}
       end;
-    _False ->
-      Result = {error, block_not_found}
+    false -> {error, block_not_found}
   end,      
   {reply, Result, State};
 
@@ -572,35 +599,36 @@ handle_call({del_exec_link, ExecutorBlockName, ExecuteeBlockName}, _From, State)
 %% =====================================================================
 %% Execute block
 %% =====================================================================    
-handle_call({execute_block, BlockName, Reason}, _From, State) ->
-  case system_server:is_block(BlockName) of
+handle_call({execute_block, BlockNameStr, Reason}, _From, State) ->
+  BlockName = list_to_atom(BlockNameStr),
+  Result = case block_supervisor:is_block(BlockName) of
     true ->
       block_server:execute(BlockName, Reason),
-      Result = ok;
-    _ ->
-      Result = {error, block_not_found}
+      ok;
+
+    false -> {error, block_not_found}
   end,
+
   {reply, Result, State};
 
 
 %% =====================================================================
 %% Is BlockNameStr a valid block name?
 %% =====================================================================    
-handle_call({is_block_name, BlockName}, _From, State) ->
-  case system_server:is_block(BlockName) of
-    true-> 
-      Result = true;
-    _ ->
-      Result = false
-  end,
+handle_call({is_block_name, BlockNameStr}, _From, State) ->
+  BlockName = list_to_atom(BlockNameStr),
+  Result = block_supervisor:is_block(BlockName),
   {reply, Result, State};
 
 
 %% =====================================================================
 %% Is BlockTypeStr a valid block type?
 %% =====================================================================    
-handle_call({is_block_type, BlockType}, _From, State) ->
-  Result = lists:member(BlockType, type_utils:type_names()),
+handle_call({is_block_type, BlockTypeStr}, _From, State) ->
+  Result = case ui_utils:get_block_type_strings(BlockTypeStr) of
+    {_Module, BlockTypeStr, _Description} -> true;
+                                    false -> false
+  end,
   {reply, Result, State};
 
 
@@ -750,6 +778,24 @@ read_only_attrib(ValueId) ->
         version      -> true;
                    _ -> false
       end
+  end.
+
+%%
+%% Parse a list of strings into a Link tuple
+%%
+parse_link(LinkStrs) ->
+
+  % Links should consist of a Block Name and Value ID
+  case LinkStrs of
+    [BlockNameStr, ValueIdStr] ->
+      BlockName = list_to_atom(BlockNameStr),
+
+      case attrib_utils:str_to_value_id(ValueIdStr) of
+        {ok, ValueId}   -> {ok, {BlockName, ValueId}};
+        {error, Reason} -> {error, Reason}
+      end;
+
+    _Invalid -> {error, invalid}
   end.
 
 
