@@ -6,6 +6,8 @@
 
 -module(ui_utils).
 
+-include("../block_state.hrl").
+
 -author("Mark Sebald").
 
 -export([
@@ -16,8 +18,9 @@
           get_lang_mod/0,
           get_ui_string/1,
           get_log_string/1,
+          get_block_type_strings/1,
           get_attrib_string/1,
-          get_block_type_descr/1,
+          get_attrib_id/1,
           get_map_string/2,
           get_ui_cmds/0,
           get_yes/0,
@@ -114,9 +117,11 @@ get_lang_mod() ->
 get_ui_string(UiStringId) ->
   case get_lang_mod() of
     undefined ->
-      "Error: Language module not found~n";
-
-    LangMod -> 
+      ErrorStr = "Error: Language module not found",
+      logger:error(ErrorStr),
+      ErrorStr;
+  
+    LangMod ->
       get_map_string(UiStringId, LangMod:ui_strings())
   end.
 
@@ -129,41 +134,84 @@ get_ui_string(UiStringId) ->
 get_log_string(LogStringId) ->
   case get_lang_mod() of
     undefined ->
-      "Error: Language module not found~n";
-
-    LangMod -> 
+      ErrorStr = "Error: Language module not found",
+      logger:error(ErrorStr),
+      ErrorStr;
+  
+    LangMod ->
       get_map_string(LogStringId, LangMod:log_strings())
+  end.
+
+
+%%
+%% Get the block type name and description strings, 
+%% corresponding to the given block module or block type string
+%%
+-spec get_block_type_strings(BlockModule :: module() | string()) -> 
+                              {module(), string(), string()} | false.
+
+get_block_type_strings(BlockModule) ->
+  case get_lang_mod() of
+    undefined ->
+      logger:error("Error: Language module not found"),
+      false;
+
+    LangMod ->
+      % Search the list of block type strings in the language module
+      % If BlockModule is an atom, search via the 1st element
+      % If BlockModule is a string, search via the 2nd element
+      Key = case is_atom(BlockModule) of
+        true  -> 1;
+        false -> 2
+      end,
+      lists:keyfind(BlockModule, Key, LangMod:block_type_strings())
   end.
 
 
 %%
 %% Get an attribute name string from attribute ID
 %%
--spec get_attrib_string(AttribStringId :: atom()) -> string().
+-spec get_attrib_string(AttribId :: atom()) -> string().
 
-get_attrib_string(AttribStringId) ->
+get_attrib_string(AttribId) ->
   case get_lang_mod() of
     undefined -> 
-      "Error: Language module not found~n";
+      logger:error("Language module not found"),
+      "NotFound";
+  
+    LangMod ->
+      case lists:keyfind(AttribId, 1, LangMod:attrib_strings()) of
+        {AttribId, AttribStr} -> AttribStr;
 
-    LangMod -> 
-      get_map_string(AttribStringId, LangMod:attrib_strings())
+        % if AttribId not found in attrib strings, in the language module
+        % Just return the AttribId as a string
+        false -> 
+          logger:warning("~p not in attrib_strings() list", [AttribId]),
+          atom_to_list(AttribId)
+      end
   end.
 
 
 %%
-%% Get the block type description, corresponding to the block module
-%%
--spec get_block_type_descr(BlockModule :: atom()) -> string().
+%% Find attribute ID for the given attribute string
+%% or return not found
+%% 
+-spec get_attrib_id(AttribStr :: string()) -> value_name() | {error, not_found}.
 
-get_block_type_descr(BlockModule) ->
+get_attrib_id(AttribStr) ->
   case get_lang_mod() of
     undefined -> 
-      "Error: Language module not found~n";
+      logger:error("Error: Language module not found"),
+      {error, not_found};
 
-    LangMod -> 
-      get_map_string(BlockModule, LangMod:block_type_descrs())
+    LangMod ->
+      case lists:keyfind(AttribStr, 2, LangMod:attrib_strings()) of
+        {AttribId, AttribStr} -> AttribId;
+      
+        false -> {error, not_found}
+      end
   end.
+
 
 
 %%
@@ -173,10 +221,11 @@ get_block_type_descr(BlockModule) ->
                      StringsMap :: map()) -> string().
 
 get_map_string(StringId, StringsMap) ->
-  case maps:get(StringId, StringsMap) of
-      {badmap, StringsMap} ->  io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
-      {badkey, StringId} -> io_lib:format("Error, string: ~p not found~n", [StringId]);
-      String -> String
+  try maps:get(StringId, StringsMap) of
+    String -> String
+  catch
+    error:{badmap, StringsMap} -> io_lib:format("Error: bad strings map: ~p~n", [StringsMap]);
+    error:{badkey, StringId} -> io_lib:format("Error: string ID: ~p not found~n", [StringId])
   end.
 
 
