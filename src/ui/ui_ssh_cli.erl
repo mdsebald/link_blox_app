@@ -266,11 +266,9 @@ ui_create_block(Params, ParamStrAtom) ->
           Description = ui_utils:parse_value(DescriptionStr)
       end,
     
-      BlockType = list_to_atom(BlockTypeStr),
-      BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:create_block(curr_node(), BlockType, BlockName, Description) of
+      case linkblox_api:create_block(curr_node(), BlockTypeStr, BlockNameStr, Description) of
         ok ->
-          format_out(block_type_created, [BlockTypeStr, BlockNameStr]);
+          format_out(block_type_created, [BlockNameStr, BlockTypeStr]);
 
         {error, invalid_block_type} ->
           format_out(err_invalid_block_type, [BlockTypeStr]);
@@ -302,12 +300,10 @@ ui_copy_block(Params, ParamStrAtom) ->
           DstNode = list_to_atom(DstNodeStr)
       end,
 
-      SrcBlockName = list_to_atom(SrcBlockNameStr),
       % Always get source block values from the current node
-      case linkblox_api:get_block(curr_node(), SrcBlockName) of
+      case linkblox_api:get_block(curr_node(), SrcBlockNameStr) of
         {ok, SrcBlockValues} ->
-          DstBlockName = list_to_atom(DstBlockNameStr),
-          case linkblox_api:copy_block(DstNode, DstBlockName, SrcBlockValues, []) of
+          case linkblox_api:copy_block(DstNode, DstBlockNameStr, SrcBlockValues, []) of
             ok ->
               format_out(dest_block_created, [DstBlockNameStr]);
 
@@ -335,12 +331,10 @@ ui_rename_block(Params, ParamStrAtom) ->
     ok ->
       [SrcBlockNameStr, DstBlockNameStr] = Params,
 
-      SrcBlockName = list_to_atom(SrcBlockNameStr),
       % Always get source block values from the current node
-      case linkblox_api:get_block(curr_node(), SrcBlockName) of
+      case linkblox_api:get_block(curr_node(), SrcBlockNameStr) of
         {ok, SrcBlockValues} ->
-          DstBlockName = list_to_atom(DstBlockNameStr),
-          case linkblox_api:copy_block(curr_node(), DstBlockName, SrcBlockValues, []) of
+          case linkblox_api:copy_block(curr_node(), DstBlockNameStr, SrcBlockValues, []) of
             ok ->
               format_out(dest_block_created, [DstBlockNameStr]);
 
@@ -366,8 +360,7 @@ ui_execute_block(Params, ParamStrAtom) ->
 
     ok -> 
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:execute_block(curr_node(), BlockName, manual) of
+      case linkblox_api:execute_block(curr_node(), BlockNameStr, manual) of
         ok -> 
           ok;
         {error, block_not_found} ->
@@ -387,8 +380,7 @@ ui_delete_block(Params, ParamStrAtom) ->
 
     ok -> 
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),  
-      case linkblox_api:delete_block(curr_node(), BlockName) of
+      case linkblox_api:delete_block(curr_node(), BlockNameStr) of
         ok -> 
           format_out(block_deleted, [BlockNameStr]);
 
@@ -411,8 +403,7 @@ ui_disable_block(Params, ParamStrAtom) ->
     
     ok -> 
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(curr_node(), BlockName, disable, true) of
+      case linkblox_api:set_value(curr_node(), BlockNameStr, "disable", true) of
         ok ->
           format_out(block_disabled, [BlockNameStr]);
 
@@ -435,8 +426,7 @@ ui_enable_block(Params, ParamStrAtom) ->
     
     ok -> 
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(curr_node(), BlockName, disable, false) of
+      case linkblox_api:set_value(curr_node(), BlockNameStr, "disable", false) of
         ok ->
           format_out(block_enabled, [BlockNameStr]);
 
@@ -459,8 +449,7 @@ case check_num_params(Params, 1) of
     
     ok -> 
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(curr_node(), BlockName, freeze, true) of
+      case linkblox_api:set_value(curr_node(), BlockNameStr, "freeze", true) of
         ok ->
           format_out(block_frozen, [BlockNameStr]);
 
@@ -483,8 +472,7 @@ case check_num_params(Params, 1) of
     
     ok -> 
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
-      case linkblox_api:set_value(curr_node(), BlockName, freeze, false) of
+      case linkblox_api:set_value(curr_node(), BlockNameStr, "freeze", false) of
         ok ->
           format_out(block_thawed, [BlockNameStr]);
 
@@ -519,26 +507,26 @@ ui_get_values(Params, ParamStrAtom) ->
         "blocks" ->  % Just get the list of block names
           BlockNames = linkblox_api:get_block_names(curr_node()),
           io:format("~n"),
-          lists:map(fun(BlockName) -> io:format("  ~p~n", [BlockName]) end, BlockNames);
+          lists:map(fun(BlockName) -> io:format("  ~s~n", [BlockName]) end, BlockNames);
 
         "types" ->  % Just get the list of block types information
           TypesInfo = linkblox_api:get_types_info(curr_node()),
           % Print the list of type names version
-          io:fwrite("~n~-16s ~-8s ~-60s~n", 
-                      ["Block Type", "Version", "Description"]),
-          io:fwrite("~16c ~8c ~60c~n", [$-, $-, $-] ), 
+          io:fwrite("~n~-21s ~-8s ~-16s ~-60s~n", 
+                      ["Module", "Version", "Block Type", "Description"]),
+          io:fwrite("~21c ~8c ~16c ~60c~n", [$-, $-, $-, $-] ), 
    
-          lists:map(fun({TypeName, Version, Description}) -> 
-                    io:fwrite("~-16s ~-8s ~-60s~n", 
-                              [string:left(TypeName, 16), 
+          lists:map(fun({Module, Version, TypeName, Description}) -> 
+                    io:fwrite("~-21s ~-8s ~-16s ~-60s~n", 
+                              [
+                               string:left(Module, 21),
                                string:left(Version, 8),
+                               string:left(TypeName, 16), 
                                string:left(Description, 60)]) end, 
-                              TypesInfo),
-          TypesInfo = linkblox_api:get_types_info(curr_node());
+                              TypesInfo);
 
-       _ ->
-          BlockName = list_to_atom(BlockNameStr),
-          case linkblox_api:get_block(curr_node(), BlockName) of
+        _ ->
+          case linkblox_api:get_block(curr_node(), BlockNameStr) of
             {ok, BlockState} -> 
               format_block_values(BlockState);
             {error, block_not_found} -> 
@@ -546,14 +534,13 @@ ui_get_values(Params, ParamStrAtom) ->
             Unknown ->
               format_out(err_unk_result_from_linkblox_api_get_block, [Unknown])
           end
-        end;
+      end;
 
     2 -> 
       case Params of
         [BlockNameStr, "raw"] ->
           % Display the unformated tuple and list values
-          BlockName = list_to_atom(BlockNameStr),
-          case linkblox_api:get_block(curr_node(), BlockName) of
+          case linkblox_api:get_block(curr_node(), BlockNameStr) of
             {ok, BlockState} -> 
               io:format("~n~p~n", [BlockState]);
             {error, block_not_found} -> 
@@ -563,26 +550,24 @@ ui_get_values(Params, ParamStrAtom) ->
           end;
 
         [BlockNameStr, ValueIdStr] ->
-          BlockName = list_to_atom(BlockNameStr),
-          case attrib_utils:str_to_value_id(ValueIdStr) of
-            {ok, ValueId} ->
-              case linkblox_api:get_value(curr_node(), BlockName, ValueId) of
-                {ok, CurrentValue} ->
-                  io:format("~n   ~p~n", [CurrentValue]);
-              
-                {error, block_not_found} ->
-                  format_out(err_block_not_found, [BlockNameStr]);
+          case linkblox_api:get_value(curr_node(), BlockNameStr, ValueIdStr) of
+            {ok, CurrentValue} ->
+              io:format("~n   ~p~n", [CurrentValue]);
+          
+            {error, block_not_found} ->
+              format_out(err_block_not_found, [BlockNameStr]);
 
-                {error, value_not_found} ->
-                  format_out(err_invalid_value_id, [ValueIdStr, BlockNameStr]);
-                {error, Reason} ->
-                  format_out(err_retrieving_value, [Reason, BlockNameStr, ValueIdStr]);
+            {error, not_found} ->
+              format_out(err_invalid_value_id, [ValueIdStr, BlockNameStr]);
 
-                Unknown ->
-                  format_out(err_unk_result_from_linkblox_api_get_value, [Unknown]) 
-              end;
             {error, invalid} ->
-              format_out(err_invalid_value_id_str, [ValueIdStr])
+              format_out(err_invalid_value_id_str, [ValueIdStr]);
+    
+            {error, Reason} ->
+              format_out(err_retrieving_value, [Reason, BlockNameStr, ValueIdStr]);
+
+            Unknown ->
+              format_out(err_unk_result_from_linkblox_api_get_value, [Unknown]) 
           end
       end;
     _ -> format_out(err_too_many_params)
@@ -739,28 +724,23 @@ ui_set_value(Params, ParamStrAtom) ->
     ok -> 
       [BlockNameStr, ValueIdStr, ValueStr] = Params,
 
-      BlockName = list_to_atom(BlockNameStr),
-      case attrib_utils:str_to_value_id(ValueIdStr) of
-        {ok, ValueId} ->
-          Value = ui_utils:parse_value(ValueStr),
-          case linkblox_api:set_value(curr_node(), BlockName, ValueId, Value) of
-            ok ->
-              format_out(block_value_set_to_str, [BlockNameStr, ValueIdStr, ValueStr]);
+        Value = ui_utils:parse_value(ValueStr),
+        case linkblox_api:set_value(curr_node(), BlockNameStr, ValueIdStr, Value) of
+          ok ->
+            format_out(block_value_set_to_str, [BlockNameStr, ValueIdStr, ValueStr]);
 
-            {error, block_not_found} ->
-              format_out(err_block_not_found,  [BlockNameStr]);
+          {error, block_not_found} ->
+            format_out(err_block_not_found,  [BlockNameStr]);
 
-            {error, not_found} ->
-              format_out(err_block_value_not_found,  [ValueIdStr]);
+          {error, not_found} ->
+            format_out(err_block_value_not_found,  [ValueIdStr]);
 
-            {error, Reason} ->
-              format_out(err_setting_block_value, [Reason, BlockNameStr, ValueIdStr, ValueStr]) 
-          end;
-            
-        {error, invalid} ->
-          format_out(err_invalid_value_id_str, [ValueIdStr])
-      end;
-
+          {error, invalid} ->
+            format_out(err_invalid_value_id_str, [ValueIdStr]);
+      
+          {error, Reason} ->
+            format_out(err_setting_block_value, [Reason, BlockNameStr, ValueIdStr, ValueStr]) 
+        end;
     high -> format_out(err_too_many_params)
   end.    
 
@@ -773,30 +753,17 @@ ui_link_blocks(Params, ParamStrAtom) ->
     ok ->
       % 1st parameter is block name
       OutputBlockNameStr = lists:nth(1, Params),
-      OutputBlockName = list_to_atom(OutputBlockNameStr),
 
       % 2nd parameter is the output value ID
       OutputValueIdStr = lists:nth(2, Params),
-      case attrib_utils:str_to_value_id(OutputValueIdStr) of
-        {ok, OutputValueId} ->
 
-          % The remaining params form the Link
-          LinkParams = lists:nthtail(2, Params),
-          case parse_link(LinkParams) of
-            {ok, Link} ->
-              case linkblox_api:add_link(curr_node(), OutputBlockName, OutputValueId, Link) of
-                {error, Reason} ->
-                  format_out(err_linking_output_to_input, 
-                          [OutputBlockNameStr, OutputValueIdStr, link_utils:format_link(Link), Reason]);
-                ok ->
-                  format_out(block_output_linked_to_block_input, 
-                    [OutputBlockNameStr ++ ":" ++ OutputValueIdStr, link_utils:format_link(Link)])
-              end;
-            {error, Reason} ->
-              format_out(err_converting_to_link, [Reason, LinkParams])
-          end;
-        {error, Reason} ->
-          format_out(err_converting_to_output_value_id, [Reason, OutputValueIdStr])
+      % The remaining params form the Link
+      LinkStrs = lists:nthtail(2, Params),
+
+      case linkblox_api:add_link(curr_node(), OutputBlockNameStr, OutputValueIdStr, LinkStrs) of
+        ok -> format_out(block_output_linked_to_block_input, Params);
+
+        {error, Reason} -> format_out(err_linking_output_to_input, [Reason | Params])
       end;
 
     high -> format_out(err_too_many_params)
@@ -811,31 +778,18 @@ ui_unlink_blocks(Params, ParamStrAtom) ->
     ok ->
       % 1st parameter is block name
       OutputBlockNameStr = lists:nth(1, Params),
-      OutputBlockName = list_to_atom(OutputBlockNameStr),
 
       % 2nd parameter is the output value ID
       OutputValueIdStr = lists:nth(2, Params),
-      case attrib_utils:str_to_value_id(OutputValueIdStr) of
-        {ok, OutputValueId} ->
-          % The remaining params form the Link
-          LinkParams = lists:nthtail(2, Params),
-          case parse_link(LinkParams) of
-            {ok, Link} ->
-              % Delete the output value link to an input, 
-              case linkblox_api:del_link(curr_node(), OutputBlockName, OutputValueId, Link) of
-                {error, Reason} ->
-                  format_out(err_unlinking_output_from_input, 
-                               [OutputBlockNameStr, OutputValueIdStr, link_utils:format_link(Link), Reason]);
-                ok ->
-                  format_out(block_output_unlinked_from_block_input, 
-                               [OutputBlockNameStr ++ ":" ++ OutputValueIdStr, link_utils:format_link(Link)])
-              end;
 
-            {error, Reason} ->
-              format_out(err_converting_to_link, [Reason, LinkParams])
-          end;
-        {error, Reason} ->
-          format_out(err_converting_to_output_value_id, [Reason, OutputValueIdStr])
+      % The remaining params form the Link
+      LinkStrs = lists:nthtail(2, Params),
+
+      % Delete the output value link to an input, 
+      case linkblox_api:del_link(curr_node(), OutputBlockNameStr, OutputValueIdStr, LinkStrs) of
+        ok -> format_out(block_output_unlinked_from_block_input, Params);
+
+        {error, Reason} -> format_out(err_unlinking_output_from_input, [Reason | Params])
       end;
 
     high -> format_out(err_too_many_params)
@@ -850,18 +804,14 @@ ui_xlink_blocks(Params, ParamStrAtom) ->
     ok ->
       % 1st parameter is executor block name
       ExecutorBlockNameStr = lists:nth(1, Params),
-      ExecutorBlockName = list_to_atom(ExecutorBlockNameStr),
 
       % 2nd parameter is the executee block name
       ExecuteeBlockNameStr = lists:nth(2, Params),
-      ExecuteeBlockName = list_to_atom(ExecuteeBlockNameStr),
 
-      case linkblox_api:add_exec_link(curr_node(), ExecutorBlockName, ExecuteeBlockName) of
-        {error, Reason} ->
-          format_out(err_adding_execution_link_from_to, 
-                      [ExecutorBlockNameStr, ExecuteeBlockNameStr, Reason]);
-        ok ->
-          format_out(block_execution_linked_to_block, [ExecutorBlockName, ExecuteeBlockName])
+      case linkblox_api:add_exec_link(curr_node(), ExecutorBlockNameStr, ExecuteeBlockNameStr) of
+        ok -> format_out(block_execution_linked_to_block, Params);
+
+        {error, Reason} -> format_out(err_adding_execution_link_from_to, [Reason | Params])
       end;
     high -> format_out(err_too_many_params)
   end.
@@ -875,37 +825,16 @@ ui_xunlink_blocks(Params, ParamStrAtom) ->
     ok ->
       % 1st parameter is executor block name
       ExecutorBlockNameStr = lists:nth(1, Params),
-      ExecutorBlockName = list_to_atom(ExecutorBlockNameStr),
 
       % 2nd parameter is the executee block name
       ExecuteeBlockNameStr = lists:nth(2, Params),
-      ExecuteeBlockName = list_to_atom(ExecuteeBlockNameStr),
 
-      case linkblox_api:del_exec_link(curr_node(), ExecutorBlockName, ExecuteeBlockName) of
-        {error, Reason} ->
-          format_out(err_deleting_execution_link_from_to, 
-                          [ExecutorBlockName, ExecuteeBlockName, Reason]);
-        ok ->
-          format_out(block_execution_unlinked_from_block, [ExecutorBlockName, ExecuteeBlockName])
+      case linkblox_api:del_exec_link(curr_node(), ExecutorBlockNameStr, ExecuteeBlockNameStr) of
+        ok -> format_out(block_execution_unlinked_from_block, Params); 
+
+        {error, Reason} -> format_out(err_deleting_execution_link_from_to, [Reason | Params])
       end;
     high -> format_out(err_too_many_params)
-  end.
-
-
-% Parse the params into a Link tuple
-parse_link(LinkParams) ->
-
-  % Links should consist of a Block Name and Value ID
-  case LinkParams of
-    [BlockNameStr, ValueIdStr] ->
-      BlockName = list_to_atom(BlockNameStr),
-
-      case attrib_utils:str_to_value_id(ValueIdStr) of
-        {ok, ValueId}   -> {ok, {BlockName, ValueId}};
-        {error, Reason} -> {error, Reason}
-      end;
-    _Invalid ->
-      {error, invalid}
   end.
 
 
@@ -917,9 +846,9 @@ ui_load_blocks(Params, _ParamStrAtom) ->
     ok ->
       case length(Params) of  
         0 -> 
-          format_out(enter_config_file_name),
+          format_out(enter_config_file_name, [default_config_file()]),
           case ui_utils:get_input("") of
-                  [] -> FileName = "LinkBloxConfig";
+                  [] -> FileName = default_config_file();
             FileName -> FileName
           end;
         1 ->
@@ -948,9 +877,9 @@ ui_save_blocks(Params, _ParamStrAtom) ->
     ok ->
       case length(Params) of  
         0 -> 
-          format_out(enter_config_file_name),
+          format_out(enter_config_file_name, [default_config_file()]),
           case ui_utils:get_input("") of
-                  [] -> FileName = "LinkBloxConfig";
+                  [] -> FileName = default_config_file();
             FileName -> FileName
           end;
         1 ->
@@ -973,6 +902,11 @@ ui_save_blocks(Params, _ParamStrAtom) ->
     high -> format_out(err_too_many_params)
   end.
 
+% Get the default config file name, based on the current node name
+default_config_file() ->
+  CurrNodeStr = atom_to_list(curr_node()),
+  NodeStr = lists:takewhile(fun(Char)-> Char /= $@ end, CurrNodeStr),
+  NodeStr ++ "Config".
 
 % Execute Erlang BIF node()
 ui_node(_Params, _ParamStrAtom) ->
@@ -1029,21 +963,21 @@ block_status([]) ->
   io:format("~n"), 
   ok;
 
-block_status([BlockName | RemainingBlockNames]) ->
-  {BlockTypeStr, _Version, _Description} = 
-        linkblox_api:get_type_info(curr_node(), BlockName),
+block_status([BlockNameStr | RemainingBlockNames]) ->
+  {_BlockModule, _Version, BlockTypeStr, _Description} = 
+        linkblox_api:get_type_info(curr_node(), BlockNameStr),
 
   % TODO: Create get_values() API call, get multiple values in one call 
-  {ok, Value} = linkblox_api:get_value(curr_node(), BlockName, value),
-  {ok, Status} = linkblox_api:get_value(curr_node(), BlockName, status),
-  {ok, ExecMethod} = linkblox_api:get_value(curr_node(), BlockName, exec_method),
+  {ok, Value} = linkblox_api:get_value(curr_node(), BlockNameStr, "value"),
+  {ok, Status} = linkblox_api:get_value(curr_node(), BlockNameStr, "status"),
+  {ok, ExecMethod} = linkblox_api:get_value(curr_node(), BlockNameStr, "exec_method"),
   
   case block_utils:is_string(Value) of
       true -> ValueStr = string:left(io_lib:format("\"~s\"", [Value]), 12);
          _ -> ValueStr = string:left(io_lib:format("~w",[Value]), 12)
   end,
 
-  case linkblox_api:get_value(curr_node(), BlockName, last_exec) of 
+  case linkblox_api:get_value(curr_node(), BlockNameStr, "last_exec") of 
     {ok, null} ->
       LastExecuted = "null";
     {ok, {Hour, Minute, Second, Micro}} ->
@@ -1053,11 +987,9 @@ block_status([BlockName | RemainingBlockNames]) ->
       LastExecuted = "undef last_exec val"
   end,  
 
- 
-
   io:fwrite("~-16s ~-16s ~-12s ~-12w ~-12w ~-15s~n", 
             [string:left(BlockTypeStr, 16), 
-             string:left(atom_to_list(BlockName), 16), 
+             string:left(BlockNameStr, 16), 
              ValueStr, Status, ExecMethod, LastExecuted]),
   block_status(RemainingBlockNames).
 
@@ -1070,9 +1002,8 @@ ui_valid_block_name(Params, ParamStrAtom) ->
 
     ok ->
       [BlockNameStr] = Params,
-      BlockName = list_to_atom(BlockNameStr),
       % check if block name is an existing block
-      case linkblox_api:is_block_name(curr_node(), BlockName) of
+      case linkblox_api:is_block_name(curr_node(), BlockNameStr) of
         true  -> 
           format_out(block_exists, [BlockNameStr]);
         false ->
@@ -1121,7 +1052,7 @@ ui_help(Params, _ParamStrAtom) ->
           lists:map(fun(Cmd) -> 
                       {CmdStr, _CmdAtom, _CmdParamAtom, CmdHelpAtom} = Cmd,
                       io:format("~s:  ~s~n", 
-                          [CmdStr, ui_util:get_ui_string(CmdHelpAtom)])
+                          [CmdStr, ui_utils:get_ui_string(CmdHelpAtom)])
                     end,
                     CmdList);
         1 ->
