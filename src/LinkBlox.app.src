@@ -2,7 +2,7 @@
  [{description, "Linking Blocks of Functionality"},
   {vsn, "0.2.0"},
   {registered, []},
-  {mod, {'LinkBlox_app', ["LinkBloxConfig", lang_en_us]}},
+  {mod, {'LinkBlox_app', ['LinkBlox', lang_en_us, 1111, info]}},
   {applications,
    [kernel,
     stdlib,
