@@ -90,6 +90,13 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
 -spec start_node(BaseNodeName :: atom(),
                  Index :: pos_integer()) -> {ok, atom()}.
 
+% If nerves standalone build, nod is already started
+-ifdef(STANDALONE).
+
+start_node(_BaseNodeName, _Index) -> ok.
+
+-else.
+
 start_node(BaseNodeName, Index) ->
   IndexStr = io_lib:format("~2..0w", [Index]),
   BaseNodeNameStr = atom_to_list(BaseNodeName),
@@ -103,3 +110,6 @@ start_node(BaseNodeName, Index) ->
     {error, _Error} ->
       start_node(BaseNodeName, Index + 1)
   end.
+
+-endif.
+
