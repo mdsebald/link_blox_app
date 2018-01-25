@@ -303,8 +303,9 @@ handle_call(stop, _From, State) ->
 %% =====================================================================
 %% Create a block from block type and block name
 %% =====================================================================    
-handle_call({create_block, BlockModuleStr, BlockNameStr, Description}, _From, State) ->
-
+handle_call({create_block, BlockModuleStr, BlockNameStr, Description}, From, State) ->
+  logger:debug("API, create_block, From: ~p, Type: ~s, Name: ~s, Descr: ~s", 
+               [From, BlockModuleStr, BlockNameStr, Description]),
   BlockName = list_to_atom(BlockNameStr),
 
   Result = case block_supervisor:is_block(BlockName) of
@@ -436,7 +437,8 @@ handle_call({get_value, BlockNameStr, ValueIdStr}, _From, State) ->
 %% =====================================================================
 %% Get a list of all block names
 %% =====================================================================    
-handle_call(get_block_names, _From, State) ->
+handle_call(get_block_names, From, State) ->
+  logger:debug("API, get_block_names, From: ~p", [From]),
   BlockNames = block_supervisor:block_names(),
   % Convert blocknames to strings
   Result = lists:map(fun(BlockName) -> atom_to_list(BlockName) end, BlockNames),

@@ -174,7 +174,7 @@ ui_strings() -> #{
 %% Map of log string ids to actual strings
 %%
 log_strings() -> #{
-  starting_linkblox_lang_mod => "Starting LinkBlox app, using Language Module: ~p",
+  starting_linkblox_options => "Starting LinkBlox app, Node Name: ~p, Language Module: ~p, SSH Port: ~p, Log Level: ~p",
   starting_SSH_CLI_user_interface_on_port => "Starting SSH CLI User Interface on port: ~p",
 
   linkblox_startup_complete => "LinkBlox startup complete",

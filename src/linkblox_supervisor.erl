@@ -43,14 +43,15 @@ start_link(Options) ->
            | temporary,
   Modules :: [module()] | dynamic.
 
-init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
+init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->   
   lager:set_loglevel(lager_console_backend, LogLevel),
 
   ui_utils:create_config(),
   ui_utils:set_lang_mod(LangMod),
   ui_utils:set_ssh_port(SSH_Port),
 
-  logger:info(starting_linkblox_lang_mod, [LangMod]),
+  logger:info(starting_linkblox_options, [BaseNodeName, LangMod, SSH_Port, LogLevel]),
+ 
 
   HostName = net_adm:localhost(),
   logger:info(host_name, [HostName]),
@@ -61,7 +62,7 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
   BlockValuesFile = atom_to_list(NodeName) ++ "Config",
   logger:info(block_values_file, [BlockValuesFile]),
   
-  ui_ssh_cli:start([{system_dir, "/etc/ssh"}]),
+  start_ssh_cli(),
   
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
@@ -90,10 +91,13 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
 -spec start_node(BaseNodeName :: atom(),
                  Index :: pos_integer()) -> {ok, atom()}.
 
-% If nerves standalone build, nod is already started
--ifdef(STANDALONE).
+-ifdef(STANDALONE). % i.e. if Nerves build
 
-start_node(_BaseNodeName, _Index) -> ok.
+% Node is already started
+start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
+
+% Don't start SSH command line interface
+start_ssh_cli() -> ok.
 
 -else.
 
@@ -110,6 +114,10 @@ start_node(BaseNodeName, Index) ->
     {error, _Error} ->
       start_node(BaseNodeName, Index + 1)
   end.
+
+
+start_ssh_cli() ->
+  ui_ssh_cli:start([{system_dir, "/etc/ssh"}]).
 
 -endif.
 
