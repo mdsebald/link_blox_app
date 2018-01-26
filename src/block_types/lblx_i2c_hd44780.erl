@@ -163,7 +163,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                                   field_widths, NumOfInputs, {80}),
 
           Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  inputs, NumOfInputs, {"Input", "Input"}),
+                                  inputs, NumOfInputs, {"Input", {"Input"}}),
           Status = initialed,
           Value = 0;
 
