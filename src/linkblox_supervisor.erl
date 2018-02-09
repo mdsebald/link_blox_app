@@ -111,7 +111,11 @@ start_node(BaseNodeName, Index) ->
     {ok, _Pid} -> 
       logger:info(distributed_node_started, [NodeName]),
       {ok, NodeName};
-    {error, _Error} ->
+    {error, {already_started, _Pid}} ->
+      logger:debug("~p Already started", [NodeName]),
+      start_node(BaseNodeName, Index + 1);
+    {error, Error} ->
+      logger:error("~p Starting: ~p", [Error, NodeName]),
       start_node(BaseNodeName, Index + 1)
   end.
 
