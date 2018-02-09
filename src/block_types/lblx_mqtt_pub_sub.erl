@@ -620,7 +620,7 @@ get_password({Config, Options}) ->
 
 %
 % Get logging level config
-% Always user OTP standard 'error_logger' library, 
+% Always use the lager logging library, 
 % because the rest of the LinkBlox app uses it too.
 % Default logging level to none. 
 %
@@ -629,8 +629,8 @@ get_password({Config, Options}) ->
 
 get_logger({Config, Options}) ->
  case config_utils:get_atom(Config, logger) of
-    {ok, Logger} -> {Config, [{logger, {error_logger, Logger}} | Options]};
-               _ -> {Config, [{logger, {error_logger, none}} | Options]}
+    {ok, Logger} -> {Config, [{logger, {lager, Logger}} | Options]};
+               _ -> {Config, [{logger, {lager, none}} | Options]}
   end.
 
 %
