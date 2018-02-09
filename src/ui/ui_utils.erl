@@ -181,7 +181,7 @@ get_attrib_string(AttribId) ->
   
     LangMod ->
       case lists:keyfind(AttribId, 1, LangMod:attrib_strings()) of
-        {AttribId, AttribStr} -> AttribStr;
+        {AttribId, AttribStr, _AttribDescr} -> AttribStr;
 
         % if AttribId not found in attrib strings, in the language module
         % Just return the AttribId as a string
@@ -206,7 +206,7 @@ get_attrib_id(AttribStr) ->
 
     LangMod ->
       case lists:keyfind(AttribStr, 2, LangMod:attrib_strings()) of
-        {AttribId, AttribStr} -> AttribId;
+        {AttribId, AttribStr, _AttribDescr} -> AttribId;
       
         false -> {error, not_found}
       end

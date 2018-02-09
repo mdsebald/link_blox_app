@@ -353,200 +353,208 @@ block_type_strings() ->
 
 
 %%
-%% Map of attribute string ids to actual strings
-%% Order alphabetically by the attribute string id
-%% Add a map entry for each unique attribute id
-%% Attribute strings must be unique and not contain any spaces
-%% The attribute strings are used to look up the attribute IDs and visa-versa
+%% List of attribute ids (Elrang atoms),
+%% their corresponding attribute id strings, 
+%% and an attribute description string.
+%%
+%% Add an entry for each unique attribute id
+%% Order alphabetically by the attribute id
+%% The attribute id strings must be unique and not contain any spaces
+%%
+%% The attribute ids are used to look up the string to display, 
+%%  when displaying attribute values to the UI or other external value sink.
+%%
+%% The attribute id strings are used to look up the attribute id, 
+%%  when setting a value from the UI or other external value source.
 %% 
 attrib_strings() ->
 [
-  {'0_out', "0_out"},  % Output value for false input
-  {'1_out', "1_out"},  % Output value for true input
-  {'X_out', "X_out"},  % Output value for null input
+  {'0_out',           "0_out", "Output value for false input"},
+  {'1_out',           "1_out", "Output value for true input"},
+  {'X_out',           "X_out", "Output value for null input"},
 
-  {'0_0_out', "0_0_out"},  % Output value for input 2 = false & 1 = false
-  {'0_1_out', "0_1_out"},  % Output value for input 2 = false & 1 = true
-  {'0_X_out', "0_X_out"},  % Output value for input 2 = false & 1 = null
-  {'1_0_out', "1_0_out"},  % Output value for input 2 = true & 1 = false
-  {'1_1_out', "1_1_out"},  % Output value for input 2 = true & 1 = true
-  {'1_X_out', "1_X_out"},  % Output value for input 2 = true & 1 = null
-  {'X_0_out', "X_0_out"},  % Output value for input 2 = null & 1 = false
-  {'X_1_out', "X_1_out"},  % Output value for input 2 = null & 1 = true
-  {'X_X_out', "X_X_out"},  % Output value for input 2 = null & 1 = null
+  {'0_0_out',         "0_0_out", "Output value for input 2 = false & 1 = false"},
+  {'0_1_out',         "0_1_out", "Output value for input 2 = false & 1 = true"},
+  {'0_X_out',         "0_X_out", "Output value for input 2 = false & 1 = null"},
+  {'1_0_out',         "1_0_out", "Output value for input 2 = true & 1 = false"},
+  {'1_1_out',         "1_1_out", "Output value for input 2 = true & 1 = true"},
+  {'1_X_out',         "1_X_out", "Output value for input 2 = true & 1 = null"},
+  {'X_0_out',         "X_0_out", "Output value for input 2 = null & 1 = false"},
+  {'X_1_out',         "X_1_out", "Output value for input 2 = null & 1 = true"},
+  {'X_X_out',         "X_X_out", "Output value for input 2 = null & 1 = null"},
 
-  {'0_0_0_out', "0_0_0_out"},  % Output value for input 3 = false & 2 = false & 1 = false
-  {'0_0_1_out', "0_0_1_out"},  % Output value for input 3 = false & 2 = false & 1 = true
-  {'0_0_X_out', "0_0_X_out"},  % Output value for input 3 = false & 2 = false & 1 = null
-  {'0_1_0_out', "0_1_0_out"},  % Output value for input 3 = false & 2 = true & 1 = false
-  {'0_1_1_out', "0_1_1_out"},  % Output value for input 3 = false & 2 = true & 1 = true
-  {'0_1_X_out', "0_1_X_out"},  % Output value for input 3 = false & 2 = true & 1 = null
-  {'0_X_0_out', "0_X_0_out"},  % Output value for input 3 = false & 2 = null & 1 = false
-  {'0_X_1_out', "0_X_1_out"},  % Output value for input 3 = false & 2 = null & 1 = true
-  {'0_X_X_out', "0_X_X_out"},  % Output value for input 3 = false & 2 = null & 1 = null
+  {'0_0_0_out',       "0_0_0_out", "Output value for input 3 = false & 2 = false & 1 = false"},
+  {'0_0_1_out',       "0_0_1_out", "Output value for input 3 = false & 2 = false & 1 = true"},
+  {'0_0_X_out',       "0_0_X_out", "Output value for input 3 = false & 2 = false & 1 = null"},
+  {'0_1_0_out',       "0_1_0_out", "Output value for input 3 = false & 2 = true & 1 = false"},
+  {'0_1_1_out',       "0_1_1_out", "Output value for input 3 = false & 2 = true & 1 = true"},
+  {'0_1_X_out',       "0_1_X_out", "Output value for input 3 = false & 2 = true & 1 = null"},
+  {'0_X_0_out',       "0_X_0_out", "Output value for input 3 = false & 2 = null & 1 = false"},
+  {'0_X_1_out',       "0_X_1_out", "Output value for input 3 = false & 2 = null & 1 = true"},
+  {'0_X_X_out',       "0_X_X_out", "Output value for input 3 = false & 2 = null & 1 = null"},
 
-  {'1_0_0_out', "1_0_0_out"},  % Output value for input 3 = true & 2 = false & 1 = false
-  {'1_0_1_out', "1_0_1_out"},  % Output value for input 3 = true & 2 = false & 1 = true
-  {'1_0_X_out', "1_0_X_out"},  % Output value for input 3 = true & 2 = false & 1 = null
-  {'1_1_0_out', "1_1_0_out"},  % Output value for input 3 = true & 2 = true & 1 = false
-  {'1_1_1_out', "1_1_1_out"},  % Output value for input 3 = true & 2 = true & 1 = true
-  {'1_1_X_out', "1_1_X_out"},  % Output value for input 3 = true & 2 = true & 1 = null
-  {'1_X_0_out', "1_X_0_out"},  % Output value for input 3 = true & 2 = null & 1 = false
-  {'1_X_1_out', "1_X_1_out"},  % Output value for input 3 = true & 2 = null & 1 = true
-  {'1_X_X_out', "1_X_X_out"},  % Output value for input 3 = true & 2 = null & 1 = null
+  {'1_0_0_out',       "1_0_0_out", "Output value for input 3 = true & 2 = false & 1 = false"},
+  {'1_0_1_out',       "1_0_1_out", "Output value for input 3 = true & 2 = false & 1 = true"},
+  {'1_0_X_out',       "1_0_X_out", "Output value for input 3 = true & 2 = false & 1 = null"},
+  {'1_1_0_out',       "1_1_0_out", "Output value for input 3 = true & 2 = true & 1 = false"},
+  {'1_1_1_out',       "1_1_1_out", "Output value for input 3 = true & 2 = true & 1 = true"},
+  {'1_1_X_out',       "1_1_X_out", "Output value for input 3 = true & 2 = true & 1 = null"},
+  {'1_X_0_out',       "1_X_0_out", "Output value for input 3 = true & 2 = null & 1 = false"},
+  {'1_X_1_out',       "1_X_1_out", "Output value for input 3 = true & 2 = null & 1 = true"},
+  {'1_X_X_out',       "1_X_X_out", "Output value for input 3 = true & 2 = null & 1 = null"},
 
-  {'X_0_0_out', "X_0_0_out"},  % Output value for input 3 = null & 2 = false & 1 = false
-  {'X_0_1_out', "X_0_1_out"},  % Output value for input 3 = null & 2 = false & 1 = true
-  {'X_0_X_out', "X_0_X_out"},  % Output value for input 3 = null & 2 = false & 1 = null
-  {'X_1_0_out', "X_1_0_out"},  % Output value for input 3 = null & 2 = true & 1 = false
-  {'X_1_1_out', "X_1_1_out"},  % Output value for input 3 = null & 2 = true & 1 = true
-  {'X_1_X_out', "X_1_X_out"},  % Output value for input 3 = null & 2 = true & 1 = null
-  {'X_X_0_out', "X_X_0_out"},  % Output value for input 3 = null & 2 = null & 1 = false
-  {'X_X_1_out', "X_X_1_out"},  % Output value for input 3 = null & 2 = null & 1 = true
-  {'X_X_X_out', "X_X_X_out"},  % Output value for input 3 = null & 2 = null & 1 = null
+  {'X_0_0_out',       "X_0_0_out", "Output value for input 3 = null & 2 = false & 1 = false"},
+  {'X_0_1_out',       "X_0_1_out", "Output value for input 3 = null & 2 = false & 1 = true"},
+  {'X_0_X_out',       "X_0_X_out", "Output value for input 3 = null & 2 = false & 1 = null"},
+  {'X_1_0_out',       "X_1_0_out", "Output value for input 3 = null & 2 = true & 1 = false"},
+  {'X_1_1_out',       "X_1_1_out", "Output value for input 3 = null & 2 = true & 1 = true"},
+  {'X_1_X_out',       "X_1_X_out", "Output value for input 3 = null & 2 = true & 1 = null"},
+  {'X_X_0_out',       "X_X_0_out", "Output value for input 3 = null & 2 = null & 1 = false"},
+  {'X_X_1_out',       "X_X_1_out", "Output value for input 3 = null & 2 = null & 1 = true"},
+  {'X_X_X_out',       "X_X_X_out", "Output value for input 3 = null & 2 = null & 1 = null"},
 
-  {'0_0_0_0_out', "0_0_0_0_out"},  % Output value for input 4 = false & 3 = false & 2 = false & 1 = false
-  {'0_0_0_1_out', "0_0_0_1_out"},  % Output value for input 4 = false & 3 = false & 2 = false & 1 = true
-  {'0_0_1_0_out', "0_0_1_0_out"},  % Output value for input 4 = false & 3 = false & 2 = true & 1 = false
-  {'0_0_1_1_out', "0_0_1_1_out"},  % Output value for input 4 = false & 3 = false & 2 = true & 1 = true
-  {'0_1_0_0_out', "0_1_0_0_out"},  % Output value for input 4 = false & 3 = true & 2 = false & 1 = false
-  {'0_1_0_1_out', "0_1_0_1_out"},  % Output value for input 4 = false & 3 = true & 2 = false & 1 = true
-  {'0_1_1_0_out', "0_1_1_0_out"},  % Output value for input 4 = false & 3 = true & 2 = true & 1 = false
-  {'0_1_1_1_out', "0_1_1_1_out"},  % Output value for input 4 = false & 3 = true & 2 = true & 1 = true
-  {'1_0_0_0_out', "1_0_0_0_out"},  % Output value for input 4 = true & 3 = false & 2 = false & 1 = false
-  {'1_0_0_1_out', "1_0_0_1_out"},  % Output value for input 4 = true & 3 = false & 2 = false & 1 = true
-  {'1_0_1_0_out', "1_0_1_0_out"},  % Output value for input 4 = true & 3 = false & 2 = true & 1 = false
-  {'1_0_1_1_out', "1_0_1_1_out"},  % Output value for input 4 = true & 3 = false & 2 = true & 1 = true
-  {'1_1_0_0_out', "1_1_0_0_out"},  % Output value for input 4 = true & 3 = true & 2 = false & 1 = false
-  {'1_1_0_1_out', "1_1_0_1_out"},  % Output value for input 4 = true & 3 = true & 2 = false & 1 = true
-  {'1_1_1_0_out', "1_1_1_0_out"},  % Output value for input 4 = true & 3 = true & 2 = true & 1 = false
-  {'1_1_1_1_out', "1_1_1_1_out"},   % Output value for input 4 = true & 3 = true & 2 = true & 1 = true
+  {'0_0_0_0_out',     "0_0_0_0_out", "Output value for input 4 = false & 3 = false & 2 = false & 1 = false"},
+  {'0_0_0_1_out',     "0_0_0_1_out", "Output value for input 4 = false & 3 = false & 2 = false & 1 = true"},
+  {'0_0_1_0_out',     "0_0_1_0_out", "Output value for input 4 = false & 3 = false & 2 = true & 1 = false"},
+  {'0_0_1_1_out',     "0_0_1_1_out", "Output value for input 4 = false & 3 = false & 2 = true & 1 = true"},
+  {'0_1_0_0_out',     "0_1_0_0_out", "Output value for input 4 = false & 3 = true & 2 = false & 1 = false"},
+  {'0_1_0_1_out',     "0_1_0_1_out", "Output value for input 4 = false & 3 = true & 2 = false & 1 = true"},
+  {'0_1_1_0_out',     "0_1_1_0_out", "Output value for input 4 = false & 3 = true & 2 = true & 1 = false"},
+  {'0_1_1_1_out',     "0_1_1_1_out", "Output value for input 4 = false & 3 = true & 2 = true & 1 = true"},
+  {'1_0_0_0_out',     "1_0_0_0_out", "Output value for input 4 = true & 3 = false & 2 = false & 1 = false"},
+  {'1_0_0_1_out',     "1_0_0_1_out", "Output value for input 4 = true & 3 = false & 2 = false & 1 = true"},
+  {'1_0_1_0_out',     "1_0_1_0_out", "Output value for input 4 = true & 3 = false & 2 = true & 1 = false"},
+  {'1_0_1_1_out',     "1_0_1_1_out", "Output value for input 4 = true & 3 = false & 2 = true & 1 = true"},
+  {'1_1_0_0_out',     "1_1_0_0_out", "Output value for input 4 = true & 3 = true & 2 = false & 1 = false"},
+  {'1_1_0_1_out',     "1_1_0_1_out", "Output value for input 4 = true & 3 = true & 2 = false & 1 = true"},
+  {'1_1_1_0_out',     "1_1_1_0_out", "Output value for input 4 = true & 3 = true & 2 = true & 1 = false"},
+  {'1_1_1_1_out',     "1_1_1_1_out", "Output value for input 4 = true & 3 = true & 2 = true & 1 = true"},
 
-  {active_true, "active_true"}, 
-  {active_false, "active_false"}, 
-  {backlight, "backlight"}, 
-  {blink_cursor, "blink_cursor"}, 
-  {blink_rate, "blink_rate"}, 
-  {block_name, "block_name"}, 
-  {block_module, "block_module"}, 
-  {brightness, "brightness"}, 
-  {broker, "broker"},  % MQTT server URL
-  {carry, "carry"}, 
-  {clear, "clear"}, 
-  {clean_sess, "clean_sess"}, 
-  {client_id, "client_id"}, 
-  {colon, "colon"}, 
-  {cursor, "cursor"}, 
-  {dec_pnt, "dec_pnt"},  % Decimal Point
-  {default_value, "default_value"}, 
-  {deg_f, "deg_f"},  % Degrees Fahrenheit
-  {description, "description"}, 
-  {digits, "digits"}, 
-  {digit1, "digit1"}, 
-  {digit2, "digit2"}, 
-  {digit3, "digit3"}, 
-  {digit4, "digit4"}, 
-  {disable, "disable"}, 
-  {display, "display"}, 
-  {display_on, "display_on"}, 
-  {exec_in, "exec_in"}, 
-  {exec_interval, "exec_interval"}, 
-  {exec_method, "exec_method"}, 
-  {exec_out, "exec_out"}, 
-  {false_input, "false_input"}, 
-  {field_width, "field_width"}, 
-  {field_widths, "field_widths"}, 
-  {filter_coeff, "filter_coeff"}, 
-  {final_value, "final_value"}, 
-  {freeze, "freeze"}, 
-  {gpio_pin, "gpio_pin"}, 
-  {gpio_pin_phase_A, "gpio_pin_phase_A"}, 
-  {gpio_pin_phase_B, "gpio_pin_phase_B"}, 
-  {gpio_pin_switch, "gpio_pin_switch"}, 
-  {high_limit, "high_limit"}, 
-  {humid, "humid"},  % Humidity
-  {humid_mode, "humid_mode"},  % Humidity Mode
-  {humid_offset, "humid_offset"},  % Humidity Offset
-  {i2c_addr, "i2c_addr"}, 
-  {i2c_device, "i2c_device"}, 
-  {ignore_nulls, "ignore_nulls"}, 
-  {inch_merc, "inch_merc"},  % Inches of Mercury (barometric pressure)
-  {initial_state, "initial_state"}, 
-  {initial_value, "initial_value"}, 
-  {input, "input"}, 
-  {input1, "input1"}, 
-  {input2, "input2"}, 
-  {input3, "input3"}, 
-  {input4, "input4"}, 
-  {inputs, "inputs"}, 
-  {input_a, "input_a"}, 
-  {input_b, "input_b"}, 
-  {input_j, "input_j"}, 
-  {input_k, "input_k"}, 
-  {invert_output, "invert_output"}, 
-  {keepalive, "keepalive"}, 
-  {last_exec, "last_exec"}, 
-  {leading_zeros, "leading_zeros"}, 
-  {led_id, "led_id"}, 
-  {left_justify, "left_justify"}, 
-  {logger, "logger"}, 
-  {low_limit, "low_limit"}, 
-  {min_on_time, "min_on_time"}, 
-  {neg_overflow, "neg_overflow"}, 
-  {neg_precision, "neg_precision"}, 
-  {nodes, "nodes"}, 
-  {nodes_state, "nodes_state"}, 
-  {not_active_str, "not_active_str"}, 
-  {null_input, "null_input"}, 
-  {number_base, "number_base"}, 
-  {num_of_digits, "num_of_digits"}, 
-  {num_of_inputs, "num_of_inputs"}, 
-  {num_of_nodes, "num_of_nodes"}, 
-  {num_of_pubs, "num_of_pubs"},  % MQTT quantity of topics to publish
-  {num_of_subs, "num_of_subs"},  % MQTT quantity of topics to subscribe to
-  {num_of_values, "num_of_values"}, 
-  {password, "password"}, 
-  {phase_int_edge, "phase_int_edge"}, 
-  {port, "port"},  % MQTT server port number
-  {pos_overflow, "pos_overflow"}, 
-  {pos_precision, "pos_precision"}, 
-  {precision, "precision"}, 
-  {press, "press"},  % Pressure
-  {press_mode, "press_mode"},  % Pressure Mode
-  {press_offset, "press_offset"},  % Pressure Offset
-  {proto_ver, "proto_ver"},  % MQTT protocol version
-  {pub_inputs, "pub_inputs"},  % MQTT values to publis
-  {pub_topics, "pub_topics"},  % MQTT topics to publish
-  {read_mode, "read_mode"}, 
-  {receive_values, "receive_values"}, 
-  {reset, "reset"}, 
-  {rollover, "rollover"}, 
-  {seg_a, "seg_a"}, 
-  {seg_b, "seg_b"}, 
-  {seg_c, "seg_c"}, 
-  {seg_d, "seg_d"}, 
-  {seg_e, "seg_e"}, 
-  {seg_f, "seg_f"}, 
-  {seg_g, "seg_g"}, 
-  {seg_dp, "seg_dp"}, 
-  {segments, "segments"}, 
-  {select, "select"}, 
-  {send_values, "send_values"}, 
-  {standby_time, "standby_time"}, 
-  {start_cols, "start_cols"}, 
-  {start_rows, "start_rows"}, 
-  {status, "status"}, 
-  {sub_topics, "sub_topics"},  % MQTT topics to subscribe to
-  {sub_values, "sub_values"},  % MQTT value of subscribed topics
-  {switch, "switch"}, 
-  {switch_int_edge, "switch_int_edge"}, 
-  {temp, "temp"}, 
-  {temp_mode, "temp_mode"},  % Temperature Mode
-  {temp_offset, "temp_offset"},  % Temperature Offset
-  {true_input, "true_input"}, 
-  {username, "username"}, 
-  {value, "value"}, 
-  {version, "version"}
+  {active_true,       "active_true", "TODO"}, 
+  {active_false,      "active_false", "TODO"},
+  {backlight,         "backlight", "TODO"},
+  {blink_cursor,      "blink_cursor", "TODO"},
+  {blink_rate,        "blink_rate", "TODO"},
+  {block_name,        "block_name", "TODO"},
+  {block_module,      "block_module", "TODO"},
+  {brightness,        "brightness", "TODO"},
+  {broker,            "broker", "MQTT server URL"},
+  {carry,             "carry", "TODO"}, 
+  {clear,             "clear", "TODO"}, 
+  {clean_sess,        "clean_sess", "TODO"}, 
+  {client_id,         "client_id", "TODO"}, 
+  {colon,             "colon", "TODO"}, 
+  {cursor,            "cursor", "TODO"}, 
+  {dec_pnt,           "dec_pnt", "Decimal Point"},
+  {default_value,     "default_value", "TODO"}, 
+  {deg_f,             "deg_f", "Degrees Fahrenheit"},
+  {description,       "description", "TODO"}, 
+  {digits,            "digits", "TODO"}, 
+  {digit1,            "digit1", "TODO"}, 
+  {digit2,            "digit2", "TODO"}, 
+  {digit3,            "digit3", "TODO"}, 
+  {digit4,            "digit4", "TODO"}, 
+  {disable,           "disable", "TODO"}, 
+  {display,           "display", "TODO"}, 
+  {display_on,        "display_on", "TODO"}, 
+  {exec_in,           "exec_in", "TODO"}, 
+  {exec_interval,     "exec_interval", "TODO"}, 
+  {exec_method,       "exec_method", "TODO"}, 
+  {exec_out,          "exec_out", "TODO"}, 
+  {false_input,       "false_input", "TODO"}, 
+  {field_width,       "field_width", "TODO"}, 
+  {field_widths,      "field_widths", "TODO"}, 
+  {filter_coeff,      "filter_coeff", "TODO"}, 
+  {final_value,       "final_value", "TODO"}, 
+  {freeze,            "freeze", "TODO"}, 
+  {gpio_pin,          "gpio_pin", "TODO"}, 
+  {gpio_pin_phase_A,  "gpio_pin_phase_A", "TODO"}, 
+  {gpio_pin_phase_B,  "gpio_pin_phase_B", "TODO"}, 
+  {gpio_pin_switch,   "gpio_pin_switch", "TODO"}, 
+  {high_limit,        "high_limit", "TODO"}, 
+  {humid,             "humid", "Humidity"},
+  {humid_mode,        "humid_mode", "Humidity Mode"},
+  {humid_offset,      "humid_offset", "Humidity Offset"},
+  {i2c_addr,          "i2c_addr", "TODO"}, 
+  {i2c_device,        "i2c_device", "TODO"}, 
+  {ignore_nulls,      "ignore_nulls", "TODO"}, 
+  {inch_merc,         "inch_merc", "Inches of Mercury (barometric pressure)"},
+  {initial_state,     "initial_state", "TODO"}, 
+  {initial_value,     "initial_value", "TODO"}, 
+  {input,             "input", "TODO"}, 
+  {input1,            "input1", "TODO"}, 
+  {input2,            "input2", "TODO"}, 
+  {input3,            "input3", "TODO"}, 
+  {input4,            "input4", "TODO"}, 
+  {inputs,            "inputs", "TODO"}, 
+  {input_a,           "input_a", "TODO"}, 
+  {input_b,           "input_b", "TODO"}, 
+  {input_j,           "input_j", "TODO"}, 
+  {input_k,           "input_k", "TODO"}, 
+  {invert_output,     "invert_output", "TODO"}, 
+  {keepalive,         "keepalive", "TODO"}, 
+  {last_exec,         "last_exec", "TODO"}, 
+  {leading_zeros,     "leading_zeros", "TODO"}, 
+  {led_id,            "led_id", "TODO"}, 
+  {left_justify,      "left_justify", "TODO"}, 
+  {logger,            "logger", "TODO"}, 
+  {low_limit,         "low_limit", "TODO"}, 
+  {min_on_time,       "min_on_time", "TODO"}, 
+  {neg_overflow,      "neg_overflow", "TODO"}, 
+  {neg_precision,     "neg_precision", "TODO"}, 
+  {nodes,             "nodes", "TODO"}, 
+  {nodes_state,       "nodes_state", "TODO"}, 
+  {not_active_str,    "not_active_str", "TODO"}, 
+  {null_input,        "null_input", "TODO"}, 
+  {number_base,       "number_base", "TODO"}, 
+  {num_of_digits,     "num_of_digits", "TODO"}, 
+  {num_of_inputs,     "num_of_inputs", "TODO"}, 
+  {num_of_nodes,      "num_of_nodes", "TODO"}, 
+  {num_of_pubs,       "num_of_pubs", "MQTT quantity of topics to publish"},
+  {num_of_subs,       "num_of_subs", "MQTT quantity of topics to subscribe to"},
+  {num_of_values,     "num_of_values", "TODO"}, 
+  {password,          "password", "TODO"}, 
+  {phase_int_edge,    "phase_int_edge", "TODO"}, 
+  {port,              "port",      "MQTT server port number"},
+  {pos_overflow,      "pos_overflow", "TODO"}, 
+  {pos_precision,     "pos_precision", "TODO"}, 
+  {precision,         "precision", "TODO"}, 
+  {press,             "press",    "Pressure"},
+  {press_mode,        "press_mode", "Pressure Mode"},
+  {press_offset,      "press_offset", "Pressure Offset"},
+  {proto_ver,         "proto_ver", "MQTT protocol version"},
+  {pub_inputs,        "pub_inputs", "MQTT values to publish"},
+  {pub_topics,        "pub_topics", "MQTT topics to publish"},
+  {read_mode,         "read_mode", "TODO"}, 
+  {receive_values,    "receive_values", "TODO"}, 
+  {reset,             "reset", "TODO"}, 
+  {rollover,          "rollover", "TODO"}, 
+  {seg_a,             "seg_a", "TODO"}, 
+  {seg_b,             "seg_b", "TODO"}, 
+  {seg_c,             "seg_c", "TODO"}, 
+  {seg_d,             "seg_d", "TODO"}, 
+  {seg_e,             "seg_e", "TODO"}, 
+  {seg_f,             "seg_f", "TODO"}, 
+  {seg_g,             "seg_g", "TODO"}, 
+  {seg_dp,            "seg_dp", "TODO"}, 
+  {segments,          "segments", "TODO"}, 
+  {select,            "select", "TODO"}, 
+  {send_values,       "send_values", "TODO"}, 
+  {standby_time,      "standby_time", "TODO"}, 
+  {start_cols,        "start_cols", "TODO"}, 
+  {start_rows,        "start_rows", "TODO"}, 
+  {status,            "status", "TODO"}, 
+  {sub_topics,        "sub_topics", "MQTT topics to subscribe to"},
+  {sub_values,        "sub_values", "MQTT value of subscribed topics"},
+  {switch,            "switch", "TODO"}, 
+  {switch_int_edge,   "switch_int_edge", "TODO"}, 
+  {temp,              "temp", "TODO"}, 
+  {temp_mode,         "temp_mode", "Temperature Mode"},
+  {temp_offset,       "temp_offset", "Temperature Offset"},
+  {true_input,        "true_input", "TODO"}, 
+  {username,          "username", "TODO"}, 
+  {value,             "value", "TODO"}, 
+  {version,           "version"}
 ].
 
 
