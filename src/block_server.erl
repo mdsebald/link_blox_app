@@ -352,7 +352,7 @@ handle_call({del_link, ValueId, Link}, _From, BlockState) ->
     BlockName = config_utils:name(Config),
     case link_utils:del_link(BlockName, Outputs, ValueId, Link) of
       {ok, Outputs1} ->
-        % TODO: Set unlinked input value to empty?
+        % TODO: Set unlinked input value to default input value?
         Result = ok,
         NewBlockState = {Config, Inputs, Outputs1, Private};
   
