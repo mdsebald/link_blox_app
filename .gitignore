@@ -13,3 +13,5 @@ erlcinfo
 _rel
 *.fw
 firmware
+*.html
+doc
