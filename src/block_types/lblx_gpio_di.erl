@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: GPIO Digital Input 
-%%% Description: Configure a GPIO Pin as a Digital Input block  
-%%%               
+%%% BLOCKTYPE
+%%% GPIO Digital Input 
+%%% DESCRIPTION
+%%% Configure a GPIO Pin as a Digital Input block  
+%%% LINKS              
 %%% @end 
 
 -module(lblx_gpio_di).

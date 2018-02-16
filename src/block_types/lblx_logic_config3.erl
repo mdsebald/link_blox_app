@@ -1,9 +1,10 @@
 %%% @doc 
-%%% Block Type:  3 Input Configurable Logic Gate
-%%% Description:  Output is set to the config value corresponding to the combination of binary input values
-%%%               
+%%% BLOCKTYPE
+%%% 3 Input Configurable Logic Gate
+%%% DESCRIPTION
+%%% Output is set to the config value corresponding to the combination of binary input values
+%%% LINKS              
 %%% @end 
-
 
 -module(lblx_logic_config3).
   
@@ -33,14 +34,14 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {'0_0_0_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = false
-      {'0_0_1_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = true
-      {'0_1_0_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = false
-      {'0_1_1_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = true
-      {'1_0_0_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = false
-      {'1_0_1_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = true
-      {'1_1_0_out', {null}}, % Output value for input 3 = true & 2 = true & 1 = false
-      {'1_1_1_out', {null}}  % Output value for input 3 = true & 2 = true & 1 = true
+      {'0_0_0_out', {null}}, 
+      {'0_0_1_out', {null}}, 
+      {'0_1_0_out', {null}},
+      {'0_1_1_out', {null}},
+      {'1_0_0_out', {null}}, 
+      {'1_0_1_out', {null}}, 
+      {'1_1_0_out', {null}},
+      {'1_1_1_out', {null}} 
     ]). 
 
 

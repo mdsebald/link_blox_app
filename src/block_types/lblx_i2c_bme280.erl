@@ -1,7 +1,10 @@
 %%% @doc 
-%%% Block Type:  Bosch BME280 Temperature, Pressure, Humidity Sensor
-%%% Description:    
-%%%               
+%%% BLOCKTYPE
+%%% Interface to Bosch BME280 Sensor
+%%% DESCRIPTION
+%%% Interface to Bosch BME280 Integrated Temperature, Pressure, and Humidity Sensor
+%%% LINKS              
+%%% https://www.bosch-sensortec.com/bst/products/all_products/bme280
 %%% @end 
 
 -module(lblx_i2c_bme280).  
@@ -53,7 +56,6 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-
     ]). 
 
 

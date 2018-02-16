@@ -1,7 +1,10 @@
-%%% @doc 
-%%% Block Type:  4 Digit 7 Segment LED Display
-%%% Description: LED Display with I2C Interface HTK1633 Driver   
-%%%               
+ %%% @doc 
+%%% BLOCKTYPE
+%%% 4 Digit 7 Segment LED Display
+%%% DESCRIPTION
+%%% 4 digit LED Display with I2C Interface using HTK1633 Driver.
+%%% The segments to display for each digit are specified by byte input values.
+%%% LINKS              
 %%% @end 
 
 -module(lblx_i2c_ht16k33).  

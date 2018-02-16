@@ -1,9 +1,10 @@
 %%% @doc 
-%%% Block Type:  3 Input Configurable Logic Gate, Null Values Allowed
-%%% Description:  Output is set to the config value corresponding to the combination of binary and null input values
-%%%               
+%%% BLOCKTYPE
+%%% 3 Input Configurable Logic Gate, Null Values Allowed
+%%% DESCRIPTION
+%%% Output is set to the config value corresponding to the combination of binary and null input values
+%%% LINKS              
 %%% @end 
-
 
 -module(lblx_logic_config3n).
   
@@ -33,35 +34,35 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {'0_0_0_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = false
-      {'0_0_1_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = true
-      {'0_0_X_out', {null}}, % Output value for input 3 = false & 2 = false & 1 = null
-      {'0_1_0_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = false
-      {'0_1_1_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = true
-      {'0_1_X_out', {null}}, % Output value for input 3 = false & 2 = true & 1 = null
-      {'0_X_0_out', {null}}, % Output value for input 3 = false & 2 = null & 1 = false
-      {'0_X_1_out', {null}}, % Output value for input 3 = false & 2 = null & 1 = true
-      {'0_X_X_out', {null}}, % Output value for input 3 = false & 2 = null & 1 = null
+      {'0_0_0_out', {null}}, 
+      {'0_0_1_out', {null}},
+      {'0_0_X_out', {null}},
+      {'0_1_0_out', {null}},
+      {'0_1_1_out', {null}},
+      {'0_1_X_out', {null}},
+      {'0_X_0_out', {null}},
+      {'0_X_1_out', {null}},
+      {'0_X_X_out', {null}},
 
-      {'1_0_0_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = false
-      {'1_0_1_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = true
-      {'1_0_X_out', {null}}, % Output value for input 3 = true & 2 = false & 1 = null
-      {'1_1_0_out', {null}}, % Output value for input 3 = true & 2 = true & 1 = false
-      {'1_1_1_out', {null}}, % Output value for input 3 = true & 2 = true & 1 = true
-      {'1_1_X_out', {null}}, % Output value for input 3 = true & 2 = true & 1 = null
-      {'1_X_0_out', {null}}, % Output value for input 3 = true & 2 = null & 1 = false
-      {'1_X_1_out', {null}}, % Output value for input 3 = true & 2 = null & 1 = true
-      {'1_X_X_out', {null}}, % Output value for input 3 = true & 2 = null & 1 = null
+      {'1_0_0_out', {null}},
+      {'1_0_1_out', {null}},
+      {'1_0_X_out', {null}},
+      {'1_1_0_out', {null}},
+      {'1_1_1_out', {null}},
+      {'1_1_X_out', {null}},
+      {'1_X_0_out', {null}},
+      {'1_X_1_out', {null}},
+      {'1_X_X_out', {null}},
 
-      {'X_0_0_out', {null}}, % Output value for input 3 = null & 2 = false & 1 = false
-      {'X_0_1_out', {null}}, % Output value for input 3 = null & 2 = false & 1 = true
-      {'X_0_X_out', {null}}, % Output value for input 3 = null & 2 = false & 1 = null
-      {'X_1_0_out', {null}}, % Output value for input 3 = null & 2 = true & 1 = false
-      {'X_1_1_out', {null}}, % Output value for input 3 = null & 2 = true & 1 = true
-      {'X_1_X_out', {null}}, % Output value for input 3 = null & 2 = true & 1 = null
-      {'X_X_0_out', {null}}, % Output value for input 3 = null & 2 = null & 1 = false
-      {'X_X_1_out', {null}}, % Output value for input 3 = null & 2 = null & 1 = true
-      {'X_X_X_out', {null}}  % Output value for input 3 = null & 2 = null & 1 = null
+      {'X_0_0_out', {null}},
+      {'X_0_1_out', {null}},
+      {'X_0_X_out', {null}},
+      {'X_1_0_out', {null}},
+      {'X_1_1_out', {null}},
+      {'X_1_X_out', {null}},
+      {'X_X_0_out', {null}},
+      {'X_X_1_out', {null}},
+      {'X_X_X_out', {null}} 
     ]). 
 
 

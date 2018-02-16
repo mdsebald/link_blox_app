@@ -1,7 +1,10 @@
 %%% @doc 
-%%% Block Type:  MCP9808 Temperature Sensor
-%%% Description: Microchip MCP9808 precision temperature sensor with I2C interface   
-%%%               
+%%% BLOCKTYPE
+%%% MCP9808 Temperature Sensor
+%%% DESCRIPTION
+%%% Microchip MCP9808 precision temperature sensor with I2C interface
+%%% LINKS
+%%% http://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf
 %%% @end 
 
 -module(lblx_i2c_mcp9808).  

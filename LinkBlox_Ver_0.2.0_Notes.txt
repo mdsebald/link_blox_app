@@ -1,0 +1,324 @@
+LinkBlox Ver. 0.2.0
+
+21-Nov-2017
+
+Update block link strategy
+  Link from output to input instead of input to output
+  Current output references become Links,  Inputs don't have links, may have
+    This allows multiple fan-in,  multiple outputs can feed one input
+      Especially helpful for control flow
+
+Question: Fixed value inputs?  How to prevent overwriting fixed values.  Create constants?  Do we care?
+          Have default value, input is default value, if not overriden by output of another block.
+          No don't bother with default value, UI: Warn user of other links and about to overwrite current value?
+
+lblx_exec_merge.erl - Delete this, merge control flow will be built in
+
+block_state.hrl
+  Update definitions of input and output attrbutes:
+    type input_value()  should be:  {value(), source()}.
+    type output_value() should be:  {value(), links()}.
+
+ui_ssh_cli.erl
+  ui_link_blocks()
+    Reverse order of link parameters.  Output block name and value first
+    Help text    "link <block-name> <output-name>  <opt. node-name> <opt. block-name> <input-name>"
+  
+  ui_unlink_blocks()
+    Need to specify output block and value ID, and input block and value ID
+    Could be multiple links on one output value ID
+  
+  parse_link()
+    Rename coments to indicate Link consists of a node name, input block, and value ID
+
+linkblox_api.erl
+  set_link()
+    Rename parameters, OutputBlock, OutputValueId, Link  
+      Link is NodeName, InputBlock, InputValueId
+
+  handle_call({set_link, ...)
+    Rename parameters, and coments to indicate links are now on block outputs
+
+block_server.erl
+  set_link()  
+    rename to add_link(), with mirror function del_link()
+    Rename parameters, update comments to indicate links are now on block outputs
+
+  link()  3/4 params
+
+  unlink()  3/4 params
+
+  update()
+    Should be pretty much unchanged,
+    Should we try and combine all updates to same block into one message?  Too much trouble?
+
+  handle_call({set_link, ...) rename message to add_link, with mirror del_link
+    Rename parameters, and coments to indicate links are now on block outputs
+  
+  handle_call({link, ...)
+
+  handle_cast({unlink, ...)
+    call link_utils:delete_link()
+
+
+link_utils.erl
+  set_link()
+    Sets the link on an input.
+    May not need this since we will push values from block outputs.  
+
+  link_blocks()
+    Pulls output values from blocks linked this block's inputs.
+    May not need this since we will push values from block outputs.  
+
+  evaluate_link()
+    Determines the validity of an Input link and gets the value of the output value link, if it exists
+    May not need this since we will push values from block outputs.  
+
+  unlink_inputs()
+    Sends an unlink message to each block linked to the inputs of this block
+    May not need this since we will push values from block outputs.  
+  
+  unlink_output()
+    Just calls block_common:update_linked_inputs()
+  
+  add_ref()
+    Should be renamed add_link, everything else should be pretty much the same
+
+  delete_ref()
+    Should be renamed del_link, everything else should be pretty much the same
+
+input_utils.erl
+  check_value()
+    Fall back to default value if current linked input is missing?, no just Empty
+
+block_common.erl
+  update_linked_inputs()
+    for each output that changed
+      for each link in the output
+        If the dest block is not already in the list of blocks to update
+          add it
+        If the dest block value id is not already in the lists of block values to update
+          add it
+    After evaluating all of the outputs, Send one message to each linked block
+      each message contains all of the value IDs to be updated.
+
+
+
+Morning: 27-Nov-2017
+  Last work, updating link_utils.erl,  adding valid_link() function,  called by linkblox_api module
+
+28-Nov-2017
+  Problem/Question, how does block know it will be executed directly versus change of input value?
+    Before, we had a link on the exec_in input attribute.  No more, plus multiple blocks may execute.
+      Increment a counter on the exec_in value?, set a flag after first control flow execute?
+    Call block_server:execute() from block server for control flow?
+
+  Old Creating and Linking blocks:
+    block_server:init_configure() | node_watcher:listen_loop()
+      block_utils:configure_all_blocks()
+        block_server:configure()
+          link_utils:link_blocks()
+            link_utils:evaluate_link()
+              block_server:link()
+                link_utils:add_ref()
+
+30-Nov-2017
+  update_blocks() called by block_common:execute() Needs to be updated
+
+    Need a list of messages, 
+      One message for each unique block listed in the links for outputs that have been updated
+      Each message will contain a list of {valueID, Value} tuples
+    For each output attribute
+      If its value has been updated (i.e. new value /= old value)
+        For each link in the Links list for this output
+          Parse the link,
+            ValueID only, self link, BlockName is Self block
+            BlockName:ValueID  
+            Node:BlockName:ValueID,
+              Add (Node) BlockName to list of messages if not already existing
+              Add {ValueID, NewValue} tuple to message of that (Node) BlockName
+
+
+05-Dec-2017
+
+  output_utils:resize_attribute_array_value()
+    link_utils:unlink_output()
+      block_common:update_linked_inputs()
+
+  Delete link_utils:unlink_output(), just a one link function
+
+
+05,06-Dec-2017
+
+Problem: 
+  Still need reliable way to indicate block is executed via control flow.
+  i.e. exec_out --> exec_in
+
+  if exec_out to exec_in link created, add source block name to exec_in value,
+    when exec_out link created, input type is a list of block names
+    need input_utils: add_exec_in(), del_exec_in() functions
+      block_server: add_exec_in(), del_exec_in() functions to.
+      default value for exec_in is empty list.
+      if list is not empty, block is executed via control flow.
+
+  How to stop blocks from self executing on startup, load config, 
+    before exec_out to exec_in link established?
+    Do we need to bother?  Does it matter?
+    Can we pause execution until links are established?
+    Create a start-up phase, when loading blocks from a config file.
+      Don't need to worry about this when creating individual blocks
+
+Change:
+  Link definition will always be: block_name:input_value_id
+    No need for node field or value_id only, self reference
+
+Change:
+  Need to Add default value to inputs, 
+    delete link part of input attribute, not needed.
+
+  Block create, 
+    value and default value are equal
+
+  Output value linked to the input
+    value is overwritten by linked output value
+
+  Linked output value is deleted via block delete or output attribute array resize
+    Linked input value is set to default value
+
+  Linked input value is deleted via block delete or input attribute array resize
+    Input link is deleted from all Output lists that contain it
+
+Change: 
+  Only allow node to node data transfer via node_output and node_input block types?
+    block type: node_out
+      Config:
+        <def config attribs>
+        dest_node
+        num_of_inputs
+      Inputs:
+        <def input atttribs>
+        inputs[]
+      Outputs
+        <def output attribs>
+        connected true/false
+
+    block type: node_in
+      Config:
+        <def config attribs>
+        src_node
+        num_of_outputs
+      Inputs:
+        <def input atttribs>
+      Outputs
+        <def output attribs>
+        connected true/false
+        outputs[]
+
+  Remove Node from Link definition
+
+  Blocks would need to be created in pairs
+  Each node_output would need a corresponding node_input block to receive the values
+
+  Input values would be sent to Node (defined in config value) on block execution
+    Values would appear at the corresponding Outputs of a block with the same name
+      on "Node"
+
+Change:
+  UI: add command to list all of the links on a node
+    block_name1:output_value_id1 --> block_name2:input_value_id2
+    block_name1:output_value_id1 --> block_name3:input_value_id3
+    :
+
+07-Dec-2017
+Change:
+  Need a function to send to all blocks, 
+    Remove any links in your outputs to given BlockName:InputValueId link
+    link_utils:unlink_input(BlockName, InputValueId)
+       send an unlink_input message to each block
+
+Change:
+  Need a function to send to all blocks,
+    Remove any links in your outputs to a given BlockName
+  link_utils:unlink_block(BlockName)
+    send an unlink_block message to each block
+
+    Started to implement, 
+
+08-Dec-2017
+
+Change:  Limit one link to a block input
+  Need to check for other links, before adding a link to an output.
+
+Tasks TODO:
+  Delete dead code
+  Update Unit tests
+  Run Dialyzer
+  Delete Node from block_server function parameters
+    Wait, still may need node for certain functions
+    Internode values will be passed via node_out and node_in block types
+  Create node_out and node_in block types
+  Test, Test, Test
+
+10-Dec-2017
+
+Unlinking an input array value that has been deleted
+  after an array of input values has been resized to be smaller
+
+    input_utils:resize_attribute_array_value()
+      link_utils:unlink_input()
+        block_server:unlink_input()
+          link_utils:unlink_outputs()
+
+11-Dec-2017
+
+Need to harmonize deleting link(s)
+Reasons for deleting a link:
+  UI Unlink command
+    Inputs: BlockName, ValueId, LinkedBlockName, LinkValueId
+
+  UI Delete Block command
+    Inputs: BlockName
+
+  Resize number of inputs 
+    Number of array inputs reduced.  
+    Any links to the deleted inputs must be deleted
+  
+  Resize number of outputs
+    Number of array outputs reduced.  
+    Any links in the deleted outputs, set the linked inputs to default value
+
+18-Dec-2017
+  Don't think we need init_configure() anymore
+    When block is created, it is initialized, then should just need to execute, 
+    If any outputs have links, linked blocks get new values.
+    Don't have to (re)configure all blocks.
+
+26-Dec-2017 
+  Running dialyzer on code, fixing issues
+  Got node_exp_imp block type running locally
+  Need to resolve exec_out / exec_in links
+  UI xlink, xunlink commands
+    linkblox_api:add_exec_link(ExecutorBlockName, ExecuteeBlockName)
+      
+    linkblox_api:del_exec_link(ExecutorBlockName, ExecuteeBlockName)
+
+
+13-Jan-2017
+  Moving block type name and descriptions to Language module
+  Need Mappings:
+    block_module_name (i.e. lblx_...) => block_type_name string
+    block_type_name string => block_module_name
+    block_module_name => block_type_description
+
+    UI methods:
+      Get type info from block_type_name string
+      Create block, block_type_name string to block_module_name at dest node level
+        allow specify block_module_name (i.e. lblx_...) directly, to create block
+      Get list of block types
+        get list of lblx_... modules, get corresponding block_type_name and description strings
+        lblx_logic_or, Logic_OR, 0.1.0, N input logic Or block
+        Cannot crash if no corresponding strings for lblx_ module name,
+          Just print block_module_name, and version, no type name string or description
+
+      type utils, gets list of lblx modules
+      ui utils, gets type_name and description strings.

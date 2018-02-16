@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: GPIO Digital Output
-%%% Description: Configure a GPIO Pin as a Digital Output block
-%%%               
+%%% BLOCKTYPE
+%%% GPIO Digital Output
+%%% DESCRIPTION
+%%% Configure a GPIO Pin as a Digital Output block
+%%% LINKS              
 %%% @end 
 
 -module(lblx_gpio_do).

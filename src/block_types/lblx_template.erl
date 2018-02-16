@@ -2,10 +2,18 @@
 %               for the function this block will perform.
 %               Comments marked "INSTRUCTIONS:" may be deleted 
 
+% Instructions: Follow the formatting of the @doc comment block exactly as shown
+%               It is used for generating LinkBlox web pages
 %%% @doc 
-%%% Block Type:  
-%%% Description:   
-%%%               
+%%% BLOCKTYPE
+%%% INSTRUCTIONS: Insert a one line description of the block here
+%%% DESCRIPTION
+%%% INSTRUCTIONS: Insert description of block operation here
+%%%               Use as many lines as necessary
+%%% LINKS
+%%% INSTRUCTIONS: Insert URL(s) here, (one per line)
+%%%              for links to external resources related to this block
+%%%              such as hardware data sheets, etc.
 %%% @end 
 
 % INSTRUCTIONS: Modify to match new block type module name

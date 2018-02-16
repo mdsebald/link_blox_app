@@ -1,13 +1,14 @@
 %%% @doc 
-%%% Block Type:  Single Digig Seven Segment Display Driver
-%%% Description: Unpack byte input to drive a 7 segment plus 
-%%%              decimal point single digit LED display
-%%%
+%%% BLOCKTYPE
+%%% Single Digit Seven Segment Display Driver
+%%% DESCRIPTION
+%%% Unpack byte input to drive a 7 segment plus
+%%% decimal point single digit LED display
 %%% -------------------------------------------------------
 %%% LED Segment ON:  a  |  b |  c | d  |  e |  f |  g | dp  
 %%% Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
 %%% --------------------------------------------------------
-%%%               
+%%% LINKS              
 %%% @end 
 
 -module(lblx_one_digit_7seg). 

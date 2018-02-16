@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type:   Raspberry Pi on-board LED
-%%% Description:  Control Raspberry Pi on-board LED 
-%%%               
+%%% BLOCKTYPE
+%%% Raspberry Pi on-board LED
+%%% DESCRIPTION
+%%% Control Raspberry Pi on-board LED 
+%%% LINKS              
 %%% @end 
 
 -module(lblx_rpi_led).  

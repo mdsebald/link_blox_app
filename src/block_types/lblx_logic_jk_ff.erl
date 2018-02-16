@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: JK Flip-Flop
-%%% Description: Implement asynchronous JK Flip-Flop
-%%%               
+%%% BLOCKTYPE
+%%% JK Flip-Flop
+%%% DESCRIPTION
+%%% Implements asynchronous JK Flip-Flop
+%%% LINKS              
 %%% @end 
 
 -module(lblx_logic_jk_ff).  
@@ -31,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {initial_state, {false}}  % This is the initial value when transitioning from a null state
+      {initial_state, {false}} 
     ]). 
 
 
@@ -41,8 +43,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input_j, {empty, {empty}}}, % Binary input J value
-      {input_k, {empty, {empty}}} % Binary input K value
+      {input_j, {empty, {empty}}},
+      {input_k, {empty, {empty}}}
     ]). 
 
 

@@ -1,7 +1,15 @@
 %%% @doc 
-%%% Block Type:  LCD driver for display using HD44780 chip, with I2C interface
-%%% Description:   
-%%%               
+%%% BLOCKTYPE
+%%% LCD driver for display using HD44780 chip, with I2C interface
+%%% DESCRIPTION
+%%% Drive a LCD connected to the I2C bus
+%%% Input value strings are displayed on the LCD.
+%%% The display may be divided into an arbitrary number of segments.
+%%% Each segment has a separate block input, and the 
+%%% starting row and column number field width form each segment 
+%%% is individually specified.
+%%% LINKS
+%%% https://www.sparkfun.com/datasheets/LCD/HD44780.pdf
 %%% @end 
 
 -module(lblx_i2c_hd44780).  

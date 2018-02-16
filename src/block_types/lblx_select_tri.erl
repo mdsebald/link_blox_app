@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Trinary Select True, False, or Null Input Value
-%%% Description:  Set the block output value to selected true, false, or null input value
-%%%               
+%%% BLOCKTYPE
+%%% Trinary Select True, False, or Null Input Value
+%%% DESCRIPTION
+%%% Set the block output value to selected true, false, or null input value
+%%% LINKS              
 %%% @end 
 
 -module(lblx_select_tri).  
@@ -41,10 +43,10 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {select, {empty, {empty}}}, % Boolean input value selects true or false input value
-      {true_input, {empty, {empty}}}, % Output value for true select input value
-      {false_input, {empty, {empty}}}, % Output value for false select input value
-      {null_input, {empty, {empty}}} %Output value for null select input value
+      {select, {empty, {empty}}},
+      {true_input, {empty, {empty}}},
+      {false_input, {empty, {empty}}},
+      {null_input, {empty, {empty}}}
     ]). 
 
 

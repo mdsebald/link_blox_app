@@ -1,10 +1,11 @@
 %%% @doc 
-%%% Block Type:  Rotorary encoder with switch
-%%% Description:   Rotary encoder outputs 2 phase digital signal
-%%%              Channels A & B to indicate rotation and direction
-%%%              Can also include a switch activated by pressing the 
-%%%              knob of the encoder.
-%%%               
+%%% BLOCKTYPE
+%%% Rotorary encoder with switch
+%%% DESCRIPTION
+%%% Rotary encoder outputs 2 phase digital signal
+%%% Channels A & B to indicate rotation and direction
+%%% Can also read a switch activated by pressing the knob of the encoder.
+%%% LINKS              
 %%% @end 
 
 -module(lblx_rotary_encoder).  

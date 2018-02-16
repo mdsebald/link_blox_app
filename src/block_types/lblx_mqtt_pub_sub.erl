@@ -1,8 +1,11 @@
 %%% @doc 
-%%% Block Type: mqtt_pub_sub
-%%% Description: Publish and subscribe to values 
-%%% via an MQTT (Message Queue Telemetry Transport) Broker (Server)
-%%%               
+%%% BLOCKTYPE
+%%% 
+%%% DESCRIPTION
+%%% Publish and subscribe to values via
+%%% an MQTT (Message Queue Telemetry Transport) Broker (Server)
+%%% LINKS
+%%% https://www.hivemq.com/blog/how-to-get-started-with-mqtt             
 %%% @end 
 
 -module(lblx_mqtt_pub_sub). 
@@ -41,8 +44,7 @@ default_configs(BlockName, Description) ->
       {proto_ver, {4}},
       {username, {""}},
       {password, {""}},
-      {logger, {all}}, % logging level, for debug purposes 
-                         % valid values: all, debug, info, warning, error, critical, none
+      {logger, {all}},  % valid values: all, debug, info, warning, error, critical, none
       {num_of_pubs, {1}},
       {pub_topics, [{""}]},
       {num_of_subs, {1}},

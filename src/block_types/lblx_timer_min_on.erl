@@ -1,9 +1,11 @@
 
 %%% @doc 
-%%% Block Type:  Minimum On Time
-%%% Description:  Block output will follow block binary input value but will remain true
-%%%               for the minimum specified amount of time
-%%%               
+%%% BLOCKTYPE
+%%% Minimum On Time
+%%% DESCRIPTION
+%%% Block output will follow block binary input value but 
+%%% will remain true (on) for the minimum specified amount of time
+%%% LINKS              
 %%% @end 
 
 -module(lblx_timer_min_on).  

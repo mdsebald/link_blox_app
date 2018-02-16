@@ -1,10 +1,13 @@
 
 %%% @doc 
-%%% Block Type:  Send Input values 
-%%% Description: Export values to LinkBlox Nodes  
-%%%               
+%%% @doc 
+%%% BLOCKTYPE
+%%% Send Input values
+%%% DESCRIPTION
+%%% Export values to receive_value block(s) on other LinkBlox Nodes.
+%%% Send block and Receive block must have the same name.
+%%% LINKS              
 %%% @end 
-
 
 -module(lblx_send_values).  
   

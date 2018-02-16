@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Logic AND 
-%%% Description:  Set the block output value to boolean AND of all of the inputs
-%%%               
+%%% BLOCKTYPE
+%%% Logic AND
+%%% DESCRIPTION
+%%% Set the block output value to boolean AND of all of the inputs
+%%% LINKS              
 %%% @end 
 
 -module(lblx_logic_and).  
@@ -33,7 +35,7 @@ default_configs(BlockName, Description) ->
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
        {num_of_inputs, {2}},  % Default number of inputs to 2
-       {ignore_nulls, {false}} % Ignore NULL input values when calculating output value
+       {ignore_nulls, {false}} 
     ]). 
 
 
@@ -43,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs, [{empty, {empty}}]} % Array attribute
+      {inputs, [{empty, {empty}}]} 
     ]). 
 
 

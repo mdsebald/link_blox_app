@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Toggle Output
-%%% Description: Toggle binary output value each time block is executed  
-%%%               
+%%% BLOCKTYPE
+%%% Toggle Output
+%%% DESCRIPTION
+%%% Toggle binary output value each time block is executed
+%%% LINKS              
 %%% @end 
 
 -module(lblx_logic_toggle).
@@ -31,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-        {initial_state, {false}}  % This is the initial value when transitioning from a null state
+        {initial_state, {false}}
     ]). 
 
 

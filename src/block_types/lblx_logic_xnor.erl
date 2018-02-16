@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Logic Exclusive Not OR 
-%%% Description:  Set the block output value to boolean Exclusive NOR of the inputs
-%%%               
+%%% BLOCKTYPE
+%%% Logic Exclusive Not OR
+%%% DESCRIPTION
+%%% Set the block output value to boolean Exclusive NOR of the inputs
+%%% LINKS              
 %%% @end 
 
 -module(lblx_logic_xnor).  

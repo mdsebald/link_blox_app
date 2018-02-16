@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Select Input Value
-%%% Description:  Set the block output value to selected input value 
-%%%               
+%%% BLOCKTYPE
+%%% Select Input Value
+%%% DESCRIPTION
+%%% Set the block output value to selected input value
+%%% LINKS              
 %%% @end 
 
 -module(lblx_select_n).  
@@ -31,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-       {num_of_inputs, {3}}  % Default number of selectable inputs to 3                
+       {num_of_inputs, {3}}                
     ]). 
 
 
@@ -42,7 +44,7 @@ default_inputs() ->
     block_common:inputs(),
     [
       {select, {1, {1}}}, % Default selection to 1st input
-      {inputs, [{empty, {empty}}]} % Array attribute
+      {inputs, [{empty, {empty}}]}
     ]). 
 
 

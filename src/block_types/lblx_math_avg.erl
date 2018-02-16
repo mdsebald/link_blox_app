@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Average of all input values
-%%% Description:  Set the block output value to the average value of all input values
-%%%               
+%%% BLOCKTYPE
+%%% Average of all input values
+%%% DESCRIPTION
+%%% Set the block output value to the average value of all input values
+%%% LINKS              
 %%% @end 
 
 -module(lblx_math_avg).
@@ -31,8 +33,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-       {num_of_inputs, {2}},  % Default number of inputs to 2
-       {ignore_nulls, {false}} % Ignore NULL input values when calculating output value
+       {num_of_inputs, {2}},
+       {ignore_nulls, {false}}
     ]). 
 
 
@@ -42,7 +44,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs, [{empty, {empty}}]} % Array attribute
+      {inputs, [{empty, {empty}}]}
     ]). 
 
 

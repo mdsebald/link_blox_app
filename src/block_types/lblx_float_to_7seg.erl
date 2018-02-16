@@ -1,9 +1,11 @@
 %%% @doc 
-%%% Block Type: Floating point value to Seven Segment Variable Digits Decoder
-%%% Description: Convert an input floating point number to a set of bytes.
-%%%              one per digit, indicating which segments of a 
-%%%              seven segment display digit should be turned on.    
-%%%               
+%%% BLOCKTYPE 
+%%% Floating point value to Seven Segment Variable Digits Decoder
+%%% DESCRIPTION
+%%% Convert an input floating point number to a set of bytes.
+%%% one per digit, indicating which segments of a 
+%%% seven segment display digit should be turned on.    
+%%% LINKS              
 %%% @end 
 
 -module(lblx_float_to_7seg). 
@@ -43,11 +45,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      % Number of digits to the right of the decimal point for positive values
       {pos_precision, {2, {2}}}, 
-      % Number of digits to the right of the decimal point for negative values
       {neg_precision, {1, {1}}},
-      % The value to display.
       {input, {empty, {empty}}}
      ]). 
 
@@ -58,9 +57,9 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digits, [{null, []}]},  % Array attribute
-      {pos_overflow, {null, []}},  % Insufficient digits to display positive value
-      {neg_overflow, {null, []}}   % Insufficient digits to display negative value
+      {digits, [{null, []}]},
+      {pos_overflow, {null, []}}, 
+      {neg_overflow, {null, []}}   
     ]).
 
 

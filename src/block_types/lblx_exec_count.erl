@@ -1,12 +1,14 @@
 %%% @doc 
-%%% Block Type: Execution Counter
-%%% Description: Increment/decrement count value output every time block is executed.
-%%5              On initialize or Reset input is true, set output value to initial count value
-%%%              On block execution, count up/down to final value
-%%%              If Rollover config parameter is true, on next execution,
-%%%              set Carry output value to true, and reset output value to initial count 
-%%%              Carry output value is false for every other case  
-%%%              
+%%% BLOCKTYPE
+%%% Execution Counter
+%%% DESCRIPTION 
+%%% Increment/decrement count value output every time block is executed.
+%%% On initialize or Reset input is true, set output value to initial count value
+%%% On block execution, count up/down to final value
+%%% If Rollover config parameter is true, on next execution,
+%%% set Carry output value to true, and reset output value to initial count 
+%%% Carry output value is false for every other case 
+%%% LINKS
 %%% @end 
 
 -module(lblx_exec_count).

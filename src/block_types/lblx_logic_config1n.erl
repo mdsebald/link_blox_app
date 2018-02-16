@@ -1,9 +1,10 @@
 %%% @doc 
-%%% Block Type:  1 Input Configurable Logic Gate, Null Values Allowed
-%%% Description:  Output is set to the config value corresponding to the binary or null input value
-%%%               
+%%% BLOCKTYPE
+%%% 1 Input Configurable Logic Gate, Null Values Allowed
+%%% DESCRIPTION
+%%% Output is set to the config value corresponding to the binary or null input value
+%%% LINKS              
 %%% @end 
-
 
 -module(lblx_logic_config1n).  
   
@@ -33,9 +34,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {'0_out', {null}}, % Output value for false input
-      {'1_out', {null}}, % Output value for true input
-      {'X_out', {null}}  % Output value for null input                
+      {'0_out', {null}}, 
+      {'1_out', {null}},
+      {'X_out', {null}}
     ]). 
 
 

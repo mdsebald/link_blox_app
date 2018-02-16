@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Tri-State a Binary Input Value
-%%% Description:  Split binary input value into tri-state true/null (active true) and false/null (active false)
-%%%               
+%%% BLOCKTYPE
+%%% Tri-State a Binary Input Value
+%%% DESCRIPTION
+%%% Split binary input value into tri-state true/null (active true) and false/null (active false)
+%%% LINKS              
 %%% @end 
 
 -module(lblx_logic_tristate).  
@@ -41,7 +43,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, {empty}}} % Binary input value
+      {input, {empty, {empty}}}
     ]). 
 
 

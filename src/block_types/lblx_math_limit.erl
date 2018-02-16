@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Limit input value
-%%% Description:  Set the block output value to never exceed the high and low limit input values
-%%%               
+%%% BLOCKTYPE
+%%% Limit input value
+%%% DESCRIPTION
+%%% Set the block output value to never exceed the high and low limit input values
+%%% LINKS              
 %%% @end 
 
 -module(lblx_math_limit).  
@@ -40,9 +42,9 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {high_limit, {empty, {empty}}}, % High limit value
-      {input, {empty, {empty}}}, % Input value
-      {low_limit, {empty, {empty}}} % Low limit value
+      {high_limit, {empty, {empty}}},
+      {input, {empty, {empty}}},
+      {low_limit, {empty, {empty}}} 
     ]). 
 
 

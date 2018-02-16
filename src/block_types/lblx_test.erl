@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type:  Test
-%%% Description:  Test block type to support unit tests
-%%%               
+%%% BLOCKTYPE
+%%% Test
+%%% DESCRIPTION
+%%% Test block type to support unit tests
+%%% LINKS              
 %%% @end 
 
 -module(lblx_test).

@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Select Higest Priority Active Input Value
-%%% Description:  Set the block output value to the highest priority actvive input value 
-%%%               
+%%% BLOCKTYPE
+%%% Select Higest Priority Active Input Value
+%%% DESCRIPTION
+%%% Set the block output value to the highest priority actvive input value
+%%% LINKS              
 %%% @end 
 
 -module(lblx_select_pri).  
@@ -31,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-       {num_of_inputs, {3}}  % Default number of selectable inputs to 3                
+       {num_of_inputs, {3}}               
     ]). 
 
 
@@ -41,7 +43,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs, [{empty, {empty}}]} % Array attribute
+      {inputs, [{empty, {empty}}]}
     ]). 
 
 

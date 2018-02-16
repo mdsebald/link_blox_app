@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type:  Identity
-%%% Description:  Input value matches output value
-%%%               
+%%% BLOCKTYPE
+%%% Identity
+%%% DESCRIPTION
+%%% Input value matches output value
+%%% LINKS              
 %%% @end 
 
 -module(lblx_identity).  

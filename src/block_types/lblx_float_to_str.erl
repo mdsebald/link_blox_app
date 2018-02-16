@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type:  Float to String
-%%% Description: Convert floating point input value to a string
-%%%               
+%%% BLOCKTYPE
+%%% Float to String
+%%% DESCRIPTION
+%%% Convert floating point input value to a string
+%%% LINKS              
 %%% @end 
 
 -module(lblx_float_to_str).

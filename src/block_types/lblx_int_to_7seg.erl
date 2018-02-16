@@ -1,9 +1,11 @@
-%%% @doc 
-%%% Block Type: Integer to Seven Segment Variable Digits Decoder
-%%% Description: Convert an input integer number to a set of bytes.
-%%%              one per digit, indicating which segments of a 
-%%%              seven segment display digit should be turned on.    
-%%%               
+ %%% @doc 
+%%% BLOCKTYPE
+%%% Integer to Seven Segment Variable Digits Decoder
+%%% DESCRIPTION
+%%% Convert an input integer number to a set of bytes.
+%%% one per digit, indicating which segments of a
+%%% seven segment display digit should be turned on.
+%%% LINKS              
 %%% @end 
 
 -module(lblx_int_to_7seg). 
@@ -46,7 +48,7 @@ default_inputs() ->
     block_common:inputs(),
     [
       {input, {empty, {empty}}},
-      {dec_pnt, [{false, {false}}]}  % Array attribute
+      {dec_pnt, [{false, {false}}]}
     ]). 
 
 
@@ -56,7 +58,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digits, [{null, []}]}  % Array attribute 
+      {digits, [{null, []}]} 
     ]).
 
 

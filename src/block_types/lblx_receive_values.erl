@@ -1,11 +1,12 @@
-
 %%% @doc 
-%%% Block Type:  Receive block values from other nodes
-%%% Description: Receive block values from other LinkBlox nodes,
-%%%              transmitted by send_values block types
-%%%               
+%%% BLOCKTYPE
+%%% Receive block values from other nodes
+%%% DESCRIPTION
+%%% Receive block values from other LinkBlox nodes,
+%%% transmitted by send_values blocks.
+%%% Receive block name must have the same name as the sending block.
+%%% LINKS              
 %%% @end 
-
 
 -module(lblx_receive_values).  
   

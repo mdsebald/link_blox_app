@@ -1,7 +1,9 @@
-%%% @doc  Logic NOT 
-%%% Block Type:  Logic NOT
-%%% Description: Invert the input boolean value  
-%%%               
+%%% @doc 
+%%% BLOCKTYPE
+%%% Logic NOT
+%%% DESCRIPTION
+%%% Invert the input boolean value
+%%% LINKS              
 %%% @end 
 
 -module(lblx_logic_not). 

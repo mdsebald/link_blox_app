@@ -1,7 +1,9 @@
 %%% @doc 
-%%% Block Type: Binary Select True or False Input Value
-%%% Description:  Set the block output value to selected true or false input value
-%%%               
+%%% BLOCKTYPE
+%%% Binary Select True or False Input Value
+%%% DESCRIPTION
+%%% Set the block output value to selected true or false input value
+%%% LINKS              
 %%% @end 
 
 -module(lblx_select_bin).  
@@ -41,9 +43,9 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {select, {empty, {empty}}}, % Boolean input value selects true or false input value
-      {true_input, {empty, {empty}}}, % Output value for true select input value
-      {false_input, {empty, {empty}}} % Output value for false select input value
+      {select, {empty, {empty}}},
+      {true_input, {empty, {empty}}}, 
+      {false_input, {empty, {empty}}}
     ]). 
 
 
