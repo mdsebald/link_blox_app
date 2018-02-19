@@ -38,7 +38,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {rollover, {true}} 
+      {rollover, {true}} %| bool | true | true, false |
     ]).
                             
                              
@@ -48,9 +48,9 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {reset, {false, {false}}},
-      {initial_value, {0, {0}}},
-      {final_value, {9, {9}}}
+      {reset, {false, {false}}}, %| bool | false | true, false |
+      {initial_value, {0, {0}}}, %| int | 0 | +/- max int |
+      {final_value, {9, {9}}} %| int | 9 | +/- max int |
     ]). 
 
 -spec default_outputs() -> output_attribs().
@@ -59,7 +59,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {carry, {null, []}}
+      {carry, {null, []}} %| bool | null | null, true, false |
     ]). 
 
                                                        

@@ -34,19 +34,19 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, {"i2c-1"}},
-      {i2c_addr, {16#76}},
-      {read_mode, {normal}},  % Valid values: normal, forced
-      {filter_coeff, {0}},    % Valid values: 0,2,4,6,8,16
-      {standby_time, {500}},  % Valid values: 0.5, 62.5, 125, 250, 500, 1000, 10, 20 Msecs 
-      {temp_mode, {16}},       % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-      {press_mode, {16}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate) 
-      {humid_mode, {16}},      % Valid values: 0, (disabled), 1,2,4,8,16 (oversampling rate)
-      {deg_f, {true}},
-      {inch_merc, {true}},
-      {temp_offset, {0.0}},
-      {press_offset, {0.0}},
-      {humid_offset, {0.0}} 
+      {i2c_device, {"i2c-1"}}, %| string | "i2c-1" | N/A |
+      {i2c_addr, {16#76}},  %| byte | 76h | 0..FFh |
+      {read_mode, {normal}},  %| enum | normal | normal, forced |
+      {filter_coeff, {0}},    %| bit | 0 | 0, 2, 4, 6, 8, 16 |
+      {standby_time, {500}},  %| float | 500 | 0.5, 62.5, 125, 250, 500, 1000, 10, 20 Msecs |
+      {temp_mode, {16}},      %| bit mask | 16 | 0, (disabled), 1,2,4,8,16 (oversampling rate) |
+      {press_mode, {16}},     %| bit mask | 16 | 0, (disabled), 1,2,4,8,16 (oversampling rate) |
+      {humid_mode, {16}},     %| bit mask | 16 | 0, (disabled), 1,2,4,8,16 (oversampling rate) |
+      {deg_f, {true}},  %| bool | true | true, false |
+      {inch_merc, {true}}, %| bool | true | true, false |
+      {temp_offset, {0.0}}, %| float | 0.0 | +/-max float |
+      {press_offset, {0.0}},%| float | 0.0 | +/-max float |
+      {humid_offset, {0.0}} %| float | 0.0 | +/-max float |
     ]). 
 
 
@@ -65,9 +65,9 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {temp, {null, []}},
-      {press, {null, []}},
-      {humid, {null, []}}
+      {temp, {null, []}}, %| float | null | N/A |
+      {press, {null, []}}, %| float | null | N/A |
+      {humid, {null, []}} %| float | null | N/A |
     ]). 
 
 %%  

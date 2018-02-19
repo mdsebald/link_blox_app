@@ -34,8 +34,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, {"i2c-1"}},
-      {i2c_addr, {16#70}}                 
+      {i2c_device, {"i2c-1"}},  %| string | "i2c-1" | N/A |
+      {i2c_addr, {16#70}}  %| byte | 70h | 0..FFh |
     ]). 
 
 
@@ -45,14 +45,14 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display_on, {true, {true}}},
-      {blink_rate, {0, {0}}},
-      {brightness, {0, {0}}},
-      {digit1, {16#FF, {16#FF}}},
-      {digit2, {16#FF, {16#FF}}},
-      {colon, {true, {true}}},
-      {digit3, {16#FF, {16#FF}}},
-      {digit4, {16#FF, {16#FF}}}
+      {display_on, {true, {true}}}, %| bool | true | true, false |
+      {blink_rate, {0, {0}}}, %| int | 0 | 0..? |
+      {brightness, {0, {0}}}, %| int | 0 | 0..? |
+      {digit1, {16#FF, {16#FF}}}, %| byte | FFh | 0..FFh
+      {digit2, {16#FF, {16#FF}}}, %| byte | FFh | 0..FFh
+      {colon, {true, {true}}}, %| bool | true | true, false |
+      {digit3, {16#FF, {16#FF}}}, %| byte | FFh | 0..FFh
+      {digit4, {16#FF, {16#FF}}} %| byte | FFh | 0..FFh
     ]). 
 
 
@@ -62,7 +62,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-     
     ]). 
 
 %%  

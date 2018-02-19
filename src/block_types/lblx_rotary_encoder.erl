@@ -5,7 +5,8 @@
 %%% Rotary encoder outputs 2 phase digital signal
 %%% Channels A & B to indicate rotation and direction
 %%% Can also read a switch activated by pressing the knob of the encoder.
-%%% LINKS              
+%%% LINKS
+%%% https://www.bourns.com/docs/Product-Datasheets/pec11R.pdf
 %%% @end 
 
 -module(lblx_rotary_encoder).  

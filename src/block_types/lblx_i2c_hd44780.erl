@@ -39,13 +39,13 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, {"i2c-1"}},
-      {i2c_addr, {16#27}},
-      {not_active_str, {"--------------------"}},
-      {num_of_inputs, {1}},
-      {start_rows, [{1}]},
-      {start_cols, [{1}]},
-      {field_widths, [{80}]}
+      {i2c_device, {"i2c-1"}}, %| string | "i2c-1" | N/A |
+      {i2c_addr, {16#27}},  %| byte | 27h | 0..FFh |
+      {not_active_str, {"--------------------"}}, %| string | "--------------------" | N/A |
+      {num_of_inputs, {1}}, %| int | 1 | 1..80 |
+      {start_rows, [{1}]}, %| int array | 1 | 1..4 |
+      {start_cols, [{1}]}, %| int array | 1 | 1..20 |
+      {field_widths, [{80}]} %| int array | 80 | 1..80 |
     ]). 
 
 
@@ -55,12 +55,12 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display, {true, {true}}},
-      {clear, {false, {false}}},
-      {cursor, {true, {true}}},
-      {blink_cursor, {true, {true}}},
-      {backlight, {true, {true}}},
-      {inputs, [{"Input", {"Input"}}]}
+      {display, {true, {true}}}, %| bool | true | true, false |
+      {clear, {false, {false}}}, %| bool | false | true, false |
+      {cursor, {true, {true}}}, %| bool | true | true, false |
+      {blink_cursor, {true, {true}}}, %| bool | true | true, false |
+      {backlight, {true, {true}}}, %| bool | true | true, false |
+      {inputs, [{"Input", {"Input"}}]} %| string array | "Input" | N/A |
     ]). 
 
 

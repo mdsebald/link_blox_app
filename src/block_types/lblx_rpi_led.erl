@@ -33,9 +33,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {led_id, {"led0"}},  % Default to green LED, "led1" is red LED
-      {default_value, {false}},
-      {invert_output, {false}}                 
+      {led_id, {"led0"}},  %| string | "led0" | "led0", "led1" |
+      {default_value, {false}}, %| bool | false | true, false |
+      {invert_output, {false}}  %| bool | false | true, false |
     ]). 
 
 
@@ -45,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, {empty}}}
+      {input, {empty, {empty}}} %| bool | empty | true, false |
     ]). 
 
 
@@ -55,7 +55,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
- 
     ]). 
 
 

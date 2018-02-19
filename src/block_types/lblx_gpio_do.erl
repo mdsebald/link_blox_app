@@ -3,7 +3,8 @@
 %%% GPIO Digital Output
 %%% DESCRIPTION
 %%% Configure a GPIO Pin as a Digital Output block
-%%% LINKS              
+%%% LINKS
+%%% https://www.raspberrypi.org/documentation/usage/gpio-plus-and-raspi2/README.md
 %%% @end 
 
 -module(lblx_gpio_do).
@@ -32,9 +33,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {gpio_pin, {0}}, 
-      {default_value, {false}},
-      {invert_output, {false}}
+      {gpio_pin, {0}}, %| int | 0 | 0..40 |
+      {default_value, {false}}, %| bool | false | true, false |
+      {invert_output, {false}} %| bool | false | true, false |
     ]).
 
 
@@ -44,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, {empty}}}
+      {input, {empty, {empty}}} %| bool | empty | true, false |
     ]). 
 
 

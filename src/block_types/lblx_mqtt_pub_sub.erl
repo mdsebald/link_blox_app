@@ -36,19 +36,19 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {broker, {"localhost"}},  % "broker.hivemq.com" test MQTT broker, should already be running
-      {port, {1883}},
-      {client_id, {""}},  % Default client ID is the block name
-      {clean_sess, {true}},
-      {keepalive, {60}},
-      {proto_ver, {4}},
-      {username, {""}},
-      {password, {""}},
-      {logger, {all}},  % valid values: all, debug, info, warning, error, critical, none
-      {num_of_pubs, {1}},
-      {pub_topics, [{""}]},
-      {num_of_subs, {1}},
-      {sub_topics, [{""}]}
+      {broker, {"localhost"}},  %| string | "localhost" | N/A |
+      {port, {1883}}, %| int | 1883 | 1024 to 49151? |
+      {client_id, {""}},  %| string | "" | N/A |
+      {clean_sess, {true}}, %| bool | true | true, false |
+      {keepalive, {60}},%| int | 60 | 1..max int |
+      {proto_ver, {4}}, %| int | 4 | 4 |
+      {username, {""}}, %| string | "" | N/A |
+      {password, {""}}, %| string | "" | N/A |
+      {logger, {all}},  %| enum | all | all, debug, info, ... |
+      {num_of_pubs, {1}}, %| int | 1 | 1..99 |
+      {pub_topics, [{""}]}, %| string array | "" | N/A |
+      {num_of_subs, {1}}, %| int | 1 | 1..99 |
+      {sub_topics, [{""}]} %| string array | "" | N/A |
     ]). 
 
 
@@ -58,7 +58,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {pub_inputs, [{"", {""}}]}
+      {pub_inputs, [{"", {""}}]} %| string array | "" | N/A |
     ]). 
 
 
@@ -68,7 +68,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {sub_values, [{null, []}]}
+      {sub_values, [{null, []}]} %| string array | null | N/A |
     ]). 
 
 

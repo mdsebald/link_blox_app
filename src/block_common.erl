@@ -37,17 +37,10 @@
 
 configs(Name, Module, Version, Description) ->
   [
-    % Block Name, must be unique for all blocks on this node
-    {block_name, {Name}},
-
-    % Block module, the block code 
-    {block_module, {Module}},
-    
-     % Block Version string
-    {version, {Version}},
-
-    % User defined description of this block
-    {description, {Description}}    
+    {block_name, {Name}}, %| atom | N/A | read only |
+    {block_module, {Module}}, %| module_name | N/A | read only |
+    {version, {Version}}, %| string | N/A | read only |
+    {description, {Description}} %| string | "" | User defined string |
   ].
 
 
@@ -65,26 +58,26 @@ inputs() ->
     % Default block to disabled, on create. 
     % Set disable input to false in create function if you want block 
     % to begin executing on create.
-    {disable, {true, {true}}},
+    {disable, {true, {true}}}, %| bool | true | true, false |
  
    
     % Block will execute as long as freeze input is false/null
     % When freeze input is true, all block outputs remain at last value
     % and block status is set to frozen.  Block will not be executed.
-    {freeze, {false, {false}}},
+    {freeze, {false, {false}}}, %| bool | false | true, false |
 
     % Disable true/on value takes precedent over Freeze true/on value.
 
     % Link exec_in to block that will execute this block.
     % May only be linked to the 'exec_out' block output value
     % i.e. implement Control Flow
-    {exec_in, {[], {[]}}},  
+    {exec_in, {[], {[]}}}, %| signal | N/A | N/A |
 
     % If > 0, execute block every 'exec_interval' milliseconds.
     % Used to execute a block at fixed intervals
     % instead of being executed via exec_out/exec_in link
     % or executed on change of input values
-    {exec_interval, {0, {0}}}
+    {exec_interval, {0, {0}}} %| int | 0 | 0..max int |
 
     % exec_in and exec_interval may both be used to execute the block.
     % They are not mutually exclusive.
@@ -104,20 +97,11 @@ outputs() ->
     % Blocks with the 'exec_in' input linked to this output
     % will be executed by this block, each time this block is executed
     % This output may only be linked to exec_in inputs
-    {exec_out, {false, []}},
-
-    % Current block status                            
-    {status, {created, []}},     
-
-    % Reason block was executed
-    {exec_method, {empty, []}},
-
-    % Time stamp of last time block was executed
-    % Hours, Minutes, Seconds, Microseconds
-    {last_exec, {empty, []}},
-
-    % Main block output value
-    {value, {null, []}}
+    {exec_out, {false, []}}, %| signal | N/A | N/A |
+    {status, {created, []}},  %| enum | created | created, initialed, normal, ... |
+    {exec_method, {empty, []}},  %| enum | empty | manual, input_cos, timer, ...|
+    {last_exec, {empty, []}}, %| time stamp | N/A | Hrs:Mins:Secs:uSecs |
+    {value, {null, []}} %| block type dependent | null | block type dependent |
   ].
 
 

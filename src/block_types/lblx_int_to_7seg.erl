@@ -35,9 +35,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_digits, {1}},
-      {number_base, {10}},
-      {leading_zeros, {false}}
+      {num_of_digits, {1}}, %| int | 1 | 1..99 |
+      {number_base, {10}}, %| int | 10 | 2..16 |
+      {leading_zeros, {false}} %| bool | false | true, false |
     ]). 
 
 
@@ -47,8 +47,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, {empty}}},
-      {dec_pnt, [{false, {false}}]}
+      {input, {empty, {empty}}}, %| int | empty | 0..max int |
+      {dec_pnt, [{false, {false}}]} %| bool array | false | true, false |
     ]). 
 
 
@@ -58,7 +58,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {digits, [{null, []}]} 
+      {digits, [{null, []}]} %| byte array | null | 00.FFh |
     ]).
 
 

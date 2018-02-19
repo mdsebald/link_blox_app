@@ -33,9 +33,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {left_justify, {false}},
-      {field_width, {0}},
-      {precision, {0}}
+      {left_justify, {false}}, %| bool | false | true, false |
+      {field_width, {0}}, %| int | 0 | 0..max int |
+      {precision, {0}} %| int | 0 | 0..max int |
     ]). 
 
 
@@ -45,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, {empty}}}
+      {input, {empty, {empty}}} %| float | empty | +/- max float |
     ]). 
 
 
@@ -55,7 +55,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-
     ]). 
 
 

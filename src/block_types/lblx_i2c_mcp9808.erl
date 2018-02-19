@@ -34,10 +34,10 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, {"i2c-1"}},
-      {i2c_addr, {16#18}},
-      {deg_f, {true}},
-      {temp_offset, {0.0}}
+      {i2c_device, {"i2c-1"}},  %| string | "i2c-1" | N/A |
+      {i2c_addr, {16#18}}, %| byte | 70h | 0..FFh |
+      {deg_f, {true}}, %| bool | true | true, false |
+      {temp_offset, {0.0}} %| float | 0.0 | +/- max float |
     ]). 
 
 
@@ -47,7 +47,6 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-  
     ]). 
 
 
@@ -56,8 +55,7 @@ default_inputs() ->
 default_outputs() -> 
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
-    [
-     
+    [     
     ]). 
 
 %%  
