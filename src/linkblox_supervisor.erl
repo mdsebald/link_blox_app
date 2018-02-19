@@ -57,9 +57,11 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
   logger:info(host_name, [HostName]),
 
   % This app should crash if node not started
-  {ok, NodeName} = start_node(BaseNodeName, 1),
+  % Start node in vm.args
+  % {ok, NodeName} = start_node(BaseNodeName, 1),
 
-  BlockValuesFile = atom_to_list(NodeName) ++ "Config",
+  % BlockValuesFile = atom_to_list(NodeName) ++ "Config",
+  BlockValuesFile = atom_to_list(BaseNodeName) ++ "Config",
   logger:info(block_values_file, [BlockValuesFile]),
   
   start_ssh_cli(),
@@ -101,7 +103,8 @@ start_ssh_cli() -> ok.
 
 -else.
 
-start_node(BaseNodeName, Index) ->
+%% limit number of nodes we try to start
+start_node(BaseNodeName, Index) when (Index =< 10)->
   IndexStr = io_lib:format("~2..0w", [Index]),
   BaseNodeNameStr = atom_to_list(BaseNodeName),
   NodeName = list_to_atom(lists:flatten(BaseNodeNameStr ++ IndexStr)),
@@ -117,7 +120,11 @@ start_node(BaseNodeName, Index) ->
     {error, Error} ->
       logger:error("~p Starting: ~p", [Error, NodeName]),
       start_node(BaseNodeName, Index + 1)
-  end.
+  end;
+
+start_node(_BaseNodeName, _Index) -> 
+  logger:debug("Unable to start node"),
+  {error, starting_node}.
 
 
 start_ssh_cli() ->
