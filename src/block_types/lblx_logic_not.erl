@@ -43,7 +43,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input, {empty, {empty}}}
+      {input, {empty, {empty}}} %| bool | empty | true, false |
     ]). 
 
 
@@ -53,8 +53,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {active_true, {empty, []}},
-      {active_false, {empty, []}}
+      {active_true, {empty, []}}, %| bool | empty | true, null |
+      {active_false, {empty, []}} %| bool | empty | false, null |
     ]). 
 
 

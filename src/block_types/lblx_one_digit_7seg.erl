@@ -38,7 +38,6 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-                                
     ]).  
 
 
@@ -48,8 +47,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {display_on, {true, {true}}},
-      {segments, {empty, {empty}}}
+      {display_on, {true, {true}}}, %| bool | true | true, false |
+      {segments, {empty, {empty}}} %| byte | empty | 0..FFh |
     ]). 
 
 
@@ -59,14 +58,14 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {seg_a, {null, []}},
-      {seg_b, {null, []}},
-      {seg_c, {null, []}},
-      {seg_d, {null, []}},
-      {seg_e, {null, []}},
-      {seg_f, {null, []}},
-      {seg_g, {null, []}},
-      {seg_dp, {null, []}}
+      {seg_a, {null, []}}, %| bool | null | true, false |
+      {seg_b, {null, []}}, %| bool | null | true, false |
+      {seg_c, {null, []}}, %| bool | null | true, false |
+      {seg_d, {null, []}}, %| bool | null | true, false |
+      {seg_e, {null, []}}, %| bool | null | true, false |
+      {seg_f, {null, []}}, %| bool | null | true, false |
+      {seg_g, {null, []}}, %| bool | null | true, false |
+      {seg_dp, {null, []}} %| bool | null | true, false |
     ]). 
 
 

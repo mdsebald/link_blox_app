@@ -45,8 +45,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {min_on_time, {1000, {1000}}},
-      {input, {empty, {empty}}}
+      {min_on_time, {1000, {1000}}}, %| int | 1000 | 1..max int |
+      {input, {empty, {empty}}} %| bool | empty | true, false |
     ]). 
 
 

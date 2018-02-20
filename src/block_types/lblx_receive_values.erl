@@ -33,7 +33,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_values, {1}}
+      {num_of_values, {1}} %| int | 1 | 1..99 |
     ]). 
 
 
@@ -52,7 +52,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-       {receive_values, [{null, []}]}
+       {receive_values, [{null, []}]} %| any array | null | N/A |
     ]). 
 
 

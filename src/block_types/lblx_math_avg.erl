@@ -33,8 +33,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-       {num_of_inputs, {2}},
-       {ignore_nulls, {false}}
+       {num_of_inputs, {2}}, %| int | 2 | 2..99 |
+       {ignore_nulls, {false}} %| bool | false | true, false |
     ]). 
 
 
@@ -44,7 +44,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs, [{empty, {empty}}]}
+      {inputs, [{empty, {empty}}]} %| number array | empty | +/- max number |
     ]). 
 
 

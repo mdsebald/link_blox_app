@@ -1,9 +1,4 @@
 %%% @doc 
-%%% Block Type:  
-%%% Description: 
-%%%               
-%%% @end 
-%%% @doc 
 %%% BLOCKTYPE
 %%% Logic NAND
 %%% DESCRIPTION
@@ -38,8 +33,8 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-       {num_of_inputs, {2}}, 
-       {ignore_nulls, {false}}
+       {num_of_inputs, {2}}, %| int | 2 | 2..99 |
+       {ignore_nulls, {false}} %| bool | false | true, false |
     ]). 
 
 
@@ -49,7 +44,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {inputs, [{empty, {empty}}]}
+      {inputs, [{empty, {empty}}]} %| bool array | empty | true, false |
     ]). 
 
 
@@ -59,8 +54,8 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {active_true, {empty, []}},
-      {active_false, {empty, []}}
+      {active_true, {empty, []}}, %| bool | empty | true, null |
+      {active_false, {empty, []}} %| bool | empty | false, null |
     ]). 
 
 

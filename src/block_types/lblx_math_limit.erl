@@ -42,9 +42,9 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {high_limit, {empty, {empty}}},
-      {input, {empty, {empty}}},
-      {low_limit, {empty, {empty}}} 
+      {high_limit, {empty, {empty}}}, %| number | empty | +/- max number |
+      {input, {empty, {empty}}}, %| number | empty | +/- max number |
+      {low_limit, {empty, {empty}}} %| number | empty | +/- max number |
     ]). 
 
 

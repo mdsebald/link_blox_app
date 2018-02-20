@@ -33,9 +33,9 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {num_of_nodes, {1}},
-      {nodes, [{null}]},
-      {num_of_values, {1}}
+      {num_of_nodes, {1}}, %| int | 1 | 1..99 |
+      {nodes, [{null}]}, %| atom array | null | N/A |
+      {num_of_values, {1}} %| int | 1 | 1..99 |
     ]). 
 
 
@@ -45,7 +45,7 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {send_values, [{empty, {empty}}]}
+      {send_values, [{empty, {empty}}]} %| any array | empty | N/A |
     ]). 
 
 
@@ -55,7 +55,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {nodes_state, [{null, []}]}
+      {nodes_state, [{null, []}]} %| bool array | null | true, false |
     ]). 
 
 

@@ -34,15 +34,15 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {'0_0_out', {null}}, 
-      {'0_1_out', {null}}, 
-      {'0_X_out', {null}}, 
-      {'1_0_out', {null}}, 
-      {'1_1_out', {null}}, 
-      {'1_X_out', {null}}, 
-      {'X_0_out', {null}}, 
-      {'X_1_out', {null}}, 
-      {'X_X_out', {null}}             
+      {'0_0_out', {null}}, %| any | null | N/A |
+      {'0_1_out', {null}}, %| any | null | N/A |
+      {'0_X_out', {null}}, %| any | null | N/A |
+      {'1_0_out', {null}}, %| any | null | N/A |
+      {'1_1_out', {null}}, %| any | null | N/A |
+      {'1_X_out', {null}}, %| any | null | N/A |
+      {'X_0_out', {null}}, %| any | null | N/A |
+      {'X_1_out', {null}}, %| any | null | N/A |
+      {'X_X_out', {null}} %| any | null | N/A |
     ]). 
 
 
@@ -52,8 +52,8 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-      {input2, {empty, {empty}}},
-      {input1, {empty, {empty}}}
+      {input2, {empty, {empty}}}, %| bool | empty | true, false, null |
+      {input1, {empty, {empty}}} %| bool | empty | true, false, null |
     ]). 
 
 
@@ -63,7 +63,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
- 
     ]). 
 
 

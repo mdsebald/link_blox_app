@@ -36,11 +36,11 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {gpio_pin_phase_A, {21}},   % TODO: Final block set to zero
-      {gpio_pin_phase_B, {20}},
-      {phase_int_edge, {both}},  % Valid values are: falling, rising, or both
-      {gpio_pin_switch, {19}},
-      {switch_int_edge, {falling}}  
+      {gpio_pin_phase_A, {0}}, %| int | 0 | 0..40 |
+      {gpio_pin_phase_B, {0}}, %| int | 0 | 0..40 |
+      {phase_int_edge, {both}}, %| enum | both | falling, rising, both |
+      {gpio_pin_switch, {0}}, %| int | 0 | 0..40 |
+      {switch_int_edge, {falling}} %| enum | falling | falling, rising, both |
     ]). 
 
 
@@ -50,7 +50,6 @@ default_inputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:inputs(),
     [
-     
     ]). 
 
 
@@ -60,7 +59,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {switch, {null, []}}
+      {switch, {null, []}} %| bool | null | true, false |
     ]). 
 
 %%  
