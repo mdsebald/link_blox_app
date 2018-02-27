@@ -312,10 +312,11 @@ read_pin_value_bool(GpioPinRef) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Perform minimum block unit test
+-include("block_io_test_gen.hrl").
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
-
+test_sets() ->
+  [
+    {[{status, normal}]}
+  ].
 
 -endif.

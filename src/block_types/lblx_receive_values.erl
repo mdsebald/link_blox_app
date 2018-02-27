@@ -285,67 +285,11 @@ handle_cast(Msg, BlockState) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% INSTRUCTIONS: At the very least,  invoke a minimal block test, 
-%   which calls the block's create(), upgrade(), initialize(), execute(), and delete() functions
+-include("block_io_test_gen.hrl").
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
-
-
-% INSTRUCTIONS: Use this test fixture to exercise the block's input to output functionality
-% block_test_() ->
-%   {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-%    {setup, 
-%       fun setup/0, 
-%       fun cleanup/1,
-%       fun (BlockState) -> 
-%         {inorder,
-%         [
-%           test_io(BlockState)
-%           % test_io_x(BlockState)
-%         ]}
-%       end} 
-%   }.
-
-% setup() ->
-%   % INSTRUCTIONS: Call one of the following 3 block_setup() functions:
-
-%   % INSTRUCTIONS: Use this setup if default block config values do not need to be set before running I/O tests
-%   unit_test_utils:block_setup(?MODULE).
-
-  % INSTRUCTIONS: Use this setup if default block config values need to be set before running I/O tests
-  % PreInitConfigVals = [{config1, "config1 value"}, {config2, 2}],  % Example config values
-  % unit_test_utils:block_setup(?MODULE, PreInitConfigVals).
-
-  % INSTRUCTIONS: Use this setup if block config values need to be set before and after initialization
-  % PreInitConfigVals = [{num_of_configs, 24} ],  % Example pre-init config values  
-  % PostInitConfigVals = [{{config, 24}, "24th Config Value"}]  % Example post-init config values 
-  % unit_test_utils:block_setup(?MODULE, PreInitConfigVals, PostInitConfigVals).
-
-% cleanup(BlockState) ->
-%   unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-% test_io(BlockState) ->
-%   unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
-
-% INSTRUCTIONS: 
-%  test_sets() is a list of tuples.  
-%  Each tuple defines one I/O test, and contains 2 lists.
-%  The first list contains {input value id, value} tuples, that the inputs of the block 
-%    will be set to before executing the block.  
-%  The second list contains {output value id, value} tuples, that represent 
-%    the expected output values after executing the block
-%  Each set of input / output values represents a test.
-%  A test consists of setting the input values to the input values of the list,
-%    executing the block, and comparing the actual output values to the expected output values list
-%  The block state is preserved between each test, and used in the subsequent test.
-%  Any input value IDs not specified in the input list, will not be modified before the test
-%  Any output value IDs not specified in the output list, will not be compared after the test
-
-% test_sets() ->
-%   [
-%     {[{input1, "I/O Unit Test 1"}], [{status, normal}, {value, "I/O Unit Test 1"}]},
-%     {[{input1, "I/O Unit Test 2"}], [{status, normal}, {value, "I/O Unit Test 2"}]}
-%   ].
+test_sets() ->
+  [
+    {[{status, normal}]}
+  ].
 
 -endif.

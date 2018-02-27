@@ -253,65 +253,17 @@ sum_inputs(_Inputs, _Index, NumOfInputs, IgnoreNulls, ActiveInputs, Sum) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
-
-setup() ->
-  InitConfigVals = [{num_of_inputs, 5}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+-include("block_io_test_gen.hrl").
 
 test_sets() ->
   [
-    {[], [{status, no_input}, {value, null}]},
+    {[{num_of_inputs, 5}], [], [{status, no_input}, {value, null}]},
     {[{{inputs, 1}, 1.11}, {{inputs, 2}, 2.22}, {{inputs, 3}, 3.33}, {{inputs, 4}, 4.44}, {{inputs, 5}, bad_input_value}], [{status, input_err}, {value, null}]},
     {[{{inputs, 1}, 1.11}, {{inputs, 2}, 2.22}, {{inputs, 3}, null}, {{inputs, 4}, 4.44}, {{inputs, 5}, 5.55}], [{status, no_input}, {value, null}]},
     {[{{inputs, 1}, 11.1}, {{inputs, 2}, 22.2}, {{inputs, 3}, 33.3}, {{inputs, 4}, 44.4}, {{inputs, 5}, 55.5}], [{status, normal}, {value, 166.5}]},
-    {[{{inputs, 1}, -1.11}, {{inputs, 2}, 2.22}, {{inputs, 3}, 3.33}, {{inputs, 4}, 4.44}, {{inputs, 5}, 5.55}], [{status, normal}, {value, 14.43}]}
- ].
+    {[{{inputs, 1}, -1.11}, {{inputs, 2}, 2.22}, {{inputs, 3}, 3.33}, {{inputs, 4}, 4.44}, {{inputs, 5}, 5.55}], [{status, normal}, {value, 14.43}]},
 
-
-block_ignore_nulls_test_() ->
-  {"Input to Output tests (Ignore Nulls) for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup_ignore_nulls/0, 
-      fun cleanup_ignore_nulls/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io_ignore_nulls(BlockState)
-        ]}
-      end} 
-  }.
-
-setup_ignore_nulls() ->
-  InitConfigVals = [{num_of_inputs, 5}, {ignore_nulls, true}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
-
-cleanup_ignore_nulls(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io_ignore_nulls(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets_ignore_nulls()).
-
-test_sets_ignore_nulls() ->
-  [
-    {[], [{status, no_input}, {value, null}]},
+    {[{ignore_nulls, true}],[], [{status, normal}, {value, 14.43}]},
     {[{{inputs, 1}, 1.11}, {{inputs, 2}, 2.22}, {{inputs, 3}, 3.33}, {{inputs, 4}, 4.44}, {{inputs, 5}, bad_input_value}], [{status, input_err}, {value, null}]},
     {[{{inputs, 1}, null}, {{inputs, 2}, null}, {{inputs, 3}, null}, {{inputs, 4}, null}, {{inputs, 5}, null}], [{status, no_input}, {value, null}]},
     {[{{inputs, 1}, 11.1}, {{inputs, 2}, 22.2}, {{inputs, 3}, 33.3}, {{inputs, 4}, 44.4}, {{inputs, 5}, 55.5}], [{status, normal}, {value, 166.5}]},

@@ -140,3 +140,4 @@
 
 -type type_group() :: none | math | logic | string | conversion | control | input | output | 
                       digital | analog | sensor | actuator | composite | i2c | spi | gpio. 
+

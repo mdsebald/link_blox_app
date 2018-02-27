@@ -173,31 +173,11 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
-
-setup() ->
-  unit_test_utils:block_setup(?MODULE).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+-include("block_io_test_gen.hrl").
 
 test_sets() ->
   [
-    {[], [{status, no_input}, {value, null}, {active_true, null}, {active_false, null}]},
+    {[{status, no_input}, {value, null}, {active_true, null}, {active_false, null}]},
     {[{input, 1234}], [{status, input_err}, {value, null}, {active_true, null}, {active_false, null}]},
     {[{input, null}], [{status, no_input}, {value, null}, {active_true, null}, {active_false, null}]},
     {[{input, true}], [{status, normal}, {value, true}, {active_true, true}, {active_false, null}]},

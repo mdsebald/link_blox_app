@@ -202,32 +202,12 @@ in_out_value_map() ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
+-include("block_io_test_gen.hrl").
 
-setup() ->
-  InitConfigValues =  [{'0_out', "Input is False"}, {'1_out', "Input is True"}, {'X_out', "Input is null"}],
-  unit_test_utils:block_setup(?MODULE, InitConfigValues).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_states()).
-
-test_states() ->
+test_sets() ->
+  InitConfigVals = [{'0_out', "Input is False"}, {'1_out', "Input is True"}, {'X_out', "Input is null"}], 
   [
-    {[{input, empty}], [{status, normal}, {value, "Input is null"}]},
+    {InitConfigVals, [{input, empty}], [{status, normal}, {value, "Input is null"}]},
     {[{input, "bad"}], [{status, input_err}, {value, null}]},
     {[{input, true}], [{status, normal}, {value, "Input is True"}]},
     {[{input, false}], [{status, normal}, {value, "Input is False"}]}

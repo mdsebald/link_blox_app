@@ -59,7 +59,7 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {carry, {null, []}} %| bool | null | null, true, false |
+      {carry, {null, []}} %| bool | null | true, false |
     ]). 
 
                                                        
@@ -250,91 +250,46 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Test fixture for rollover config value true (default)
-block_rollover_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun rollover_setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_rollover_io(BlockState)
-        ]}
-      end} 
-  }.
+-include("block_io_test_gen.hrl").
 
-rollover_setup() ->
-  unit_test_utils:block_setup(?MODULE).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_rollover_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, rollover_test_sets()).
-
-rollover_test_sets() ->
+test_sets() ->
   [
     % Test bad input values
     {[{reset, "bad"}],                           [{status, input_err}, {value, null}, {carry, null}]},
     {[{reset, true}, {initial_value, "bad"}],    [{status, input_err}, {value, null}, {carry, null}]},
     {[{initial_value, 0}, {final_value, "bad"}], [{status, input_err}, {value, null}, {carry, null}]},
-    % Test count up
+    
+    % Test count up, rollover
     {[{initial_value, 0}, {final_value, 5}], [{status, normal}, {value, 0}, {carry, false}]},
     {[{reset, false}], [{status, normal}, {value, 1}, {carry, false}]},
-    {[], [{status, normal}, {value, 2}, {carry, false}]},
-    {[], [{status, normal}, {value, 3}, {carry, false}]},
-    {[], [{status, normal}, {value, 4}, {carry, false}]},
-    {[], [{status, normal}, {value, 5}, {carry, false}]},
-    {[], [{status, normal}, {value, 0}, {carry, true}]},
+    {[{status, normal}, {value, 2}, {carry, false}]},
+    {[{status, normal}, {value, 3}, {carry, false}]},
+    {[{status, normal}, {value, 4}, {carry, false}]},
+    {[{status, normal}, {value, 5}, {carry, false}]},
+    {[{status, normal}, {value, 0}, {carry, true}]},
     % Test count down
     {[{initial_value, 5}, {final_value, 1}], [{status, normal}, {value, 5}, {carry, true}]},
-    {[], [{status, normal}, {value, 4}, {carry, false}]},
-    {[], [{status, normal}, {value, 3}, {carry, false}]},
-    {[], [{status, normal}, {value, 2}, {carry, false}]},
-    {[], [{status, normal}, {value, 1}, {carry, false}]},
-    {[], [{status, normal}, {value, 5}, {carry, true}]}
+    {[{status, normal}, {value, 4}, {carry, false}]},
+    {[{status, normal}, {value, 3}, {carry, false}]},
+    {[{status, normal}, {value, 2}, {carry, false}]},
+    {[{status, normal}, {value, 1}, {carry, false}]},
+    {[{status, normal}, {value, 5}, {carry, true}]},
 
-  ].
-
-% Test fixture for rollover config value false
-block_no_rollover_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun no_rollover_setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_no_rollover_io(BlockState)
-        ]}
-      end} 
-  }.
-
-no_rollover_setup() ->
-  unit_test_utils:block_setup(?MODULE, [{rollover, false}]).
-
-test_no_rollover_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, no_rollover_test_sets()).
-
-no_rollover_test_sets() ->
-  [
-    % Test count up
-    {[{reset, true}, {initial_value, 0}, {final_value, 5}], [{status, normal}, {value, 0}, {carry, false}]},
-    {[{reset, false}], [{status, normal}, {value, 1}, {carry, false}]},
-    {[], [{status, normal}, {value, 2}, {carry, false}]},
-    {[], [{status, normal}, {value, 3}, {carry, false}]},
-    {[], [{status, normal}, {value, 4}, {carry, false}]},
-    {[], [{status, normal}, {value, 5}, {carry, false}]},
-    {[], [{status, normal}, {value, 5}, {carry, false}]},
+    % Test count up, no rollover
+    {input_cos, [{rollover, false}], [{reset, true}, {initial_value, 0}, {final_value, 5}], [{status, normal}, {value, 0}, {carry, false}]},
+    {input_cos, [], [{reset, false}], [{status, normal}, {value, 1}, {carry, false}]},
+    {[{status, normal}, {value, 2}, {carry, false}]},
+    {[{status, normal}, {value, 3}, {carry, false}]},
+    {[{status, normal}, {value, 4}, {carry, false}]},
+    {[{status, normal}, {value, 5}, {carry, false}]},
+    {[{status, normal}, {value, 5}, {carry, false}]},
     % Test count down
     {[{initial_value, 5}, {final_value, 1}], [{status, normal}, {value, 4}, {carry, false}]},
-    {[], [{status, normal}, {value, 3}, {carry, false}]},
-    {[], [{status, normal}, {value, 2}, {carry, false}]},
-    {[], [{status, normal}, {value, 1}, {carry, false}]},
-    {[], [{status, normal}, {value, 1}, {carry, false}]},
-    {[], [{status, normal}, {value, 1}, {carry, false}]}
-
+    {[{status, normal}, {value, 3}, {carry, false}]},
+    {[{status, normal}, {value, 2}, {carry, false}]},
+    {[{status, normal}, {value, 1}, {carry, false}]},
+    {[{status, normal}, {value, 1}, {carry, false}]},
+    {[{status, normal}, {value, 1}, {carry, false}]}
   ].
 
 

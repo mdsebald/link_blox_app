@@ -1111,9 +1111,11 @@ compensate_humid(Adc_H, T_fine, Private) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Perform minimum block unit test
+-include("block_io_test_gen.hrl").
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
+test_sets() ->
+  [
+    {[{status, normal}]}
+  ].
 
 -endif.

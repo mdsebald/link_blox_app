@@ -387,29 +387,9 @@ list_replace(List, Element, Position) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
+-include("block_io_test_gen.hrl").
 
-setup() ->
-  unit_test_utils:block_setup(?MODULE).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_states()).
-
-test_states() ->
+test_sets() ->
   [
     {[{input, "bad"}], [{status, input_err}, {value, null}, {pos_overflow, null}, {neg_overflow, null}]},
     {[{input, 88.0}], [{status, normal}, {value, 88.0}, {{digits, 1}, 16#7F}, {{digits, 2}, 16#FF}, {pos_overflow, false}, {neg_overflow, false}]},

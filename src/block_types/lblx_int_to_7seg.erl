@@ -135,27 +135,12 @@ upgrade({Config, Inputs, Outputs}) ->
 initialize({Config, Inputs, Outputs, Private}) ->
   % Check the config values
   case config_utils:get_integer_range(Config, num_of_digits, 1, 99) of
-    {error, Reason} ->
-      Inputs1 = Inputs,
-      Outputs1 = Outputs,
-      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason);
-       
     {ok, NumOfDigits} ->
-    
-      case config_utils:get_integer_range(Config, number_base, 2, 16) of
-        {error, Reason} ->
-          Inputs1 = Inputs,
-          Outputs1 = Outputs,
-          {Value, Status} = config_utils:log_error(Config, number_base, Reason);
-             
+
+      case config_utils:get_integer_range(Config, number_base, 2, 16) of   
         {ok, _NumberBase} ->
         
           case config_utils:get_boolean(Config, leading_zeros) of
-            {error, Reason} ->
-              Inputs1 = Inputs,
-              Outputs1 = Outputs,
-              {Value, Status} = config_utils:log_error(Config, number_base, Reason);
-
             {ok, _LeadingZeros} ->
       
               % All config values are OK
@@ -170,10 +155,26 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 output_utils:resize_attribute_array_value(Outputs, 
                                        digits, NumOfDigits, {null, []}),
               Value = null,
-              Status = initialed
-          end                    
-      end
+              Status = initialed;
+
+            {error, Reason} ->
+              Inputs1 = Inputs,
+              Outputs1 = Outputs,
+              {Value, Status} = config_utils:log_error(Config, number_base, Reason)
+          end;
+
+        {error, Reason} ->
+          Inputs1 = Inputs,
+          Outputs1 = Outputs,
+          {Value, Status} = config_utils:log_error(Config, number_base, Reason)
+      end;
+
+    {error, Reason} ->
+      Inputs1 = Inputs,
+      Outputs1 = Outputs,
+      {Value, Status} = config_utils:log_error(Config, num_of_digits, Reason)
   end,
+
   Outputs2 = output_utils:set_value_status(Outputs1, Value, Status),
   
   % This is the block state
@@ -194,10 +195,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   {ok, LeadingZeros} = attrib_utils:get_value(Config, leading_zeros),
       
   case input_utils:get_integer(Inputs, input) of
-    {error, Reason} ->
-      {Value, Status} = input_utils:log_error(Config, input, Reason),
-      Digits7Seg = lists:duplicate(NumOfDigits, null);
-
+  
     {ok, null} ->
       Value = null, Status = normal,
       Digits7Seg = lists:duplicate(NumOfDigits, null);
@@ -229,7 +227,11 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       % Convert the digits to 7 segment representations
       % TODO: Read decimal point inputs, and set decimal points also
       Digits7Seg = lists:map(fun(Digit) -> 
-                   block_utils:char_to_segments(Digit, false) end, Digits)
+                   block_utils:char_to_segments(Digit, false) end, Digits);
+
+    {error, Reason} ->
+      {Value, Status} = input_utils:log_error(Config, input, Reason),
+      Digits7Seg = lists:duplicate(NumOfDigits, null)                
   end,
   
   Outputs1 = output_utils:set_array_values(Outputs, digits, Digits7Seg),
@@ -262,10 +264,11 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Perform minimum block unit test
+-include("block_io_test_gen.hrl").
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
-
+test_sets() ->
+  [
+    {[{status, normal}]}
+  ].
 
 -endif.

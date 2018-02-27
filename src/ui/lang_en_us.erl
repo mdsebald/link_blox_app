@@ -317,6 +317,7 @@ block_type_strings() ->
   {lblx_i2c_pca9685,     "i2c_pca9685",     "PCA9685 16 Channel 12 bit PWM Output with I2C interface"},
   {lblx_identity,        "identity",        "Output value is identical to input value"},
   {lblx_int_to_7seg,     "int_to_7seg",     "Convert integer input to multiple 7 segment digits outputs"},
+  {lblx_int_to_str,      "int_to_str",      "Convert integer input to string"},
   {lblx_logic_and,       "logic_and",       "AND of All of the Binary Inputs"},
   {lblx_logic_config1,   "logic_config1",   "1 Input Configurable Logic Gate"},
   {lblx_logic_config1n,  "logic_config1n",  "1 Input Configurable Logic Gate, Null Values Allowed"},

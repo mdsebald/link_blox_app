@@ -219,32 +219,11 @@ highest_priority_input(_Inputs, _Index, _NumOfInputs) -> {ok, null}.
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
-
-setup() ->
-  InitConfigVals = [{num_of_inputs, 10}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+-include("block_io_test_gen.hrl").
 
 test_sets() ->
   [
-    {[], [{status, no_input}, {value, null}]},
+    {[{num_of_inputs, 10}], [], [{status, no_input}, {value, null}]},
     {[{{inputs, 1}, null}, {{inputs, 2}, 2}, {{inputs, 10}, 10}], [{status, normal}, {value, 2}]},
     {[{{inputs, 1}, 1}, {{inputs, 2}, 2}, {{inputs, 10}, 10}], [{status, normal}, {value, 1}]},
     {[{{inputs, 1}, null}, {{inputs, 2}, null}], [{status, normal}, {value, 10}]}

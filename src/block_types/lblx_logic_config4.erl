@@ -265,34 +265,14 @@ in_out_value_map() ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
-
-setup() ->
-  InitConfigVals = [{'0_0_0_0_out', 0}, {'0_0_0_1_out', 1}, {'0_0_1_0_out', 2}, 
-                    {'0_1_0_0_out', 4}, {'1_0_0_0_out', 8}, {'1_1_1_1_out', 15}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+-include("block_io_test_gen.hrl").
 
 test_sets()->
+  InitConfigVals = [{'0_0_0_0_out', 0}, {'0_0_0_1_out', 1}, {'0_0_1_0_out', 2}, 
+                    {'0_1_0_0_out', 4}, {'1_0_0_0_out', 8}, {'1_1_1_1_out', 15}],
   [
     % Test null/empty input values
-    {[{input4, false}, {input3, false}, {input2, true},  {input1, null}], [{status, normal}, {value, null}]},
+    {InitConfigVals, [{input4, false}, {input3, false}, {input2, true},  {input1, null}], [{status, normal}, {value, null}]},
     {[{input4, false}, {input3, false}, {input2, empty}, {input1, true}], [{status, normal}, {value, null}]},
     {[{input4, false}, {input3, null},  {input2, false}, {input1, true}], [{status, normal}, {value, null}]},
     {[{input4, null},  {input3, false}, {input2, false}, {input1, true}], [{status, normal}, {value, null}]},

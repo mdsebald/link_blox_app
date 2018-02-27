@@ -187,63 +187,17 @@ delete({Config, Inputs, Outputs, _Private}) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
-
-setup() ->
-  unit_test_utils:block_setup(?MODULE).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_sets()).
+-include("block_io_test_gen.hrl").
 
 test_sets() ->
   [
-    {[], [{status, normal}, {value, false}]},
-    {[], [{status, normal}, {value, true}]},
-    {[], [{status, normal}, {value, false}]},
-    {[], [{status, normal}, {value, true}]}
-  ].
+    {[{status, normal}, {value, false}]},
+    {[{status, normal}, {value, true}]},
+    {[{status, normal}, {value, false}]},
+    {[{status, normal}, {value, true}]},
 
-block_init_state_true_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun init_state_true_setup/0, 
-      fun init_state_true_cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          init_state_true_io(BlockState)
-        ]}
-      end} 
-  }.
-
-init_state_true_setup() ->
-  InitConfigVals = [{initial_state, true}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
-
-init_state_true_cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-init_state_true_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, init_state_true_test_sets()).
-
-init_state_true_test_sets() ->
-  [
-    {[], [{status, normal}, {value, true}]},
-    {[], [{status, normal}, {value, false}]}
+    {[{initial_state, true}], [], [{status, normal}, {value, true}]},
+    {[{status, normal}, {value, false}]}
   ].
 
 

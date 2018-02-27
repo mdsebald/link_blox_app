@@ -247,10 +247,18 @@ add_precision(Precision, FormatStr) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-% Perform minimum block unit test
 
-block_test() ->
-  unit_test_utils:min_block_test(?MODULE).
+-include("block_io_test_gen.hrl").
+
+test_sets() ->
+  [
+    {[{input, "bad"}], [{status, input_err}, {value, null}]},
+    {[{input, 88.0}], [{status, normal}, {value, "88.000000"}]},
+    {[{input, -100.0}], [{status, normal}, {value, "-100.000000"}]},
+    {[{input, 100.0}], [{status, normal}, {value, "100.000000"}]}
+  ].
+
+
 
 
 -endif.

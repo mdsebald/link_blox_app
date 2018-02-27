@@ -203,32 +203,11 @@ in_out_value_map() ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-block_test_() ->
-  {"Input to Output tests for: " ++ atom_to_list(?MODULE),
-   {setup, 
-      fun setup/0, 
-      fun cleanup/1,
-      fun (BlockState) -> 
-        {inorder,
-        [
-          test_io(BlockState)
-        ]}
-      end} 
-  }.
+-include("block_io_test_gen.hrl").
 
-setup() ->
-  InitConfigVals = [{'0_out', false}, {'1_out', true}],
-  unit_test_utils:block_setup(?MODULE, InitConfigVals).
-
-cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
-
-test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, input_cos, BlockState, test_states()).
-
-test_states() ->
+test_sets() ->
   [
-    {[{input, empty}], [{status, normal}, {value, null}]},
+    {[{'0_out', false}, {'1_out', true}], [{input, empty}], [{status, normal}, {value, null}]},
     {[{input, "bad"}], [{status, input_err}, {value, null}]},
     {[{input, true}], [{status, normal}, {value, true}]},
     {[{input, false}], [{status, normal}, {value, false}]}
