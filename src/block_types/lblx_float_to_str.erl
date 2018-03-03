@@ -130,6 +130,7 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
+  Private1 = attrib_utils:add_attribute(Private, {format_str, {[]}}),
   case config_utils:get_boolean(Config, left_justify) of
     {ok, LeftJustify} ->
 
@@ -139,29 +140,29 @@ initialize({Config, Inputs, Outputs, Private}) ->
           case config_utils:get_integer_range(Config, precision, 0, 120) of
             {ok, Precision} ->
               FormatStr = build_format_str(LeftJustify, FieldWidth, Precision),
-              Private1 = attrib_utils:add_attribute(Private, {format_str, {FormatStr}}),
+              {ok, Private2} = attrib_utils:set_value(Private1, format_str, FormatStr),
               Value = null,
               Status = initialed;
 
             {error, Reason} ->
-              Private1 = Private,
+              Private2 = Private1,
               {Value, Status} = config_utils:log_error(Config, precision, Reason)          
           end;
         
         {error, Reason} ->
-          Private1 = Private,
+          Private2 = Private1,
           {Value, Status} = config_utils:log_error(Config, field_width, Reason)          
       end;
 
     {error, Reason} ->
-      Private1 = Private,
+      Private2 = Private1,
       {Value, Status} = config_utils:log_error(Config, left_justify, Reason)          
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private1}.
+  {Config, Inputs, Outputs1, Private2}.
 
 
 %%
@@ -171,8 +172,6 @@ initialize({Config, Inputs, Outputs, Private}) ->
               ExecMethod :: exec_method()) -> block_state().
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
-
-  
   case input_utils:get_float(Inputs, input) of
     {ok, null} ->
       Value = null,
@@ -217,25 +216,25 @@ delete({Config, Inputs, Outputs, _Private}) ->
 build_format_str(LeftJustify, FieldWidth, Precision) ->
   add_precision(Precision, 
     add_field_width(FieldWidth, 
-      add_left_justified(LeftJustify, "\~"))) ++ "f".
+      add_left_justified(LeftJustify))).
 
       
-add_left_justified(LeftJustify, FormatStr) ->
+add_left_justified(LeftJustify) ->
   case LeftJustify of
-    true -> FormatStr ++ "-";
-       _ -> FormatStr
+    true -> "\~-";
+       _ -> "\~"
   end.
 
 add_field_width(FieldWidth, FormatStr) ->
   case FieldWidth of
-    0 -> FormatStr ++ ".";
-    _ -> lists:flatten(io_lib:format("~s~b.", [FormatStr, FieldWidth]))
+    0 -> FormatStr;
+    _ -> lists:flatten(io_lib:format("~s~b", [FormatStr, FieldWidth]))
   end.
 
 add_precision(Precision, FormatStr) ->
   case Precision of
-    0 -> FormatStr;
-    _ -> lists:flatten(io_lib:format("~s~b", [FormatStr, Precision]))
+    0 -> FormatStr ++ "f";
+    _ -> lists:flatten(io_lib:format("~s.~bf", [FormatStr, Precision]))
   end.
 
 
@@ -247,15 +246,26 @@ add_precision(Precision, FormatStr) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-
 -include("block_io_test_gen.hrl").
 
 test_sets() ->
   [
-    {[{input, "bad"}], [{status, input_err}, {value, null}]},
+    % Test bad config values
+    {[{left_justify, bad}], [], [{status, config_err}, {value, null}]},
+    {[{left_justify, false}, {field_width, -1}], [], [{status, config_err}, {value, null}]},
+    {[{field_width, 0}, {precision, -10}], [], [{status, config_err}, {value, null}]},
+ 
+    % Test bad input values
+    {[{precision, 0}], [{input, "bad"}], [{status, input_err}, {value, null}]},
+
     {[{input, 88.0}], [{status, normal}, {value, "88.000000"}]},
     {[{input, -100.0}], [{status, normal}, {value, "-100.000000"}]},
-    {[{input, 100.0}], [{status, normal}, {value, "100.000000"}]}
+    {[{input, 100.0}], [{status, normal}, {value, "100.000000"}]},
+
+    {[{field_width, 10}, {precision, 2}], [{input, 123.456}], [{status, normal}, {value, "    123.46"}]},
+    {[{left_justify, true}], [], [{status, normal}, {value, "123.46    "}]},
+    {[{input, -123.456}], [{status, normal}, {value, "-123.46   "}]}
+
   ].
 
 

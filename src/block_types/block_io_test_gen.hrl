@@ -21,10 +21,10 @@ block_io_test_() ->
   }.
 
 setup() ->
-  unit_test_utils:block_setup(?MODULE).
+  block_io_test_utils:block_setup(?MODULE).
 
 cleanup(BlockState) ->
-  unit_test_utils:block_cleanup(?MODULE, BlockState).
+  block_io_test_utils:block_cleanup(BlockState).
 
 test_io(BlockState) ->
-  unit_test_utils:create_io_tests(?MODULE, BlockState, test_sets()).
+  block_io_test_utils:create_io_tests(BlockState, test_sets()).

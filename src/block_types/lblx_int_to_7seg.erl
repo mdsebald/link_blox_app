@@ -48,7 +48,7 @@ default_inputs() ->
     block_common:inputs(),
     [
       {input, {empty, {empty}}}, %| int | empty | 0..max int |
-      {dec_pnt, [{false, {false}}]} %| bool array | false | true, false |
+      {dec_pnts, [{false, {false}}]} %| bool array | false | true, false |
     ]). 
 
 
@@ -148,7 +148,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
               % Create a decimal point input for each digit
               BlockName = config_utils:name(Config),
               Inputs1 = input_utils:resize_attribute_array_value(BlockName, Inputs, 
-                                  dec_pnt, NumOfDigits, {false, {false}}),
+                                  dec_pnts, NumOfDigits, {false, {false}}),
 
               % Create a digit output for each digit
               Outputs1 = 
@@ -202,33 +202,53 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
    
     {ok, InValue} ->  
       InValueStr = integer_to_list(InValue, NumberBase),
-      
-      % Set the main output value to the formated input value
-      % This should be the same as the 7 segment display is showing
-      Value = InValueStr, Status = normal, 
       LenInValueStr = length(InValueStr),
           
-      if LenInValueStr > NumOfDigits ->
-        % The magnitude of the input value exceeds the number of digits
-        % Set the digits outputs to display "---" 
-        Digits = lists:duplicate(NumOfDigits, $-);
-            
-      true ->  % Input value will fit into the digits
-        % Determine if leading digits should be zero or blank
-        NumBlankDigits = NumOfDigits - LenInValueStr,
-        if LeadingZeros ->
-          LeadDigits = lists:duplicate(NumBlankDigits, $0);
+      case LenInValueStr > NumOfDigits of
         true ->
-          LeadDigits = lists:duplicate(NumBlankDigits, 32)
-        end,
-        Digits = LeadDigits ++ InValueStr  
+          % The magnitude of the input value exceeds the number of digits
+          % Set the digits outputs to display "---" 
+          Digits = lists:duplicate(NumOfDigits, $-);
+            
+        false ->  % Input value will fit into the digits
+          % Determine if leading digits should be zero or blank
+          NumBlankDigits = NumOfDigits - LenInValueStr,
+          case LeadingZeros of
+            true ->
+              LeadDigits = lists:duplicate(NumBlankDigits, $0);
+            false ->
+              LeadDigits = lists:duplicate(NumBlankDigits, 32)
+          end,
+          Digits = LeadDigits ++ InValueStr
       end,
-     
-      % Convert the digits to 7 segment representations
-      % TODO: Read decimal point inputs, and set decimal points also
-      Digits7Seg = lists:map(fun(Digit) -> 
-                   block_utils:char_to_segments(Digit, false) end, Digits);
+      % Get the Decimal Point inputs
+      case input_utils:get_boolean_array(Inputs, dec_pnts) of
+        {ok, DecPnts} ->
+          case lists:member(error, DecPnts) of
+            false -> % no decimal point inputs are in error
+              % Convert the digits decimal points to 7 segment representations
+              DigitsAndDecPnts = lists:zip(Digits, DecPnts),
+              Digits7Seg = lists:map(fun({Digit, DecPnt}) -> 
+                      block_utils:char_to_segments(Digit, DecPnt) end, DigitsAndDecPnts),
+              
+              % Set the main output value to the formated input value
+              % Including the decimal points in Output Value
+              Value = lists:foldr(fun({Digit, DecPnt}, AccIn) ->
+                      case DecPnt of
+                        true -> [Digit | [$. | AccIn]];
+                           _ -> [Digit | AccIn]
+                      end
+                    end, [], DigitsAndDecPnts),
+              Status = normal;
 
+            true -> % One or more of the decimal point inputs is in error
+              {Value, Status} = input_utils:log_error(Config, dec_pnts, input_err),
+              Digits7Seg = lists:duplicate(NumOfDigits, null)                
+          end;
+        {error, Reason} ->
+          {Value, Status} = input_utils:log_error(Config, dec_pnts, Reason),
+          Digits7Seg = lists:duplicate(NumOfDigits, null)                
+      end;
     {error, Reason} ->
       {Value, Status} = input_utils:log_error(Config, input, Reason),
       Digits7Seg = lists:duplicate(NumOfDigits, null)                
@@ -255,8 +275,6 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% ====================================================================
 
 
-  
-
 %% ====================================================================
 %% Tests
 %% ====================================================================
@@ -268,7 +286,30 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 test_sets() ->
   [
-    {[{status, normal}]}
+    % Test bad config values
+    {[{num_of_digits, bad}], [], [{value, null}, {status, config_err}, {{digits, 1}, null}]},
+    {[{number_base, 88}, {num_of_digits, 1}], [], [{value, null}, {status, config_err}, {{digits, 1}, null}]},
+    {[{leading_zeros, bad}, {number_base, 10}], [], [{value, null}, {status, config_err}, {{digits, 1}, null}]},
+   
+    % Test bad input values
+    {[{leading_zeros, false}], [{input, bad}], [{value, null}, {status, input_err}, {{digits, 1}, null}]},
+    {[{input, 10}, {{dec_pnts, 1}, bad}], [{value, null}, {status, input_err}, {{digits, 1}, null}]},
+    
+    % Test good input and config values
+    {[{input, 123}, {{dec_pnts, 1}, false}], [{value, "-"}, {status, normal}, {{digits, 1}, 16#40}]},
+    {[{num_of_digits, 4}], [{input, -123}], [{value, "-123"}, {status, normal}, {{digits, 1}, 16#40}, {{digits, 2}, 16#06}, {{digits, 3}, 16#5B}, {{digits, 4}, 16#4F}]},
+    {[{{dec_pnts, 1}, true}], [{value, "-.123"}, {status, normal}, {{digits, 1}, 16#C0}, {{digits, 2}, 16#06}, {{digits, 3}, 16#5B}, {{digits, 4}, 16#4F}]},
+    {[{{dec_pnts, 1}, true}], [{value, "-.123"}, {status, normal}, {{digits, 1}, 16#C0}, {{digits, 2}, 16#06}, {{digits, 3}, 16#5B}, {{digits, 4}, 16#4F}]},
+    {[{{dec_pnts, 3}, true}], [{value, "-.12.3"}, {status, normal}, {{digits, 1}, 16#C0}, {{digits, 2}, 16#06}, {{digits, 3}, 16#DB}, {{digits, 4}, 16#4F}]},
+    {[{number_base, 16}], [{input, 255}, {{dec_pnts, 1}, false}, {{dec_pnts, 3}, false}], [{value, "  FF"}, {status, normal}, {{digits, 1}, 16#00}, {{digits, 2}, 16#00}, {{digits, 3}, 16#71}, {{digits, 4}, 16#71}]},
+    {[{leading_zeros, true}], [{input, 255}, {{dec_pnts, 1}, false}], [{value, "00FF"}, {status, normal}, {{digits, 1}, 16#3F}, {{digits, 2}, 16#3F}, {{digits, 3}, 16#71}, {{digits, 4}, 16#71}]}
   ].
 
 -endif.
+
+
+% character to 7 segments byte mapping
+%     [{$0,16#3F}, {$1,16#06}, {$2,16#5B}, {$3,16#4F}, {$4,16#66}, {$5,16#6D}, 
+%     {$6,16#7D}, {$7,16#07}, {$8,16#7F}, {$9,16#6F}, 
+%     {$A,16#77}, {$b,16#7C}, {$C,16#39}, {$d,16#5E}, {$E,16#79}, {$F,16#71},
+%     {32,16#00}, {$-,16#40}],

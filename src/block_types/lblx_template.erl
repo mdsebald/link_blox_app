@@ -193,9 +193,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
     
   % INSTRUCTIONS: Perform block type specific initializations here
   % Add and intialize private attributes here
-  Outputs1 = Outputs,
+  Outputs1 = output_utils:set_value_status(Outputs, null, initialed),
   Private1 = Private,
-
+  
   % This is the block state
   {Config, Inputs, Outputs1, Private1}.
 

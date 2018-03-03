@@ -144,8 +144,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
                   Status = initialed,
                   Value = DefaultValue,
                   {ok, Private2} = 
-                     attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-                  set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
+                    attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
+                    set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
             
                 {error, ErrorResult} ->
                   BlockName = config_utils:name(Config),
@@ -255,7 +255,7 @@ set_pin_value_bool(GpioPinRef, Value, Invert) ->
 
 test_sets() ->
   [
-    {[{status, normal}]}
+    {[{status, config_err}]}
   ].
 
 -endif.

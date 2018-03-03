@@ -20,6 +20,7 @@
           get_integer_less_than/3,
           get_integer_range/4,
           get_float/2,
+          get_boolean_array/2,
           get_boolean/2,
           get_string/2,
           get_value/3,
@@ -142,7 +143,32 @@ get_float(Inputs, ValueId) ->
   CheckType = fun is_float/1,
   get_value(Inputs, ValueId, CheckType).
   
-  
+
+%%
+%% Get a list of boolean input values from an array attribute
+%%
+-spec get_boolean_array(Inputs :: input_attribs(), 
+                        ValueName :: value_name()) -> {ok, list(value())} | {error, atom}.
+
+get_boolean_array(Inputs, ValueName) ->
+  case attrib_utils:get_attribute(Inputs, ValueName) of
+    {ok, {ValueName, Values}} ->
+      % Get the current value for each input in the array
+      % Accept only true/false/null values
+      ValuesList = lists:map(fun({Value, {_DefaultValue}}) ->
+          case Value of 
+            true  -> true;
+            false -> false;
+            null  -> null;
+            _Error -> error
+          end
+        end, Values),
+      {ok, ValuesList};
+
+    {error, Reason} -> {error, Reason}
+  end.
+
+
 %%
 %% Get a boolean input value and check for errors
 %%
@@ -264,8 +290,8 @@ del_exec_in(Inputs, SrcBlockName) ->
 default_inputs(Inputs) ->
   lists:map(fun(Input) ->
               case Input of 
-                {ValueName, {_Value, {DefValue}}} -> 
-                    {ValueName, {DefValue, {DefValue}}};
+                {ValueName, {_Value, {DefaultValue}}} -> 
+                    {ValueName, {DefaultValue, {DefaultValue}}};
 
                 {ValueName, ArrayValues} ->
                     {ValueName, update_all_array_values(ArrayValues)}
@@ -280,7 +306,7 @@ default_inputs(Inputs) ->
 -spec update_all_array_values(ArrayValues :: input_value_array()) -> input_value_array().
   
 update_all_array_values(ArrayValues) ->
-  lists:map(fun({_Value, {DefValue}}) -> {DefValue, {DefValue}} end, ArrayValues).
+  lists:map(fun({_Value, {DefaultValue}}) -> {DefaultValue, {DefaultValue}} end, ArrayValues).
 
 
 %%
@@ -344,6 +370,26 @@ get_value_test() ->
   _TestInputs = test_data:input_utils_input_attribs1().
 
 % ====================================================================
+
+% ====================================================================
+% Test get_boolean_array()
+%   
+get_boolean_array_not_found_test() ->
+  TestInputs = test_data:attrib_utils_input_attribs1(),
+
+  ExpectedResult = {error, not_found},
+  Result = get_boolean_array(TestInputs, bool_not_found),
+  ?assertEqual(ExpectedResult, Result).
+
+get_boolean_array_found_test() -> 
+  TestInputs = test_data:attrib_utils_input_attribs1(),
+
+  ExpectedResult = {ok, [true, false, null, error]},
+  Result = get_boolean_array(TestInputs, bool_array_in),
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+
 
 
 % ====================================================================

@@ -255,7 +255,7 @@ set_led_value(LedId, Value, Invert) ->
 
 test_sets() ->
   [
-    {[{status, normal}]}
+    {[{status, proc_err}]}
   ].
 
 -endif.

@@ -19,6 +19,7 @@
           inputs/0, 
           outputs/0,
           execute/2,
+          ok_to_execute/2,
           initialize/1,
           delete/1,
           temp_delete/1,

@@ -391,7 +391,12 @@ list_replace(List, Element, Position) ->
 
 test_sets() ->
   [
-    {[{input, "bad"}], [{status, input_err}, {value, null}, {pos_overflow, null}, {neg_overflow, null}]},
+    % Test bad config inputs
+    {[{num_of_digits, -1}], [], [{status, config_err}, {value, null}, {pos_overflow, null}, {neg_overflow, null}]},
+
+    % Test bad inputs
+    {[{num_of_digits, 4}], [{input, "bad"}], [{status, input_err}, {value, null}, {pos_overflow, null}, {neg_overflow, null}]},
+
     {[{input, 88.0}], [{status, normal}, {value, 88.0}, {{digits, 1}, 16#7F}, {{digits, 2}, 16#FF}, {pos_overflow, false}, {neg_overflow, false}]},
     {[{input, -100.0}], [{status, normal}, {value, -100.0}, {{digits, 1}, 16#40}, {{digits, 2}, 16#40}, {pos_overflow, false}, {neg_overflow, true}]},
     {[{input, 100.0}], [{status, normal}, {value, 100.0}, {{digits, 1}, 16#40}, {{digits, 2}, 16#40}, {pos_overflow, true}, {neg_overflow, false}]}

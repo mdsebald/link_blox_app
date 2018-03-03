@@ -241,7 +241,7 @@ read_pin_value_bool(GpioPinRef) ->
 
 test_sets() ->
   [
-    {[{status, normal}]}
+    {[{status, config_err}]}
   ].
 
 -endif.

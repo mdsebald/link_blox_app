@@ -161,28 +161,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   case input_utils:get_boolean(Inputs, display_on) of
-    {error, Reason} ->
-      Value = null, Status = input_err,
-      SegA = null, SegB = null, SegC = null, SegD = null, 
-      SegE = null, SegF = null, SegG = null, SegDp = null,
-      input_utils:log_error(Config, display_on, Reason);
-      
     {ok, DisplayState} ->
-      case DisplayState of
-        false ->  % Display is off or blank
-          Value = 0, Status = normal,
-          SegA = false, SegB = false, SegC = false, SegD = false,
-          SegE = false, SegF = false, SegG = false, SegDp = false;
-            
-        true -> % Display is on  
-          case input_utils:get_integer(Inputs, segments) of
-            {error, Reason} ->
-              Value = null, Status = input_err,
-              SegA = null, SegB = null, SegC = null, SegD = null, 
-              SegE = null, SegF = null, SegG = null, SegDp = null,
-               input_utils:log_error(Config, segments, Reason);
+      
+      case input_utils:get_integer_range(Inputs, segments, 0, 16#FF) of
+        {ok, Segments} ->
 
-            {ok, Segments} ->
+          case DisplayState of
+        
+            true -> % Display is on  
               case Segments of 
                 null ->
                   Value = null, Status = normal,
@@ -216,9 +202,30 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
                   if (Segments band 16#80) == 16#80 -> SegDp = true;
                     true -> SegDp = false end
-              end
-          end
-      end
+              end;
+
+            false ->  % Display is off or blank
+                Value = 0, Status = normal,
+                SegA = false, SegB = false, SegC = false, SegD = false,
+                SegE = false, SegF = false, SegG = false, SegDp = false;
+    
+            null -> % Display input is null
+              Value = null, Status = normal,
+              SegA = null, SegB = null, SegC = null, SegD = null, 
+              SegE = null, SegF = null, SegG = null, SegDp = null
+          end;
+
+        {error, Reason} ->
+          Value = null, Status = input_err,
+          SegA = null, SegB = null, SegC = null, SegD = null, 
+          SegE = null, SegF = null, SegG = null, SegDp = null,
+          input_utils:log_error(Config, segments, Reason)
+      end;
+    {error, Reason} ->
+      Value = null, Status = input_err,
+      SegA = null, SegB = null, SegC = null, SegD = null, 
+      SegE = null, SegF = null, SegG = null, SegDp = null,
+      input_utils:log_error(Config, display_on, Reason)
   end,         
 
   % update the outputs
@@ -257,7 +264,16 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 test_sets() ->
   [
-    {[{status, normal}]}
+    % Test bad inputs
+    {[{display_on, bad}], [{status, input_err}, {value, null}, {seg_a, null}, {seg_b, null}, {seg_c, null}, {seg_d, null}, {seg_e, null}, {seg_f, null}, {seg_g, null}, {seg_dp, null}]},
+    {[{display_on, false}, {segments, -10}], [{status, input_err}, {value, null}, {seg_a, null}, {seg_b, null}, {seg_c, null}, {seg_d, null}, {seg_e, null}, {seg_f, null}, {seg_g, null}, {seg_dp, null}]},
+
+    % Test valid inputs
+    {[{display_on, null}, {segments, 4}], [{status, normal}, {value, null}, {seg_a, null}, {seg_b, null}, {seg_c, null}, {seg_d, null}, {seg_e, null}, {seg_f, null}, {seg_g, null}, {seg_dp, null}]},
+    {[{display_on, false}, {segments, 0}], [{status, normal}, {value, 0}, {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false}, {seg_e, false}, {seg_f, false}, {seg_g, false}, {seg_dp, false}]},
+    {[{display_on, true}, {segments, 0}], [{status, normal}, {value, 0}, {seg_a, false}, {seg_b, false}, {seg_c, false}, {seg_d, false}, {seg_e, false}, {seg_f, false}, {seg_g, false}, {seg_dp, false}]},
+    {[{segments, 1}], [{status, normal}, {value, 1}, {seg_a, true}, {seg_b, false}, {seg_c, false}, {seg_d, false}, {seg_e, false}, {seg_f, false}, {seg_g, false}, {seg_dp, false}]}
+
   ].
 
 -endif.

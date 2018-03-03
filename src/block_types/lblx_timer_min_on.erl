@@ -131,7 +131,6 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-    
 
   Private1 = attrib_utils:add_attribute(Private, {min_on_timer_ref, {empty}}),
   

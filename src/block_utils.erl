@@ -86,7 +86,7 @@ char_to_segments(Char, DecPnt) ->
   
   case DecPnt of
     true -> DecPntSeg = 16#80;
-    false -> DecPntSeg = 16#00
+       _ -> DecPntSeg = 16#00
   end,
   
   case lists:keyfind(Char, 1, CharToSegs) of

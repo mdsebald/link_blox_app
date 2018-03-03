@@ -200,7 +200,8 @@ delete({Config, Inputs, Outputs, _Private}) ->
 
 test_sets() ->
   [
-    {[{input, "bad input"}], [{status, input_err}, {value, null}]},
+    {[{number_base, 88}], [], [{status, config_err}, {value, null}]},
+    {[{number_base, 10}], [{input, "bad input"}], [{status, input_err}, {value, null}]},
 
     % default base 10
     {[{input, 123}], [{status, normal}, {value, "123"}]},

@@ -70,7 +70,7 @@ attrib_utils_config_attribs3() ->
 attrib_utils_input_attribs1() ->
   [ {number_in, {123.45, {empty}}},
     {string_in, {"Testing", {empty}}},
-    {bool_array_in, [{true,{empty}}, {false, {empty}}]},
+    {bool_array_in, [{true,{empty}}, {false, {empty}}, {null,{empty}}, {not_a_boolean,{empty}}]},
     {integer_in, {123, {0}}},
     {integer_array_in, [{234,{0}}, {456,{0}}, {-123,{0}}]}
   ].
