@@ -305,9 +305,15 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
             true ->
               case attrib_utils:set_value(Outputs, ValueId, Value) of
                 {ok, NewOutputs} ->
-                  % TODO: Update any inputs linked to the output that changed
                   NewBlockState = {Config, Inputs, NewOutputs, Private},
-                  Result = ok;
+                  % Update inputs linked to the output value that changed
+                  case output_utils:get_links(NewOutputs, ValueId) of
+                    {ok, Links} ->
+                      block_common:update_linked_inputs(Value, Links),
+                      Result = ok;
+                    {error, Reason} ->
+                      Result = {error, Reason}
+                  end;
                 {error, Reason} ->
                   NewBlockState = BlockState,
                   Result = {error, Reason}
@@ -331,10 +337,18 @@ handle_call({add_link, ValueId, Link}, _From, BlockState) ->
   BlockName = config_utils:name(Config),
   case link_utils:add_link(BlockName, Outputs, ValueId, Link) of
     {ok, Outputs1} ->
-      % TODO: Set linked input value to current output value?
-      Result = ok,
-      NewBlockState = {Config, Inputs, Outputs1, Private};
+      NewBlockState = {Config, Inputs, Outputs1, Private},
 
+      % Set the added linked input value to current output value
+      case attrib_utils:get_value(Outputs1, ValueId) of 
+        {ok, Value} ->
+          {ToBlockName, ToValueId} = Link,
+          update(ToBlockName, [{ToValueId, Value}]),
+          Result = ok;
+
+        {error, Reason} ->
+          Result = {error, Reason}
+      end;
     {error, Reason} ->
       Result = {error, Reason},
       NewBlockState = {Config, Inputs, Outputs, Private}
