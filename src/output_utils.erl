@@ -21,6 +21,8 @@
           set_array_values/3,
           set_tristate_outputs/4,
           update_all_outputs/3,
+          get_links/2,
+          replace_links/3,
           resize_attribute_array_value/4
 ]).
 
@@ -180,7 +182,72 @@ update_all_outputs(Outputs, NewValue, NewStatus) ->
     end,
     Outputs).
 
- 
+
+%%
+%% Get the links on the given output attribute
+%%
+-spec get_links(Outputs :: output_attribs(),
+                ValueId :: value_id()) -> {ok, link_defs()} | {error, atom()}.
+
+get_links(Outputs, ValueId) ->
+  case attrib_utils:get_attribute(Outputs, ValueId) of
+    % Non-array value
+    {ok, {_ValueName, {_Value, Links}}} -> {ok, Links};
+
+    % Array value
+    {ok, {ValueName, ArrayValues}} ->
+      % if this is an array value, the ValueName from get_attribute()
+      % will match ValueName in the ValueId tuple
+      {ValueName, ArrayIndex} = ValueId,
+      case (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) of
+        true ->
+          {_Value, Links} = lists:nth(ArrayIndex, ArrayValues),
+          {ok, Links};
+        false ->
+          {error, invalid_array_index}
+      end;
+
+    % This block doesn't have an output 'ValueId'
+    {error, not_found} -> {error, not_found}
+  end.
+
+
+%%
+%% Replace the current set of links on this output with a new set of links
+%%
+-spec replace_links(Outputs :: output_attribs(),
+                    ValueId :: value_id(),
+                    NewLinks :: link_defs()) -> {ok, output_attribs()} | {error, atom()}.
+
+replace_links(Outputs, ValueId, NewLinks) ->
+  case attrib_utils:get_attribute(Outputs, ValueId) of
+    % Non-array value
+    {ok, {ValueName, {Value, _Links}}} ->
+      NewOutput = {ValueName, {Value, NewLinks}},
+      {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+
+    % Array value
+    {ok, {ValueName, ArrayValues}} ->
+      % if this is an array value, the ValueName from get_attribute()
+      % will match ValueName in the ValueId tuple
+      {ValueName, ArrayIndex} = ValueId,
+      case (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) of
+        true ->
+          {Value, _Links} = lists:nth(ArrayIndex, ArrayValues),
+          NewArrayValue = {Value, NewLinks},
+          NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
+          NewOutput = {ValueName, NewArrayValues}, 
+          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+
+        false ->
+          {error, invalid_array_index}
+      end;
+
+    % This block doesn't have an output 'ValueId'
+    {error, not_found} -> {error, not_found}
+  end.
+
+
 %%
 %% Set all of the values in ArrayValues to NewValue
 %%
@@ -265,7 +332,117 @@ update_all_outputs_test() ->
   ?assertEqual(ExpectedResult, Result). 
   
 % ====================================================================
+
+% ====================================================================
+% Test get_links()  
+get_links_non_array_no_links_test() ->
+  Outputs = test_data:output_attribs5(),
+
+  ExpectedResult = {ok, []},
+
+  Result = get_links(Outputs, value),
+  ?assertEqual(ExpectedResult, Result). 
+
+get_links_non_array_with_links_test() ->
+    Outputs = test_data:output_attribs5(),
   
+    ExpectedResult = {ok, [{test1, input1}, {test2, input2}]},
+  
+    Result = get_links(Outputs, value_with_links),
+    ?assertEqual(ExpectedResult, Result). 
+
+get_links_invalid_id_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {error, not_found},
+  
+    Result = get_links(Outputs, invalid_value_id),
+    ?assertEqual(ExpectedResult, Result). 
+    
+get_links_array_no_links_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {ok, []},
+  
+    Result = get_links(Outputs, {integer_array_out, 1}),
+    ?assertEqual(ExpectedResult, Result). 
+
+get_links_array_with_links_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {ok, [{test1, input1}, {test2, input2}]},
+  
+    Result = get_links(Outputs, {integer_array_out, 3}),
+    ?assertEqual(ExpectedResult, Result).
+
+get_links_array_invald_index_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {error, invalid_array_index},
+  
+    Result = get_links(Outputs, {integer_array_out, 99}),
+    ?assertEqual(ExpectedResult, Result). 
+
+% ====================================================================
+
+
+% ====================================================================
+% Test replace_links()  
+replace_links_non_array_no_links_test() ->
+  Outputs = test_data:output_attribs5(),
+
+  ExpectedResult = {ok, test_data:output_attribs6()},
+  NewLinks = test_data:replacement_links1(),
+
+  Result = replace_links(Outputs, value, NewLinks),
+  ?assertEqual(ExpectedResult, Result). 
+
+replace_links_non_array_with_links_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {ok, test_data:output_attribs7()},
+    NewLinks = test_data:replacement_links1(),
+
+    Result = replace_links(Outputs, value_with_links, NewLinks),
+    ?assertEqual(ExpectedResult, Result). 
+
+replace_links_invalid_id_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {error, not_found},
+    NewLinks = test_data:replacement_links1(),
+
+    Result = replace_links(Outputs, invalid_value_id, NewLinks),
+    ?assertEqual(ExpectedResult, Result). 
+    
+replace_links_array_no_links_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {ok, test_data:output_attribs8()},
+    NewLinks = test_data:replacement_links1(),
+  
+    Result = replace_links(Outputs, {integer_array_out, 2}, NewLinks),
+    ?assertEqual(ExpectedResult, Result). 
+
+replace_links_array_with_links_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {ok, test_data:output_attribs9()},
+    NewLinks = test_data:replacement_links1(),
+  
+    Result = replace_links(Outputs, {integer_array_out, 3}, NewLinks),
+    ?assertEqual(ExpectedResult, Result).
+
+replace_links_array_invald_index_test() ->
+    Outputs = test_data:output_attribs5(),
+  
+    ExpectedResult = {error, invalid_array_index},
+    NewLinks = test_data:replacement_links1(),
+  
+    Result = replace_links(Outputs, {integer_array_out, 99}, NewLinks),
+    ?assertEqual(ExpectedResult, Result). 
+% ====================================================================
+
 
 % ====================================================================
 % Test resize_attribute_array_value()  

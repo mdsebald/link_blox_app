@@ -1,4 +1,4 @@
-%% @doc 
+%%% @doc 
 %%% Handle block links     
 %%%               
 %%% @end 
@@ -74,7 +74,7 @@ unlink_block(InputBlockName) ->
 
 
 %%
-%% Search list of output attributres and remove the given Link
+%% Search list of output attributes and remove the given Link
 %%   from their list of links
 %%
 -spec unlink_outputs(BlockName :: block_name(),
@@ -212,53 +212,20 @@ validate_link(Link) ->
 
 add_link(BlockName, Outputs, ValueId, Link) ->
 
-  case attrib_utils:get_attribute(Outputs, ValueId) of
-
-    {error, not_found} ->
-      % This block doesn't have an output 'ValueId'
-      {error, not_found};
-
-    % Non-array value
-    {ok, {ValueName, {Value, Links}}} ->
-
-      % Add Link to list of Links for this output
-      % If not already added, Return updated Outputs list
-      case lists:member(Link, Links) of 
-        false ->
-          NewLinks = [Link | Links],
-          NewOutput = {ValueName, {Value, NewLinks}},
-          logger:info(block_output_linked_to_block_input,
-                      [format_link({BlockName, ValueName}), format_link(Link)]),
-          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};          
-        true ->
-          {error, already_exists}
-      end;
-
-    % Array value
-    {ok, {ValueName, ArrayValues}} ->
-      % if this is an array value, the ValueName from get_attribute()
-      % will match ValueName in the ValueId tuple
-      {ValueName, ArrayIndex} = ValueId,
-      if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-        {Value, Links} = lists:nth(ArrayIndex, ArrayValues),
-        % Add Link to list of block Links for this output
-        % If not already added, Return updated Outputs list
-        case lists:member(Link, Links) of
+  case output_utils:get_links(Outputs, ValueId) of
+      {ok, Links} ->
+        case lists:member(Link, Links) of 
           false ->
             NewLinks = [Link | Links],
-            NewArrayValue = {Value, NewLinks},
-            NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
-            NewOutput = {ValueName, NewArrayValues}, 
             logger:info(block_output_linked_to_block_input, 
-                     [format_link({BlockName, {ValueName, ArrayIndex}}), format_link(Link)]),
-            {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+                    [format_link({BlockName, ValueId}), format_link(Link)]),
+            output_utils:replace_links(Outputs, ValueId, NewLinks);
           true ->
-            {error, already_exists}
+            {error, already_linked}
         end;
-      true ->
-        {error, invalid_array_index}
-      end
-  end.
+      {error, Reason} ->
+        {error, Reason}
+    end.
 
 
 %%
@@ -272,52 +239,22 @@ add_link(BlockName, Outputs, ValueId, Link) ->
 
 del_link(BlockName, Outputs, ValueId, Link) ->
 
-  case attrib_utils:get_attribute(Outputs, ValueId) of
-
-    {error, not_found} ->
-      % This block doesn't have an output 'ValueId'
-      {error, not_found};
-
-    % Non-Array value
-    {ok, {ValueName, {Value, Links}}} ->  
-      % Delete the Link from the list of Links to block inputs, if it exists
+  case output_utils:get_links(Outputs, ValueId) of
+    {ok, Links} ->
       case lists:member(Link, Links) of 
         true ->
           NewLinks = lists:delete(Link, Links),
-          NewOutput = {ValueName, {Value, NewLinks}},
           logger:info(block_output_unlinked_from_block_input, 
-                      [format_link({BlockName, ValueName}), format_link(Link)]),
-          {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
+                  [format_link({BlockName, ValueId}), format_link(Link)]),
+          output_utils:replace_links(Outputs, ValueId, NewLinks);
         false ->
           {error, not_linked}
       end;
-
-    % Array value  
-    {ok, {ValueName, ArrayValues}} ->
-      % if this is an array value, the ValueName from get_attribute()
-      % will match ValueName in the ValueId tuple
-      {ValueName, ArrayIndex} = ValueId,
-      if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValues)) ->
-        {Value, Links} = lists:nth(ArrayIndex, ArrayValues),
-        % Delete the Link from the list of Links to block inputs, if it exists
-        case lists:member(Link, Links) of 
-          true ->
-            NewLinks = lists:delete(Link, Links),
-            NewArrayValue = {Value, NewLinks},
-            NewArrayValues = attrib_utils:replace_array_value(ArrayValues, ArrayIndex, NewArrayValue),
-            NewOutput = {ValueName, NewArrayValues}, 
-            logger:info(block_output_unlinked_from_block_input, 
-                [format_link({BlockName, {ValueName, ArrayIndex}}), format_link(Link)]),
-            {ok, attrib_utils:replace_attribute(Outputs, ValueName, NewOutput)};
-          false ->
-            {error, not_linked}
-        end;
-      true ->
-        {error, invalid_array_index}
-      end
+    {error, Reason} ->
+      {error, Reason}
   end.
 
-
+ 
 %% ====================================================================
 %% Tests
 %% ====================================================================
@@ -353,5 +290,89 @@ format_link_invalid_test() ->
   Result = format_link(bad_link),
   ?assertEqual(ExpectedResult, Result).
 % ====================================================================
+
+
+% ====================================================================
+% Test add_link()
+% 
+add_link_non_array_value_id_doesnt_exist_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, not_found},
+  Result = add_link(test_block_name, Outputs, bad_value_id, {doesnt, matter}),
+  ?assertEqual(ExpectedResult, Result).
+
+add_link_array_value_id_doesnt_exist_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, not_found},
+  Result = add_link(test_block_name, Outputs, {bad_value_id, 1}, {doesnt, matter}),
+  ?assertEqual(ExpectedResult, Result).
+
+add_link_non_array_already_linked_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, already_linked},
+  Result = add_link(test_block_name, Outputs, value_with_links, {test1, input1}),
+  ?assertEqual(ExpectedResult, Result).
+
+add_link_array_already_linked_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, already_linked},
+  Result = add_link(test_block_name, Outputs, {integer_array_out, 3}, {test2, input2}),
+  ?assertEqual(ExpectedResult, Result).
+
+add_link_non_array_valid_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {ok, test_data:output_attribs10()},
+  Result = add_link(test_block_name, Outputs, value, {test1, input1}),
+  ?assertEqual(ExpectedResult, Result).
+
+add_link_array_valid_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {ok, test_data:output_attribs11()},
+  Result = add_link(test_block_name, Outputs, {integer_array_out, 3}, {test3, input1}),
+  ?assertEqual(ExpectedResult, Result).
+% ====================================================================
+
+% ====================================================================
+% Test del_link()
+% 
+del_link_non_array_value_id_doesnt_exist_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, not_found},
+  Result = del_link(test_block_name, Outputs, bad_value_id, {doesnt, matter}),
+  ?assertEqual(ExpectedResult, Result).
+
+del_link_array_value_id_doesnt_exist_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, not_found},
+  Result = del_link(test_block_name, Outputs, {bad_value_id, 1}, {doesnt, matter}),
+  ?assertEqual(ExpectedResult, Result).
+
+del_link_non_array_not_linked_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, not_linked},
+  Result = del_link(test_block_name, Outputs, value_with_links, {not_linked_block_name, input1}),
+  ?assertEqual(ExpectedResult, Result).
+
+del_link_array_not_linked_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {error, not_linked},
+  Result = del_link(test_block_name, Outputs, {integer_array_out, 3}, {not_linked_block_name, input2}),
+  ?assertEqual(ExpectedResult, Result).
+
+del_link_non_array_valid_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {ok, test_data:output_attribs12()},
+  Result = del_link(test_block_name, Outputs, value_with_links, {test2, input2}),
+  ?assertEqual(ExpectedResult, Result).
+
+del_link_array_valid_test() ->
+  Outputs = test_data:output_attribs5(),
+  ExpectedResult = {ok, test_data:output_attribs13()},
+  Result = del_link(test_block_name, Outputs, {integer_array_out, 3}, {test1, input1}),
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+
+
 
 -endif.
