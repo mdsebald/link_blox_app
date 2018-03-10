@@ -119,7 +119,7 @@ set_array_values(Outputs, ArrayValueName, Index, [Value | ArrayValues]) ->
 
 
 %%
-%% Update a set of tristate ouputs, value, active_true, and active_false
+%% Update a set of tristate outputs, value, active_true, and active_false
 %%
 -spec set_tristate_outputs(InputValId :: value_id(),  % Only needed for error logging
                            OutputVal :: {ok, boolean()} | {error, atom()},
