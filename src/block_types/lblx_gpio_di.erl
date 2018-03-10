@@ -132,37 +132,22 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
-    
-  % Get the GPIO pin number used by this block
-  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
-    {ok, PinNumber} ->
-      % Initialize the GPIO pin as an input
-      case gpio_utils:start_link(PinNumber, input) of
-        {ok, GpioPinRef} ->
-          Status = initialed,
-          Value = null,
-          {ok, Private2} = attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-          % TODO: Make interrupt type selectable via config value, check return value
-          gpio_utils:register_int(GpioPinRef),
-          gpio_utils:set_int(GpioPinRef, both);
+  case config_utils:init_gpio(Config, Private, gpio_pin, input) of
+    {ok, Private1, GpioPinRef} ->
+      Status = initialed,
+      Value = null,
+        % TODO: Make interrupt type selectable via config value, check return value
+      gpio_utils:register_int(GpioPinRef),
+      gpio_utils:set_int(GpioPinRef, both);
 
-        {error, ErrorResult} ->
-          BlockName = config_utils:name(Config),
-          logger:error(err_initiating_GPIO_pin, 
-                              [BlockName, ErrorResult, PinNumber]),
-          Status = proc_err,
-          Value = null,
-          Private2 = Private1
-      end;
-    {error, Reason} ->
-      {Value, Status} = config_utils:log_error(Config, gpio_pin, Reason),
-      Private2 = Private1
+    {error, _Reason} ->
+      Value = null, Status = proc_err,
+      Private1 = Private
   end,
       
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
-  {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs1, Private1}.
   
 
 %%
@@ -176,7 +161,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   % Read the current value of the GPIO pin 
   {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
 
-  Value = read_pin_value_bool(GpioPinRef),
+  Value = gpio_utils:read_bool(GpioPinRef),
 
   Outputs1 = output_utils:set_tristate_outputs(input, {ok, Value}, Config, Outputs),
         
@@ -223,12 +208,6 @@ handle_info(Info, BlockState) ->
 %% Internal functions
 %% ====================================================================
 
-read_pin_value_bool(GpioPinRef) ->
-  case gpio_utils:read(GpioPinRef) of
-    1  -> true;
-    0 -> false
-  end.
-
 
 %% ====================================================================
 %% Tests
@@ -241,7 +220,7 @@ read_pin_value_bool(GpioPinRef) ->
 
 test_sets() ->
   [
-    {[{status, config_err}]}
+    {[{status, proc_err}]}
   ].
 
 -endif.

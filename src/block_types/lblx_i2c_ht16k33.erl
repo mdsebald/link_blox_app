@@ -136,30 +136,23 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
-  
-  % Get the the I2C Address of the display 
-  % TODO: Check for valid I2C Address
-  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
-  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
-	    
-  case init_led_driver(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
+  % Setup I2C comm channel of the display
+  case config_utils:init_i2c(Config, Private) of
+	  {ok, Private1, I2cRef} ->
+      init_led_driver(I2cRef),
       Status = initialed,
-      Value = 0, 
-      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef);
+      Value = 0;
       
-    {error, Reason} ->
-      logger:error(err_initializing_LED_driver_I2C_address, [Reason, I2cAddr]),
+    {error, _Reason} ->
       Status = proc_err,
       Value = null,
-      Private2 = Private1
+      Private1 = Private
     end,
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs1, Private1}.
 
 %%
 %%  Execute the block specific functionality
@@ -318,23 +311,16 @@ delete({Config, Inputs, Outputs, Private}) ->
 %%
 %% Initialize the LED driver 
 %%
--spec init_led_driver(I2cDevice :: string(),
-                      I2cAddr :: integer()) -> {ok, pid()} | {error, atom()}.
+-spec init_led_driver(I2cRef :: pid()) -> ok.
                       
-init_led_driver(I2cDevice, I2cAddr) ->
-   case i2c_utils:start_link(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      i2c_utils:write(I2cRef, <<?DISPLAY_OSCILLATOR_ON>>),
-      i2c_utils:write(I2cRef, <<?DISPLAY_BLANK>>),
-      i2c_utils:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
-      
-      % Clear the display buffer (clears the screen)
-      clear(I2cRef),
-      {ok, I2cRef};
-      
-    {error, Reason} ->
-      {error, Reason}
-  end.
+init_led_driver(I2cRef) ->
+  i2c_utils:write(I2cRef, <<?DISPLAY_OSCILLATOR_ON>>),
+  i2c_utils:write(I2cRef, <<?DISPLAY_BLANK>>),
+  i2c_utils:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
+  
+  % Clear the display buffer (clears the screen)
+  clear(I2cRef),
+  ok.
 
  
 %%

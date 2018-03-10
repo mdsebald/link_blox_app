@@ -130,18 +130,9 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
-  
-  % Get the the I2C Address of the sensor 
-  % TODO: Check for valid I2C Address
-  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
-  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
-	    
-  case i2c_utils:start_link(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
-      
-      
+  % Setup I2C comm channel of the sensor
+  case config_utils:init_i2c(Config, Private) of
+    {ok, Private1, I2cRef} ->
       {ok, DegF} = attrib_utils:get_value(Config, deg_f),
       {ok, Offset} = attrib_utils:get_value(Config, temp_offset),
   
@@ -156,17 +147,16 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Value = null
        end;
       
-    {error, Reason} ->
-      logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+    {error, _Reason} ->
       Status = proc_err,
       Value = null,
-      Private2 = Private1
+      Private1 = Private
   end,	
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs1, Private1}.
 
 
 %%

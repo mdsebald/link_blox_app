@@ -130,46 +130,33 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {empty}}),
-  
-  % Get the GPIO Pin number used for digital outputs  
-  case config_utils:get_integer_range(Config, gpio_pin, 1, 40) of
-    {ok, PinNumber} ->
-      case config_utils:get_boolean(Config, default_value) of
-        {ok, DefaultValue} ->
-          case config_utils:get_boolean(Config, invert_output) of
-            {ok, InvertOutput} -> 
-              case gpio_utils:start_link(PinNumber, output) of
-                {ok, GpioPinRef} ->
-                  Status = initialed,
-                  Value = DefaultValue,
-                  {ok, Private2} = 
-                    attrib_utils:set_value(Private1, gpio_pin_ref, GpioPinRef),
-                    set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
-            
-                {error, ErrorResult} ->
-                  BlockName = config_utils:name(Config),
-                  logger:error(err_initiating_GPIO_pin, [BlockName, ErrorResult, PinNumber]),
-                  Status = proc_err,
-                  Value = null,
-                  Private2 = Private1
-              end;
-            {error, Reason} ->
-              {Value, Status} = config_utils:log_error(Config, invert_output, Reason),
-              Private2 = Private1
+  case config_utils:get_boolean(Config, default_value) of
+    {ok, DefaultValue} ->
+      case config_utils:get_boolean(Config, invert_output) of
+        {ok, InvertOutput} ->
+          case config_utils:init_gpio(Config, Private, gpio_pin, output) of
+            {ok, Private1, GpioPinRef} ->
+              Status = initialed,
+              Value = DefaultValue,
+              set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
+        
+            {error, _Reason} ->
+              Status = proc_err,
+              Value = null,
+              Private1 = Private
           end;
         {error, Reason} ->
-          {Value, Status} = config_utils:log_error(Config, default_value, Reason),
-          Private2 = Private1
+          {Value, Status} = config_utils:log_error(Config, invert_output, Reason),
+          Private1 = Private
       end;
     {error, Reason} ->
-      {Value, Status} = config_utils:log_error(Config, gpio_pin, Reason),
-      Private2 = Private1
+      {Value, Status} = config_utils:log_error(Config, default_value, Reason),
+      Private1 = Private
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
     
-  {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs1, Private1}.
 
 
 %%
@@ -255,7 +242,7 @@ set_pin_value_bool(GpioPinRef, Value, Invert) ->
 
 test_sets() ->
   [
-    {[{status, config_err}]}
+    {[{status, proc_err}]}
   ].
 
 -endif.

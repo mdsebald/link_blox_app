@@ -133,75 +133,57 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  
-  % Set up the private values needed  
-  Private1 = attrib_utils:merge_attribute_lists(Private, 
-                            [{gpio_pin_A_ref, {empty}},
-                             {last_A_value, {empty}},
-                             {gpio_pin_B_ref, {empty}},
-                             {last_B_value, {empty}},
-                             {gpio_pin_sw_ref, {empty}},
-                             {last_sw_value, {empty}}]),
     
-  % Get the GPIO pin numbers and interrupt edge directions used by this block
-  {ok, PhaseA_Pin} = attrib_utils:get_value(Config, gpio_pin_phase_A),
-  {ok, PhaseB_Pin} = attrib_utils:get_value(Config, gpio_pin_phase_B),
+  % Get the GPIO interrupt edge directions used by this block
   {ok, PhaseIntEdge} = attrib_utils:get_value(Config, phase_int_edge),
-  {ok, SwitchPin} = attrib_utils:get_value(Config, gpio_pin_switch),
   {ok, SwitchIntEdge} = attrib_utils:get_value(Config, switch_int_edge),
   
-  % TODO: Check Pin Numbers are an integer in the right range
-
-  % Initialize the GPIO pins as inputs
-  case gpio_utils:start_link(PhaseA_Pin, input) of
-    {ok, GpioPinA_Ref} ->
+  % Initialize the GPIO pins
+  case config_utils:init_gpio(Config, Private, gpio_pin_phase_A, input) of
+    {ok, Private1, GpioPinA_Ref} ->
       gpio_utils:register_int(GpioPinA_Ref),
       gpio_utils:set_int(GpioPinA_Ref, PhaseIntEdge),
-      LastA_Value = read_pin_value_bool(GpioPinA_Ref),
-      {ok, Private2} = attrib_utils:set_values(Private1, 
-                                        [{gpio_pin_A_ref, GpioPinA_Ref},
-                                         {last_A_value, LastA_Value}]),
+      LastA_Value = gpio_utils:read_bool(GpioPinA_Ref),
+      {ok, Private2} = attrib_utils:add_attribute(Private1, {last_A_value, LastA_Value}),
 
-      case gpio_utils:start_link(PhaseB_Pin, input) of
-        {ok, GpioPinB_Ref} ->
+      case config_utils:init_gpio(Config, Private2, gpio_pin_phase_B, input) of
+        {ok, Private3, GpioPinB_Ref} ->
           gpio_utils:register_int(GpioPinB_Ref),
           gpio_utils:set_int(GpioPinB_Ref, PhaseIntEdge),
-          LastB_Value = read_pin_value_bool(GpioPinB_Ref),
-          {ok, Private3} = attrib_utils:set_values(Private2, 
-                                        [{gpio_pin_B_ref, GpioPinB_Ref},
-                                         {last_B_value, LastB_Value}]),
+          LastB_Value = gpio_utils:read_bool(GpioPinB_Ref),
+          {ok, Private4} = attrib_utils:add_attribute(Private3, {last_B_value, LastB_Value}),
       
-          case gpio_utils:start_link(SwitchPin, input) of
-            {ok, GpioPinSwRef} ->
+          case config_utils:init_gpio(Config, Private4, gpio_pin_switch, input) of
+            {ok, Private5, GpioPinSwRef} ->
               gpio_utils:register_int(GpioPinSwRef),
               gpio_utils:set_int(GpioPinSwRef, SwitchIntEdge),
-              LastSwValue = read_pin_value_bool(GpioPinSwRef),
-              {ok, Private4} = attrib_utils:set_values(Private3, 
-                                        [{gpio_pin_sw_ref, GpioPinSwRef},
-                                         {last_sw_value, LastSwValue}]),
-
+              LastSwValue = gpio_utils:read_bool(GpioPinSwRef),
+              {ok, Private6} = attrib_utils:add_attribute(Private5, {last_sw_value, LastSwValue}),
               Value = null,
               Status = initialed;
               
-            {error, SwReason} ->
-              {Value, Status} = log_gpio_error(Config, SwReason, SwitchPin),
-              Private4 = Private3
+            {error, _Reason} ->
+              Value = null, 
+              Status = proc_err,
+              Private6 = Private4
           end;
 
-        {error, B_Reason} ->
-          {Value, Status} = log_gpio_error(Config, B_Reason, PhaseB_Pin), 
-          Private4 = Private2
+        {error, _Reason} ->
+           Value = null, 
+          Status = proc_err,
+          Private6 = Private2
       end;
 
-    {error, A_Reason} ->
-      {Value, Status} = log_gpio_error(Config, A_Reason, PhaseA_Pin), 
-      Private4 = Private1
+    {error, _Reason} ->
+      Value = null, 
+      Status = proc_err,
+      Private6 = Private
   end,
   
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
   
   % This is the block state
-  {Config, Inputs, Outputs1, Private4}.
+  {Config, Inputs, Outputs1, Private6}.
 
 %%
 %%  Execute the block specific functionality
@@ -213,15 +195,15 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
  % Read the current values of the GPIO pins 
   {ok, GpioPinA_Ref} = attrib_utils:get_value(Private, gpio_pin_A_ref),
-  PhaseA = read_pin_value_bool(GpioPinA_Ref),
+  PhaseA = gpio_utils:read_bool(GpioPinA_Ref),
   {ok, LastA_Value} = attrib_utils:get_value(Private, last_A_value),
   
   {ok, GpioPinB_Ref} = attrib_utils:get_value(Private, gpio_pin_B_ref),
-  PhaseB = read_pin_value_bool(GpioPinB_Ref),
+  PhaseB = gpio_utils:read_bool(GpioPinB_Ref),
   {ok, _LastB_Value} = attrib_utils:get_value(Private, last_B_value),
 
   {ok, GpioPinSwRef} = attrib_utils:get_value(Private, gpio_pin_sw_ref),
-  SwValue = read_pin_value_bool(GpioPinSwRef),
+  SwValue = gpio_utils:read_bool(GpioPinSwRef),
   {ok, _LastSwValue} = attrib_utils:get_value(Private, last_sw_value),
   
   case attrib_utils:get_value(Outputs, value) of
@@ -286,24 +268,6 @@ delete({Config, Inputs, Outputs, Private}) ->
 %% Internal functions
 %% ====================================================================
 
--spec log_gpio_error(Config :: list(), 
-                     Reason :: atom(), 
-                     PinNumber :: integer()) -> {null, proc_err}.
-
-log_gpio_error(Config, Reason, PinNumber) ->
-  BlockName = config_utils:name(Config),
-  logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
-  
-  {null, proc_err}.
-
-
-% TODO: Create common GPIO helper module
-read_pin_value_bool(GpioPinRef) ->
-  case gpio_utils:read(GpioPinRef) of
-    1  -> true;
-    0 -> false
-  end.
-
 
 %% ====================================================================
 %% Tests
@@ -316,7 +280,7 @@ read_pin_value_bool(GpioPinRef) ->
 
 test_sets() ->
   [
-    {[{status, normal}]}
+    {[{status, proc_err}]}
   ].
 
 -endif.

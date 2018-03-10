@@ -171,14 +171,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 {dig_H6, {empty}}
               ]),
   
-  % Get the the I2C Address of the sensor 
-  % TODO: Check for valid I2C Address
-  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
-  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
-      
-  case i2c_utils:start_link(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
+  % Setup I2C comm channel of the sensor
+  case config_utils:init_i2c(Config, Private1) of
+    {ok, Private2, I2cRef} ->
       
       case configure_sensor(I2cRef, Config) of 
         {ok, SensorMode} ->
@@ -234,8 +229,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Private4 = Private1
       end;
 
-    {error, Reason} ->
-      logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+    {error, _Reason} ->
       Status = proc_err,
       Value = null,
       Temp = null,

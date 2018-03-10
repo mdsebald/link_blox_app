@@ -227,6 +227,7 @@ get_atom(Config, ValueId) ->
   CheckType = fun is_atom/1,  
   get_value(Config, ValueId, CheckType).
 
+
 %%
 %% Get a node configuration value and check for errors.
 %%
@@ -238,6 +239,7 @@ get_node(Config, ValueId) ->
   % currently any value is acceptable
   CheckType = fun(_Value) -> true end,
   get_value(Config, ValueId, CheckType).
+
 
 %%
 %% Generic get configuration value, check for errors.
@@ -282,21 +284,30 @@ get_value(Config, ValueId, CheckType) ->
 %% Initialize I2C Bus Connection
 %%
 -spec init_i2c(Config :: config_attribs(),
-               Private :: private_attribs()) -> {ok, private_attribs()} | {error, atom()}.
+               Private :: private_attribs()) -> {ok, private_attribs(), pid()} | {error, atom()}.
 
-% TODO: Convert all I2C block types to use this init function
 init_i2c(Config, Private) ->
- 
- % TODO: Validate I2C Device and Address values
- {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
- {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
+  case get_string(Config, i2c_device) of
 
- case i2c_utils:start_link(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}})};
+    {ok, I2cDevice} ->
+      case get_integer_range(Config, i2c_addr, 2, 127) of
 
+        {ok, I2cAddr} ->
+          case i2c_utils:start_link(I2cDevice, I2cAddr) of
+
+            {ok, I2cRef} ->
+              {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}}), I2cRef};
+
+            {error, Reason} ->
+              logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+              {error, Reason}
+          end;
+        {error, Reason} ->
+          log_error(Config, i2c_addr, Reason),
+          {error, Reason}
+      end;
     {error, Reason} ->
-      logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+      log_error(Config, i2c_device, Reason),
       {error, Reason}
   end.
 
@@ -307,7 +318,7 @@ init_i2c(Config, Private) ->
 -spec init_gpio(Config :: config_attribs(),
                 Private :: private_attribs(),
                 Name :: value_name(),
-                Direction :: atom()) -> {ok, private_attribs()} | {error, atom()}.
+                Direction :: atom()) -> {ok, private_attribs(), pid()} | {error, atom()}.
               
 init_gpio(Config, Private, Name, Direction) ->
 
@@ -315,11 +326,12 @@ init_gpio(Config, Private, Name, Direction) ->
     {ok, PinNumber} ->
       case gpio_utils:start_link(PinNumber, Direction) of
         {ok, GpioPinRef} ->
-          {ok, attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}})};
+          {ok, attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}}), GpioPinRef};
         
         {error, Reason} ->
           BlockName = config_utils:name(Config),
-          logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber])
+          logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
+          {error, Reason}
       end;
 
     {error, Reason} ->

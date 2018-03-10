@@ -144,17 +144,12 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
+
+	 % Setup I2C comm channel of the display       
+  case config_utils:init_i2c(Config, Private) of
+    {ok, Private1, I2cRef} ->
     
-  Private1 = attrib_utils:add_attribute(Private, {i2c_ref, {empty}}),
-  
-  % Get the the I2C Address of the display 
-  % TODO: Check for valid I2C Address
-  {ok, I2cDevice} = attrib_utils:get_value(Config, i2c_device),
-  {ok, I2cAddr} = attrib_utils:get_value(Config, i2c_addr),
-	    
-  case init_lcd_driver(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      {ok, Private2} = attrib_utils:set_value(Private1, i2c_ref, I2cRef),
+      init_lcd_driver(I2cRef),
 
       case config_utils:get_integer_range(Config, num_of_inputs, 1, 80) of
         {ok, NumOfInputs} ->      
@@ -181,11 +176,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
           {Value, Status} = config_utils:log_error(Config, num_of_inputs, Reason)
       end;
       
-    {error, Reason} ->
-      logger:error(err_initializing_LCD_driver_I2C_address, [Reason, I2cAddr]),
+    {error, _Reason} ->
       Status = proc_err,
       Value = null,
-      Private2 = Private1,
+      Private1 = Private,
       Config3 = Config,
       Inputs1 = Inputs
   end,
@@ -193,7 +187,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
   % This is the block state
-  {Config3, Inputs1, Outputs1, Private2}.
+  {Config3, Inputs1, Outputs1, Private1}.
 
 
 %%
@@ -344,42 +338,33 @@ delete({Config, Inputs, Outputs, Private}) ->
 %
 % Initialize the LCD driver 
 %
--spec init_lcd_driver(I2cDevice :: string(),
-                      I2cAddr :: integer()) -> {ok, pid()} | {error, atom()}.
+-spec init_lcd_driver(I2cRef :: pid()) -> ok.
                       
-init_lcd_driver(I2cDevice, I2cAddr) ->
-  case i2c_utils:start_link(I2cDevice, I2cAddr) of
-    {ok, I2cRef} ->
-      
-      % Reset the LCD, get its attention
-      write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
-      block_utils:sleep(5),
+init_lcd_driver(I2cRef) ->
+  % Reset the LCD, get its attention
+  write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
+  block_utils:sleep(5),
 
-      write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
-      block_utils:sleep(1),
+  write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
+  block_utils:sleep(1),
 
-      write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
-      block_utils:sleep(1),
+  write_command_high(I2cRef, ?BACKLIGHT_OFF, 16#30),
+  block_utils:sleep(1),
 
-      write_command_high(I2cRef, ?BACKLIGHT_OFF, ?FUNCTION_SET),
-      block_utils:sleep(1),
+  write_command_high(I2cRef, ?BACKLIGHT_OFF, ?FUNCTION_SET),
+  block_utils:sleep(1),
 
-      % The display should be reset and in 4 bit mode now
-      % From this point use normal command and write data functions
+  % The display should be reset and in 4 bit mode now
+  % From this point use normal command and write data functions
 
-      set_display_function(I2cRef, ?BACKLIGHT_OFF, (?NUM_LINES_2 bor ?FONT_5X8 bor ?DATA_LEN_4BITS) ),
+  set_display_function(I2cRef, ?BACKLIGHT_OFF, (?NUM_LINES_2 bor ?FONT_5X8 bor ?DATA_LEN_4BITS) ),
 
-      set_display_control(I2cRef, ?BACKLIGHT_OFF, ?DISPLAY_OFF),
+  set_display_control(I2cRef, ?BACKLIGHT_OFF, ?DISPLAY_OFF),
 
-      clear_display(I2cRef, ?BACKLIGHT_OFF),
+  clear_display(I2cRef, ?BACKLIGHT_OFF),
 
-      set_entry_mode(I2cRef, ?BACKLIGHT_OFF, ?INCREMENT),
-
-      {ok, I2cRef};
-      
-    {error, Reason} ->
-      {error, Reason}
-  end.
+  set_entry_mode(I2cRef, ?BACKLIGHT_OFF, ?INCREMENT),
+  ok.
 
 
 %
