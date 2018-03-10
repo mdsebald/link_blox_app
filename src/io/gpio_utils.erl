@@ -18,6 +18,7 @@
           start_link/2,
           register_int/1,
           set_int/2,
+          read_bool/1,
           read/1,
           write/2,
           stop/1
@@ -57,6 +58,18 @@ register_int(GpioRef) -> gpio:register_int(GpioRef).
                     'ok' | {'error', atom()}.
 
 set_int(GpioRef, Condition) -> gpio:set_int(GpioRef, Condition).
+
+
+%%
+%% Read the value of the gpio pin, return a boolean value
+%%
+-spec read_bool(GpioPinRef :: pid()) -> true | false.
+
+read_bool(GpioPinRef) ->
+  case read(GpioPinRef) of
+    1  -> true;
+    0 -> false
+  end.
 
 
 %%
@@ -123,6 +136,19 @@ register_int(_GpioRef) -> ok.
                     'ok' | {'error', atom()}.
 
 set_int(_GpioRef, _Condition) -> ok.
+
+
+%%
+%% Test Read the value of the gpio pin, return a boolean value
+%%
+-spec read_bool(GpioPinRef :: pid()) -> true | false.
+
+read_bool(GpioPinRef) ->
+  case read(GpioPinRef) of
+    1  -> true;
+    0 -> false
+  end.
+
 
 
 %%
