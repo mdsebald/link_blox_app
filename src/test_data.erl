@@ -117,7 +117,6 @@ input_utils_config_attribs1() ->
 
 input_utils_input_attribs1() ->
   [ {disable, {true, {true}}},
-    {freeze, {false, {false}}},
     {exec_in, {[], {[]}}},
     {exec_interval, {0, {0}}},
     {float_good, {123.45, {123.45}}},
@@ -153,7 +152,6 @@ output_utils_config_attribs1() ->
 
 output_utils_input_attribs1() ->
   [ {disable, {true, {true}}},
-    {freeze, {false, {false}}},
     {exec_in, {[], {[]}}},
     {exec_interval, {0, {0}}},
     {float_good, {123.45, {0.0}}},
@@ -183,7 +181,6 @@ output_attribs1() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {integer_array_out, [{0, []}, {1,[]}, {2, []}]}
   ].
@@ -209,7 +206,6 @@ output_utils_output_attribs4() ->
     {exec_out, {null, []}},                         
     {status, {input_err, []}},     
     {exec_method, {null, []}},
-    {last_exec, {null, []}},
     {value, {null, []}},
     {integer_array_out, [{null, []}, {null,[]}, {null, []}]}
   ].
@@ -219,7 +215,6 @@ output_attribs5() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
     {integer_array_out, [{0, []}, {1,[]}, {2, [{test1, input1}, {test2, input2}]}]}
@@ -233,7 +228,6 @@ output_attribs6() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, replacement_links1()}},
     {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
     {integer_array_out, [{0, []}, {1,[]}, {2, [{test1, input1}, {test2, input2}]}]}
@@ -244,7 +238,6 @@ output_attribs7() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {value_with_links, {21, replacement_links1()}},
     {integer_array_out, [{0, []}, {1,[]}, {2, [{test1, input1}, {test2, input2}]}]}
@@ -255,7 +248,6 @@ output_attribs8() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
     {integer_array_out, [{0, []}, {1,replacement_links1()}, {2, [{test1, input1}, {test2, input2}]}]}
@@ -266,7 +258,6 @@ output_attribs9() ->
       {exec_out, {false, []}},                         
       {status, {created, []}},     
       {exec_method, {empty, []}},
-      {last_exec, {empty, []}},
       {value, {null, []}},
       {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
       {integer_array_out, [{0, []}, {1,[]}, {2, replacement_links1()}]}
@@ -277,7 +268,6 @@ output_attribs10() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, [{test1, input1}]}},
     {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
     {integer_array_out, [{0, []}, {1,[]}, {2, [{test1, input1}, {test2, input2}]}]}
@@ -288,7 +278,6 @@ output_attribs11() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
     {integer_array_out, [{0, []}, {1,[]}, {2,  [{test3, input1}, {test1, input1}, {test2, input2}]}]}
@@ -299,7 +288,6 @@ output_attribs12() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {value_with_links, {21, [{test1, input1}]}},
     {integer_array_out, [{0, []}, {1,[]}, {2,  [{test1, input1}, {test2, input2}]}]}
@@ -310,7 +298,6 @@ output_attribs13() ->
     {exec_out, {false, []}},                         
     {status, {created, []}},     
     {exec_method, {empty, []}},
-    {last_exec, {empty, []}},
     {value, {null, []}},
     {value_with_links, {21, [{test1, input1}, {test2, input2}]}},
     {integer_array_out, [{0, []}, {1,[]}, {2,  [{test2, input2}]}]}

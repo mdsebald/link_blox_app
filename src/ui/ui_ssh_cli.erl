@@ -25,8 +25,6 @@
           ui_delete_block/2,
           ui_disable_block/2,
           ui_enable_block/2,
-          ui_freeze_block/2,
-          ui_thaw_block/2,
           ui_get_values/2,
           ui_set_value/2,
           ui_link_blocks/2,
@@ -156,8 +154,6 @@ cmd_atom_map() ->
     {cmd_delete_block,     ?MODULE,  ui_delete_block},
     {cmd_disable_block,    ?MODULE,  ui_disable_block},
     {cmd_enable_block,     ?MODULE,  ui_enable_block},
-    {cmd_freeze_block,     ?MODULE,  ui_freeze_block},
-    {cmd_thaw_block,       ?MODULE,  ui_thaw_block},
     {cmd_get_values,       ?MODULE,  ui_get_values},
     {cmd_set_value,        ?MODULE,  ui_set_value},
     {cmd_link_blocks,      ?MODULE,  ui_link_blocks},
@@ -439,52 +435,6 @@ ui_enable_block(Params, ParamStrAtom) ->
  
     high -> format_out(err_too_many_params)
   end.
-    
-    
-% Process freeze block command
-ui_freeze_block(Params, ParamStrAtom) ->
-case check_num_params(Params, 1) of
-
-    low -> show_params(ParamStrAtom);
-    
-    ok -> 
-      [BlockNameStr] = Params,
-      case linkblox_api:set_value(curr_node(), BlockNameStr, "freeze", true) of
-        ok ->
-          format_out(block_frozen, [BlockNameStr]);
-
-        {error, block_not_found} ->
-          format_out(err_block_not_found,  [BlockNameStr]);
-
-        {error, Reason} ->
-          format_out(err_freezing_block,  [Reason, BlockNameStr]) 
-      end;
- 
-    high -> format_out(err_too_many_params)
-  end.
-
-    
-% Process thaw block command
-ui_thaw_block(Params, ParamStrAtom) ->
-case check_num_params(Params, 1) of
-
-    low -> show_params(ParamStrAtom);
-    
-    ok -> 
-      [BlockNameStr] = Params,
-      case linkblox_api:set_value(curr_node(), BlockNameStr, "freeze", false) of
-        ok ->
-          format_out(block_thawed, [BlockNameStr]);
-
-        {error, block_not_found} ->
-          format_out(err_block_not_found,  [BlockNameStr]);
-
-        {error, Reason} ->
-          format_out(err_thawing_block,  [Reason, BlockNameStr]) 
-      end;
- 
-    high -> format_out(err_too_many_params)
-  end.
 
 
 % Process block status command
@@ -666,17 +616,12 @@ format_value_id_value_def_value(ValueId, Value, DefValue) ->
 
 % Format one Value ID and value
 format_value_id_value(ValueId, Value) ->
-  case ValueId of
-    last_exec ->
-      io:format("  ~p:  ~s", [ValueId, format_last_exec(Value)]);
-    _ ->
-      io:format("  ~p:  ~p", [ValueId, Value])
-  end.
+  io:format("  ~p:  ~p", [ValueId, Value]).
 
 
 % Format value, and default value
 format_value_def_value(Value, DefValue) ->
-    io:format("  ~p  (~p)", [Value, DefValue]).
+  io:format("  ~p  (~p)", [Value, DefValue]).
   
 
 % Format a value by itself
@@ -689,30 +634,18 @@ format_newline() ->
   io:format("~n").
 
 
-% Format last_exec value
-format_last_exec(Value) ->
-  case Value of 
-    null ->
-      "null";
-    {Hour, Minute, Second, Micro} ->
-      io_lib:format("~2w:~2..0w:~2..0w.~6..0w", 
-                    [Hour,Minute,Second,Micro]);
-    _ ->
-      "undef last_exec val"
-  end.
+format_links(Links) ->
+  format_links(Links, "", 0).
 
-  format_links(Links) ->
-    format_links(Links, "", 0).
-  
-  format_links([], LinkStr, _Count) -> 
-    io:format("~s)", [LinkStr]);
+format_links([], LinkStr, _Count) -> 
+  io:format("~s)", [LinkStr]);
 
-  format_links([Link | Links], LinkStr, Count) ->
-    case Count of
-      0 -> NewLinkStr = " (";
-      _ -> NewLinkStr = LinkStr ++ ", "
-    end,
-    format_links(Links, NewLinkStr ++ link_utils:format_link(Link), Count + 1).
+format_links([Link | Links], LinkStr, Count) ->
+  case Count of
+    0 -> NewLinkStr = " (";
+    _ -> NewLinkStr = LinkStr ++ ", "
+  end,
+  format_links(Links, NewLinkStr ++ link_utils:format_link(Link), Count + 1).
 
 
 % Process the set value command
@@ -954,9 +887,9 @@ connect_to_node(Node) ->
 %% Display status off each running block
 %%
 block_status() ->
-  io:fwrite("~n~-16s ~-16s ~-12s ~-12s ~-12s ~-15s~n", 
-            ["Block Type", "Block Name", "Output", "Status", "Exec Method", "Last Exec"]),
-  io:fwrite("~16c ~16c ~12c ~12c ~12c ~15c~n", [$-, $-, $-, $-, $-, $-] ), 
+  io:fwrite("~n~-16s ~-16s ~-30s ~-12s ~-12s~n", 
+            ["Block Type", "Block Name", "Value", "Status", "Exec Method"]),
+  io:fwrite("~16c ~16c ~30c ~12c ~12c~n", [$-, $-, $-, $-, $-] ), 
   block_status(linkblox_api:get_block_names(curr_node())).
     
 block_status([]) ->
@@ -977,20 +910,10 @@ block_status([BlockNameStr | RemainingBlockNames]) ->
          _ -> ValueStr = string:left(io_lib:format("~w",[Value]), 12)
   end,
 
-  case linkblox_api:get_value(curr_node(), BlockNameStr, "last_exec") of 
-    {ok, null} ->
-      LastExecuted = "null";
-    {ok, {Hour, Minute, Second, Micro}} ->
-      LastExecuted = io_lib:format("~2w:~2..0w:~2..0w.~6..0w", 
-                                    [Hour,Minute,Second,Micro]);
-    _ ->
-      LastExecuted = "undef last_exec val"
-  end,  
-
-  io:fwrite("~-16s ~-16s ~-12s ~-12w ~-12w ~-15s~n", 
+  io:fwrite("~-16s ~-16s ~-30s ~-12w ~-12w~n", 
             [string:left(BlockTypeStr, 16), 
              string:left(BlockNameStr, 16), 
-             ValueStr, Status, ExecMethod, LastExecuted]),
+             ValueStr, Status, ExecMethod]),
   block_status(RemainingBlockNames).
 
 

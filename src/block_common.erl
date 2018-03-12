@@ -61,14 +61,6 @@ inputs() ->
     % to begin executing on create.
     {disable, {true, {true}}}, %| bool | true | true, false |
  
-   
-    % Block will execute as long as freeze input is false/null
-    % When freeze input is true, all block outputs remain at last value
-    % and block status is set to frozen.  Block will not be executed.
-    {freeze, {false, {false}}}, %| bool | false | true, false |
-
-    % Disable true/on value takes precedent over Freeze true/on value.
-
     % Link exec_in to block that will execute this block.
     % May only be linked to the 'exec_out' block output value
     % i.e. implement Control Flow
@@ -101,7 +93,6 @@ outputs() ->
     {exec_out, {false, []}}, %| signal | N/A | N/A |
     {status, {created, []}},  %| enum | created | created, initialed, normal, ... |
     {exec_method, {empty, []}},  %| enum | empty | manual, input_cos, timer, ...|
-    {last_exec, {empty, []}}, %| time stamp | N/A | Hrs:Mins:Secs:uSecs |
     {value, {null, []}} %| block type dependent | null | block type dependent |
   ].
 
@@ -145,32 +136,16 @@ execute(BlockState, ExecMethod) ->
       case input_utils:get_boolean(Inputs, disable) of
         {ok, true} -> % Block is disabled
           Outputs2 = output_utils:update_all_outputs(Outputs, null, disabled),
-          % Nothing to update in private values
           Private1 = Private;
      
-        {ok, _NotDisabled} -> % Disable input is false or null
-          case input_utils:get_boolean(Inputs, freeze) of
-            {ok, true} -> % Block is frozen
-              % Just update the status output, all other outputs are frozen
-              Outputs2 = output_utils:set_status(Outputs, frozen),
-              % Nothing to update in private values
-              Private1 = Private;
+        {ok, _NotDisabled} -> % Block is not disabled. Disable input is false or null
+          {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, ExecMethod),
+          % Record method of execution
+          {ok, Outputs2} = attrib_utils:set_values(Outputs1, [{exec_method, ExecMethod}, {exec_out, ExecMethod}]);
 
-            {ok, _NotFrozen} -> % block is not disabled or frozen, execute it
-              {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, ExecMethod),
-              Outputs2 = update_execute_track(Outputs1, ExecMethod);
-                    
-            {error, Reason} -> % Freeze input value error
-              input_utils:log_error(Config, freeze, Reason),
-              Outputs2 = output_utils:update_all_outputs(Outputs, null, input_err),
-              % Nothing to update in private values
-              Private1 = Private
-          end;
-        
         {error, Reason} -> % Disable input value error 
           input_utils:log_error(Config, disable, Reason),
           Outputs2 = output_utils:update_all_outputs(Outputs, null, input_err),
-          % Nothing to update in private values
           Private1 = Private
       end,
       
@@ -294,26 +269,6 @@ cancel_timer(TimerRef) ->
 
 set_timer(BlockName, ExecuteInterval) ->
   erlang:send_after(ExecuteInterval, BlockName, timer_execute).
-
-
-%%
-%% Track execute method and timestamp
-%%
--spec update_execute_track(Outputs :: output_attribs(), 
-                           ExecMethod :: exec_method()) -> output_attribs().
-
-update_execute_track(Outputs, ExecMethod) ->
-
-  % Record method of execution
-  {ok, Outputs1} = attrib_utils:set_values(Outputs, [{exec_method, ExecMethod}, {exec_out, ExecMethod}]),
-
-  % Record last executed timestamp
-  TS = {_, _, Micro} = os:timestamp(),
-  {{_Year, _Month, _Day},{Hour, Minute, Second}} = calendar:now_to_local_time(TS),
-
-  {ok, Outputs2} = attrib_utils:set_value(Outputs1, last_exec, 
-                               {Hour, Minute, Second, Micro}),
-  Outputs2.
 
 
 %%
