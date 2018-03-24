@@ -21,6 +21,7 @@
           get_block_type_strings/1,
           get_attrib_string/1,
           get_attrib_id/1,
+          get_calendar_locale/0,
           get_map_string/2,
           get_ui_cmds/0,
           get_yes/0,
@@ -213,6 +214,20 @@ get_attrib_id(AttribStr) ->
   end.
 
 
+%%
+%% Get the month and day name strings for the current Language module
+%% 
+-spec get_calendar_locale() -> tuple() | {error, not_found}.
+
+get_calendar_locale() ->
+  case get_lang_mod() of
+    undefined -> 
+      logger:error("Error: Language module not found"),
+      {error, not_found};
+
+    LangMod ->  LangMod:calendar_locale()
+  end.
+
 
 %%
 %% Get the string specified by the string ID, from the given strings map
@@ -304,10 +319,14 @@ get_input(Prompt) ->
     true  -> Raw2 = erlang:binary_to_list(Raw1);
     false -> Raw2 = Raw1 
   end, 
-  % Remove new line char
-  Raw3 = string:strip(Raw2, right, 10),
-  % Remove leading and trailing whitespace
-  string:strip(Raw3).
+  string:trim(Raw2).
+
+  % TODO: Remove after testing string:strip() is deprecated
+  % % Remove new line char
+  % Raw3 = string:strip(Raw2, right, 10),
+  % % Remove leading and trailing whitespace
+  % string:strip(Raw3).
+
 
 
 %%

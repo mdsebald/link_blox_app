@@ -13,7 +13,8 @@
           ui_strings/0,
           log_strings/0,
           block_type_strings/0,
-          attrib_strings/0
+          attrib_strings/0,
+          calendar_locale/0
 ]).
 
 
@@ -557,3 +558,28 @@ attrib_strings() ->
 ].
 
 
+%%
+%%  Names of months and days, used for date time formatting
+%%  Standard date and time formats
+%%  Varies by the system locale 
+%%
+calendar_locale() ->
+[
+  {months_strs, ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]},
+  {months_abbr, ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]},
+  {days_strs, ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]},
+  {days_abbr, ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]},
+  {am_str, ["AM"]},
+  {pm_str, ["PM"]},
+  {date_sep_str, ["/"]},
+  {time_sep_str, [":"]},
+  {era_str, ["A.D."]},
+  % Standard date/time formats that are dependant on locale
+  {short_date_format, [{"~b~s~b~s~b", [month, date_sep, day, date_sep, year]}]},
+  {long_date_format, [{"~s, ~s ~b, ~b", [day_str, month_str, day, year]}]},
+  {short_time_format, [{"~b~s~2..0b ~s", [hour12, time_sep, minute, am_pm]}]},
+  {long_time_format, [{"~b~s~2..0b~s~2..0b ~s", [hour12, time_sep, minute, time_sep, second, am_pm]}]},
+  {month_day_format, [{"~s ~b", [month_str, day]}]},
+  {month_year_format, [{"~s, ~4b", [month_str, year]}]},
+  {universal_full_format, [{"~s, ~s ~b, ~4b ~b~s~2..0b~s~2..0b ~s", [day_str, month_str, day, year, hour12, time_sep, minute, time_sep, second, am_pm]}]}
+].
