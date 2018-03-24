@@ -757,7 +757,7 @@ str_to_value_id_valuename_array_invalid4_test() ->
 
 
 % ====================================================================
-% Test value_id_to_str())
+% Test value_id_to_str()
 
 % Test non-array value id
 value_id_to_str_non_array_test() ->
