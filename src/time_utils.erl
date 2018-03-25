@@ -18,7 +18,7 @@
           format_local/1,
           format_utc/1,
           format_time/3,
-          get_format_str/1
+          get_format_defn/1
 ]).
 
 
@@ -30,11 +30,11 @@
                   (FormatSpec :: string()) -> string().
 
 format_local({FormatStr, ParamDefs}) ->
-  TS = {_, _, MicroS} = os:timestamp(),
-  format_time({FormatStr, ParamDefs}, calendar:now_to_local_time(TS), MicroS);
+  TimeStamp = {_, _, MicroSec} = os:timestamp(),
+  format_time({FormatStr, ParamDefs}, calendar:now_to_local_time(TimeStamp), MicroSec);
 
 format_local(FormatSpec) ->
-  case get_format_str(FormatSpec) of
+  case get_format_defn(FormatSpec) of
     {error, Reason} -> "Error: " ++ atom_to_list(Reason);
 
     {FormatStr, ParamDefs} -> format_local({FormatStr, ParamDefs});
@@ -51,14 +51,14 @@ format_local(FormatSpec) ->
                 (FormatSpec :: string()) -> string().
 
 format_utc({FormatStr, ParamDefs}) ->
-  TS = {_, _, MicroS} = os:timestamp(),
-  format_time({FormatStr, ParamDefs}, calendar:now_to_universal_time(TS), MicroS);
+  TimeStamp = {_, _, MicroSec} = os:timestamp(),
+  format_time({FormatStr, ParamDefs}, calendar:now_to_universal_time(TimeStamp), MicroSec);
 
 format_utc(FormatSpec) ->
-  case get_format_str(FormatSpec) of
+  case get_format_defn(FormatSpec) of
     {error, Reason} -> "Error: " ++ atom_to_list(Reason);
 
-    {FormatStr, ParamDefs} -> format_local({FormatStr, ParamDefs});
+    {FormatStr, ParamDefs} -> format_utc({FormatStr, ParamDefs});
 
     Error ->  io_lib:format("~p", [Error])
   end.
@@ -82,7 +82,7 @@ format_time({FormatStr, ParamDefs}, DateTime, MicroS) ->
   lists:flatten(io_lib:format(FormatStr, ParamVals));
   
 format_time(FormatSpec, DateTime, MicroS) ->
-  case get_format_str(FormatSpec) of
+  case get_format_defn(FormatSpec) of
     {error, Reason} -> "Error: " ++ atom_to_list(Reason);
 
     {FormatStr, ParamDefs} ->
@@ -177,17 +177,17 @@ get_param_values(ParamDefs, CalendarStrs, {{Year, Month, Day}, {Hour, Minute, Se
 %% Create an Erlang format time string and parameter defintion list
 %% Following C# .NET time formatting standard
 %%
--spec get_format_str(FormatSpec :: string()) -> {string(), [atom()]} | {error, atom()}.
+-spec get_format_defn(FormatSpec :: string()) -> {string(), [atom()]} | {error, atom()}.
 
 % Default format, same as 'G' format
-get_format_str([]) ->
+get_format_defn([]) ->
     CalendarStrs = ui_utils:get_calendar_locale(),
     {DateFormatStr, DateParamDefs} = get_calendar_string(CalendarStrs, short_date_format),
     {TimeFormatStr, TimeParamDefs} = get_calendar_string(CalendarStrs, long_time_format),
     {DateFormatStr ++ " " ++ TimeFormatStr, DateParamDefs ++ TimeParamDefs};
 
 % Standard formats (One character format definition)
-get_format_str(FormatSpec) when length(FormatSpec) == 1 ->
+get_format_defn(FormatSpec) when length(FormatSpec) == 1 ->
   CalendarStrs = ui_utils:get_calendar_locale(),
   case FormatSpec of
     "d" -> % Date, short date
@@ -259,7 +259,7 @@ get_format_str(FormatSpec) when length(FormatSpec) == 1 ->
   end;
 
 % Custom formats (Multi character format definition)
-get_format_str(FormatSpec) ->
+get_format_defn(FormatSpec) ->
   {LastFormatStr, LastFormat, LastParamDefs, LastParamDef, _, _} =
     lists:foldl(
       fun(FormatChar, {FormatStr, NextFormat, ParamDefs, NextParamDef, LastChar, Count}) -> 
@@ -619,236 +619,242 @@ get_tz_name() ->
 % ====================================================================
 % Test format_time()
 
+% Test local and utc
+format_time_local_and_utc_test() ->
+  {Value, _Rest} = string:to_integer(format_local("%H")),
+  {Expected, _Rest} = string:to_integer(format_utc("%H")),
+  ?assertEqual((Expected-5), Value).
+
 % Test default
 format_time_default_test() ->
-  Result = format_time("", {{2018, 3, 25}, {19,19,19}}, 0),
-  ExpectedResult = "3/25/2018 7:19:19 PM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("", {{2018, 3, 25}, {19,19,19}}, 0),
+  Expected = "3/25/2018 7:19:19 PM",
+  ?assertEqual(Expected, Value).
 
 % Test short date
 format_time_short_date_test() ->
-  Result = format_time("d", {{2018, 3, 22}, {9,9,9}}, 0),
-  ExpectedResult = "3/22/2018",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("d", {{2018, 3, 22}, {9,9,9}}, 0),
+  Expected = "3/22/2018",
+  ?assertEqual(Expected, Value).
 
 % Test long date
 format_time_long_date_test() ->
-  Result = format_time("D", {{2018, 3, 22}, {9,9,9}}, 0),
-  ExpectedResult = "Thursday, March 22, 2018",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("D", {{2018, 3, 22}, {9,9,9}}, 0),
+  Expected = "Thursday, March 22, 2018",
+  ?assertEqual(Expected, Value).
 
 % Test full date short time
 format_time_full_date_short_time_test() ->
-  Result = format_time("f", {{2018, 3, 23}, {19,19,19}}, 0),
-  ExpectedResult = "Friday, March 23, 2018 7:19 PM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("f", {{2018, 3, 23}, {19,19,19}}, 0),
+  Expected = "Friday, March 23, 2018 7:19 PM",
+  ?assertEqual(Expected, Value).
 
 % Test full date long time
 format_time_full_date_long_time_test() ->
-  Result = format_time("F", {{2018, 3, 24}, {19,19,19}}, 0),
-  ExpectedResult = "Saturday, March 24, 2018 7:19:19 PM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("F", {{2018, 3, 24}, {19,19,19}}, 0),
+  Expected = "Saturday, March 24, 2018 7:19:19 PM",
+  ?assertEqual(Expected, Value).
 
 % Test general date short time
 format_time_general_date_short_time_test() ->
-  Result = format_time("g", {{2018, 3, 23}, {19,19,19}}, 0),
-  ExpectedResult = "3/23/2018 7:19 PM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("g", {{2018, 3, 23}, {19,19,19}}, 0),
+  Expected = "3/23/2018 7:19 PM",
+  ?assertEqual(Expected, Value).
 
 % Test general date long time
 format_time_general_date_long_time_test() ->
-  Result = format_time("G", {{2018, 3, 24}, {19,19,19}}, 0),
-  ExpectedResult = "3/24/2018 7:19:19 PM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("G", {{2018, 3, 24}, {19,19,19}}, 0),
+  Expected = "3/24/2018 7:19:19 PM",
+  ?assertEqual(Expected, Value).
 
 % Test month day 'm'
 format_time_month_date_m_test() ->
-  Result = format_time("m", {{2018, 3, 23}, {19,19,19}}, 0),
-  ExpectedResult = "March 23",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("m", {{2018, 3, 23}, {19,19,19}}, 0),
+  Expected = "March 23",
+  ?assertEqual(Expected, Value).
 
 % Test month day 'M'
 format_time_month_day_M_test() ->
-  Result = format_time("M", {{2018, 3, 2}, {19,19,19}}, 0),
-  ExpectedResult = "March 2",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("M", {{2018, 3, 2}, {19,19,19}}, 0),
+  Expected = "March 2",
+  ?assertEqual(Expected, Value).
 
 % Test round trip 'o'
 format_time_round_trip_o_test() ->
-  Result = format_time("o", {{2018, 3, 22}, {9,9,9}}, 123456),
-  ExpectedResult = "2018-03-22T09:09:09.123456",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("o", {{2018, 3, 22}, {9,9,9}}, 123456),
+  Expected = "2018-03-22T09:09:09.123456",
+  ?assertEqual(Expected, Value).
 
 % Test round trip 'O'
 format_time_round_trip_O_test() ->
-  Result = format_time("O", {{2018, 3, 22}, {9,9,9}}, 123456),
-  ExpectedResult = "2018-03-22T09:09:09.123456",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("O", {{2018, 3, 22}, {9,9,9}}, 123456),
+  Expected = "2018-03-22T09:09:09.123456",
+  ?assertEqual(Expected, Value).
 
 % Test RFC1123 'r'
 format_time_rfc1123_r_test() ->
-  Result = format_time("r", {{2018, 3, 22}, {9,9,9}}, 123456),
-  ExpectedResult = "Thu, 22 Mar 2018 09:09:09 GMT",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("r", {{2018, 3, 22}, {9,9,9}}, 123456),
+  Expected = "Thu, 22 Mar 2018 09:09:09 GMT",
+  ?assertEqual(Expected, Value).
 
 % Test RFC1123 'R'
 format_time_rfc1123_R_test() ->
-  Result = format_time("R", {{2018, 3, 22}, {9,9,9}}, 123456),
-  ExpectedResult = "Thu, 22 Mar 2018 09:09:09 GMT",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("R", {{2018, 3, 22}, {9,9,9}}, 123456),
+  Expected = "Thu, 22 Mar 2018 09:09:09 GMT",
+  ?assertEqual(Expected, Value).
 
 % Test sortable 's'
 format_time_sortable_test() ->
-  Result = format_time("s", {{2018, 3, 23}, {19,19,19}}, 0),
-  ExpectedResult = "2018-03-23T19:19:19",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("s", {{2018, 3, 23}, {19,19,19}}, 0),
+  Expected = "2018-03-23T19:19:19",
+  ?assertEqual(Expected, Value).
 
 % Test short time 't'
 format_time_short_time_test() ->
-  Result = format_time("t", {{2018, 3, 22}, {9,9,9}}, 0),
-  ExpectedResult = "9:09 AM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("t", {{2018, 3, 22}, {9,9,9}}, 0),
+  Expected = "9:09 AM",
+  ?assertEqual(Expected, Value).
 
 % Test long time 'T'
 format_time_long_time_test() ->
-  Result = format_time("T", {{2018, 3, 22}, {9,9,9}}, 0),
-  ExpectedResult = "9:09:09 AM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("T", {{2018, 3, 22}, {9,9,9}}, 0),
+  Expected = "9:09:09 AM",
+  ?assertEqual(Expected, Value).
 
 % Test universal 'u'
 format_time_universal_test() ->
-  Result = format_time("u", {{2018, 3, 23}, {19,19,19}}, 0),
-  ExpectedResult = "2018-03-23 19:19:19Z",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("u", {{2018, 3, 23}, {19,19,19}}, 0),
+  Expected = "2018-03-23 19:19:19Z",
+  ?assertEqual(Expected, Value).
 
 % Test universal full 'U'
 format_time_universal_full_test() ->
-  Result = format_time("U", {{2018, 3, 23}, {19,19,19}}, 0),
-  ExpectedResult = "Friday, March 23, 2018 7:19:19 PM",
-  ?assertEqual(ExpectedResult, Result).
+  Value = format_time("U", {{2018, 3, 23}, {19,19,19}}, 0),
+  Expected = "Friday, March 23, 2018 7:19:19 PM",
+  ?assertEqual(Expected, Value).
 
 % Test custom format 
 format_time_custom_format_test() ->
-  Result = format_time("Year: y, yy, yyy, yyyy, yyyyy \\Mon\\t\\h: M, MM, MMM, MMMM Da\\y: d, dd, ddd, dddd \\Hour: h, hh, H, HH \\Minu\\te: m, mm Secon\\d: s, ss t tt", 
+  Value = format_time("Year: y, yy, yyy, yyyy, yyyyy \\Mon\\t\\h: M, MM, MMM, MMMM Da\\y: d, dd, ddd, dddd \\Hour: h, hh, H, HH \\Minu\\te: m, mm Secon\\d: s, ss t tt", 
                         {{2108, 3, 18}, {3, 3, 3}}, 0),
-  ExpectedResult = "Year: 8, 08, 108, 2108, 02108 Month: 3, 03, Mar, March Day: 18, 18, Sun, Sunday Hour: 3, 03, 3, 03 Minute: 3, 03 Second: 3, 03 A AM",
-  ?assertEqual(ExpectedResult, Result).
+  Expected = "Year: 8, 08, 108, 2108, 02108 Month: 3, 03, Mar, March Day: 18, 18, Sun, Sunday Hour: 3, 03, 3, 03 Minute: 3, 03 Second: 3, 03 A AM",
+  ?assertEqual(Expected, Value).
 
 format_time_custom_format2_test() ->
-  Result = format_time("U\\sec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
+  Value = format_time("U\\sec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
                         {{2108, 3, 18}, {3, 3, 3}}, 123456),
-  ExpectedResult = "Usec: 1, 12, 123, 1234, 12345, 123456, 123456123456",
-  ?assertEqual(ExpectedResult, Result). 
+  Expected = "Usec: 1, 12, 123, 1234, 12345, 123456, 123456123456",
+  ?assertEqual(Expected, Value). 
 
 format_time_custom_format3_test() ->
-  Result = format_time("u\\Sec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
+  Value = format_time("u\\Sec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
                         {{2108, 3, 18}, {3, 3, 3}}, 6),
-  ExpectedResult = "uSec: 0, 00, 000, 0000, 00000, 000006, 000006000006",
-  ?assertEqual(ExpectedResult, Result).
+  Expected = "uSec: 0, 00, 000, 0000, 00000, 000006, 000006000006",
+  ?assertEqual(Expected, Value).
 
 format_time_custom_format4_test() ->
-  Result = format_time("uSec: F, FF, FFF, FFFF, FFFFF, FFFFFF, FFFFFFFFFFFF", 
+  Value = format_time("uSec: F, FF, FFF, FFFF, FFFFF, FFFFFF, FFFFFFFFFFFF", 
                         {{2108, 3, 18}, {3, 3, 3}}, 6),
-  ExpectedResult = "uSec: , , , , , 6, 66",
-  ?assertEqual(ExpectedResult, Result). 
+  Expected = "uSec: , , , , , 6, 66",
+  ?assertEqual(Expected, Value). 
 
 format_time_custom_format5_test() ->
-  Result = format_time("T\\Z O\\f\\f\\se\\t: z, zz, zzz, %z T\\Z Na\\me: Z, %Z", 
+  Value = format_time("T\\Z O\\f\\f\\se\\t: z, zz, zzz, %z T\\Z Na\\me: Z, %Z", 
                         {{2108, 3, 18}, {3, 3, 3}}, 6),
-  ExpectedResult = "TZ Offset: -5, -05, -05:00, -5 TZ Name: DST, DST",
-  ?assertEqual(ExpectedResult, Result). 
+  Expected = "TZ Offset: -5, -05, -05:00, -5 TZ Name: DST, DST",
+  ?assertEqual(Expected, Value). 
 
 format_time_custom_format6_test() ->
-  Result = format_time("Era: g, gg, ggg, %g", 
+  Value = format_time("Era: g, gg, ggg, %g", 
                         {{2108, 3, 18}, {3, 3, 3}}, 6),
-  ExpectedResult = "Era: A.D., A.D., A.D., A.D.",
-  ?assertEqual(ExpectedResult, Result). 
+  Expected = "Era: A.D., A.D., A.D., A.D.",
+  ?assertEqual(Expected, Value). 
 
 % ====================================================================
 
 % ====================================================================
-% Test get_format_str()
+% Test get_format_defn()
 
 get_format_str_year_test() ->
-  Result = get_format_str("y, yy, yyy, yyyy, yyyyyyyyyyy"),
-  ExpectedResult = {"~b, ~2..0b, ~3..0b, ~4..0b, ~11..0b", [year2, year2, year3, year, year]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("y, yy, yyy, yyyy, yyyyyyyyyyy"),
+  Expected = {"~b, ~2..0b, ~3..0b, ~4..0b, ~11..0b", [year2, year2, year3, year, year]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_month_test() ->
-  Result = get_format_str("M, MM, MMM, MMMM, MMMMMMMMMMM"),
-  ExpectedResult = {"~b, ~2..0b, ~s, ~s, ~s", [month, month, month_abbr, month_str, month_str]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("M, MM, MMM, MMMM, MMMMMMMMMMM"),
+  Expected = {"~b, ~2..0b, ~s, ~s, ~s", [month, month, month_abbr, month_str, month_str]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_day_test() ->
-  Result = get_format_str("d, dd, ddd, dddd, ddddddddd"),
-  ExpectedResult = {"~b, ~2..0b, ~s, ~s, ~s", [day, day, day_abbr, day_str, day_str]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("d, dd, ddd, dddd, ddddddddd"),
+  Expected = {"~b, ~2..0b, ~s, ~s, ~s", [day, day, day_abbr, day_str, day_str]},
+  ?assertEqual(Expected, Value).
     
 get_format_str_hour12_test() ->
-  Result = get_format_str("h, hh, hhhh,"),
-  ExpectedResult = {"~b, ~2..0b, ~2..0b,", [hour12, hour12, hour12]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("h, hh, hhhh,"),
+  Expected = {"~b, ~2..0b, ~2..0b,", [hour12, hour12, hour12]},
+  ?assertEqual(Expected, Value).
     
 get_format_str_hour_test() ->
-  Result = get_format_str("H, HH, HHHHH,"),
-  ExpectedResult = {"~b, ~2..0b, ~2..0b,", [hour, hour, hour]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("H, HH, HHHHH,"),
+  Expected = {"~b, ~2..0b, ~2..0b,", [hour, hour, hour]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_am_pm_test() ->
-  Result = get_format_str("t, tt, tttt,"),
-  ExpectedResult = {"~s, ~s, ~s,", [am_pm1, am_pm, am_pm]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("t, tt, tttt,"),
+  Expected = {"~s, ~s, ~s,", [am_pm1, am_pm, am_pm]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_minute_test() ->
-  Result = get_format_str("m, mm, mmmmmmmm,"),
-  ExpectedResult = {"~b, ~2..0b, ~2..0b,", [minute, minute, minute]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("m, mm, mmmmmmmm,"),
+  Expected = {"~b, ~2..0b, ~2..0b,", [minute, minute, minute]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_second_test() ->
-  Result = get_format_str("s, ss, sssssssss,"),
-  ExpectedResult = {"~b, ~2..0b, ~2..0b,", [second, second, second]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("s, ss, sssssssss,"),
+  Expected = {"~b, ~2..0b, ~2..0b,", [second, second, second]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_fract_test() ->
-    Result = get_format_str("f, ff, fff, ffff, fffff, ffffff, ffffffffff"),
-    ExpectedResult = {"~b, ~2..0b, ~3..0b, ~4..0b, ~5..0b, ~6..0b, ~6..0b~4..0b", [fract_1, fract_2, fract_3, fract_4, fract_5, fract_6, fract_6, fract_4]},
-    ?assertEqual(ExpectedResult, Result).
+    Value = get_format_defn("f, ff, fff, ffff, fffff, ffffff, ffffffffff"),
+    Expected = {"~b, ~2..0b, ~3..0b, ~4..0b, ~5..0b, ~6..0b, ~6..0b~4..0b", [fract_1, fract_2, fract_3, fract_4, fract_5, fract_6, fract_6, fract_4]},
+    ?assertEqual(Expected, Value).
 
 get_format_str_fract_nz_test() ->
-  Result = get_format_str("F, FF, FFF, FFFF, FFFFF, FFFFFF, FFFFFFFFFF"),
-  ExpectedResult = {"~s, ~s, ~s, ~s, ~s, ~s, ~s~s", [fract_nz_1, fract_nz_2, fract_nz_3, fract_nz_4, fract_nz_5, fract_nz_6, fract_nz_6, fract_nz_4]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("F, FF, FFF, FFFF, FFFFF, FFFFFF, FFFFFFFFFF"),
+  Expected = {"~s, ~s, ~s, ~s, ~s, ~s, ~s~s", [fract_nz_1, fract_nz_2, fract_nz_3, fract_nz_4, fract_nz_5, fract_nz_6, fract_nz_6, fract_nz_4]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_tz_name_test() ->
-  Result = get_format_str("Z, %Z, \\Z "),
-  ExpectedResult = {"~s, ~s, Z ", [tz_name, tz_name]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("Z, %Z, \\Z "),
+  Expected = {"~s, ~s, Z ", [tz_name, tz_name]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_tz_offset_test() ->
-  Result = get_format_str("z, zz, zzz, zzzz, \\z, %z "),
-  ExpectedResult = {"~s, ~s, ~s, ~s, z, ~s ", [tz_offset_1, tz_offset_2, tz_offset_3, tz_offset_3, tz_offset_1]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("z, zz, zzz, zzzz, \\z, %z "),
+  Expected = {"~s, ~s, ~s, ~s, z, ~s ", [tz_offset_1, tz_offset_2, tz_offset_3, tz_offset_3, tz_offset_1]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_date_time_sep_test() ->
-  Result = get_format_str("//, ::, /:/: "),
-  ExpectedResult = {"~s~s, ~s~s, ~s~s~s~s ", [date_sep, date_sep, time_sep, time_sep, date_sep, time_sep, date_sep, time_sep]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("//, ::, /:/: "),
+  Expected = {"~s~s, ~s~s, ~s~s~s~s ", [date_sep, date_sep, time_sep, time_sep, date_sep, time_sep, date_sep, time_sep]},
+  ?assertEqual(Expected, Value).
 
 get_format_str_era_test() ->
-  Result = get_format_str("g, gg, ggg, %g, \\g"),
-  ExpectedResult = {"~s, ~s, ~s, ~s, g", [era, era, era, era]},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("g, gg, ggg, %g, \\g"),
+  Expected = {"~s, ~s, ~s, ~s, g", [era, era, era, era]},
+  ?assertEqual(Expected, Value).
 
 
 get_format_str_literal_test() ->
-  Result = get_format_str("abceijklnopqruvwx 1234567890 ABCDEGIJKLNOPQRSTUVWXY `~!@#$^&*()_-+={}[];\"'"),
-  ExpectedResult = {"abceijklnopqruvwx 1234567890 ABCDEGIJKLNOPQRSTUVWXY `~!@#$^&*()_-+={}[];\"'", []},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("abceijklnopqruvwx 1234567890 ABCDEGIJKLNOPQRSTUVWXY `~!@#$^&*()_-+={}[];\"'"),
+  Expected = {"abceijklnopqruvwx 1234567890 ABCDEGIJKLNOPQRSTUVWXY `~!@#$^&*()_-+={}[];\"'", []},
+  ?assertEqual(Expected, Value).
 
 get_format_str_escape_test() ->
-  Result = get_format_str("\\M\\d\\h\\H\\t\\m\\s\\f\\F\\Z\\z\\g\\/\\:"),
-  ExpectedResult = {"MdhHtmsfFZzg/:", []},
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_format_defn("\\M\\d\\h\\H\\t\\m\\s\\f\\F\\Z\\z\\g\\/\\:"),
+  Expected = {"MdhHtmsfFZzg/:", []},
+  ?assertEqual(Expected, Value).
 
 % ====================================================================
 
@@ -856,24 +862,24 @@ get_format_str_escape_test() ->
 % ====================================================================
 % Test get_tz_offset()
 get_tz_offest_z_test() ->
-  Result = get_tz_offset_1(),
-  ExpectedResult = "-5",
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_tz_offset_1(),
+  Expected = "-5",
+  ?assertEqual(Expected, Value).
 
 get_tz_offest_zz_test() ->
-  Result = get_tz_offset_2(),
-  ExpectedResult = "-05",
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_tz_offset_2(),
+  Expected = "-05",
+  ?assertEqual(Expected, Value).
 
 get_tz_offest_zzz_test() ->
-  Result = get_tz_offset_3(),
-  ExpectedResult = "-05:00",
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_tz_offset_3(),
+  Expected = "-05:00",
+  ?assertEqual(Expected, Value).
 
 get_tz_name_test() ->
-  Result = get_tz_name(),
-  ExpectedResult = "DST",
-  ?assertEqual(ExpectedResult, Result).
+  Value = get_tz_name(),
+  Expected = "DST",
+  ?assertEqual(Expected, Value).
 
 % ====================================================================
 
