@@ -9,10 +9,10 @@
 %%% Format configuration follows .NET Date/Time formatting rules.  See links below.
 %%% The calendar_locale() structure in the language module may be modified for other locales.
 %%% LINKS
-%%%   https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
-%%%   https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
-%%%   https://msdn.microsoft.com/en-us/library/hc4ky857(v=vs.71).aspx
-%%%   https://msdn.microsoft.com/en-us/library/8kb3ddd4(v=vs.71).aspx
+%%% https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings
+%%% https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings
+%%% https://msdn.microsoft.com/en-us/library/hc4ky857(v=vs.71).aspx
+%%% https://msdn.microsoft.com/en-us/library/8kb3ddd4(v=vs.71).aspx
 %%% @end 
 
 -module(lblx_datetime).  
