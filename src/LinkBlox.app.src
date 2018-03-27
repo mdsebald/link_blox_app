@@ -1,6 +1,6 @@
 {application, 'LinkBlox',
  [{description, "Linking Blocks of Functionality"},
-  {vsn, "0.2.0"},
+  {vsn, "0.3.0"},
   {registered, []},
   {mod, {'LinkBlox_app', ['LinkBlox', lang_en_us, 1111, debug]}},
   {applications,
