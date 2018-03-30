@@ -65,6 +65,8 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
   logger:info(block_values_file, [BlockValuesFile]),
   
   start_ssh_cli(),
+
+  start_ntpd(),
   
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
@@ -101,6 +103,9 @@ start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
 % Don't start SSH command line interface
 start_ssh_cli() -> ok.
 
+start_ntpd() ->
+    'Nerves'.'Ntp'.'Worker'.start_link().
+
 -else.
 
 %% limit number of nodes we try to start
@@ -129,6 +134,8 @@ start_node(_BaseNodeName, _Index) ->
 
 start_ssh_cli() ->
   ui_ssh_cli:start([{system_dir, "/etc/ssh"}]).
+
+start_ntpd() -> ok.
 
 -endif.
 
