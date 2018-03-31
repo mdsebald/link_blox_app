@@ -104,7 +104,7 @@ start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
 start_ssh_cli() -> ok.
 
 start_ntpd() ->
-    'Nerves'.'Ntp'.'Worker'.start_link().
+    'Nerves.Ntp.Worker':start_link().
 
 -else.
 
