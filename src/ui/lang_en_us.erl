@@ -448,7 +448,7 @@ attrib_strings() ->
   {cursor,            "cursor", "Enable display cursor"},
   {day_in,            "day_in", "Day input value"},
   {day_out,           "day_out", "Day output value"},
-  {dec_pnt,           "dec_pnt", "Enable decimal point"},
+  {dec_pnts,          "dec_pnts", "Enable decimal point"},
   {default_value,     "default_value", "Value to use when input value is null or empty"},
   {deg_f,             "deg_f", "Use Deg. F for temp units, otherwise Deg. C"},
   {description,       "description", "User defined description of this block"},

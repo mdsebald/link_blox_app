@@ -42,7 +42,7 @@
   {exec_in,{empty,{}}},
   {exec_interval,{0,{}}},
   {input,{empty,{counter,value}}},
-  {dec_pnt,[{false,{}},{false,{}},{false,{}},{false,{}}]}],
+  {dec_pnts,[{false,{}},{false,{}},{false,{}},{false,{}}]}],
  [{exec_out,{empty,[]}},
   {status,{empty,[]}},
   {exec_method,{empty,[]}},
