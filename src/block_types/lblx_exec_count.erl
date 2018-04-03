@@ -258,7 +258,7 @@ test_sets() ->
     {[{rollover, "bad"}], [], [{status, config_err}, {value, null}, {carry, null}]},
 
     % Test bad input values
-    {[{rollover, true}], [{reset, "bad"}],                           [{status, input_err}, {value, null}, {carry, null}]},
+    {[{rollover, true}], [{reset, "bad"}],       [{status, input_err}, {value, null}, {carry, null}]},
     {[{reset, true}, {initial_value, "bad"}],    [{status, input_err}, {value, null}, {carry, null}]},
     {[{initial_value, 0}, {final_value, "bad"}], [{status, input_err}, {value, null}, {carry, null}]},
     
