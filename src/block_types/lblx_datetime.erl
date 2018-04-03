@@ -30,7 +30,7 @@
 
 groups() -> [time].
 
-version() -> "0.1.0".
+version() -> "0.2.0".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -77,6 +77,8 @@ default_outputs() ->
       {day_out, {null, []}}, %| integer | null | 1..31 |
       {dow_out, {null, []}}, %| integer | null | 1..7 |
       {hour_out, {null, []}}, %| integer | null | 0..23 |
+      {hour12_out, {null, []}}, %| integer | null | 1..12 |
+      {pm_out, {null, []}}, %| boolean | null | null, true, false |
       {minute_out, {null, []}}, %| integer | null | 0..59 |
       {second_out, {null, []}}, %| integer | null | 0..59 |
       {micro_sec_out, {null, []}} %| integer | null | 0..999999 |
@@ -285,13 +287,26 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   case Status of
     normal ->
+      case Hour of
+        null -> 
+          Hour12 = PM = null;
+        0 ->
+          Hour12 = 12, PM = false;
+        12 ->
+          Hour12 = 12, PM = true;
+        _ when (Hour > 12) ->
+          Hour12 = Hour - 12, PM = true;
+        _ ->
+          Hour12 = Hour, PM = false
+      end,
+
       DayOfWeek = calendar:day_of_the_week(Year, Month, Day),
       Formatted = time_utils:format_time(FormatDef, {{Year, Month, Day},{Hour, Minute, Second}}, MicroSec),
       {ok, Outputs1} = attrib_utils:set_values(Outputs, 
       [
         {value, Formatted}, {status, Status},
         {timestamp_out, TimeStamp}, {year_out, Year}, {month_out, Month}, {day_out, Day}, {dow_out, DayOfWeek},
-        {hour_out, Hour}, {minute_out, Minute}, {second_out, Second}, {micro_sec_out, MicroSec}
+        {hour_out, Hour}, {hour12_out, Hour12}, {pm_out, PM}, {minute_out, Minute}, {second_out, Second}, {micro_sec_out, MicroSec}
       ]);
 
     _NotNormal ->
@@ -299,7 +314,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       [
         {value, null}, {status, Status},
         {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-        {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}
+        {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}
       ])
   end,
 
@@ -336,33 +351,41 @@ test_sets() ->
   [
     % test invalid config
     {[{source, bad}], [], [{status, config_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                          {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                          {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     {[{source, local}, {format, "K"}], [], [{status, config_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                          {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                          {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
 
     % test invalid input
     {[{source, component}, {format, "F"}], [{year_in, -1}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
 
     {[{year_in, 2018}, {month_in, 20}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     {[{month_in, 3}, {day_in, 32}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     {[{day_in, 16}, {hour_in, 24}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     {[{hour_in, 23}, {minute_in, -2}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     {[{minute_in, 56}, {second_in, 66}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     {[{second_in, 10}, {micro_sec_in, 1234567}], [{status, input_err}, {value, null}, {timestamp_out, null}, {year_out, null}, {month_out, null}, {day_out, null}, {dow_out, null},
-                              {hour_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
+                              {hour_out, null}, {hour12_out, null}, {pm_out, null}, {minute_out, null}, {second_out, null}, {micro_sec_out, null}]},
     % test valid input
     {[{micro_sec_in, 123456}], [{status, normal}, {value, "Friday, March 16, 2018 11:56:10 PM"}, {timestamp_out, null}, {year_out, 2018}, {month_out, 3}, {day_out, 16}, 
-                        {dow_out, 5}, {hour_out, 23}, {minute_out, 56}, {second_out, 10}, {micro_sec_out, 123456}]},
+                        {dow_out, 5}, {hour_out, 23}, {hour12_out, 11}, {pm_out, true}, {minute_out, 56}, {second_out, 10}, {micro_sec_out, 123456}]},
+
+    {[{hour_in, 0}], [{status, normal}, {value, "Friday, March 16, 2018 12:56:10 AM"}, {timestamp_out, null}, {year_out, 2018}, {month_out, 3}, {day_out, 16}, 
+                        {dow_out, 5}, {hour_out, 0}, {hour12_out, 12}, {pm_out, false}, {minute_out, 56}, {second_out, 10}, {micro_sec_out, 123456}]},
+
+    {[{hour_in, 12}], [{status, normal}, {value, "Friday, March 16, 2018 12:56:10 PM"}, {timestamp_out, null}, {year_out, 2018}, {month_out, 3}, {day_out, 16}, 
+                        {dow_out, 5}, {hour_out, 12}, {hour12_out, 12}, {pm_out, true}, {minute_out, 56}, {second_out, 10}, {micro_sec_out, 123456}]},
+  
     % don't know date or time the test will be run, just verify status is normal
     {[{source, local}], [], [{status, normal}]},
     % don't know date or time the test will be run, just verify status is normal   
     {[{source, utc}], [], [{status, normal}]},
+
     {[{source, timestamp}], [{timestamp_in, {1522,1695,72085}}], [{status, normal}, {value, "Sunday, March 25, 2018 1:14:55 PM"}, {timestamp_out, {1522,1695,72085}}, {year_out, 2018}, 
                         {month_out, 3}, {day_out, 25}, {dow_out, 7}, {hour_out, 13}, {minute_out, 14}, {second_out, 55}, {micro_sec_out, 72085}]}
   ].
