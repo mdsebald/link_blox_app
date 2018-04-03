@@ -126,6 +126,7 @@ get_param_values(ParamDefs, CalendarStrs, {{Year, Month, Day}, {Hour, Minute, Se
                             calendar:day_of_the_week(Year, Month, Day));
 
       hour -> Hour;
+      hour12 when Hour == 0 -> 12;
       hour12 when Hour > 12 -> Hour - 12;
       hour12 -> Hour;
 
@@ -741,13 +742,13 @@ format_time_custom_format_test() ->
   ?assertEqual(Expected, Value).
 
 format_time_custom_format2_test() ->
-  Value = format_time("U\\sec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
+  Value = format_time("uSec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
                         {{2108, 3, 18}, {3, 3, 3}}, 123456),
-  Expected = "Usec: 1, 12, 123, 1234, 12345, 123456, 123456123456",
+  Expected = "uSec: 1, 12, 123, 1234, 12345, 123456, 123456123456",
   ?assertEqual(Expected, Value). 
 
 format_time_custom_format3_test() ->
-  Value = format_time("u\\Sec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
+  Value = format_time("uSec: f, ff, fff, ffff, fffff, ffffff, ffffffffffff", 
                         {{2108, 3, 18}, {3, 3, 3}}, 6),
   Expected = "uSec: 0, 00, 000, 0000, 00000, 000006, 000006000006",
   ?assertEqual(Expected, Value).
@@ -768,6 +769,12 @@ format_time_custom_format6_test() ->
   Value = format_time("Era: g, gg, ggg, %g", 
                         {{2108, 3, 18}, {3, 3, 3}}, 6),
   Expected = "Era: A.D., A.D., A.D., A.D.",
+  ?assertEqual(Expected, Value). 
+
+format_time_custom_format7_test() ->
+  Value = format_time("12 \\Hour: h", 
+                        {{2108, 3, 18}, {0, 3, 3}}, 6),
+  Expected = "12 Hour: 12",
   ?assertEqual(Expected, Value). 
 
 % ====================================================================
