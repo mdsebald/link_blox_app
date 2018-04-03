@@ -103,8 +103,9 @@ start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
 % Don't start SSH command line interface
 start_ssh_cli() -> ok.
 
-start_ntpd() ->
-    'Nerves.Ntp.Worker':start_link().
+start_ntpd() -> ok.
+% ntpd starts by itself
+%    'Nerves.Ntp.Worker':start_link().
 
 -else.
 
