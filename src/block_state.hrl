@@ -119,7 +119,6 @@
 %%  initialed:  Block has been initialized, pre execution prep has been completed
 %%  normal:     Block has executed normally
 %%  disabled:   Block disable input is true/on. All block outputs are set to null 
-%%  frozen:     Block freeze input is true/on.  All block outputs are frozen at last calculated value
 %%  timeout:    Block values did not get updated from external source, before exec timer expired.
 %%  error:      Block has encountered some error when attempting to execute
 %%  input_err:  One or more of the block input values is incompatible with the block's code
@@ -129,7 +128,7 @@
 %%  override:   One or more block output values have been set manually, instead of being calculated 
 %%  empty:      Block is about to be deleted 
    
--type block_status() :: created | initialed | normal |  disabled | frozen | timeout |
+-type block_status() :: created | initialed | normal |  disabled | timeout |
                         error | input_err | config_err | proc_err | no_input | override | empty.
 
 

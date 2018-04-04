@@ -111,8 +111,6 @@ ui_strings() -> #{
   block_deleted => "Block ~s Deleted~n",
   block_disabled => "Block ~s Disabled~n",
   block_enabled => "Block ~s Enabled~n",
-  block_frozen => "Block ~s Frozen~n",
-  block_thawed => "Block ~s Thawed~n",
   block_execution_linked_to_block => "Block: ~s execution Linked to Block: ~s~n",
   block_execution_unlinked_from_block => "Block: ~s execution Unlinked from Block: ~s~n",
   block_config_file_loaded => "Block config file: ~s loaded~n",

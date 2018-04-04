@@ -186,23 +186,23 @@ ok_to_execute(BlockStatus, ExecMethod) ->
     % always execute the block on a manual command
     manual -> true;
 
-    % if input value changed, allow block to execute if normal, disabled, frozen, or some kind of input error
-    % The changed input value could have enabled, thawed, or otherwise fixed the input value error
+    % if input value changed, allow block to execute if normal, disabled, or some kind of input error
+    % The changed input value could have enabled, or otherwise fixed the input value error
     % i.e. execute if BlockStatus a member of this list
     input_cos ->
-      lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]);
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, timeout]);
     
     % If block received a message from a subsystem, execute the block if in one of these states:
     message ->
-      lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, frozen]);
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal, disabled, timeout]);
 
     % If block execution timer expired, execute the block if in one of these states:
     timer ->
-      lists:member(BlockStatus, [input_err, no_input, initialed, normal]);
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal, timeout]);
 
     % If block executed via exec_out, execute the block if in one of these states:
     exec_out ->
-      lists:member(BlockStatus, [input_err, no_input, initialed, normal]);
+      lists:member(BlockStatus, [input_err, no_input, initialed, normal, timeout]);
 
     _ ->
       % For any other execution method, don't execute if BlockStatus is a member of this list
