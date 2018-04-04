@@ -209,15 +209,13 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
 
     % Exec timer timed out before receiving updated values, set output values to null
     timer ->
-      case output_utils:set_array_values(Outputs, receive_values, null) of
-        {ok, Outputs1} -> 
-          % Update the status and main output
-          Outputs2 = output_utils:set_value_status(Outputs1, false, timeout);
+      % Set array of output values to null
+      {ok, NumOfValues} = config_utils:get_integer(Config, num_of_values),
+      NullVals = lists:duplicate(NumOfValues, null),
+      Outputs1 = output_utils:set_array_values(Outputs, receive_values, NullVals),
 
-        {error, Reason} ->
-          attrib_utils:log_error(Config, receive_values, invalid, Reason),
-          Outputs2 = output_utils:set_value_status(Outputs, null, proc_err)
-      end,
+      Outputs2 = output_utils:set_value_status(Outputs1, false, timeout),
+
       % Return updated block state
       {Config, Inputs, Outputs2, Private};
 
