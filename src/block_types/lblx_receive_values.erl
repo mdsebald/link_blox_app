@@ -165,8 +165,8 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
       BlockName = config_utils:name(Config),
       {_Status, Private1} = block_common:update_execution_timer(BlockName, Inputs, Private), 
     
-      % Received a publish message from another node_exp_imp block type
-      % Write the values to the import_values[x] outputs
+      % Received a publish message from send_values block type
+      % Write the values to the recieve_values[x] outputs
       {ok, Values} = attrib_utils:get_value(Private, publish_values),
       {ok, Private2} = attrib_utils:set_value(Private1, publish_values, []),
 
@@ -209,7 +209,7 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
 
     % Exec timer timed out before receiving updated values, set output values to null
     timer ->
-      case attrib_utils:set_array_value(Outputs, receive_values, null) of
+      case output_utils:set_array_values(Outputs, receive_values, null) of
         {ok, Outputs1} -> 
           % Update the status and main output
           Outputs2 = output_utils:set_value_status(Outputs1, false, timeout);
