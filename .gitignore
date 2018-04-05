@@ -15,3 +15,6 @@ _rel
 firmware
 *.html
 doc
+test_results.txt
+dialyser_results.txt
+.depsolver_plt
