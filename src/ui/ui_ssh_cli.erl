@@ -1000,13 +1000,13 @@ ui_help(Params, _ParamStrAtom) ->
 %%
 %% Check the number of parameters in the param list
 %%
--spec check_num_params(Params :: list(string()),
+-spec check_num_params(Params :: [string()],
                        Exact :: non_neg_integer()) -> low | ok | high.
 
 check_num_params(Params, Exact) ->
   check_num_params(Params, Exact, Exact).
 
--spec check_num_params(Params :: list(string()),
+-spec check_num_params(Params :: [string()],
                        Low :: non_neg_integer(),
                        High :: non_neg_integer()) -> low | ok | high.
 

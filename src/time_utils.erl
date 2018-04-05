@@ -26,7 +26,7 @@
 %% Format the local system time according to the Format specification or 
 %% Format string and Parameter definitions
 %%
--spec format_local(FormatStrParamDefs :: {string(), list(atom())}) -> string();
+-spec format_local(FormatStrParamDefs :: {string(), [atom()]}) -> string();
                   (FormatSpec :: string()) -> string().
 
 format_local({FormatStr, ParamDefs}) ->
@@ -37,9 +37,7 @@ format_local(FormatSpec) ->
   case get_format_defn(FormatSpec) of
     {error, Reason} -> "Error: " ++ atom_to_list(Reason);
 
-    {FormatStr, ParamDefs} -> format_local({FormatStr, ParamDefs});
-
-    Error ->  io_lib:format("~p", [Error])
+    {FormatStr, ParamDefs} -> format_local({FormatStr, ParamDefs})
   end.
 
 
@@ -58,9 +56,7 @@ format_utc(FormatSpec) ->
   case get_format_defn(FormatSpec) of
     {error, Reason} -> "Error: " ++ atom_to_list(Reason);
 
-    {FormatStr, ParamDefs} -> format_utc({FormatStr, ParamDefs});
-
-    Error ->  io_lib:format("~p", [Error])
+    {FormatStr, ParamDefs} -> format_utc({FormatStr, ParamDefs})
   end.
 
 
@@ -86,9 +82,7 @@ format_time(FormatSpec, DateTime, MicroS) ->
     {error, Reason} -> "Error: " ++ atom_to_list(Reason);
 
     {FormatStr, ParamDefs} ->
-      format_time({FormatStr, ParamDefs}, DateTime, MicroS);
-
-    Error ->  io_lib:format("~p", [Error])
+      format_time({FormatStr, ParamDefs}, DateTime, MicroS)
   end.
 
 
@@ -569,8 +563,15 @@ add_single_char_format(FormatStr, Format, ParamDefs, ParamDef) ->
 %
 % Pick a calendar string based on the string group name and index
 %
+-spec get_calendar_string(CalendarStrs :: [{atom(), [string()] | [tuple()]}],
+                          Group :: atom()) -> string() | tuple().
+
 get_calendar_string(CalendarStrs, Group) ->
   get_calendar_string(CalendarStrs, Group, 1).
+
+-spec get_calendar_string(CalendarStrs :: [{atom(), [string()] | [tuple()]}],
+                          Group :: atom(),
+                          Index :: pos_integer()) -> string() | tuple().
 
 get_calendar_string(CalendarStrs, Group, Index) ->
   case lists:keyfind(Group, 1, CalendarStrs) of
@@ -622,9 +623,18 @@ get_tz_name() ->
 
 % Test local and utc
 format_time_local_and_utc_test() ->
-  {Value, _Rest} = string:to_integer(format_local("%H")),
-  {Expected, _Rest} = string:to_integer(format_utc("%H")),
-  ?assertEqual((Expected-5), Value).
+  {LocalHr, _Rest} = string:to_integer(format_local("%H")),
+  {UtcHr, _Rest} = string:to_integer(format_utc("%H")),
+  % When executed in the US Central Time zone, 
+  % the hour difference should be -5 (or 19) (DST) or -6 (or 18)(not DST)
+  Diff = LocalHr - UtcHr,
+  if (Diff < 0) ->
+    Result = Diff + 24;
+  true ->
+    Result = Diff
+  end,
+
+  ?assert(((Result == 18) or (Result == 19))).
 
 % Test default
 format_time_default_test() ->

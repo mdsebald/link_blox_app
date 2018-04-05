@@ -217,7 +217,7 @@ get_attrib_id(AttribStr) ->
 %%
 %% Get the month and day name strings for the current Language module
 %% 
--spec get_calendar_locale() -> tuple() | {error, not_found}.
+-spec get_calendar_locale() -> [{atom(), [string()] | [tuple()]}] | {error, not_found}.
 
 get_calendar_locale() ->
   case get_lang_mod() of
@@ -321,18 +321,10 @@ get_input(Prompt) ->
   end, 
   string:trim(Raw2).
 
-  % TODO: Remove after testing string:strip() is deprecated
-  % % Remove new line char
-  % Raw3 = string:strip(Raw2, right, 10),
-  % % Remove leading and trailing whitespace
-  % string:strip(Raw3).
-
-
-
 %%
 %% Parse command line input into words and quoted strings
 %%
--spec parse_cli_params(Line :: string()) -> {ok, list(string())} | {error, list(string())}.
+-spec parse_cli_params(Line :: string()) -> {ok, [string()]} | {error, [string()]}.
 
 parse_cli_params(Line) ->
   % Split command line on spaces into list of words

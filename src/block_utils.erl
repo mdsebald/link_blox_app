@@ -104,7 +104,7 @@ char_to_segments(Char, DecPnt) ->
 %% 
 
 % TODO:  Add LinkBlox specific header (and checksum?) to config file
--spec get_blocks_to_save() -> term(). 
+-spec get_blocks_to_save() -> [any()]. 
 
 get_blocks_to_save() -> 
   BlockValuesList = block_values(),
@@ -277,9 +277,9 @@ configure_all_blocks() ->
 %% Internal functions
 %% ====================================================================
 
-%%
-%% Get the list of block values for all of the blocks currently created
-%%
+%
+% Get the list of block values for all of the blocks currently created
+%
 block_values() ->
   block_values(block_supervisor:block_names(), []).
     
@@ -293,15 +293,16 @@ block_values(BlockNames, BlockValuesList) ->
   block_values(RemainingBlockNames, [BlockState | BlockValuesList]).
 
 
-%%
-%% Clean block values of calculated Output values,
-%% to make the block values suitable for saving to a file 
-%%
+%
+% Make block values suitable for saving to a file 
+%
 clean_block_values({Config, Inputs, Outputs}) ->
+  % Clean block values of calculated Output values
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, no_input),
  
-  % TODO: Reset linked input values to default values?
-  %   that would require determining if there are any links to each input attribute of each block
+  % Reset input values to their default values.  
+  % Current values could be from links, i.e. dynamic, and should not be saved.
+  DefaultInputs = input_utils:set_to_default(Inputs),
 
   % Cleaned block values
-  {Config, Inputs, EmptyOutputs}.
+  {Config, DefaultInputs, EmptyOutputs}.

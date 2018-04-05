@@ -22,7 +22,7 @@
 %% Map a string to ui command atom, parameter(s) string, and help text
 %%  Template:  {"cmd",       cmd_atom,             cmd_atom_params,          cmd_atom_help},
 %%
--spec ui_cmds() -> list({string(), atom(), atom(), atom()}).
+-spec ui_cmds() -> [{string(), atom(), atom(), atom()}].
 
 ui_cmds() ->
 [
@@ -582,6 +582,8 @@ attrib_strings() ->
 %%  Standard date and time formats
 %%  Varies by the system locale 
 %%
+-spec calendar_locale() -> [{atom(), [string()] | [tuple()]}].
+
 calendar_locale() ->
 [
   {months_strs, ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]},

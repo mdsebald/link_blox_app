@@ -639,7 +639,7 @@ get_logger({Config, Options}) ->
 % Get a string config value
 %
 -spec get_string_config(Config :: config_attribs(),
-                        ValueName :: value_name()) -> {config_attribs(), list(tuple())}.
+                        ValueName :: value_name()) -> {ok, string()} | {error, atom()}.
 
 get_string_config(Config, ValueName) ->
   case config_utils:get_string(Config, ValueName) of
