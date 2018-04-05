@@ -289,7 +289,8 @@ handle_call({set_value, ValueId, Value}, _From, BlockState) ->
     _ -> % Not a Config attribute, try the Inputs
       case attrib_utils:is_attribute_type(Inputs, ValueId) of
         true ->
-          case attrib_utils:set_value(Inputs, ValueId, Value) of
+          % Setting input value from API, make it a fixed value so it is saved to the config file
+          case input_utils:set_fixed_value(Inputs, ValueId, Value) of
             {ok, NewInputs} ->
               % Block input value changed, execute block with reason 'input_cos'
               NewBlockState = 
@@ -472,6 +473,8 @@ handle_cast({update, NewInputValues}, BlockState) ->
 
   {Config, Inputs, Outputs, Private} = BlockState,
 
+  % TODO: Create an input_utils:set_link_values() function, just update the current value, not default value, current value not saved to config file
+  %       attrib_utils:set_value(s)() will update the default value of the input too, and that value saved to config file
   % Update the block input(s), that are linked this value, with the new Value
   {ok, NewInputs} = attrib_utils:set_values(Inputs, NewInputValues),
 

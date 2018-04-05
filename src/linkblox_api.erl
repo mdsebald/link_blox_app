@@ -116,7 +116,7 @@ get_value(Node, BlockNameStr, ValueIdStr) ->
 
 
 %% Get list of block names
--spec get_block_names(Node :: node()) -> list(string()).
+-spec get_block_names(Node :: node()) -> [string()].
 
 get_block_names(Node) ->
   gen_server:call({?MODULE, Node}, get_block_names).
@@ -151,7 +151,7 @@ set_value(Node, BlockNameStr, ValueIdStr, Value) ->
 -spec add_link(Node :: node(),
                OutputBlockNameStr :: string(),
                OutputValueIdStr :: string(),
-               LinkStrs :: list(string())) -> term().
+               LinkStrs :: [string()]) -> term().
 
 add_link(Node, OutputBlockNameStr, OutputValueIdStr, LinkStrs) ->
   gen_server:call({?MODULE, Node}, {add_link, OutputBlockNameStr, OutputValueIdStr, LinkStrs}).
@@ -161,7 +161,7 @@ add_link(Node, OutputBlockNameStr, OutputValueIdStr, LinkStrs) ->
 -spec del_link(Node :: node(),
                OutputBlockNameStr :: string(),
                OutputValueIdStr :: string(),
-               LinkStr :: list(string())) -> term().
+               LinkStr :: [string()]) -> term().
 
 del_link(Node, OutputBlockNameStr, OutputValueIdStr, LinkStrs) ->
   gen_server:call({?MODULE, Node}, {del_link, OutputBlockNameStr, OutputValueIdStr, LinkStrs}).
@@ -362,7 +362,7 @@ handle_call({copy_block, BlockNameStr, BlockState, _InitAttribs}, _From, State) 
                   % Change the name in the copied block values, to the new block name
                   {ok, NewConfig} = attrib_utils:set_value(Config, block_name, BlockName),
                   % Set the copied inputs, to their default values
-                  DefaultInputs = input_utils:default_inputs(Inputs),
+                  DefaultInputs = input_utils:set_to_default(Inputs),
                   % Set all output values of this block to 'empty'. Status is created
                   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, created),
                   % Start the new block with the set of copied values, 

@@ -26,7 +26,8 @@
           get_value/3,
           add_exec_in/2,
           del_exec_in/2,
-          default_inputs/1,
+          set_fixed_value/3, 
+          set_to_default/1,
           resize_attribute_array_value/5,
           log_error/3
 ]).
@@ -148,7 +149,7 @@ get_float(Inputs, ValueId) ->
 %% Get a list of boolean input values from an array attribute
 %%
 -spec get_boolean_array(Inputs :: input_attribs(), 
-                        ValueName :: value_name()) -> {ok, list(value())} | {error, atom}.
+                        ValueName :: value_name()) -> {ok, [value()]} | {error, not_found}.
 
 get_boolean_array(Inputs, ValueName) ->
   case attrib_utils:get_attribute(Inputs, ValueName) of
@@ -262,7 +263,7 @@ add_exec_in(Inputs, SrcBlockName) ->
 
 
 %%
-%% Delete a source block name to the list of block names
+%% Delete a source block name from the list of block names
 %% in the exec_in input value,
 %%
 -spec del_exec_in(Inputs :: input_attribs(),
@@ -282,12 +283,48 @@ del_exec_in(Inputs, SrcBlockName) ->
   end.
 
 
+%%
+%% Set an input to a fixed value
+%% i.e. Set the default value too, so the value will be saved in the config file
+%%
+-spec set_fixed_value(Inputs :: input_attribs(), 
+                      ValueId :: value_id(), 
+                      NewValue :: value()) -> {ok, input_attribs()} | attrib_errors().
+              
+set_fixed_value(Inputs, ValueId, NewValue)->
+  case attrib_utils:get_attribute(Inputs, ValueId) of
+    {error, not_found} -> {error, not_found};
+
+    % Non-array value
+    {ok, {ValueId, {_OldValue, {_OldDefValue}}}} ->  
+      NewInput = {ValueId, {NewValue, {NewValue}}},
+      {ok, attrib_utils:replace_attribute(Inputs, ValueId, NewInput)};
+  
+    % Array value
+    {ok, {ValueName, ArrayValue}} ->
+      case ValueId of 
+        % if this is an array value, the ValueName from get_attribute()
+        % will match ValueName in the ValueId tuple
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            NewArrayValue = {NewValue, {NewValue}},
+            NewArrayValues = attrib_utils:replace_array_value(ArrayValue, ArrayIndex, NewArrayValue),
+            NewInput = {ValueName, NewArrayValues},
+            {ok, attrib_utils:replace_attribute(Inputs, ValueName, NewInput)};
+          true ->
+            {error, invalid_index}
+          end;
+        _InvalidValue -> {error, invalid_value}
+      end
+  end.
+
+
 %% 
 %% Set all inputs to their default value,
 %% 
--spec default_inputs(Inputs :: input_attribs()) -> input_attribs().
+-spec set_to_default(Inputs :: input_attribs()) -> input_attribs().
 
-default_inputs(Inputs) ->
+set_to_default(Inputs) ->
   lists:map(fun(Input) ->
               case Input of 
                 {ValueName, {_Value, {DefaultValue}}} -> 
@@ -422,6 +459,29 @@ resize_attribute_array_value_increase_test() ->
   Result = resize_attribute_array_value(BlockName, Inputs, 
                          ArrayValueName, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+% Test set_fixed_value()
+%     
+set_fixed_value_non_array_test() ->
+  Inputs = test_data:input_utils_input_attribs1(),
+  {ok, NewInputs} = set_fixed_value(Inputs, exec_interval, 1000),
+  {ok, Result} = attrib_utils:get_attribute(NewInputs, exec_interval),
+  ExpectedResult = {exec_interval, {1000, {1000}}},
+  
+  ?assertEqual(ExpectedResult, Result).
+
+set_fixed_value_array_test() ->
+  Inputs = test_data:input_utils_input_attribs1(),
+  {ok, NewInputs} = set_fixed_value(Inputs, {integer_array, 2}, 12345),
+  {ok, Result} = attrib_utils:get_attribute(NewInputs, integer_array),
+  ExpectedResult =  {integer_array, [{123, {0}}, {12345, {12345}}]},
+  
+  ?assertEqual(ExpectedResult, Result).
+
+% ====================================================================
+
+
 
 % ====================================================================
 % Test log_error()

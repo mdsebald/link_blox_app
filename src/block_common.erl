@@ -463,7 +463,7 @@ delete({Config, Inputs, Outputs, Private}) ->
   link_utils:unlink_block(BlockName),
 
   % Set all input values to default value
-  DefaultInputs = input_utils:default_inputs(Inputs),
+  DefaultInputs = input_utils:set_to_default(Inputs),
   
   % Set all output values of this block, including status, to 'empty'
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
