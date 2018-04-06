@@ -290,21 +290,27 @@ init_i2c(Config, Private) ->
   case get_string(Config, i2c_device) of
 
     {ok, I2cDevice} ->
-      case get_integer_range(Config, i2c_addr, 2, 127) of
+      case i2c_utils:is_installed(I2cDevice) of
+        true ->
+          case get_integer_range(Config, i2c_addr, 2, 127) of
 
-        {ok, I2cAddr} ->
-          case i2c_utils:start_link(I2cDevice, I2cAddr) of
+            {ok, I2cAddr} ->
+              case i2c_utils:start_link(I2cDevice, I2cAddr) of
 
-            {ok, I2cRef} ->
-              {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}}), I2cRef};
+                {ok, I2cRef} ->
+                  {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}}), I2cRef};
 
+                {error, Reason} ->
+                  logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+                  {error, Reason}
+              end;
             {error, Reason} ->
-              logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+              log_error(Config, i2c_addr, Reason),
               {error, Reason}
           end;
-        {error, Reason} ->
-          log_error(Config, i2c_addr, Reason),
-          {error, Reason}
+        false ->
+          logger:error(err_i2c_not_installed, [I2cDevice]),
+          {error, i2c_not_installed}
       end;
     {error, Reason} ->
       log_error(Config, i2c_device, Reason),

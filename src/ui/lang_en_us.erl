@@ -204,6 +204,7 @@ log_strings() -> #{
   starting_linkblox_block_supervisor => "Starting LinkBlox Block supervisor",
   loading_demo_config => "Loading Demo config...",
   creating_type_version => "Creating: ~p Type: ~s Version: ~s",
+  starting_server_for_block => "Starting block server for: ~p",
 
   block_config_saved_to_file => "Block config saved to file: ~s",
   block_values_file => "Default block values file: ~s",
@@ -250,6 +251,7 @@ log_strings() -> #{
   
   err_initiating_GPIO_pin => "~p Error: ~p intitiating GPIO pin: ~p",
   err_initiating_I2C_address => "Error: ~p intitiating I2C address: ~p",
+  err_i2c_not_installed => "Error: I2C channel: ~s, not installed",
 
   err_resetting_device => "Error: ~p resettting device",
   err_converting_sensor_values => "Error: ~p converting sensor values",

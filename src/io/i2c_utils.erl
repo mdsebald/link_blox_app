@@ -14,6 +14,7 @@
 %% API functions
 %% ====================================================================
 -export([
+          is_installed/1,
           start_link/2,
           write/2,
           write_read/3,
@@ -27,6 +28,16 @@
 % Replace the real functions with test functions when performing unit Tests
 %
 -ifndef(TEST).
+
+%%
+%% Check if i2c Channel exists
+%%
+-spec is_installed(I2cDevice :: string()) -> boolean().
+
+is_installed(I2cDevice) ->
+    filelib:is_file("/dev/" ++ I2cDevice).
+
+
 
 %%
 %% Start I2C channel
@@ -77,6 +88,14 @@ stop(I2cRef) -> i2c:stop(I2cRef).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+
+%%
+%% Test if i2c Channel exists
+%%
+-spec is_installed(I2cDevice :: string()) -> boolean().
+
+is_installed(_I2cDevice) -> true.
+
 
 %%
 %% Test Start link
