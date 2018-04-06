@@ -35,7 +35,10 @@
 -spec is_installed(I2cDevice :: string()) -> boolean().
 
 is_installed(I2cDevice) ->
-    filelib:is_file("/dev/" ++ I2cDevice).
+  case file:read_file_info("/dev/" ++ I2cDevice) of
+    {ok, _FileInfo} -> true;
+    {error, _Reason} -> false
+  end.
 
 
 
