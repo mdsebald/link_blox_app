@@ -105,7 +105,8 @@ outputs() ->
 initialize({Config, Inputs, Outputs}) ->
 
   {BlockName, BlockModule} = config_utils:name_module(Config),
- 
+
+  logger:debug(initializing_block, [BlockName]),
   % Initialize the private attributes values list here.
   % Timer reference attribute is common to all block types
   Private = [ {timer_ref, {empty}} ],
@@ -167,7 +168,7 @@ execute(BlockState, ExecMethod) ->
       % Return the updated block state
       {Config, Inputs, Outputs3, Private2};
 
-    false -> % Block is in error state
+    false -> % Unable to execute block, in error state or disabled
       % Just return the current block state, unchanged
       {Config, Inputs, Outputs, Private}
   end.
