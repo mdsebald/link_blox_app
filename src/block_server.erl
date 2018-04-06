@@ -201,21 +201,15 @@ publish_values(Node, BlockName, Values) ->
 init(BlockState) ->
   BlockName = config_utils:name(BlockState),
 
-  logger:info(initializing_block, [BlockName]),
+  logger:debug(starting_server_for_block, [BlockName]),
 
-  % Perform block initialization
-  NewBlockState1 = block_common:initialize(BlockState),
+  % Initialize and execute the new block
+  % Do this via message outside the init() function.
+  % Forces the block type code to wait for init() to complete 
+  % before sending or receiving messages.
+  % init_configure(BlockName),
 
-  % Perform intial configuration
-  % Basically, tell all blocks to check their input links
-  % and link to this block if necessary
-  % block_server:init_configure(BlockName),
-  % Should not need to reconfigure all blocks, just update (execute, if necessary) block
-
-  % Update the block
-  NewBlockState2 = update_block(NewBlockState1),
-  
-  {ok, NewBlockState2}.
+  {ok, BlockState}.
 
 
 %% handle_call/3
@@ -473,9 +467,7 @@ handle_cast({update, NewInputValues}, BlockState) ->
 
   {Config, Inputs, Outputs, Private} = BlockState,
 
-  % TODO: Create an input_utils:set_link_values() function, just update the current value, not default value, current value not saved to config file
-  %       attrib_utils:set_value(s)() will update the default value of the input too, and that value saved to config file
-  % Update the block input(s), that are linked this value, with the new Value
+   % Update the block input(s), that are linked this value, with the new Value
   {ok, NewInputs} = attrib_utils:set_values(Inputs, NewInputValues),
 
   % Execute the block because input values have changed
@@ -488,17 +480,20 @@ handle_cast({update, NewInputValues}, BlockState) ->
 %% Initial block configuration
 %% =====================================================================
 handle_cast(init_configure, BlockState) ->
-  % Send a configure message to each running block
-  % This will force all blocks to check their input attributes
-  % that have links, and link to this block if needed
+  % Initialize the just created block and immediately execute it.
    
   % Must be called separately from the init() function, 
   % because you can't call block_supervisor:block_names()
   % (i.e.supervisor:which_child()) from the init() function 
   % of a child process. 
-  block_utils:configure_all_blocks(),
+
+  % Perform block initialization
+  NewBlockState1 = block_common:initialize(BlockState),
+
+  % Update the block
+  NewBlockState2 = update_block(NewBlockState1),
   
-  {noreply, BlockState};
+  {noreply, NewBlockState2};
 
 
 %% =====================================================================

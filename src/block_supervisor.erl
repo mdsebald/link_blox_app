@@ -27,14 +27,27 @@
 ]).
 
 start_link(BlockValuesFile) ->
-  supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile).
-    
+  Return = supervisor:start_link({local, ?MODULE}, ?MODULE, BlockValuesFile),
+  % Perform the initial configuration of all blocks just created
+  lists:foreach(fun(BlockName) -> 
+            block_server:init_configure(BlockName) end, 
+            block_names()),
+  Return.
+
+
 %%
 %%  Start a block
 %%    
 start_block(BlockState) ->
   [BlockSpec] = create_block_specs([BlockState]),                    
-  supervisor:start_child(?MODULE, BlockSpec).
+  case supervisor:start_child(?MODULE, BlockSpec) of
+    {ok, Child} ->
+      BlockName = config_utils:name(BlockState),
+      block_server:init_configure(BlockName),
+      {ok, Child};
+    {error, Error} -> 
+      {error, Error}
+  end.
    
 %%
 %% Delete a block
