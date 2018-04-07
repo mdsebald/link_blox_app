@@ -142,10 +142,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  % Create the private attributes needed
-  Private1 = attrib_utils:merge_attribute_lists(Private, 
+  % Setup I2C comm channel of the sensor
+  case config_utils:init_i2c(Config, Private) of
+    {ok, Private1, I2cRef} ->
+      % Create the private attributes needed
+        Private2 = attrib_utils:merge_attribute_lists(Private1, 
               [
-                {i2c_ref, {empty}},
                 {sensor_mode, {empty}},
                 % Temperature calibration values
                 {dig_T1, {empty}},
@@ -170,11 +172,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 {dig_H5, {empty}},
                 {dig_H6, {empty}}
               ]),
-  
-  % Setup I2C comm channel of the sensor
-  case config_utils:init_i2c(Config, Private1) of
-    {ok, Private2, I2cRef} ->
-      
+
       case configure_sensor(I2cRef, Config) of 
         {ok, SensorMode} ->
           % Need to save sensor mode, 
@@ -226,7 +224,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
           Temp = null,
           Press = null,
           Humid = null,
-          Private4 = Private1
+          Private4 = Private2
       end;
 
     {error, _Reason} ->
@@ -235,7 +233,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Temp = null,
       Press = null,
       Humid = null,
-      Private4 = Private1
+      Private4 = Private
   end,  
    
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
