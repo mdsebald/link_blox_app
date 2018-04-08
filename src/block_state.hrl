@@ -26,10 +26,10 @@
 % Types used for storing block values
 
 -type attribs() :: config_attribs() | input_attribs() | output_attribs() | private_attribs().
--type config_attribs()  :: list(config_attrib()).
--type input_attribs()   :: list(input_attrib()).
--type output_attribs()  :: list(output_attrib()).
--type private_attribs() :: list(private_attrib()).
+-type config_attribs()  :: [config_attrib()].
+-type input_attribs()   :: [input_attrib()].
+-type output_attribs()  :: [output_attrib()].
+-type private_attribs() :: [private_attrib()].
 
 -type attrib() :: config_attrib() | input_attrib() | output_attrib() | private_attrib().
 -type config_attrib()  :: {value_name(), config_value()  | config_value_array()}.
@@ -37,27 +37,27 @@
 -type output_attrib()  :: {value_name(), output_value()  | output_value_array()}.                 
 -type private_attrib() :: {value_name(), private_value() | private_value_array()}.
 
--type attrib_value_array() :: list(attrib_value()).
+-type attrib_value_array() :: [attrib_value()].
 -type attrib_value() :: config_value() | input_value() | output_value() | private_value().
 
--type config_value_array() :: list(config_value()).
+-type config_value_array() :: [config_value()].
 -type config_value() :: {value()}.
 
--type input_value_array() :: list(input_value()).
+-type input_value_array() :: [input_value()].
 -type input_value() ::  {value(), {value()}}.  % Second value() is the default value
 
--type output_value_array() :: list(output_value()).
+-type output_value_array() :: [output_value()].
 -type output_value() :: {value(), link_defs()}.
 
--type private_value_array() :: list(private_value()).
+-type private_value_array() :: [private_value()].
 -type private_value() :: {any()}.
 
--type link_defs() :: list(link_def()).
+-type link_defs() :: [link_def()].
 -type link_def() :: {block_name(), value_id()}.
 -type empty_link() :: {}.
 -define (EMPTY_LINK, {}).
 
--type block_values() :: list(block_value()).
+-type block_values() :: [block_value()].
 -type block_value() :: {value_id(), value()}.
 
 -type value_id() :: value_name() |
