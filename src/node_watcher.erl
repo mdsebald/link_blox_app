@@ -30,9 +30,9 @@ listen_loop() ->
   receive 
     {nodeup, Node} ->
       logger:info(node_has_connected, [Node]),
-      % Configure all blocks on this node, in case any are linked
+      % update all blocks on this node, in case any are linked
       % to blocks on the node that just connected
-      block_utils:configure_all_blocks();
+      block_utils:update_all_blocks();
 
     {nodedown, Node} ->
       logger:info(node_has_disconnected, [Node]);

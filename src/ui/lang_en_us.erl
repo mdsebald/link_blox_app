@@ -39,6 +39,7 @@ ui_cmds() ->
   {"unlink",    cmd_unlink_blocks,    cmd_link_blocks_params,   cmd_unlink_blocks_help},
   {"xlink",     cmd_xlink_blocks,     cmd_xlink_blocks_params,  cmd_xlink_blocks_help},
   {"xunlink",   cmd_xunlink_blocks,   cmd_xlink_blocks_params,  cmd_xunlink_blocks_help},
+  {"xlinks",    cmd_get_xlinks,       cmd_blank_params,         cmd_get_xlinks_help},
   {"status",    cmd_status,           cmd_blank_params,         cmd_status_help},
   {"valid",     cmd_valid_block_name, cmd_block_name_param,     cmd_valid_block_name_help},
   {"load",      cmd_load_blocks,      cmd_file_name_params,     cmd_load_blocks_help},
@@ -85,6 +86,7 @@ ui_strings() -> #{
   cmd_unlink_blocks_help => "Unlink a block output value from a block input value",
   cmd_xlink_blocks_help => "Link a block execute out to block execute input (control flow)",
   cmd_xunlink_blocks_help => "Unlink a block execute out from block execute input",
+  cmd_get_xlinks_help => "Get a list of execution links on this node",
   cmd_status_help => "Display status of all created blocks on this node",
   cmd_valid_block_name_help => "Is the entered string a valid block name",
   cmd_load_blocks_help => "Load block definitions from a file",
@@ -161,7 +163,9 @@ ui_strings() -> #{
   err_saving_block_config_file => "Error: ~p, Saving block conifg file: ~s~n",
   err_parsing_cmd_line => "Error: Parsing command: ~s",
 
-  err_invalid_block_type_module => "Invalid block type module"
+  err_invalid_block_type_module => "Invalid block type module",
+  no_execute_links_found => "No exec_out to exec_in Execution Links found~n",
+  exec_out_to_exec_in_links => "exec_out to exec_in Execution Links:~n"
 }.
 
 
@@ -218,6 +222,7 @@ log_strings() -> #{
   err_invalid_input_value => "~p Invalid '~s' input value: ~p",
   err_invalid_output_value => "~p Invalid '~s' output value: ~p",
   err_invalid_block_type_module => "~p Invalid block type module",
+  err_setting_default_value => "~p Setting ~p:~p to default value",
 
   negative_exec_interval_value => "~p Negative exec_interval value: ~p",
   invalid_exec_interval_value => "~p Invalid exec_interval value: ~p",

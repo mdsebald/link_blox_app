@@ -64,7 +64,7 @@ inputs() ->
     % Link exec_in to block that will execute this block.
     % May only be linked to the 'exec_out' block output value
     % i.e. implement Control Flow
-    {exec_in, {[], {[]}}}, %| signal | N/A | N/A |
+    {exec_in, {empty, {empty}}}, %| signal | empty | name of executor block |
 
     % If > 0, execute block every 'exec_interval' milliseconds.
     % Used to execute a block at fixed intervals
@@ -163,7 +163,7 @@ execute(BlockState, ExecMethod) ->
       update_blocks(Outputs, Outputs3),
     
       % Execute the blocks connected to the exec_out output value (Control Flow)
-      update_execute(Outputs3),
+      update_execute(BlockName, Outputs3),
     
       % Return the updated block state
       {Config, Inputs, Outputs3, Private2};
@@ -423,9 +423,10 @@ update_linked_inputs(NewValue, Links) ->
 %% Send an exec_out_execute message to each block connected to the 'exec_out' output of this block
 %% This will implement control flow execution, versus data flow done in the update_blocks function. 
 %%
--spec update_execute(Outputs :: output_attribs()) -> ok.
+-spec update_execute(BlockName :: block_name(), 
+                     Outputs :: output_attribs()) -> ok.
 
-update_execute(Outputs) ->
+update_execute(BlockName, Outputs) ->
 
   % exec_out attribute is never an array, 
   % Don't need to worry about arrays of values or indexes here
@@ -434,7 +435,7 @@ update_execute(Outputs) ->
   lists:foreach(fun(Link) ->
                   case Link of
                     {ToBlockName, _ToValueId} ->
-                      block_server:execute(ToBlockName, exec_out);
+                      block_server:execute(ToBlockName, BlockName, exec_out);
 
                     InvalidLink ->
                       logger:error(err_unrecognized_link, [InvalidLink])
@@ -464,7 +465,7 @@ delete({Config, Inputs, Outputs, Private}) ->
   link_utils:unlink_block(BlockName),
 
   % Set all input values to default value
-  DefaultInputs = input_utils:set_to_default(Inputs),
+  DefaultInputs = input_utils:set_to_defaults(Inputs),
   
   % Set all output values of this block, including status, to 'empty'
   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, empty),
@@ -476,7 +477,7 @@ delete({Config, Inputs, Outputs, Private}) ->
     
   % Execute the blocks connected to the exec_out output value
   % of this block, one last time.
-  update_execute(EmptyOutputs),
+  update_execute(BlockName, EmptyOutputs),
 
   % Perform block type specific delete actions
   BlockModule:delete({Config, DefaultInputs, EmptyOutputs, Private}).

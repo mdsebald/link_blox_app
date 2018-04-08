@@ -70,7 +70,9 @@ unlink_block(InputBlockName) ->
   lists:foreach(fun(BlockName) ->
                   block_server:unlink_block(BlockName, InputBlockName)
                 end,
-                BlockNames).
+                BlockNames),
+
+  block_supervisor:del_block_exec_links(InputBlockName).
 
 
 %%

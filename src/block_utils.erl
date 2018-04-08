@@ -25,7 +25,7 @@
           create_blocks/1,
           create_block/1,
           get_blocks_from_file/1,
-          configure_all_blocks/0
+          update_all_blocks/0
 ]). 
 
 
@@ -262,14 +262,14 @@ create_block(BlockDefn) ->
 
 
 %%
-%% Send a configure message to each block on this node
+%% Send an update message to each block on this node
 %%
--spec configure_all_blocks() -> ok.
+-spec update_all_blocks() -> ok.
 
-configure_all_blocks() ->
+update_all_blocks() ->
   BlockNames = block_supervisor:block_names(),
   lists:foreach(fun(BlockName) ->
-                  block_server:configure(BlockName)
+                  block_server:update(BlockName)
                 end, BlockNames).
 
 
@@ -302,7 +302,7 @@ clean_block_values({Config, Inputs, Outputs}) ->
  
   % Reset input values to their default values.  
   % Current values could be from links, i.e. dynamic, and should not be saved.
-  DefaultInputs = input_utils:set_to_default(Inputs),
+  DefaultInputs = input_utils:set_to_defaults(Inputs),
 
   % Cleaned block values
   {Config, DefaultInputs, EmptyOutputs}.

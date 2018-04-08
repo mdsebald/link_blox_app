@@ -24,10 +24,11 @@
           get_boolean/2,
           get_string/2,
           get_value/3,
-          add_exec_in/2,
-          del_exec_in/2,
-          set_fixed_value/3, 
-          set_to_default/1,
+          %add_exec_in/2,
+          %del_exec_in/2,
+          set_fixed_value/3,
+          set_to_default/2, 
+          set_to_defaults/1,
           resize_attribute_array_value/5,
           log_error/3
 ]).
@@ -242,48 +243,6 @@ check_value(Value, CheckType) ->
 
 
 %%
-%% Add a source block name to the list of block names
-%% in the exec_in input value, to implement control flow
-%%
--spec add_exec_in(Inputs :: input_attribs(),
-                  SrcBlockName :: block_name()) -> {ok, input_attribs()} | {error, atom()}.
-
-add_exec_in(Inputs, SrcBlockName) ->
-  case attrib_utils:get_value(Inputs, exec_in) of
-    {ok, ExecIns} ->
-      case lists:member(SrcBlockName, ExecIns) of
-        false ->
-          NewExecIns = [SrcBlockName | ExecIns],
-          attrib_utils:set_value(Inputs, exec_in, NewExecIns);
-        true ->
-          {error, already_contains}
-      end;
-    {error, Reason} -> {error, Reason}
-  end.
-
-
-%%
-%% Delete a source block name from the list of block names
-%% in the exec_in input value,
-%%
--spec del_exec_in(Inputs :: input_attribs(),
-                  SrcBlockName :: block_name()) -> {ok, input_attribs()} | {error, atom()}.
-
-del_exec_in(Inputs, SrcBlockName) ->
-  case attrib_utils:get_value(Inputs, exec_in) of
-    {ok, ExecIns} ->
-      case lists:member(SrcBlockName, ExecIns) of
-        true ->
-          NewExecIns = lists:delete(SrcBlockName, ExecIns),
-          attrib_utils:set_value(Inputs, exec_in, NewExecIns);
-        false ->
-          {error, value_not_found}
-      end;
-    {error, Reason} -> {error, Reason}
-  end.
-
-
-%%
 %% Set an input to a fixed value
 %% i.e. Set the default value too, so the value will be saved in the config file
 %%
@@ -319,12 +278,47 @@ set_fixed_value(Inputs, ValueId, NewValue)->
   end.
 
 
+%%
+%% Set an input to its default value
+%%
+-spec set_to_default(Inputs :: input_attribs(), 
+                     ValueId :: value_id()) -> {ok, input_attribs()} | attrib_errors().
+              
+set_to_default(Inputs, ValueId)->
+  case attrib_utils:get_attribute(Inputs, ValueId) of
+    {error, not_found} -> {error, not_found};
+
+    % Non-array value
+    {ok, {ValueId, {_CurrValue, {DefValue}}}} ->  
+      NewInput = {ValueId, {DefValue, {DefValue}}},
+      {ok, attrib_utils:replace_attribute(Inputs, ValueId, NewInput)};
+  
+    % Array value
+    {ok, {ValueName, ArrayValue}} ->
+      case ValueId of 
+        % if this is an array value, the ValueName from get_attribute()
+        % will match ValueName in the ValueId tuple
+        {ValueName, ArrayIndex} ->
+          if (0 < ArrayIndex) andalso (ArrayIndex =< length(ArrayValue)) ->
+            {_CurrValue, {DefValue}} = lists:nth(ArrayIndex, ArrayValue),
+            NewArrayValue = {DefValue, {DefValue}},
+            NewArrayValues = attrib_utils:replace_array_value(ArrayValue, ArrayIndex, NewArrayValue),
+            NewInput = {ValueName, NewArrayValues},
+            {ok, attrib_utils:replace_attribute(Inputs, ValueName, NewInput)};
+          true ->
+            {error, invalid_index}
+          end;
+        _InvalidValue -> {error, invalid_value}
+      end
+  end.
+
+
 %% 
 %% Set all inputs to their default value,
 %% 
--spec set_to_default(Inputs :: input_attribs()) -> input_attribs().
+-spec set_to_defaults(Inputs :: input_attribs()) -> input_attribs().
 
-set_to_default(Inputs) ->
+set_to_defaults(Inputs) ->
   lists:map(fun(Input) ->
               case Input of 
                 {ValueName, {_Value, {DefaultValue}}} -> 

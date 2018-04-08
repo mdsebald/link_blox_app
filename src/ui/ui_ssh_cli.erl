@@ -31,6 +31,7 @@
           ui_unlink_blocks/2,
           ui_xlink_blocks/2,
           ui_xunlink_blocks/2,
+          ui_get_xlinks/2,
           ui_status/2,
           ui_valid_block_name/2,
           ui_load_blocks/2,
@@ -160,6 +161,7 @@ cmd_atom_map() ->
     {cmd_unlink_blocks,    ?MODULE,  ui_unlink_blocks},
     {cmd_xlink_blocks,     ?MODULE,  ui_xlink_blocks},
     {cmd_xunlink_blocks,   ?MODULE,  ui_xunlink_blocks},
+    {cmd_get_xlinks,       ?MODULE,  ui_get_xlinks},
     {cmd_status,           ?MODULE,  ui_status},
     {cmd_valid_block_name, ?MODULE,  ui_valid_block_name},
     {cmd_load_blocks,      ?MODULE,  ui_load_blocks},
@@ -768,6 +770,20 @@ ui_xunlink_blocks(Params, ParamStrAtom) ->
         {error, Reason} -> format_out(err_deleting_execution_link_from_to, [Reason | Params])
       end;
     high -> format_out(err_too_many_params)
+  end.
+
+
+% Process get execution links commands
+ui_get_xlinks(_Params, _ParamStrAtom) ->
+  case linkblox_api:get_exec_links(curr_node()) of
+    [] -> 
+      format_out(no_execute_links_found);
+
+    ExecLinks ->
+      format_out(exec_out_to_exec_in_links),
+      lists:foreach(fun({ExecuteeBlockName, ExecutorBlockName}) -> 
+                io:format("  ~p => ~p~n", [ExecutorBlockName, ExecuteeBlockName])
+              end, ExecLinks)
   end.
 
 

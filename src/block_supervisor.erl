@@ -23,7 +23,12 @@
           delete_block/1,
           is_block/1,
           block_names/0, 
-          block_processes/0
+          block_processes/0,
+          is_exec_linked/1,
+          add_exec_link/2,
+          del_exec_link/2, 
+          del_block_exec_links/1,
+          get_exec_links/0
 ]).
 
 start_link(BlockValuesFile) ->
@@ -99,6 +104,56 @@ block_names([BlockProcess | RemainingProcesses], BlockNames) ->
 block_processes() -> 
   supervisor:which_children(?MODULE).
 
+
+%%
+%% Determine if the named block is linked to the exec_out of another block
+%%
+-spec is_exec_linked(BlockName :: block_name()) -> boolean().
+
+is_exec_linked(BlockName) ->
+  ets:member(exec_links, BlockName).
+
+%%
+%% Add reference this block is linked to the ExecutorBlockName exec_out output
+%%
+-spec add_exec_link(BlockName :: block_name(),
+                    ExecutorBlockName :: block_name()) -> ok.
+
+add_exec_link(BlockName, ExecutorBlockName) ->
+  logger:debug("Inserting exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
+  ets:insert(exec_links, {BlockName, ExecutorBlockName}).
+
+
+%%
+%% Delete reference this block is linked to the ExecutorBlockName exec_out output
+%%
+-spec del_exec_link(BlockName :: block_name(),
+                    ExecutorBlockName :: block_name()) -> ok.
+
+del_exec_link(BlockName, ExecutorBlockName) ->
+  logger:debug("Adding exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
+  ets:delete_object(exec_links, {BlockName, ExecutorBlockName}).
+
+
+%%
+%% Delete this block from the list of exec links
+%% Call when a block is deleted
+%%
+-spec del_block_exec_links(BlockName :: block_name()) -> ok.
+
+del_block_exec_links(BlockName) ->
+  logger:debug("Deleting all exec links to  ~p", [BlockName]),
+  ets:take(exec_links, BlockName).
+
+%%
+%% Get the contents of exec links table
+%%
+-spec get_exec_links() -> [{block_name(), block_name()}].
+
+get_exec_links() ->
+    ets:foldl(fun(ExecLink, Accum) -> [ExecLink | Accum] end, [], exec_links).
+
+
 %% ====================================================================
 %% Behavioural functions
 %% ====================================================================
@@ -122,6 +177,10 @@ block_processes() ->
 
 init(BlockValuesFile) ->
   logger:info(starting_linkblox_block_supervisor),
+
+  % Create a table to indicate which blocks are exec_linked
+  logger:debug("Create table of exec links"),
+  ets:new(exec_links, [named_table, public, bag]),
 
   case block_utils:get_blocks_from_file(BlockValuesFile) of
     {ok, BlockValuesList} ->
@@ -153,7 +212,24 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
   [BlockState | RemainingBlockValuesList] = BlockValuesList,
   % TODO: Check for expected term match, before creating child spec 
 
-  {BlockName, BlockModule, Version} = config_utils:name_module_version(BlockState),
+
+  {Config, _Inputs, Outputs} = BlockState,
+  {BlockName, BlockModule, Version} = config_utils:name_module_version(Config),
+
+  % Initialize the exec_links table
+  {ok, {exec_out, {_Value, Links}}} = attrib_utils:get_attribute(Outputs, exec_out),
+
+  lists:foreach(fun(Link) ->
+                  case Link of
+                    {ToBlockName, _ToValueId} ->
+                      add_exec_link(ToBlockName, BlockName);
+
+                    InvalidLink ->
+                      logger:error(err_unrecognized_link, [InvalidLink])
+                  end
+                end, 
+                Links),
+
   BlockTypeStr = type_utils:type_name(BlockModule),
   logger:info(creating_type_version, [BlockName, BlockTypeStr, Version]),
 

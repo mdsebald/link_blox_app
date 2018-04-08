@@ -28,6 +28,7 @@
           get_block_names/1,
           get_types_info/1,
           get_type_info/2,
+          get_exec_links/1,
           set_value/4,
           add_link/4,
           del_link/4,
@@ -135,6 +136,13 @@ get_types_info(Node) ->
 
 get_type_info(Node, BlockNameStr) ->
   gen_server:call({?MODULE, Node}, {get_type_info, BlockNameStr}).
+
+
+%% Get a list of the exec_links on this node
+-spec get_exec_links(Node :: node()) -> term().
+
+get_exec_links(Node) ->
+  gen_server:call({?MODULE, Node}, get_exec_links).
 
 
 %% Set a block value
@@ -362,7 +370,7 @@ handle_call({copy_block, BlockNameStr, BlockState, _InitAttribs}, _From, State) 
                   % Change the name in the copied block values, to the new block name
                   {ok, NewConfig} = attrib_utils:set_value(Config, block_name, BlockName),
                   % Set the copied inputs, to their default values
-                  DefaultInputs = input_utils:set_to_default(Inputs),
+                  DefaultInputs = input_utils:set_to_defaults(Inputs),
                   % Set all output values of this block to 'empty'. Status is created
                   EmptyOutputs = output_utils:update_all_outputs(Outputs, empty, created),
                   % Start the new block with the set of copied values, 
@@ -471,6 +479,15 @@ handle_call({get_type_info, BlockNameStr}, _From, State) ->
 
 
 %% =====================================================================
+%% Get the list of exec_links on this node
+%% =====================================================================    
+handle_call(get_exec_links, _From, State) ->
+
+  Result = block_supervisor:get_exec_links(), 
+  {reply, Result, State};
+
+
+%% =====================================================================
 %% Set a block value 
 %% =====================================================================    
 handle_call({set_value, BlockNameStr, ValueIdStr, Value}, _From, State) ->
@@ -561,11 +578,7 @@ handle_call({add_exec_link, ExecutorBlockNameStr, ExecuteeBlockNameStr}, _From, 
       % Execution links are hard coded from exec_out output to exec_in input attributes
       case link_utils:validate_link({ExecuteeBlockName, exec_in}) of
         ok ->
-          case block_server:add_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
-            ok -> block_server:add_exec_in(ExecuteeBlockName, ExecutorBlockName);
-
-            {error, Reason} -> {error, Reason}
-          end;
+          block_server:add_exec_link(ExecutorBlockName, ExecuteeBlockName);
 
         {error, Reason} -> {error, Reason}
       end;
@@ -585,11 +598,7 @@ handle_call({del_exec_link, ExecutorBlockNameStr, ExecuteeBlockNameStr}, _From, 
       % Execution links are hard coded from exec_out output to exec_in input attributes
       case link_utils:validate_link({ExecuteeBlockName, exec_in}) of
         ok ->
-          case block_server:del_link(ExecutorBlockName, exec_out, {ExecuteeBlockName, exec_in}) of
-            ok -> block_server:del_exec_in(ExecuteeBlockName, ExecutorBlockName);
-              
-            {error, Reason} -> {error, Reason}
-          end;
+          block_server:del_exec_link(ExecutorBlockName, ExecuteeBlockName);
 
         {error, Reason} -> {error, Reason}
       end;
