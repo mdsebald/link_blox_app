@@ -219,10 +219,14 @@ execute({Config, Inputs, Outputs, Private}, ExecMethod) ->
       % Return updated block state
       {Config, Inputs, Outputs2, Private};
 
-    % Nothing to do, if block is executed for any other reason
+    % If block is executed for any other reason
     _DontCare ->
-      % Return block state unchanged
-      {Config, Inputs, Outputs, Private}
+      % Since the block is being executed, assume at least the status is normal
+      % Don't change the main output value
+      Outputs1 = output_utils:set_status(Outputs, normal),
+
+      % Return updated block state
+      {Config, Inputs, Outputs1, Private}
   end.
 
 

@@ -398,8 +398,8 @@ handle_call({del_link, ValueId, Link}, _From, BlockState) ->
     case link_utils:del_link(BlockName, Outputs, ValueId, Link) of
       {ok, Outputs1} ->
         % Set unlinked input value to default value
-        {ToBlockName, ValueId} = Link,
-        case block_server:set_def_value(ToBlockName, ValueId) of
+        {ToBlockName, ToValueId} = Link,
+        case block_server:set_def_value(ToBlockName, ToValueId) of
           ok -> ok;
 
           {error, Reason} ->
