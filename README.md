@@ -28,28 +28,25 @@ Block data is defined as a tuple of 3 lists:<sup>[3](#fn03)</sup>
  
  LinkBlox also allows arrays of Config, Inputs, and Outputs to be defined.  Arrays of attributes are specified by a key ID and an index, from 1 to the size of the array.
  
-#### Example Block Type ####
+#### Block Types ####
 
-TODO: Write up BME280 Temperature Pressure, Humidity sensors block type.
+Current list of block types may be found here: http://www.linkblox.org/BlockTypes.html
  
 #### User Interface ####
 
-TODO: Need more details
-
-On starting the application, LinkBlox spins up an SSH Server on port 1111.  SSH into this port from another Linux prompt to use LinkBlox's command line interface. From the CLI, blocks may be created, edited, linked, executed, deleted, monitored, etc. From the commmand line you can connect to other LinkBlox nodes, and manipulate them the same way. Connecting requires your /etc/hosts file to contain the host name and IP address of the node running LinkBlox, that you wish to connect to.  
+On starting the application, LinkBlox spins up an Erlang SSH CLI Server on port 1111.  SSH into this port from another Linux prompt to use LinkBlox's command line interface. From the CLI, blocks may be created, edited, linked, executed, deleted, monitored, etc. From the commmand line you can connect to other LinkBlox nodes, and manipulate them the same way. Connecting requires your /etc/hosts file to contain the host name and IP address of the node running LinkBlox, that you wish to connect to.  
 
 NOTE: I use the Erlang short name for connecting.  Example node name:  LinkBlox@<hostname>,  no domain specified.  This requires your /etc/hosts file to include the short name also.  Example: for the node name LinkBlox@raspi-3,  you would need a line in your /etc/hosts file like this:  192.168.1.140  raspi-3,  
-NOTE: To use SSH requires setting up a Public / Private key pair.  The location of the key, is currently hard coded. Need to make this easier to get up and running.  Example command line:  "ssh <yourhostname> -p 1111  -i /home/vagrant/ssh_host/ssh_host_rsa_key"
+NOTE: To use SSH requires setting up a Public / Private key pair, assumed to be in ~/.ssh 
+Example command line:  "ssh  -p 1111  \<host name\>
 
 #### Building and Running ####
 
-TODO: Need more details
 Clone this repo, on a Linux box, type make, and run the the resulting LinkBlox binary.  (Binary may be found in ~/LinkBlox/_rel/LinkBlox/bin/LinkBlox)
 Requires Erlang and relx to be installed to build
 
-
 <a name="fn01">1</a>: I'm assuming the code can be compiled and run on Windows or a Mac, but I haven't tried it myself.
 
-<a name="fn02">2</a>: See my repo: [nerves_link_blox]  https://github.com/mdsebald/nerves_link_blox
+<a name="fn02">2</a>: See my repo: https://github.com/mdsebald/nerves_link_blox
 
 <a name="fn03">3</a>: In practice, the block data tuple also contains a list of private block data.
