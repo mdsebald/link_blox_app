@@ -30,7 +30,7 @@ Block data is defined as a tuple of 3 lists:<sup>[3](#fn03)</sup>
  
 #### Block Types ####
 
-Current list of block types may be found here: [http://www.linkblox.org/BlockTypes.html]
+Current list of block types may be found here: http://www.linkblox.org/BlockTypes.html
  
 #### User Interface ####
 
@@ -47,6 +47,6 @@ Requires Erlang and relx to be installed to build
 
 <a name="fn01">1</a>: I'm assuming the code can be compiled and run on Windows or a Mac, but I haven't tried it myself.
 
-<a name="fn02">2</a>: See my repo: [nerves_link_blox (https://github.com/mdsebald/nerves_link_blox)]
+<a name="fn02">2</a>: See my repo: [nerves_link_blox] https://github.com/mdsebald/nerves_link_blox
 
 <a name="fn03">3</a>: In practice, the block data tuple also contains a list of private block data.
