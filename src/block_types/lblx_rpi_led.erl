@@ -286,7 +286,6 @@ error_result(Config, ErrorInput, Reason, DefaultValue) ->
 
 % Set the actual value of the LED file here
 set_state(Private, LedId, Value, Invert) ->
-  FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
   
   if Value -> % Value is true/on
     if Invert -> % Invert pin value 
@@ -304,7 +303,7 @@ set_state(Private, LedId, Value, Invert) ->
 
   {ok, LastState} = attrib_utils:get_value(Private, last_state),
   if (State /= LastState) ->
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/trigger",
+    FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
     write_file(FileId, State),
     attrib_utils:set_value(Private, last_state, State);
 
