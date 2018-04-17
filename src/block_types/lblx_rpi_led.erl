@@ -152,7 +152,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 true ->
                   Status = initialed,
                   Value = DefaultValue,
-                  Private2 = set_state(Private1, LedId, DefaultValue, InvertOutput);
+                  {ok, Private2} = set_state(Private1, LedId, DefaultValue, InvertOutput);
 
                 false ->
                   logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
@@ -330,7 +330,7 @@ set_on_delay(Private, LedId, OnDelay) ->
   {ok, LastOnDelay} = attrib_utils:get_value(Private, last_on_delay),
   if (OnDelay /= LastOnDelay) ->
     FileId = ?LED_FILE_PATH ++ LedId ++ "/on_delay",
-    write_file(FileId, OnDelay),
+    write_file(FileId, integer_to_list(OnDelay)),
     attrib_utils:set_value(Private, last_on_delay, OnDelay);
 
   true -> % Last on_delay value same as new on_delay, do nothing
@@ -343,7 +343,7 @@ set_off_delay(Private, LedId, OffDelay) ->
   {ok, LastOffDelay} = attrib_utils:get_value(Private, last_off_delay),
   if (OffDelay /= LastOffDelay) -> 
     FileId = ?LED_FILE_PATH ++ LedId ++ "/off_delay",
-    write_file(FileId, OffDelay),
+    write_file(FileId, integer_to_list(OffDelay)),
     attrib_utils:set_value(Private, last_off_delay, OffDelay);
 
   true -> % Last off_delay value same as new off_delay, do nothing
