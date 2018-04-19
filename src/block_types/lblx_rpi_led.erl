@@ -47,8 +47,8 @@ default_inputs() ->
     [
       {input, {empty, {empty}}}, %| bool | empty | true, false |
       {trigger, {"none", {"none"}}}, %| string | "none" | string representing led trigger mode |
-      {on_delay, {250, {250}}}, %| integer | 250 | 1..Max Integer |
-      {off_delay, {250, {250}}} %| integer | 250 | 1..Max Integer |
+      {delay_on, {250, {250}}}, %| integer | 250 | 1..Max Integer |
+      {delay_off, {250, {250}}} %| integer | 250 | 1..Max Integer |
     ]). 
 
 
@@ -138,8 +138,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
     [
       {last_state, {empty}},
       {last_trigger, {empty}},
-      {last_on_delay, {empty}},
-      {last_off_delay, {empty}}
+      {last_delay_on, {empty}},
+      {last_delay_off, {empty}}
     ]),
 
   case config_utils:get_string(Config, led_id) of
@@ -197,10 +197,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       case input_utils:get_string(Inputs, trigger) of
         {ok, InTrigger} ->
           if (InTrigger == "timer") ->
-            case input_utils:get_integer_greater_than(Inputs, on_delay, 0) of
-              {ok, OnDelay} ->
-                case input_utils:get_integer_greater_than(Inputs, off_delay, 0) of
-                  {ok, OffDelay} ->
+            case input_utils:get_integer_greater_than(Inputs, delay_on, 0) of
+              {ok, DelayOn} ->
+                case input_utils:get_integer_greater_than(Inputs, delay_off, 0) of
+                  {ok, DelayOff} ->
                     if (InValue == null) ->
                       LedValue = DefaultValue;
                     true ->
@@ -211,13 +211,13 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                     Status = normal;
 
                   {error, Reason} ->
-                    {LedValue, Trigger, OnDelay, OffDelay, Value, Status} =
-                      error_result(Config, off_delay, Reason, DefaultValue)
+                    {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
+                      error_result(Config, delay_off, Reason, DefaultValue)
                 end;
 
               {error, Reason} ->
-                {LedValue, Trigger, OnDelay, OffDelay, Value, Status} =
-                  error_result(Config, on_delay, Reason, DefaultValue)
+                {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
+                  error_result(Config, delay_on, Reason, DefaultValue)
             end;
 
           true -> % Trigger != "timer", don't care about on/off delay times
@@ -227,26 +227,26 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
               LedValue = InValue
             end,
             Trigger = InTrigger,
-            OnDelay = OffDelay = 0,
+            DelayOn = DelayOff = 0,
             Value = InValue,
             Status = normal
           end;
         {error, Reason} ->
-          {LedValue, Trigger, OnDelay, OffDelay, Value, Status} =
+          {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
             error_result(Config, trigger, Reason, DefaultValue)
       end;
     {error, Reason} ->
-      {LedValue, Trigger, OnDelay, OffDelay, Value, Status} =
+      {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
         error_result(Config, input, Reason, DefaultValue)
   end,
 
   {ok, Private1} = set_state(Private, LedId, LedValue, InvertOutput),
   {ok, Private2} = set_trigger(Private1, LedId, Trigger),
     
-  % Only set on_delay and off_delay, if trigger is "timer"
+  % Only set delay_on and delay_off, if trigger is "timer"
   if (Trigger == "timer") ->
-    {ok, Private3} = set_on_delay(Private2, LedId, OnDelay),
-    {ok, Private4} = set_off_delay(Private3, LedId, OffDelay);
+    {ok, Private3} = set_delay_on(Private2, LedId, DelayOn),
+    {ok, Private4} = set_delay_off(Private3, LedId, DelayOff);
       
   true ->
     Private4 = Private2
@@ -274,14 +274,18 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %% Internal functions
 %% ====================================================================
 
+% TODO: May switch to using nerves_led project
+%set_led(LedId, Trigger, DelayOn, DelayOff) ->
+%  Elixir.Nerves.Leds:set( LedId, [ {trigger, Trigger}, {delay_on, DelayOn}, {delay_off, DelayOff}]).
+
 % Found some input value error
 % Log error, and return appropriate values
 error_result(Config, ErrorInput, Reason, DefaultValue) ->
   LedValue = DefaultValue,
   Trigger = "none",
-  OnDelay = OffDelay = 0,
+  DelayOn = DelayOff = 0,
   {Value, Status} = input_utils:log_error(Config, ErrorInput, Reason),
-  {LedValue, Trigger, OnDelay, OffDelay, Value, Status}.
+  {LedValue, Trigger, DelayOn, DelayOff, Value, Status}.
 
 
 % Set the actual value of the LED file here
@@ -325,28 +329,28 @@ set_trigger(Private, LedId, Trigger) ->
   end.
 
 
-% Set the LED on_delay file
-set_on_delay(Private, LedId, OnDelay) ->
-  {ok, LastOnDelay} = attrib_utils:get_value(Private, last_on_delay),
-  if (OnDelay /= LastOnDelay) ->
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/on_delay",
-    write_file(FileId, integer_to_list(OnDelay)),
-    attrib_utils:set_value(Private, last_on_delay, OnDelay);
+% Set the LED delay_on file
+set_delay_on(Private, LedId, DelayOn) ->
+  {ok, LastOnDelay} = attrib_utils:get_value(Private, last_delay_on),
+  if (DelayOn /= LastOnDelay) ->
+    FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_on",
+    write_file(FileId, integer_to_list(DelayOn)),
+    attrib_utils:set_value(Private, last_delay_on, DelayOn);
 
-  true -> % Last on_delay value same as new on_delay, do nothing
+  true -> % Last delay_on value same as new delay_on, do nothing
     {ok, Private}
   end.
 
 
-% Set the LED off_delay file
-set_off_delay(Private, LedId, OffDelay) ->
-  {ok, LastOffDelay} = attrib_utils:get_value(Private, last_off_delay),
-  if (OffDelay /= LastOffDelay) -> 
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/off_delay",
-    write_file(FileId, integer_to_list(OffDelay)),
-    attrib_utils:set_value(Private, last_off_delay, OffDelay);
+% Set the LED delay_off file
+set_delay_off(Private, LedId, DelayOff) ->
+  {ok, LastOffDelay} = attrib_utils:get_value(Private, last_delay_off),
+  if (DelayOff /= LastOffDelay) -> 
+    FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_off",
+    write_file(FileId, integer_to_list(DelayOff)),
+    attrib_utils:set_value(Private, last_delay_off, DelayOff);
 
-  true -> % Last off_delay value same as new off_delay, do nothing
+  true -> % Last delay_off value same as new delay_off, do nothing
     {ok, Private}
   end.
 
