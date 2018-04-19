@@ -386,7 +386,9 @@ set_led_state(LedId, Value, Invert, Trigger, DelayOn, DelayOff) ->
     write_file(FilePath ++  "/delay_on", integer_to_list(DelayOn)),
 
     % Set the LED delay_off file
-    write_file(FilePath ++ "/delay_off", integer_to_list(DelayOff))
+    write_file(FilePath ++ "/delay_off", integer_to_list(DelayOff));
+  true -> 
+    ok
   end.
 
 
