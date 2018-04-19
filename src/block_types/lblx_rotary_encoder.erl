@@ -144,21 +144,21 @@ initialize({Config, Inputs, Outputs, Private}) ->
       gpio_utils:register_int(GpioPinA_Ref),
       gpio_utils:set_int(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = gpio_utils:read_bool(GpioPinA_Ref),
-      {ok, Private2} = attrib_utils:add_attribute(Private1, {last_A_value, {LastA_Value}}),
+      Private2 = attrib_utils:add_attribute(Private1, {last_A_value, {LastA_Value}}),
 
       case config_utils:init_gpio(Config, Private2, gpio_pin_phase_B, input) of
         {ok, Private3, GpioPinB_Ref} ->
           gpio_utils:register_int(GpioPinB_Ref),
           gpio_utils:set_int(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = gpio_utils:read_bool(GpioPinB_Ref),
-          {ok, Private4} = attrib_utils:add_attribute(Private3, {last_B_value, {LastB_Value}}),
+          Private4 = attrib_utils:add_attribute(Private3, {last_B_value, {LastB_Value}}),
       
           case config_utils:init_gpio(Config, Private4, gpio_pin_switch, input) of
             {ok, Private5, GpioPinSwRef} ->
               gpio_utils:register_int(GpioPinSwRef),
               gpio_utils:set_int(GpioPinSwRef, SwitchIntEdge),
               LastSwValue = gpio_utils:read_bool(GpioPinSwRef),
-              {ok, Private6} = attrib_utils:add_attribute(Private5, {last_sw_value, {LastSwValue}}),
+              Private6 = attrib_utils:add_attribute(Private5, {last_sw_value, {LastSwValue}}),
               Value = null,
               Status = initialed;
               

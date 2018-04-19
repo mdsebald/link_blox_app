@@ -164,7 +164,7 @@ get_param_values(ParamDefs, CalendarStrs, {{Year, Month, Day}, {Hour, Minute, Se
 
       era -> get_calendar_string(CalendarStrs, era_str);
 
-      Undefined -> "Undef token: " + atom_to_list(Undefined)
+      Undefined -> "Undef token: " ++ atom_to_list(Undefined)
     end end, ParamDefs).
 
 

@@ -124,7 +124,7 @@ set_array_values(Outputs, ArrayValueName, Index, [Value | ArrayValues]) ->
 -spec set_tristate_outputs(InputValId :: value_id(),  % Only needed for error logging
                            OutputVal :: {ok, boolean()} | {error, atom()},
                            Config :: config_attribs(),  % Only Needed for error logging
-                           Outputs :: output_attribs()) -> {ok, output_attribs()}.
+                           Outputs :: output_attribs()) -> output_attribs().
 
 set_tristate_outputs(InputValId, OutputVal, Config, Outputs) ->
   case OutputVal of

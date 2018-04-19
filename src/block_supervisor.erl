@@ -117,7 +117,7 @@ is_exec_linked(BlockName) ->
 %% Add reference this block is linked to the ExecutorBlockName exec_out output
 %%
 -spec add_exec_link(BlockName :: block_name(),
-                    ExecutorBlockName :: block_name()) -> ok.
+                    ExecutorBlockName :: block_name()) -> true.
 
 add_exec_link(BlockName, ExecutorBlockName) ->
   logger:debug("Inserting exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
@@ -128,7 +128,7 @@ add_exec_link(BlockName, ExecutorBlockName) ->
 %% Delete reference this block is linked to the ExecutorBlockName exec_out output
 %%
 -spec del_exec_link(BlockName :: block_name(),
-                    ExecutorBlockName :: block_name()) -> ok.
+                    ExecutorBlockName :: block_name()) -> true.
 
 del_exec_link(BlockName, ExecutorBlockName) ->
   logger:debug("Adding exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
@@ -143,7 +143,8 @@ del_exec_link(BlockName, ExecutorBlockName) ->
 
 del_block_exec_links(BlockName) ->
   logger:debug("Deleting all exec links to  ~p", [BlockName]),
-  ets:take(exec_links, BlockName).
+  ets:take(exec_links, BlockName),
+  ok.
 
 %%
 %% Get the contents of exec links table

@@ -232,7 +232,7 @@ get_atom(Config, ValueId) ->
 %% Get a node configuration value and check for errors.
 %%
 -spec get_node(Config :: config_attribs(),
-               ValueId :: value_id()) -> node().
+               ValueId :: value_id()) -> {ok, node()} | {error, atom()}.
 
 get_node(Config, ValueId) ->
   % TODO: Create CheckType to check for node value types
