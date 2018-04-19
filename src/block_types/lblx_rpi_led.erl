@@ -134,13 +134,13 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  Private1 = attrib_utils:merge_attribute_lists(Private, 
-    [
-      {last_state, {empty}},
-      {last_trigger, {empty}},
-      {last_delay_on, {empty}},
-      {last_delay_off, {empty}}
-    ]),
+  % Private1 = attrib_utils:merge_attribute_lists(Private, 
+  %   [
+  %     {last_state, {empty}},
+  %     {last_trigger, {empty}},
+  %     {last_delay_on, {empty}},
+  %     {last_delay_off, {empty}}
+  %   ]),
 
   case config_utils:get_string(Config, led_id) of
     {ok, LedId} ->
@@ -152,31 +152,31 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 true ->
                   Status = initialed,
                   Value = DefaultValue,
-                  {ok, Private2} = set_state(Private1, LedId, DefaultValue, InvertOutput);
+                  set_led_state(LedId, DefaultValue, InvertOutput, "none", 0, 0);
 
                 false ->
                   logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
-                  Private2 = Private1,
+                  %Private2 = Private1,
                   Status = proc_err,
                   Value = null
               end;
             {error, Reason} ->
-              Private2 = Private1,
+              %Private2 = Private1,
               {Value, Status} = config_utils:log_error(Config, invert_output, Reason)
           end;
         {error, Reason} ->
-          Private2 = Private1,
+          %Private2 = Private1,
           {Value, Status} = config_utils:log_error(Config, default_value, Reason)
       end;
     {error, Reason} ->
-      Private2 = Private1,
+      %Private2 = Private1,
       {Value, Status} = config_utils:log_error(Config, led_id, Reason)
   end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
     
   % This is the block state
-  {Config, Inputs, Outputs1, Private2}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %%
@@ -240,21 +240,23 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
         error_result(Config, input, Reason, DefaultValue)
   end,
 
-  {ok, Private1} = set_state(Private, LedId, LedValue, InvertOutput),
-  {ok, Private2} = set_trigger(Private1, LedId, Trigger),
+  set_led_state(LedId, LedValue, InvertOutput, Trigger, DelayOn, DelayOff),
+
+  % {ok, Private1} = set_state(Private, LedId, LedValue, InvertOutput),
+  % {ok, Private2} = set_trigger(Private1, LedId, Trigger),
     
-  % Only set delay_on and delay_off, if trigger is "timer"
-  if (Trigger == "timer") ->
-    {ok, Private3} = set_delay_on(Private2, LedId, DelayOn),
-    {ok, Private4} = set_delay_off(Private3, LedId, DelayOff);
+  % % Only set delay_on and delay_off, if trigger is "timer"
+  % if (Trigger == "timer") ->
+  %   {ok, Private3} = set_delay_on(Private2, LedId, DelayOn),
+  %   {ok, Private4} = set_delay_off(Private3, LedId, DelayOff);
       
-  true ->
-    Private4 = Private2
-  end,
+  % true ->
+  %   Private4 = Private2
+  % end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
-  {Config, Inputs, Outputs1, Private4}.
+  {Config, Inputs, Outputs1, Private}.
 
 
 %% 
@@ -288,9 +290,78 @@ error_result(Config, ErrorInput, Reason, DefaultValue) ->
   {LedValue, Trigger, DelayOn, DelayOff, Value, Status}.
 
 
-% Set the actual value of the LED file here
-set_state(Private, LedId, Value, Invert) ->
+% % Set the actual value of the LED file here
+% set_state(Private, LedId, Value, Invert) ->
   
+%   if Value -> % Value is true/on
+%     if Invert -> % Invert pin value 
+%       State = "0"; % turn output off
+%     true ->      % Don't invert_output output value
+%       State = "1" % turn output on
+%     end;
+%   true -> % Value is false/off
+%     if Invert -> % Invert pin value
+%       State = "1"; % turn output on
+%     true ->      % Don't invert_output output value
+%       State = "0"  % turn output off
+%     end
+%   end,
+
+%   {ok, LastState} = attrib_utils:get_value(Private, last_state),
+%   if (State /= LastState) ->
+%     FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
+%     write_file(FileId, State),
+%     attrib_utils:set_value(Private, last_state, State);
+
+%   true -> % Last state value same as new state, do nothing
+%     {ok, Private}
+%   end.
+
+
+% % Set the LED trigger file
+% set_trigger(Private, LedId, Trigger) ->
+%   {ok, LastTrigger} = attrib_utils:get_value(Private, last_trigger),
+%   if (Trigger /= LastTrigger) ->
+%     FileId = ?LED_FILE_PATH ++ LedId ++ "/trigger",
+%     write_file(FileId, Trigger),
+%     attrib_utils:set_value(Private, last_trigger, Trigger);
+
+%   true -> % Last trigger value same as new trigger, do nothing
+%     {ok, Private}
+%   end.
+
+
+% % Set the LED delay_on file
+% set_delay_on(Private, LedId, DelayOn) ->
+%   {ok, LastOnDelay} = attrib_utils:get_value(Private, last_delay_on),
+%   if (DelayOn /= LastOnDelay) ->
+%     FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_on",
+%     write_file(FileId, integer_to_list(DelayOn)),
+%     attrib_utils:set_value(Private, last_delay_on, DelayOn);
+
+%   true -> % Last delay_on value same as new delay_on, do nothing
+%     {ok, Private}
+%   end.
+
+
+% % Set the LED delay_off file
+% set_delay_off(Private, LedId, DelayOff) ->
+%   {ok, LastOffDelay} = attrib_utils:get_value(Private, last_delay_off),
+%   if (DelayOff /= LastOffDelay) -> 
+%     FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_off",
+%     write_file(FileId, integer_to_list(DelayOff)),
+%     attrib_utils:set_value(Private, last_delay_off, DelayOff);
+
+%   true -> % Last delay_off value same as new delay_off, do nothing
+%     {ok, Private}
+%   end.
+
+
+
+% Set the actual values of the LED files here
+set_led_state(LedId, Value, Invert, Trigger, DelayOn, DelayOff) ->
+  FilePath = ?LED_FILE_PATH ++ LedId,
+
   if Value -> % Value is true/on
     if Invert -> % Invert pin value 
       State = "0"; % turn output off
@@ -305,53 +376,17 @@ set_state(Private, LedId, Value, Invert) ->
     end
   end,
 
-  {ok, LastState} = attrib_utils:get_value(Private, last_state),
-  if (State /= LastState) ->
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
-    write_file(FileId, State),
-    attrib_utils:set_value(Private, last_state, State);
+  write_file(FilePath ++ "/brightness", State),
 
-  true -> % Last state value same as new state, do nothing
-    {ok, Private}
-  end.
+  % Set the LED trigger file
+  write_file(FilePath ++  "/trigger", Trigger),
 
+  if (Trigger == "timer") ->
+    % Set the LED delay_on file
+    write_file(FilePath ++  "/delay_on", integer_to_list(DelayOn)),
 
-% Set the LED trigger file
-set_trigger(Private, LedId, Trigger) ->
-  {ok, LastTrigger} = attrib_utils:get_value(Private, last_trigger),
-  if (Trigger /= LastTrigger) ->
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/trigger",
-    write_file(FileId, Trigger),
-    attrib_utils:set_value(Private, last_trigger, Trigger);
-
-  true -> % Last trigger value same as new trigger, do nothing
-    {ok, Private}
-  end.
-
-
-% Set the LED delay_on file
-set_delay_on(Private, LedId, DelayOn) ->
-  {ok, LastOnDelay} = attrib_utils:get_value(Private, last_delay_on),
-  if (DelayOn /= LastOnDelay) ->
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_on",
-    write_file(FileId, integer_to_list(DelayOn)),
-    attrib_utils:set_value(Private, last_delay_on, DelayOn);
-
-  true -> % Last delay_on value same as new delay_on, do nothing
-    {ok, Private}
-  end.
-
-
-% Set the LED delay_off file
-set_delay_off(Private, LedId, DelayOff) ->
-  {ok, LastOffDelay} = attrib_utils:get_value(Private, last_delay_off),
-  if (DelayOff /= LastOffDelay) -> 
-    FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_off",
-    write_file(FileId, integer_to_list(DelayOff)),
-    attrib_utils:set_value(Private, last_delay_off, DelayOff);
-
-  true -> % Last delay_off value same as new delay_off, do nothing
-    {ok, Private}
+    % Set the LED delay_off file
+    write_file(FilePath ++ "/delay_off", integer_to_list(DelayOff))
   end.
 
 
