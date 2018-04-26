@@ -120,7 +120,7 @@ is_exec_linked(BlockName) ->
                     ExecutorBlockName :: block_name()) -> true.
 
 add_exec_link(BlockName, ExecutorBlockName) ->
-  logger:debug("Inserting exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
+  logger:debug("Adding exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
   ets:insert(exec_links, {BlockName, ExecutorBlockName}).
 
 
@@ -131,7 +131,7 @@ add_exec_link(BlockName, ExecutorBlockName) ->
                     ExecutorBlockName :: block_name()) -> true.
 
 del_exec_link(BlockName, ExecutorBlockName) ->
-  logger:debug("Adding exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
+  logger:debug("Deleting exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
   ets:delete_object(exec_links, {BlockName, ExecutorBlockName}).
 
 
