@@ -153,7 +153,6 @@ initialize({Config, Inputs, Outputs, Private}) ->
                 {dig_T1, {empty}},
                 {dig_T2, {empty}},
                 {dig_T3, {empty}},
-                {dig_T1, {empty}},
                 % Pressure calibration values
                 {dig_P1, {empty}},
                 {dig_P2, {empty}},
