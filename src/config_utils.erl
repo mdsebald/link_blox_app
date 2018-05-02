@@ -176,10 +176,8 @@ get_pos_integer(Config, ValueId) ->
 
 get_integer_greater_than(Config, ValueId, Min) ->
   case get_integer(Config, ValueId) of
-    {error, Reason} ->  {error, Reason};
-
-    {ok, null} -> {ok, null};
-    
+    {error, Reason} ->
+      {error, Reason};
     {ok, Value} ->
       if (Value < Min) ->
         {error, range};

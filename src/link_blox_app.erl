@@ -4,7 +4,7 @@
 %%% @end
 
 
--module('LinkBlox_app').
+-module(link_blox_app).
 
 -author("Mark Sebald").
 

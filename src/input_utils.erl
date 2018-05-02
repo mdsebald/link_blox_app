@@ -71,7 +71,7 @@ get_integer(Inputs, ValueId) ->
 %% Get a postitive (1...) integer input value and check for errors.
 %%
 -spec get_pos_integer(Inputs :: input_attribs(), 
-                      ValueId :: value_id()) -> integer_config_value().
+                      ValueId :: value_id()) -> integer_input_value().
 
 get_pos_integer(Inputs, ValueId) ->
   CheckType = fun is_integer/1,

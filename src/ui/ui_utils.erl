@@ -102,6 +102,8 @@ set_lang_mod(LangMod) ->
 %%
 -spec get_lang_mod() -> atom() | undefined.
 
+-ifndef(TEST).
+
 get_lang_mod() ->
   case ets:lookup(config, lang_mod) of
     [{lang_mod, LangMod}] -> LangMod;
@@ -109,6 +111,11 @@ get_lang_mod() ->
     _NotFound -> undefined
   end.
 
+-else.
+
+get_lang_mod() -> lang_en_us.
+ 
+-endif.
 
 %%
 %% Get the UI strings map

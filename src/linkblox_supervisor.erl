@@ -43,7 +43,7 @@ start_link(Options) ->
            | temporary,
   Modules :: [module()] | dynamic.
 
-init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->   
+init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->   
   lager:set_loglevel(lager_console_backend, LogLevel),
 
   ui_utils:create_config(),
@@ -52,16 +52,16 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel]) ->
 
   logger:info(starting_linkblox_options, [BaseNodeName, LangMod, SSH_Port, LogLevel]),
  
-
   HostName = net_adm:localhost(),
   logger:info(host_name, [HostName]),
 
   % This app should crash if node not started
-  % Start node in vm.args
-  % {ok, NodeName} = start_node(BaseNodeName, 1),
+  
+  {ok, NodeName} = start_node(BaseNodeName, 1),
+  erlang:set_cookie(node(), Cookie),
+  logger:debug("Node cookie set to: ~p", [erlang:get_cookie()]),
 
-  % BlockValuesFile = atom_to_list(NodeName) ++ "Config",
-  BlockValuesFile = atom_to_list(BaseNodeName) ++ "Config",
+  BlockValuesFile = atom_to_list(NodeName) ++ "Config",
   logger:info(block_values_file, [BlockValuesFile]),
   
   start_ssh_cli(),

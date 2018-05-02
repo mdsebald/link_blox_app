@@ -1,0 +1,10 @@
+%{
+  "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm"},
+  "emqttc": {:git, "https://github.com/emqtt/emqttc.git", "cffa0aa356ec9dcabfc66ab6515fe5873f6a0bd3", []},
+  "erlang_ale": {:git, "https://github.com/esl/erlang_ale.git", "37827e2c5ccc745c4eb5ab966b057b0c21ed920e", []},
+  "eunit_formatters": {:hex, :eunit_formatters, "0.3.1", "7a6fc351eb5b873e2356b8852eb751e20c13a72fbca03393cf682b8483509573", [:rebar3], [], "hexpm"},
+  "gen_logger": {:git, "https://github.com/emqtt/gen_logger.git", "e3c9c60b153642193319c793501b10c263d76477", [branch: "master"]},
+  "goldrush": {:git, "https://github.com/basho/goldrush.git", "8f1b715d36b650ec1e1f5612c00e28af6ab0de82", [tag: "0.1.9"]},
+  "lager": {:git, "https://github.com/basho/lager.git", "81eaef0ce98fdbf64ab95665e3bc2ec4b24c7dac", [branch: "master"]},
+  "mix_eunit": {:git, "https://github.com/dantswain/mix_eunit.git", "2de69eb7c17807c146f997cf416f3161f4c4b0e6", []},
+}
