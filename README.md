@@ -2,7 +2,7 @@
 
 #### An application to implement a block programming language targeting embedded and IoT devices ####
 
-[![Build Status](https://travis-ci.org/mdsebald/LinkBloxApp.png?branch=master)](https://travis-ci.org/mdsebald/LinkBloxApp)
+[![Build Status](https://travis-ci.org/mdsebald/link_blox_app.png?branch=master)](https://travis-ci.org/mdsebald/link_blox_app)
 
 LinkBloxApp is an Erlang application. 
 
