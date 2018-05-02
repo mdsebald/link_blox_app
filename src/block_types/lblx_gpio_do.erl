@@ -165,9 +165,13 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(BlockState :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
 
+execute({Config, Inputs, Outputs, Private}, disable) ->
+  % TODO: Set Default state
+  Outputs1 = output_utils:update_all_outputs(Outputs, null, disabled),
+  {Config, Inputs, Outputs1, Private};
+
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
-  
   {ok, GpioPinRef} = attrib_utils:get_value(Private, gpio_pin_ref),
   {ok, DefaultValue} = attrib_utils:get_value(Config, default_value),
   {ok, InvertOutput} = attrib_utils:get_value(Config, invert_output),

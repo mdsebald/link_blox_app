@@ -206,6 +206,18 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(BlockState :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
 
+execute({Config, Inputs, Outputs, Private}, disable) ->
+  % INSTRUCTIONS: If block's disable input value changes to true, 
+  % this function will be called.
+  % Normally, just set all outputs to null, and set status output to disabled.
+  % If block controls external resource(s) (i.e. hardware or external apps),
+  % you may need to disable or default those resource(s) in this function.
+  % As in the main execute() function, only the Outputs or Private 
+  % attrib values may be modified.
+  
+  Outputs1 = output_utils:update_all_outputs(Outputs, null, disabled),
+  {Config, Inputs, Outputs1, Private};
+
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % INSTRUCTIONS: Perform block type specific actions here, 

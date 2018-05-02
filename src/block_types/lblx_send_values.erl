@@ -175,6 +175,10 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(BlockState :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
 
+execute({Config, Inputs, Outputs, Private}, disable) ->
+  Outputs1 = output_utils:update_all_outputs(Outputs, null, disabled),
+  {Config, Inputs, Outputs1, Private};
+
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   % Read the input values and publish to other nodes

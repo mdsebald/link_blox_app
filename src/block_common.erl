@@ -136,9 +136,10 @@ execute(BlockState, ExecMethod) ->
     
       case input_utils:get_boolean(Inputs, disable) of
         {ok, true} -> % Block is disabled
-          Outputs2 = output_utils:update_all_outputs(Outputs, null, disabled),
-          Private1 = Private;
-     
+          {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, disable),
+          % Record method of execution
+          {ok, Outputs2} = attrib_utils:set_values(Outputs1, [{exec_method, ExecMethod}, {exec_out, ExecMethod}]);
+
         {ok, _NotDisabled} -> % Block is not disabled. Disable input is false or null
           {Config, Inputs, Outputs1, Private1} = BlockModule:execute(BlockState, ExecMethod),
           % Record method of execution
