@@ -35,6 +35,9 @@ default_configs(BlockName, Description) ->
     [
       {led_id, {"led0"}},  %| string | "led0" | "led0", "led1" |
       {default_value, {false}}, %| bool | false | true, false |
+      {default_trigger, {"none"}}, %| string | "none" | string representing led trigger mode |
+      {default_delay_on, {250}}, %| integer | 250 | 1..Max Integer |
+      {default_delay_off, {250}}, %| integer | 250 | 1..Max Integer |
       {invert_output, {false}}  %| bool | false | true, false |
     ]). 
 
@@ -134,42 +137,46 @@ upgrade({Config, Inputs, Outputs}) ->
 -spec initialize(BlockState :: block_state()) -> block_state().
 
 initialize({Config, Inputs, Outputs, Private}) ->
-  % Private1 = attrib_utils:merge_attribute_lists(Private, 
-  %   [
-  %     {last_state, {empty}},
-  %     {last_trigger, {empty}},
-  %     {last_delay_on, {empty}},
-  %     {last_delay_off, {empty}}
-  %   ]),
 
   case config_utils:get_string(Config, led_id) of
     {ok, LedId} ->
       case config_utils:get_boolean(Config, default_value) of
         {ok, DefaultValue} ->
-          case config_utils:get_boolean(Config, invert_output) of
-            {ok, InvertOutput} -> 
-              case filelib:is_file(?LED_FILE_PATH ++ LedId) of
-                true ->
-                  Status = initialed,
-                  Value = DefaultValue,
-                  set_led_state(LedId, DefaultValue, InvertOutput, "none", 0, 0);
-
-                false ->
-                  logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
-                  %Private2 = Private1,
-                  Status = proc_err,
-                  Value = null
-              end;
+          case config_utils:get_string(Config, default_trigger) of
+            {ok, DefaultTrigger} ->
+              case config_utils:get_pos_integer(Config, default_delay_on) of
+                {ok, DefaultDelayOn} ->
+                  case config_utils:get_pos_integer(Config, default_delay_off) of
+                    {ok, DefaultDelayOff} ->
+                      case config_utils:get_boolean(Config, invert_output) of
+                        {ok, InvertOutput} -> 
+                          case filelib:is_file(?LED_FILE_PATH ++ LedId) of
+                            true ->
+                              Status = initialed,
+                              Value = DefaultValue,
+                              set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, 
+                                            DefaultDelayOff, InvertOutput);
+                            false ->
+                              logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
+                              Status = proc_err,
+                              Value = null
+                            end;
+                        {error, Reason} ->
+                          {Value, Status} = config_utils:log_error(Config, invert_output, Reason)
+                      end;
+                    {error, Reason} ->
+                      {Value, Status} = config_utils:log_error(Config, default_delay_off, Reason)
+                  end;
+                {error, Reason} ->
+                  {Value, Status} = config_utils:log_error(Config, default_delay_on, Reason)
+              end;                                                      
             {error, Reason} ->
-              %Private2 = Private1,
               {Value, Status} = config_utils:log_error(Config, invert_output, Reason)
           end;
         {error, Reason} ->
-          %Private2 = Private1,
           {Value, Status} = config_utils:log_error(Config, default_value, Reason)
       end;
     {error, Reason} ->
-      %Private2 = Private1,
       {Value, Status} = config_utils:log_error(Config, led_id, Reason)
   end,
 
@@ -185,10 +192,18 @@ initialize({Config, Inputs, Outputs, Private}) ->
 -spec execute(BlockState :: block_state(), 
               ExecMethod :: exec_method()) -> block_state().
 
+execute({Config, Inputs, Outputs, Private}, disable) ->
+  set_led_default_state(Config),
+  Outputs1 = output_utils:update_all_outputs(Outputs, null, disabled),
+  {Config, Inputs, Outputs1, Private};
+
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   {ok, LedId} = config_utils:get_string(Config, led_id),
   {ok, DefaultValue} = config_utils:get_boolean(Config, default_value),
+  {ok, DefaultTrigger} = config_utils:get_string(Config, default_trigger),
+  {ok, DefaultDelayOn} = config_utils:get_integer(Config, default_delay_on),
+  {ok, DefaultDelayOff} = config_utils:get_integer(Config, default_delay_on),
   {ok, InvertOutput} = config_utils:get_boolean(Config, invert_output),
      
   % Set Output Val to input and set the actual LED file value too
@@ -197,27 +212,40 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
       case input_utils:get_string(Inputs, trigger) of
         {ok, InTrigger} ->
           if (InTrigger == "timer") ->
-            case input_utils:get_integer_greater_than(Inputs, delay_on, 0) of
-              {ok, DelayOn} ->
-                case input_utils:get_integer_greater_than(Inputs, delay_off, 0) of
-                  {ok, DelayOff} ->
+            case input_utils:get_pos_integer(Inputs, delay_on) of
+              {ok, InDelayOn} ->
+                case input_utils:get_pos_integer(Inputs, delay_off) of
+                  {ok, InDelayOff} ->
                     if (InValue == null) ->
                       LedValue = DefaultValue;
                     true ->
                       LedValue = InValue
                     end,
-                    Trigger = InTrigger,
+
+                    if (InDelayOn == null) ->
+                      DelayOn = DefaultDelayOn;
+                    true ->
+                      DelayOn = InDelayOn
+                    end,
+
+                    if (InDelayOff == null) ->
+                      DelayOff = DefaultDelayOff;
+                    true ->
+                      DelayOff = InDelayOff
+                    end,
+
+                    set_led_state(LedId, LedValue, InTrigger, DelayOn, DelayOff, InvertOutput),
                     Value = InValue,
                     Status = normal;
 
                   {error, Reason} ->
-                    {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
-                      error_result(Config, delay_off, Reason, DefaultValue)
+                    {Value, Status} = input_utils:log_error(Config, delay_off, Reason),
+                    set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, DefaultDelayOff, InvertOutput)
                 end;
 
               {error, Reason} ->
-                {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
-                  error_result(Config, delay_on, Reason, DefaultValue)
+                {Value, Status} = input_utils:log_error(Config, delay_on, Reason),
+                set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, DefaultDelayOff, InvertOutput)
             end;
 
           true -> % Trigger != "timer", don't care about on/off delay times
@@ -226,33 +254,24 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
             true ->
               LedValue = InValue
             end,
-            Trigger = InTrigger,
-            DelayOn = DelayOff = 0,
+
+            if (InTrigger == null) ->
+              Trigger = DefaultTrigger;
+            true ->
+              Trigger = InTrigger
+            end,
+            set_led_state(LedId, LedValue, Trigger, 0, 0, InvertOutput),
             Value = InValue,
             Status = normal
           end;
         {error, Reason} ->
-          {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
-            error_result(Config, trigger, Reason, DefaultValue)
+          {Value, Status} = input_utils:log_error(Config, trigger, Reason),
+          set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, DefaultDelayOff, InvertOutput)
       end;
     {error, Reason} ->
-      {LedValue, Trigger, DelayOn, DelayOff, Value, Status} =
-        error_result(Config, input, Reason, DefaultValue)
+      {Value, Status} = input_utils:log_error(Config, input, Reason),
+      set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, DefaultDelayOff, InvertOutput)
   end,
-
-  set_led_state(LedId, LedValue, InvertOutput, Trigger, DelayOn, DelayOff),
-
-  % {ok, Private1} = set_state(Private, LedId, LedValue, InvertOutput),
-  % {ok, Private2} = set_trigger(Private1, LedId, Trigger),
-    
-  % % Only set delay_on and delay_off, if trigger is "timer"
-  % if (Trigger == "timer") ->
-  %   {ok, Private3} = set_delay_on(Private2, LedId, DelayOn),
-  %   {ok, Private4} = set_delay_off(Private3, LedId, DelayOff);
-      
-  % true ->
-  %   Private4 = Private2
-  % end,
 
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
 
@@ -265,10 +284,11 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 -spec delete(BlockState :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, _Private}) -> 
-  %
+  % Leave LED in default state on block delete
+  set_led_default_state(Config),
+
   % Private values are created in the block initialization routine
   % So they should be deleted here
-  
   {Config, Inputs, Outputs}.
 
 
@@ -280,86 +300,19 @@ delete({Config, Inputs, Outputs, _Private}) ->
 %set_led(LedId, Trigger, DelayOn, DelayOff) ->
 %  Elixir.Nerves.Leds:set( LedId, [ {trigger, Trigger}, {delay_on, DelayOn}, {delay_off, DelayOff}]).
 
-% Found some input value error
-% Log error, and return appropriate values
-error_result(Config, ErrorInput, Reason, DefaultValue) ->
-  LedValue = DefaultValue,
-  Trigger = "none",
-  DelayOn = DelayOff = 0,
-  {Value, Status} = input_utils:log_error(Config, ErrorInput, Reason),
-  {LedValue, Trigger, DelayOn, DelayOff, Value, Status}.
 
-
-% % Set the actual value of the LED file here
-% set_state(Private, LedId, Value, Invert) ->
-  
-%   if Value -> % Value is true/on
-%     if Invert -> % Invert pin value 
-%       State = "0"; % turn output off
-%     true ->      % Don't invert_output output value
-%       State = "1" % turn output on
-%     end;
-%   true -> % Value is false/off
-%     if Invert -> % Invert pin value
-%       State = "1"; % turn output on
-%     true ->      % Don't invert_output output value
-%       State = "0"  % turn output off
-%     end
-%   end,
-
-%   {ok, LastState} = attrib_utils:get_value(Private, last_state),
-%   if (State /= LastState) ->
-%     FileId = ?LED_FILE_PATH ++ LedId ++ "/brightness",
-%     write_file(FileId, State),
-%     attrib_utils:set_value(Private, last_state, State);
-
-%   true -> % Last state value same as new state, do nothing
-%     {ok, Private}
-%   end.
-
-
-% % Set the LED trigger file
-% set_trigger(Private, LedId, Trigger) ->
-%   {ok, LastTrigger} = attrib_utils:get_value(Private, last_trigger),
-%   if (Trigger /= LastTrigger) ->
-%     FileId = ?LED_FILE_PATH ++ LedId ++ "/trigger",
-%     write_file(FileId, Trigger),
-%     attrib_utils:set_value(Private, last_trigger, Trigger);
-
-%   true -> % Last trigger value same as new trigger, do nothing
-%     {ok, Private}
-%   end.
-
-
-% % Set the LED delay_on file
-% set_delay_on(Private, LedId, DelayOn) ->
-%   {ok, LastOnDelay} = attrib_utils:get_value(Private, last_delay_on),
-%   if (DelayOn /= LastOnDelay) ->
-%     FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_on",
-%     write_file(FileId, integer_to_list(DelayOn)),
-%     attrib_utils:set_value(Private, last_delay_on, DelayOn);
-
-%   true -> % Last delay_on value same as new delay_on, do nothing
-%     {ok, Private}
-%   end.
-
-
-% % Set the LED delay_off file
-% set_delay_off(Private, LedId, DelayOff) ->
-%   {ok, LastOffDelay} = attrib_utils:get_value(Private, last_delay_off),
-%   if (DelayOff /= LastOffDelay) -> 
-%     FileId = ?LED_FILE_PATH ++ LedId ++ "/delay_off",
-%     write_file(FileId, integer_to_list(DelayOff)),
-%     attrib_utils:set_value(Private, last_delay_off, DelayOff);
-
-%   true -> % Last delay_off value same as new delay_off, do nothing
-%     {ok, Private}
-%   end.
-
+set_led_default_state(Config) ->
+  {ok, LedId} = config_utils:get_string(Config, led_id),
+  {ok, DefaultValue} = config_utils:get_boolean(Config, default_value),
+  {ok, DefaultTrigger} = config_utils:get_string(Config, default_trigger),
+  {ok, DefaultDelayOn} = config_utils:get_integer(Config, default_delay_on),
+  {ok, DefaultDelayOff} = config_utils:get_integer(Config, default_delay_on),
+  {ok, InvertOutput} = config_utils:get_boolean(Config, invert_output),
+  set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, DefaultDelayOff, InvertOutput).
 
 
 % Set the actual values of the LED files here
-set_led_state(LedId, Value, Invert, Trigger, DelayOn, DelayOff) ->
+set_led_state(LedId, Value, Trigger, DelayOn, DelayOff, Invert) ->
   FilePath = ?LED_FILE_PATH ++ LedId,
 
   if Value -> % Value is true/on
@@ -381,6 +334,7 @@ set_led_state(LedId, Value, Invert, Trigger, DelayOn, DelayOff) ->
   % Set the LED trigger file
   write_file(FilePath ++  "/trigger", Trigger),
 
+  % Only set Delay On/Off times if trigger is "timer"
   if (Trigger == "timer") ->
     % Set the LED delay_on file
     write_file(FilePath ++  "/delay_on", integer_to_list(DelayOn)),
