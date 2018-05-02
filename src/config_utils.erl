@@ -18,9 +18,10 @@
           name_module/1, 
           name_module_version/1,
           get_any_type/2,
-          get_integer_range/4,
+          get_integer/2,
           get_pos_integer/2,
-          get_integer/2, 
+          get_integer_greater_than/3,
+          get_integer_range/4,
           get_float/2, 
           get_boolean/2,
           get_string/2,
@@ -32,6 +33,7 @@
           resize_attribute_array_value/4,
           log_error/3
 ]).
+
 
 %%
 %%  Get block name from Config attribute values
@@ -137,27 +139,16 @@ get_any_type(Config, ValueId) ->
 %%
 %% Get an integer configuration value and check for errors.
 %%
--spec get_integer_range(Config :: config_attribs(), 
-                        ValueId :: value_id(),
-                        Min :: integer(),
-                        Max :: integer()) -> integer_config_value().
+-spec get_integer(Config :: config_attribs(), 
+                  ValueId :: value_id()) -> integer_config_value().
 
-get_integer_range(Config, ValueId, Min, Max) ->
+get_integer(Config, ValueId) ->
   CheckType = fun is_integer/1,
-  case get_value(Config, ValueId, CheckType) of
-    {error, Reason} -> 
-      {error, Reason};
-    {ok, Value} ->
-      if (Value < Min ) orelse (Max < Value) ->
-        {error, range};
-      true -> 
-        {ok, Value}
-      end
-  end.
+  get_value(Config, ValueId, CheckType).
 
 
 %%
-%% Get a a postitive (1...) integer configuration value and check for errors.
+%% Get a postitive (1...) integer configuration value and check for errors.
 %%
 -spec get_pos_integer(Config :: config_attribs(), 
                       ValueId :: value_id()) -> integer_config_value().
@@ -176,12 +167,48 @@ get_pos_integer(Config, ValueId) ->
   end.
 
 
--spec get_integer(Config :: config_attribs(), 
-                  ValueId :: value_id()) -> integer_config_value().
+%%
+%% Get an integer config value greater than minimum and check for errors.
+%%
+-spec get_integer_greater_than(Config :: config_attribs(), 
+                               ValueId :: value_id(),
+                               Min :: integer()) -> integer_config_value().
 
-get_integer(Config, ValueId) ->
+get_integer_greater_than(Config, ValueId, Min) ->
+  case get_integer(Config, ValueId) of
+    {error, Reason} ->  {error, Reason};
+
+    {ok, null} -> {ok, null};
+    
+    {ok, Value} ->
+      if (Value < Min) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
+
+
+%%
+%% Get an integer configuration value within specified range and check for errors.
+%%
+-spec get_integer_range(Config :: config_attribs(), 
+                        ValueId :: value_id(),
+                        Min :: integer(),
+                        Max :: integer()) -> integer_config_value().
+
+get_integer_range(Config, ValueId, Min, Max) ->
   CheckType = fun is_integer/1,
-  get_value(Config, ValueId, CheckType).
+  case get_value(Config, ValueId, CheckType) of
+    {error, Reason} -> 
+      {error, Reason};
+    {ok, Value} ->
+      if (Value < Min ) orelse (Max < Value) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
 
 
 %%
@@ -387,27 +414,39 @@ log_error(Config, ValueId, Reason) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
+
+% get_integer/2,
+% get_pos_integer/2,
+% get_integer_greater_than/3,
+% get_integer_range/4,
+% get_float/2, 
+% get_boolean/2,
+% get_string/2,
+% get_atom/2,
+% get_node/2,
+% get_value/3,
+% init_i2c/2,
+% init_gpio/4,
+% resize_attribute_array_value/4,
+% log_error/3
+
 % ====================================================================
 % Test name()
 % 
 name_config_test()->
   Config = test_data:config_utils_config_attribs1(),
-  
-  ExpectedResult = test_config_utils,
-  
-  Result = name(Config),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name(Config),
+  Expected = test_config_utils,
+  ?assertEqual(Actual, Expected).
   
 name_block_defn_test()->
   Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   BlockDefn = {Config, Inputs, Outputs},
-  
-  ExpectedResult = test_config_utils,
-  
-  Result = name(BlockDefn),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name(BlockDefn),  
+  Expected = test_config_utils,
+  ?assertEqual(Actual, Expected).
   
 name_block_state_test()->
   Config = test_data:config_utils_config_attribs1(),
@@ -415,11 +454,38 @@ name_block_state_test()->
   Outputs = [],
   Private = [],
   BlockState = {Config, Inputs, Outputs, Private},
+  Actual = name(BlockState),  
+  Expected = test_config_utils,
+  ?assertEqual(Actual, Expected).
+% ====================================================================
+
+% ====================================================================
+% Test module()
+% 
+module_config_test()->
+  Config = test_data:config_utils_config_attribs1(),
+  Actual = module(Config),
+  Expected = type_test,
+  ?assertEqual(Actual, Expected).
   
-  ExpectedResult = test_config_utils,
+module_block_defn_test()->
+  Config = test_data:config_utils_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  BlockDefn = {Config, Inputs, Outputs},
+  Actual = module(BlockDefn),  
+  Expected = type_test,
+  ?assertEqual(Actual, Expected).
   
-  Result = name(BlockState),
-  ?assertEqual(ExpectedResult, Result).
+module_block_state_test()->
+  Config = test_data:config_utils_config_attribs1(),
+  Inputs = [],
+  Outputs = [],
+  Private = [],
+  BlockState = {Config, Inputs, Outputs, Private},
+  Actual = module(BlockState),  
+  Expected = type_test,
+  ?assertEqual(Actual, Expected).
 % ====================================================================
 
 % ====================================================================
@@ -427,22 +493,18 @@ name_block_state_test()->
 % 
 name_module_config_test()->
   Config = test_data:config_utils_config_attribs1(),
-  
-  ExpectedResult = {test_config_utils, type_test},
-  
-  Result = name_module(Config),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name_module(Config),  
+  Expected = {test_config_utils, type_test},
+  ?assertEqual(Actual, Expected).
   
 name_module_block_defn_test()->
   Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   BlockDefn = {Config, Inputs, Outputs},
-  
-  ExpectedResult = {test_config_utils, type_test},
-  
-  Result = name_module(BlockDefn),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name_module(BlockDefn),  
+  Expected = {test_config_utils, type_test},
+  ?assertEqual(Actual, Expected).
   
 name_module_block_state_test()->
   Config = test_data:config_utils_config_attribs1(),
@@ -450,11 +512,9 @@ name_module_block_state_test()->
   Outputs = [],
   Private = [],
   BlockState = {Config, Inputs, Outputs, Private},
-  
-  ExpectedResult = {test_config_utils, type_test},
-  
-  Result = name_module(BlockState),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name_module(BlockState),  
+  Expected = {test_config_utils, type_test},
+  ?assertEqual(Actual, Expected).
 % ====================================================================
 
 % ====================================================================
@@ -462,22 +522,18 @@ name_module_block_state_test()->
 % 
 name_module_version_config_test()->
   Config = test_data:config_utils_config_attribs1(),
-  
-  ExpectedResult = {test_config_utils, type_test, "0.0.0"},
-  
-  Result = name_module_version(Config),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name_module_version(Config), 
+  Expected = {test_config_utils, type_test, "0.0.0"},
+  ?assertEqual(Actual, Expected).
   
 name_module_version_block_defn_test()->
   Config = test_data:config_utils_config_attribs1(),
   Inputs = [],
   Outputs = [],
   BlockDefn = {Config, Inputs, Outputs},
-  
-  ExpectedResult = {test_config_utils, type_test, "0.0.0"},
-  
-  Result = name_module_version(BlockDefn),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name_module_version(BlockDefn),  
+  Expected = {test_config_utils, type_test, "0.0.0"},
+  ?assertEqual(Actual, Expected).
   
 name_module_version_block_state_test()->
   Config = test_data:config_utils_config_attribs1(),
@@ -485,11 +541,28 @@ name_module_version_block_state_test()->
   Outputs = [],
   Private = [],
   BlockState = {Config, Inputs, Outputs, Private},
-  
-  ExpectedResult = {test_config_utils, type_test, "0.0.0"},
-  
-  Result = name_module_version(BlockState),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = name_module_version(BlockState), 
+  Expected = {test_config_utils, type_test, "0.0.0"},
+  ?assertEqual(Actual, Expected).
+% ====================================================================
+
+% ====================================================================
+% Test get_any_type()
+% 
+get_any_type_not_found_test()->
+  Config = test_data:config_utils_config_attribs1(),
+  ValueName = doesnt_exist,
+  Actual = get_any_type(Config, ValueName),  
+  Expected = {error, not_found},
+  ?assertEqual(Actual, Expected).
+
+get_any_type_ok_test()->
+  Config = test_data:config_utils_config_attribs1(),
+  ValueName = string1,
+  Actual = get_any_type(Config, ValueName),  
+  Expected = {ok, "Testing"},
+  ?assertEqual(Actual, Expected).
+
 % ====================================================================
 
 % ====================================================================
@@ -498,11 +571,9 @@ name_module_version_block_state_test()->
 get_integer_range_test()->
   Config = test_data:config_utils_config_attribs1(),
   ValueName = integer_good,
-  
-  ExpectedResult = {error, range},
-  
-  Result = get_integer_range(Config, ValueName, 1, 100),
-  ?assertEqual(ExpectedResult, Result).
+  Actual = get_integer_range(Config, ValueName, 1, 100),  
+  Expected = {error, range},
+  ?assertEqual(Actual, Expected).
 % ====================================================================
   
 
@@ -516,11 +587,9 @@ get_value_test() ->
 %     
 log_error_test() ->
   Config = test_data:config_utils_config_attribs1(),
-  
-  ExpectedResult =  {null, config_err},
-  
-  Result = log_error(Config, value_name, bad_value),
-  ?assertEqual(ExpectedResult, Result) .
+  Actual = log_error(Config, value_name, bad_value),  
+  Expected =  {null, config_err},
+  ?assertEqual(Actual, Expected).
 % ====================================================================
 
 -endif.
