@@ -16,6 +16,7 @@
           get_any_type/2,
           get_number/2,
           get_integer/2,
+          get_pos_integer/2,
           get_integer_greater_than/3,
           get_integer_less_than/3,
           get_integer_range/4,
@@ -24,8 +25,6 @@
           get_boolean/2,
           get_string/2,
           get_value/3,
-          %add_exec_in/2,
-          %del_exec_in/2,
           set_fixed_value/3,
           set_to_default/2, 
           set_to_defaults/1,
@@ -67,7 +66,27 @@ get_integer(Inputs, ValueId) ->
   CheckType = fun is_integer/1,
   get_value(Inputs, ValueId, CheckType).
 
-  
+
+%%
+%% Get a postitive (1...) integer input value and check for errors.
+%%
+-spec get_pos_integer(Inputs :: input_attribs(), 
+                      ValueId :: value_id()) -> integer_config_value().
+
+get_pos_integer(Inputs, ValueId) ->
+  CheckType = fun is_integer/1,
+  case get_value(Inputs, ValueId, CheckType) of
+    {error, Reason} -> 
+      {error, Reason};
+    {ok, Value} ->
+      if (Value < 1 ) ->
+        {error, range};
+      true -> 
+        {ok, Value}
+      end
+  end.
+
+
 %%
 %% Get an integer input value greater than minimum, and check for errors.
 %%
@@ -418,10 +437,7 @@ get_boolean_array_found_test() ->
   ExpectedResult = {ok, [true, false, null, error]},
   Result = get_boolean_array(TestInputs, bool_array_in),
   ?assertEqual(ExpectedResult, Result).
-
 % ====================================================================
-
-
 
 % ====================================================================
 % Test resize_attribute_array_value()  
@@ -453,6 +469,7 @@ resize_attribute_array_value_increase_test() ->
   Result = resize_attribute_array_value(BlockName, Inputs, 
                          ArrayValueName, TargQuant, DefaultValue),
   ?assertEqual(ExpectedResult, Result).
+% ====================================================================
 
 % ====================================================================
 % Test set_fixed_value()
@@ -472,10 +489,7 @@ set_fixed_value_array_test() ->
   ExpectedResult =  {integer_array, [{123, {0}}, {12345, {12345}}]},
   
   ?assertEqual(ExpectedResult, Result).
-
 % ====================================================================
-
-
 
 % ====================================================================
 % Test log_error()
