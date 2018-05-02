@@ -109,6 +109,20 @@ start_ntpd() -> ok.
 
 -else.
 
+-ifdef(TEST). % Testing don't need to start node
+
+% Node is already started
+start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
+
+% Don't start SSH command line interface
+start_ssh_cli() -> ok.
+
+start_ntpd() -> ok.
+% ntpd starts by itself
+%    'Nerves.Ntp.Worker':start_link().
+
+-else.
+
 %% limit number of nodes we try to start
 start_node(BaseNodeName, Index) when (Index =< 10)->
   IndexStr = io_lib:format("~2..0w", [Index]),
@@ -138,5 +152,6 @@ start_ssh_cli() ->
 
 start_ntpd() -> ok.
 
+-endif.
 -endif.
 
