@@ -39,7 +39,7 @@ Use LinkBlox to build the actual application releases to either run on Linux, or
 
 To build LinkBloxApp, Elixir 1.6 or greater and Erlang OTP 20 or later must be installed
 
-$ git clone
+$ git clone https://github.com/mdsebald/link_blox_app.git
 
 $ cd link_blox_app
 
