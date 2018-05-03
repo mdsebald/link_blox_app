@@ -315,6 +315,20 @@ set_led_default_state(Config) ->
 set_led_state(LedId, Value, Trigger, DelayOn, DelayOff, Invert) ->
   FilePath = ?LED_FILE_PATH ++ LedId,
 
+  % Set the LED trigger file
+  write_file(FilePath ++  "/trigger", Trigger),
+
+  % Only set Delay On/Off times if trigger is "timer"
+  if (Trigger == "timer") ->
+    % Set the LED delay_on file
+    write_file(FilePath ++  "/delay_on", integer_to_list(DelayOn)),
+
+    % Set the LED delay_off file
+    write_file(FilePath ++ "/delay_off", integer_to_list(DelayOff));
+  true -> 
+    ok
+  end,
+
   if Value -> % Value is true/on
     if Invert -> % Invert pin value 
       State = "0"; % turn output off
@@ -328,22 +342,7 @@ set_led_state(LedId, Value, Trigger, DelayOn, DelayOff, Invert) ->
       State = "0"  % turn output off
     end
   end,
-
-  write_file(FilePath ++ "/brightness", State),
-
-  % Set the LED trigger file
-  write_file(FilePath ++  "/trigger", Trigger),
-
-  % Only set Delay On/Off times if trigger is "timer"
-  if (Trigger == "timer") ->
-    % Set the LED delay_on file
-    write_file(FilePath ++  "/delay_on", integer_to_list(DelayOn)),
-
-    % Set the LED delay_off file
-    write_file(FilePath ++ "/delay_off", integer_to_list(DelayOff));
-  true -> 
-    ok
-  end.
+  write_file(FilePath ++ "/brightness", State).
 
 
 % Write a value to one of the LED control files
