@@ -4,7 +4,6 @@
 
 [![Build Status](https://travis-ci.org/mdsebald/link_blox_app.png?branch=master)](https://travis-ci.org/mdsebald/link_blox_app)
 
-LinkBloxApp is an Erlang application. 
 
 The purpose of LinkBlox is to abstract away programming complexity into discrete blocks of functionality that can be created and linked to other blocks to create a device with desired functionality.
 
@@ -40,19 +39,23 @@ Use LinkBlox to build the actual application releases to either run on Linux, or
 
 To build LinkBloxApp, Elixir 1.6 or greater and Erlang OTP 20 or later must be installed
 
-'$ git clone 
+'''
+$ git clone 
 $ cd link_blox_app
 $ mix deps.get
 $ mix compile
 $ mix run --no-halt'
+'''
 
 To run unit tests
-
-'$ mix eunit'
+'''
+$ mix eunit
+'''
 
 To run Dialyzer 
-
-'$ mix dialyzer'
+'''
+$ mix dialyzer
+'''
 
 #### User Interface ####
 
