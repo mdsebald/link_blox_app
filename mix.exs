@@ -1,12 +1,15 @@
 defmodule LinkBloxApp.MixProject do
   use Mix.Project
 
+  @target System.get_env("MIX_TARGET") || "host"
+
   def project do
     [
       app: :link_blox_app,
       version: "0.5.0",
       elixir: "~> 1.6",
       language: :erlang,
+      erlc_options: erlc_options(@target),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       preferred_cli_env: [eunit: :test]
@@ -31,5 +34,13 @@ defmodule LinkBloxApp.MixProject do
       {:mix_eunit, github: "dantswain/mix_eunit", only: [:dev], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
     ]
+  end
+
+  def erlc_options("host") do
+    []
+  end
+  
+  def erlc_options(_target) do
+    [{:d, :STANDALONE}]
   end
 end
