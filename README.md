@@ -22,11 +22,11 @@ The code for each type of block is contained in an Erlang module.  The name of t
 - delete(): Release resources used, and unlinks from any connected blocks.
 
 Block data is defined as a tuple of 3 lists:
- - Config: A list of key ID value pair tuples. Config values are normally set at block creation.  Modifying block config values causes the block to be re-initialized.  Equivalent to deleting and recreating the block.
- - Inputs: A list of key ID, current value, and default value. Inputs may be set to fixed values or "linked" to an output value of another block, or a block on another node.  A link is specified by a block name and output value ID. An optional node name, may be prefixed, to link to a block value on another LinkBlox node.
- - Outputs: A list of key ID, value, and list of links. Output values contain the results of the block execution.  The list of links indicate which block and input value this current block ouput value should be sent to.
+ - Config: A list of key value pair tuples. Config values are normally set at block creation.  Modifying block config values causes the block to be re-initialized.  Equivalent to deleting and recreating the block.
+ - Inputs: A list of key, current value, and default value tuples. Inputs may be set to a fixed value or obtain a value via a link to the output value of a block.  
+ - Outputs: A list of key, value, and list of links tuples. Output values contain the results of the block execution.  The list of links indicate which block and input value this current block ouput value should be sent to.
  
- LinkBlox also allows arrays of Config, Inputs, and Outputs to be defined.  Arrays of attributes are specified by a key ID and an index, from 1 to the size of the array.
+ LinkBlox also allows arrays of Config, Inputs, and Outputs to be created.  Arrays of attributes are specified by a key and an index, from 1 to the size of the array.
  
 #### Block Types ####
 
@@ -40,19 +40,19 @@ Use LinkBlox to build the actual application releases to either run on Linux, or
 
 To build LinkBloxApp, Elixir 1.6 or greater and Erlang OTP 20 or later must be installed
 
-$ git clone 
+'$ git clone 
 $ cd link_blox_app
 $ mix deps.get
 $ mix compile
-$ mix run --no-halt
+$ mix run --no-halt'
 
 To run unit tests
 
-$ mix eunit
+'$ mix eunit'
 
 To run Dialyzer 
 
-$ mix dialyzer
+'$ mix dialyzer'
 
 #### User Interface ####
 
