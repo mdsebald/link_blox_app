@@ -36,11 +36,15 @@ defmodule LinkBloxApp.MixProject do
     ]
   end
 
-  def erlc_options("host") do
-    []
+  defp erlc_options("host") do
+    if Mix.env() == :test do
+      [{:d, :TEST}]
+    else
+      []
+    end
   end
   
-  def erlc_options(_target) do
+  defp erlc_options(_target) do
     [{:d, :STANDALONE}]
   end
 end

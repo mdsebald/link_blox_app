@@ -58,8 +58,13 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->
   % This app should crash if node not started
   
   {ok, NodeName} = start_node(BaseNodeName, 1),
-  erlang:set_cookie(node(), Cookie),
-  logger:debug("Node cookie set to: ~p", [erlang:get_cookie()]),
+
+  if (node() /= nonode@nohost) ->
+    erlang:set_cookie(node(), Cookie),
+    logger:debug("Node cookie set to: ~p", [erlang:get_cookie()]);
+  true ->
+    logger:debug("Node not started")
+  end,
 
   BlockValuesFile = atom_to_list(NodeName) ++ "Config",
   logger:info(block_values_file, [BlockValuesFile]),
@@ -95,7 +100,7 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->
 -spec start_node(BaseNodeName :: atom(),
                  Index :: pos_integer()) -> {ok, atom()}.
 
--ifdef(STANDALONE). % i.e. if Nerves build
+-ifdef(STANDALONE). % i.e. if Embedded system build
 
 % Node is already started
 start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
@@ -103,15 +108,14 @@ start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
 % Don't start SSH command line interface
 start_ssh_cli() -> ok.
 
+% TODO: Start ntpd via system config value
 start_ntpd() -> ok.
-% ntpd starts by itself
 %    'Nerves.Ntp.Worker':start_link().
 
 -else.
 
 -ifdef(TEST). % Testing don't need to start node
 
-% Node is already started
 start_node(BaseNodeName, _Index) -> {ok, BaseNodeName}.
 
 % Don't start SSH command line interface
