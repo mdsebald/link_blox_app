@@ -31,11 +31,11 @@
 start(normal, Options) ->
   case linkblox_supervisor:start_link(Options) of
     {ok, Pid} ->
-      logger:info(linkblox_startup_complete),
+      m_logger:info(linkblox_startup_complete),
       {ok, Pid};
 
     Error ->
-      logger:error("~p Starting LinkBlox", [Error]),
+      m_logger:error("~p Starting LinkBlox", [Error]),
       Error
   end.
 

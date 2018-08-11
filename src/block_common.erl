@@ -106,7 +106,7 @@ initialize({Config, Inputs, Outputs}) ->
 
   {BlockName, BlockModule} = config_utils:name_module(Config),
 
-  logger:debug(initializing_block, [BlockName]),
+  m_logger:debug(initializing_block, [BlockName]),
   % Initialize the private attributes values list here.
   % Timer reference attribute is common to all block types
   Private = [ {timer_ref, {empty}} ],
@@ -240,13 +240,13 @@ update_execution_timer(BlockName, Inputs, Private) ->
       true -> % Execute Interval input value is negative
         Status = input_err, 
         NewTimerRef = empty,
-        logger:error(negative_exec_interval_value, [BlockName, ExecuteInterval])
+        m_logger:error(negative_exec_interval_value, [BlockName, ExecuteInterval])
       end
     end;
   true ->  % Execute Interval input value is not an integer
     Status = input_err, 
     NewTimerRef = empty,
-    logger:error(invalid_exec_interval_value, [BlockName, ExecuteInterval])
+    m_logger:error(invalid_exec_interval_value, [BlockName, ExecuteInterval])
   end,
   {ok, Private1} = attrib_utils:set_value(Private, timer_ref, NewTimerRef),
   {Status, Private1}.
@@ -414,7 +414,7 @@ update_linked_inputs(NewValue, Links) ->
                       block_server:update(ToBlockName, [{ToValueId, NewValue}]);
 
                     InvalidLink ->
-                      logger:error(err_unrecognized_link, [InvalidLink])
+                      m_logger:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
                 Links).
@@ -439,7 +439,7 @@ update_execute(BlockName, Outputs) ->
                       block_server:execute(ToBlockName, BlockName, exec_out);
 
                     InvalidLink ->
-                      logger:error(err_unrecognized_link, [InvalidLink])
+                      m_logger:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
                 Links).

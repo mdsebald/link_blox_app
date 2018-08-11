@@ -395,7 +395,7 @@ resize_attribute_array_value(BlockName, Inputs, ArrayValueName, TargQuant, Defau
 log_error(Config, ValueId, Reason) ->
   BlockName = config_utils:name(Config),
   ValueIdStr = attrib_utils:value_id_to_str(ValueId),
-  logger:error(err_invalid_input_value, [BlockName, ValueIdStr, Reason]),
+  m_logger:error(err_invalid_input_value, [BlockName, ValueIdStr, Reason]),
   {null, input_err}.
   
   

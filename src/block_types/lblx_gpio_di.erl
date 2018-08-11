@@ -113,12 +113,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      logger:info(block_type_upgraded_from_ver_to, 
+      m_logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      logger:error(err_upgrading_block_type_from_ver_to, 
+      m_logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -195,7 +195,7 @@ delete({Config, Inputs, Outputs, Private}) ->
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
 handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
-  logger:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
+  m_logger:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
   NewBlockState = block_common:execute(BlockState, hardware),
   {noreply, NewBlockState};
 
@@ -204,7 +204,7 @@ handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
 %% 
 handle_info(Info, BlockState) ->
   {BlockName, BlockModule} = config_utils:name_module(BlockState),
-  logger:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  m_logger:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
   {noreply, BlockState}.  
 
 

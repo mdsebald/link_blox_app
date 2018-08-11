@@ -117,12 +117,12 @@ upgrade({Config, Inputs, Outputs}) ->
 
   case attrib_utils:set_value(Config, version, version()) of
     {ok, UpdConfig} ->
-      logger:info(block_type_upgraded_from_ver_to, 
+      m_logger:info(block_type_upgraded_from_ver_to, 
                             [BlockName, BlockType, ConfigVer, ModuleVer]),
       {ok, {UpdConfig, Inputs, Outputs}};
 
     {error, Reason} ->
-      logger:error(err_upgrading_block_type_from_ver_to, 
+      m_logger:error(err_upgrading_block_type_from_ver_to, 
                             [Reason, BlockName, BlockType, ConfigVer, ModuleVer]),
       {error, Reason}
   end.
@@ -157,7 +157,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
                               set_led_state(LedId, DefaultValue, DefaultTrigger, DefaultDelayOn, 
                                             DefaultDelayOff, InvertOutput);
                             false ->
-                              logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
+                              m_logger:error(err_LED_file_does_not_exist, [?LED_FILE_PATH ++ LedId]),
                               Status = proc_err,
                               Value = null
                             end;

@@ -50,10 +50,10 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->
   ui_utils:set_lang_mod(LangMod),
   ui_utils:set_ssh_port(SSH_Port),
 
-  logger:info(starting_linkblox_options, [BaseNodeName, LangMod, SSH_Port, LogLevel]),
+  m_logger:info(starting_linkblox_options, [BaseNodeName, LangMod, SSH_Port, LogLevel]),
  
   HostName = net_adm:localhost(),
-  logger:info(host_name, [HostName]),
+  m_logger:info(host_name, [HostName]),
 
   % This app should crash if node not started
   
@@ -61,13 +61,13 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->
 
   if (node() /= nonode@nohost) ->
     erlang:set_cookie(node(), Cookie),
-    logger:debug("Node cookie set to: ~p", [erlang:get_cookie()]);
+    m_logger:debug("Node cookie set to: ~p", [erlang:get_cookie()]);
   true ->
-    logger:debug("Node not started")
+    m_logger:debug("Node not started")
   end,
 
   BlockValuesFile = atom_to_list(NodeName) ++ "Config",
-  logger:info(block_values_file, [BlockValuesFile]),
+  m_logger:info(block_values_file, [BlockValuesFile]),
   
   start_ssh_cli(),
 
@@ -76,11 +76,11 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->
   % Listen for nodes connecting an disconnecting
   node_watcher:start(),
 
-  % API Server Spec
-  ApiServerSpec = #{id => linkblox_api, 
+  % API Supervisor Spec
+  ApiSupervisorSpec = #{id => api_supervisor, 
                     restart => transient,
-                    start => {linkblox_api, start, []},
-                    type => worker},
+                    start => {api_supervisor, start_link, []},
+                    type => supervisor},
   
   % Block Supervisor Spec
   BlockSupervisorSpec = #{id => block_supervisor, 
@@ -90,7 +90,7 @@ init([BaseNodeName, LangMod, SSH_Port, LogLevel, Cookie]) ->
                    
   SupFlags = #{strategy => one_for_one, intensity => 1, period => 5},
           
-  {ok, {SupFlags, [ApiServerSpec, BlockSupervisorSpec]}}.
+  {ok, {SupFlags, [ApiSupervisorSpec, BlockSupervisorSpec]}}.
 
 
 %% ====================================================================
@@ -128,26 +128,36 @@ start_ntpd() -> ok.
 -else.
 
 %% limit number of nodes we try to start
-start_node(BaseNodeName, Index) when (Index =< 10)->
+start_node(BaseNodeName, Index) when (Index =< 10) ->
+
+  % make sure epmd is running
+  case net_adm:names() of
+    {ok, _} -> %% Epmd is running
+      ok;
+    {error, address} ->
+      Epmd = os:find_executable("epmd"),
+      os:cmd(Epmd ++ " -daemon")
+  end,
+
   IndexStr = io_lib:format("~2..0w", [Index]),
   BaseNodeNameStr = atom_to_list(BaseNodeName),
   NodeName = list_to_atom(lists:flatten(BaseNodeNameStr ++ IndexStr)),
-  logger:info("Node Name: ~p", [NodeName]),
+  m_logger:info("Node Name: ~p", [NodeName]),
 
   case net_kernel:start([NodeName, shortnames]) of
     {ok, _Pid} -> 
-      logger:info(distributed_node_started, [NodeName]),
+      m_logger:info(distributed_node_started, [NodeName]),
       {ok, NodeName};
     {error, {already_started, _Pid}} ->
-      logger:debug("~p Already started", [NodeName]),
+      m_logger:debug("~p Already started", [NodeName]),
       start_node(BaseNodeName, Index + 1);
     {error, Error} ->
-      logger:error("~p Starting: ~p", [Error, NodeName]),
+      m_logger:error("~p Starting: ~p", [Error, NodeName]),
       start_node(BaseNodeName, Index + 1)
   end;
 
 start_node(_BaseNodeName, _Index) -> 
-  logger:debug("Unable to start node"),
+  m_logger:debug("Unable to start node"),
   {error, starting_node}.
 
 

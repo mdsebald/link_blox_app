@@ -326,7 +326,7 @@ init_i2c(Config, Private) ->
                   {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}}), I2cRef};
 
                 {error, Reason} ->
-                  logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
+                  m_logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
                   {error, Reason}
               end;
             {error, Reason} ->
@@ -334,7 +334,7 @@ init_i2c(Config, Private) ->
               {error, Reason}
           end;
         false ->
-          logger:error(err_i2c_not_installed, [I2cDevice]),
+          m_logger:error(err_i2c_not_installed, [I2cDevice]),
           {error, i2c_not_installed}
       end;
     {error, Reason} ->
@@ -361,7 +361,7 @@ init_gpio(Config, Private, Name, Direction) ->
         
         {error, Reason} ->
           BlockName = config_utils:name(Config),
-          logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
+          m_logger:error(err_initiating_GPIO_pin, [BlockName, Reason, PinNumber]),
           {error, Reason}
       end;
 
@@ -395,7 +395,7 @@ resize_attribute_array_value(Config, ArrayValueName, TargQuant, DefaultValue)->
 log_error(Config, ValueId, Reason) ->
   BlockName = name(Config),
   ValueIdStr = attrib_utils:value_id_to_str(ValueId),
-  logger:error(err_invalid_config_value, [BlockName, ValueIdStr, Reason]),
+  m_logger:error(err_invalid_config_value, [BlockName, ValueIdStr, Reason]),
   {null, config_err}.
   
   

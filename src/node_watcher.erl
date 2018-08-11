@@ -21,7 +21,7 @@ start() ->
 % Listen for nodeup and nodedown messages
 %
 listen_start() ->
-  logger:info(starting_node_watcher),
+  m_logger:info(starting_node_watcher),
   net_kernel:monitor_nodes(true),  
   listen_loop().
 
@@ -29,16 +29,16 @@ listen_start() ->
 listen_loop() ->
   receive 
     {nodeup, Node} ->
-      logger:info(node_has_connected, [Node]),
+      m_logger:info(node_has_connected, [Node]),
       % update all blocks on this node, in case any are linked
       % to blocks on the node that just connected
       block_utils:update_all_blocks();
 
     {nodedown, Node} ->
-      logger:info(node_has_disconnected, [Node]);
+      m_logger:info(node_has_disconnected, [Node]);
 
     Unexpected ->
-      logger:warning(node_watcher_received_unexpected_msg, [Unexpected])
+      m_logger:warning(node_watcher_received_unexpected_msg, [Unexpected])
 
   end,
   listen_loop().

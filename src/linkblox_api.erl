@@ -279,7 +279,7 @@ is_block_type(Node, BlockTypeStr) ->
   Timeout :: non_neg_integer() | infinity.
 
 init(null) ->
-  logger:info(starting_linkblox_API_server),
+  m_logger:info(starting_linkblox_API_server),
   {ok, []}.
 
 %% ====================================================================
@@ -304,7 +304,7 @@ init(null) ->
 %% Stop the API server
 %% =====================================================================
 handle_call(stop, _From, State) ->  
-  logger:info(stopping_linkblox_API_server),
+  m_logger:info(stopping_linkblox_API_server),
 
   {stop, normal, ok, State};
 
@@ -312,7 +312,7 @@ handle_call(stop, _From, State) ->
 %% Create a block from block type and block name
 %% =====================================================================    
 handle_call({create_block, BlockModuleStr, BlockNameStr, Description}, From, State) ->
-  logger:debug("API, create_block, From: ~p, Type: ~s, Name: ~s, Descr: ~s", 
+  m_logger:debug("API, create_block, From: ~p, Type: ~s, Name: ~s, Descr: ~s", 
                [From, BlockModuleStr, BlockNameStr, Description]),
   BlockName = list_to_atom(BlockNameStr),
 
@@ -327,7 +327,7 @@ handle_call({create_block, BlockModuleStr, BlockNameStr, Description}, From, Sta
             ok
           catch
             error:{undef, Function} -> 
-              logger:error("Invalid block module: ~p, ", [Function]),
+              m_logger:error("Invalid block module: ~p, ", [Function]),
               {error, invalid_block_type}
           end;
 
@@ -446,7 +446,7 @@ handle_call({get_value, BlockNameStr, ValueIdStr}, _From, State) ->
 %% Get a list of all block names
 %% =====================================================================    
 handle_call(get_block_names, From, State) ->
-  logger:debug("API, get_block_names, From: ~p", [From]),
+  m_logger:debug("API, get_block_names, From: ~p", [From]),
   BlockNames = block_supervisor:block_names(),
   % Convert blocknames to strings
   Result = lists:map(fun(BlockName) -> atom_to_list(BlockName) end, BlockNames),
@@ -693,7 +693,7 @@ handle_call({load_block_data, BlockData}, _From, State) ->
 %% Unknown Call message
 %% =====================================================================      
 handle_call(Request, From, State) ->
-  logger:warning(linkblox_api_unknown_call_msg_from, [Request, From]),
+  m_logger:warning(linkblox_api_unknown_call_msg_from, [Request, From]),
   {reply, ok, State}.
 
 
@@ -714,7 +714,7 @@ handle_call(Request, From, State) ->
 %% Unknown Cast message
 %% =====================================================================      
 handle_cast(Msg, State) ->
-  logger:warning(linkblox_api_unknown_cast_msg, [Msg]),
+  m_logger:warning(linkblox_api_unknown_cast_msg, [Msg]),
   {noreply, State}.
 
 
@@ -734,7 +734,7 @@ handle_cast(Msg, State) ->
 %% Unknown Info message
 %% =====================================================================
 handle_info(Info, State) ->
-  logger:warning(linkblox_api_unknown_info_msg, [Info]),
+  m_logger:warning(linkblox_api_unknown_info_msg, [Info]),
   {noreply, State}.
 
 
@@ -751,7 +751,7 @@ terminate(normal, _State) ->
   ok;
     
 terminate(Reason, _State) ->
-  logger:error(linkblox_API_server_abnormal_termination, [Reason]),
+  m_logger:error(linkblox_API_server_abnormal_termination, [Reason]),
   ok.
 
 

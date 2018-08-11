@@ -458,7 +458,7 @@ value_id_to_str(ValueId) ->
 log_error(Config, ValueId, Reason) ->
   BlockName = config_utils:name(Config),
   ValueIdStr = value_id_to_str(ValueId),
-  logger:error(err_invalid_reason, [BlockName, ValueIdStr, Reason]).
+  m_logger:error(err_invalid_reason, [BlockName, ValueIdStr, Reason]).
 
 
 -spec log_error(Config :: config_attribs(),
@@ -469,7 +469,7 @@ log_error(Config, ValueId, Reason) ->
 log_error(Config, ValueId, Reason, Value) ->
   BlockName = config_utils:name(Config),
   ValueIdStr = value_id_to_str(ValueId),
-  logger:error(err_invalid_reason_value, [BlockName, ValueIdStr, Reason, Value]).
+  m_logger:error(err_invalid_reason_value, [BlockName, ValueIdStr, Reason, Value]).
 
 
 %% ====================================================================

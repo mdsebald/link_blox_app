@@ -120,7 +120,7 @@ is_exec_linked(BlockName) ->
                     ExecutorBlockName :: block_name()) -> true.
 
 add_exec_link(BlockName, ExecutorBlockName) ->
-  logger:debug("Adding exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
+  m_logger:debug("Adding exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
   ets:insert(exec_links, {BlockName, ExecutorBlockName}).
 
 
@@ -131,7 +131,7 @@ add_exec_link(BlockName, ExecutorBlockName) ->
                     ExecutorBlockName :: block_name()) -> true.
 
 del_exec_link(BlockName, ExecutorBlockName) ->
-  logger:debug("Deleting exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
+  m_logger:debug("Deleting exec link:  ~p => ~p", [ExecutorBlockName, BlockName]),
   ets:delete_object(exec_links, {BlockName, ExecutorBlockName}).
 
 
@@ -142,7 +142,7 @@ del_exec_link(BlockName, ExecutorBlockName) ->
 -spec del_block_exec_links(BlockName :: block_name()) -> ok.
 
 del_block_exec_links(BlockName) ->
-  logger:debug("Deleting all exec links to  ~p", [BlockName]),
+  m_logger:debug("Deleting all exec links to  ~p", [BlockName]),
   ets:take(exec_links, BlockName),
   ok.
 
@@ -177,10 +177,10 @@ get_exec_links() ->
   Modules :: [module()] | dynamic.
 
 init(BlockValuesFile) ->
-  logger:info(starting_linkblox_block_supervisor),
+  m_logger:info(starting_linkblox_block_supervisor),
 
   % Create a table to indicate which blocks are exec_linked
-  logger:debug("Create table of exec links"),
+  m_logger:debug("Create table of exec links"),
   ets:new(exec_links, [named_table, public, bag]),
 
   case block_utils:get_blocks_from_file(BlockValuesFile) of
@@ -192,7 +192,7 @@ init(BlockValuesFile) ->
       {ok, {SupFlags, BlockSpecs}};
       
     {error, _Reason} ->
-      logger:info(loading_demo_config),
+      m_logger:info(loading_demo_config),
 
       BlockSpecs = create_block_specs(demo_config:create_demo_config()),
              
@@ -226,13 +226,13 @@ create_block_specs(BlockValuesList, BlockSpecs) ->
                       add_exec_link(ToBlockName, BlockName);
 
                     InvalidLink ->
-                      logger:error(err_unrecognized_link, [InvalidLink])
+                      m_logger:error(err_unrecognized_link, [InvalidLink])
                   end
                 end, 
                 Links),
 
   BlockTypeStr = type_utils:type_name(BlockModule),
-  logger:info(creating_type_version, [BlockName, BlockTypeStr, Version]),
+  m_logger:info(creating_type_version, [BlockName, BlockTypeStr, Version]),
 
   BlockSpec = #{id => BlockName, restart => transient,
               start => {block_server, start, [BlockState]}},

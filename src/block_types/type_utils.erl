@@ -63,7 +63,7 @@ type_info(Module) ->
         true ->
           {atom_to_list(Module), Module:version(), "", ""};
         false ->
-          logger:error(err_invalid_block_type_module, [Module]),
+          m_logger:error(err_invalid_block_type_module, [Module]),
           {atom_to_list(Module), ui_utils:get_ui_string(err_invalid_block_type_module), "", ""}
       end
   end.

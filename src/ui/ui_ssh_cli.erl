@@ -50,7 +50,7 @@
 %%
 start(Options) ->
     SshPort = ui_utils:get_ssh_port(),
-    logger:info(starting_SSH_CLI_user_interface_on_port, [SshPort]),
+    m_logger:info(starting_SSH_CLI_user_interface_on_port, [SshPort]),
     crypto:start(),
     ssh:start(),
     ssh:daemon(any, SshPort, [{shell, fun(U, H) -> start_shell(U, H) end} | Options]).

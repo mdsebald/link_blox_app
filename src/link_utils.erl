@@ -90,7 +90,7 @@ unlink_outputs(BlockName, Outputs, Link) ->
                 {ValueName, {Value, Links}} ->
                   case lists:member(Link, Links) of
                     true ->
-                      logger:info(block_output_unlinked_from_block_input, 
+                      m_logger:info(block_output_unlinked_from_block_input, 
                             [format_link({BlockName, ValueName}), format_link(Link)]),
                       % Return updated output attribute
                       {ValueName, {Value, lists:delete(Link, Links)}};
@@ -104,7 +104,7 @@ unlink_outputs(BlockName, Outputs, Link) ->
                     lists:mapfoldl(fun({Value, Links}, Index) -> {
                       case lists:member(Link, Links) of
                         true ->
-                          logger:info(block_output_unlinked_from_block_input, 
+                          m_logger:info(block_output_unlinked_from_block_input, 
                                 [format_link({BlockName, {ValueName, Index}}), format_link(Link)]),
                           {Value, lists:delete(Link, Links)};
     
@@ -166,7 +166,7 @@ filter_links(BlockName, ValueId, Links, LinkBlockName) ->
         {BlockNameInLink, _ValueIdInLink} = Link,
         case (BlockNameInLink == LinkBlockName) of
           true ->
-            logger:info(block_output_unlinked_from_block_input, 
+            m_logger:info(block_output_unlinked_from_block_input, 
                 [format_link({BlockName, ValueId}), format_link(Link)]),
             false;  % remove this link, it uses LinkBlockName
 
@@ -219,7 +219,7 @@ add_link(BlockName, Outputs, ValueId, Link) ->
         case lists:member(Link, Links) of 
           false ->
             NewLinks = [Link | Links],
-            logger:info(block_output_linked_to_block_input, 
+            m_logger:info(block_output_linked_to_block_input, 
                     [format_link({BlockName, ValueId}), format_link(Link)]),
             output_utils:replace_links(Outputs, ValueId, NewLinks);
           true ->
@@ -246,7 +246,7 @@ del_link(BlockName, Outputs, ValueId, Link) ->
       case lists:member(Link, Links) of 
         true ->
           NewLinks = lists:delete(Link, Links),
-          logger:info(block_output_unlinked_from_block_input, 
+          m_logger:info(block_output_unlinked_from_block_input, 
                   [format_link({BlockName, ValueId}), format_link(Link)]),
           output_utils:replace_links(Outputs, ValueId, NewLinks);
         false ->

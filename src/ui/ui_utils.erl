@@ -126,7 +126,7 @@ get_ui_string(UiStringId) ->
   case get_lang_mod() of
     undefined ->
       ErrorStr = "Error: Language module not found",
-      logger:error(ErrorStr),
+      m_logger:error(ErrorStr),
       ErrorStr;
   
     LangMod ->
@@ -143,7 +143,7 @@ get_log_string(LogStringId) ->
   case get_lang_mod() of
     undefined ->
       ErrorStr = "Error: Language module not found",
-      logger:error(ErrorStr),
+      m_logger:error(ErrorStr),
       ErrorStr;
   
     LangMod ->
@@ -161,7 +161,7 @@ get_log_string(LogStringId) ->
 get_block_type_strings(BlockModule) ->
   case get_lang_mod() of
     undefined ->
-      logger:error("Error: Language module not found"),
+      m_logger:error("Error: Language module not found"),
       false;
 
     LangMod ->
@@ -184,7 +184,7 @@ get_block_type_strings(BlockModule) ->
 get_attrib_string(AttribId) ->
   case get_lang_mod() of
     undefined -> 
-      logger:error("Language module not found"),
+      m_logger:error("Language module not found"),
       "NotFound";
   
     LangMod ->
@@ -194,7 +194,7 @@ get_attrib_string(AttribId) ->
         % if AttribId not found in attrib strings, in the language module
         % Just return the AttribId as a string
         false -> 
-          logger:warning("~p not in attrib_strings() list", [AttribId]),
+          m_logger:warning("~p not in attrib_strings() list", [AttribId]),
           atom_to_list(AttribId)
       end
   end.
@@ -209,7 +209,7 @@ get_attrib_string(AttribId) ->
 get_attrib_id(AttribStr) ->
   case get_lang_mod() of
     undefined -> 
-      logger:error("Error: Language module not found"),
+      m_logger:error("Error: Language module not found"),
       {error, not_found};
 
     LangMod ->
@@ -229,7 +229,7 @@ get_attrib_id(AttribStr) ->
 get_calendar_locale() ->
   case get_lang_mod() of
     undefined -> 
-      logger:error("Error: Language module not found"),
+      m_logger:error("Error: Language module not found"),
       {error, not_found};
 
     LangMod ->  LangMod:calendar_locale()
