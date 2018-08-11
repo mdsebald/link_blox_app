@@ -196,7 +196,7 @@ get_blocks_from_file(FileName) ->
       {ok, BlockDefnList};
  
     {error, Reason} ->
-      logger:error(err_reading_block_config_file, [Reason, TargetFileName]),
+      m_logger:error(err_reading_block_config_file, [Reason, TargetFileName]),
       {error, Reason}
   end.
 
