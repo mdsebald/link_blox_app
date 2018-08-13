@@ -144,7 +144,7 @@ start_node(BaseNodeName, Index) when (Index =< 10) ->
   NodeName = list_to_atom(lists:flatten(BaseNodeNameStr ++ IndexStr)),
   m_logger:info("Node Name: ~p", [NodeName]),
 
-  Result = tcp_inet_dist:listen(NodeName),
+  Result = inet_tcp_dist:listen(NodeName),
   m_logger:info(io_lib:format("listen() Result: ~p~n", [Result])),
   
 
