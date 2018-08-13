@@ -144,6 +144,10 @@ start_node(BaseNodeName, Index) when (Index =< 10) ->
   NodeName = list_to_atom(lists:flatten(BaseNodeNameStr ++ IndexStr)),
   m_logger:info("Node Name: ~p", [NodeName]),
 
+  Result = tcp_inet_dist:listen(NodeName),
+  m_logger:info(io_lib:format("listen() Result: ~p~n", [Result])),
+  
+
   case net_kernel:start([NodeName, shortnames]) of
     {ok, _Pid} -> 
       m_logger:info(distributed_node_started, [NodeName]),
