@@ -24,7 +24,7 @@ create_demo_config() ->
                                  [],  % Default Config values are good 
                                  [{disable, {false, {true}}},
                                   {input, {true, {false}}},
-                                  {trigger, {"fastblink", {"none"}}}]  % Just setup the LED with "fastblink" mode
+                                  {trigger, {"heartbeat", {"none"}}}]  % Just setup the LED with "fastblink" mode
                                 ),
 
   [GreenLed].
