@@ -132,9 +132,11 @@ start_node(BaseNodeName, Index) when (Index =< 10) ->
 
   % make sure epmd is running
   case net_adm:names() of
-    {ok, _} -> %% Epmd is running
+    {ok, _} ->
+      m_logger:info("epmd is running"),
       ok;
     {error, address} ->
+      m_logger:info("starting epmd"),
       Epmd = os:find_executable("epmd"),
       os:cmd(Epmd ++ " -daemon")
   end,
@@ -143,19 +145,17 @@ start_node(BaseNodeName, Index) when (Index =< 10) ->
   BaseNodeNameStr = atom_to_list(BaseNodeName),
   NodeName = list_to_atom(lists:flatten(BaseNodeNameStr ++ IndexStr)),
   m_logger:info("Node Name: ~p", [NodeName]),
-
-  Result = inet_tcp_dist:listen(NodeName),
-  m_logger:info(io_lib:format("listen() Result: ~p~n", [Result])),
   
-
   case net_kernel:start([NodeName, shortnames]) of
     {ok, _Pid} -> 
       m_logger:info(distributed_node_started, [NodeName]),
       {ok, NodeName};
+
     {error, {already_started, _Pid}} ->
-      m_logger:debug("~p Already started", [NodeName]),
-      start_node(BaseNodeName, Index + 1);
+      m_logger:debug("~p Already started", [NodeName]);
+
     {error, Error} ->
+      % Most likely NodeName is already in use, try starting NodeName + 1
       m_logger:error("~p Starting: ~p", [Error, NodeName]),
       start_node(BaseNodeName, Index + 1)
   end;
