@@ -16,7 +16,6 @@
 %% ====================================================================
 -export([
           start_link/2,
-          register_int/1,
           set_int/2,
           read_bool/1,
           read/1,
@@ -25,7 +24,7 @@
 ]).
 
 % TODO: Combine functions for higher level of abstraction
-%       Example;  start_link(), register_int(), and set_int() may be combined.
+%       Example;  start_link() and set_int() may be combined.
 %       Also check if GPIO subsystem exists, before calling start_link().
 
 %
@@ -39,16 +38,8 @@
 -spec start_link(PinNumber :: non_neg_integer(),
                  Direction :: input | output) -> {ok, pid()} | {error, atom()}.
 
-start_link(PinNumber, Direction) -> gpio:start_link(PinNumber, Direction).
+start_link(PinNumber, Direction) -> 'Elixir.ElixirALE.GPIO':start_link(PinNumber, Direction).
  
-
-%%
-%% Register a channel to receive interrupts
-%%
--spec register_int(GpioRef :: pid()) -> ok | {error, atom()}.
-
-register_int(GpioRef) -> gpio:register_int(GpioRef).
-
 
 %%
 %% Set interrupt trigger condition
@@ -57,7 +48,7 @@ register_int(GpioRef) -> gpio:register_int(GpioRef).
               Condition :: enabled | summerize | both | rising | falling | none ) -> 
                     'ok' | {'error', atom()}.
 
-set_int(GpioRef, Condition) -> gpio:set_int(GpioRef, Condition).
+set_int(GpioRef, Condition) -> 'Elixir.ElixirALE.GPIO':set_int(GpioRef, Condition).
 
 
 %%
@@ -77,7 +68,7 @@ read_bool(GpioPinRef) ->
 %%
 -spec read(GpioRef :: pid()) -> 0 | 1 | {error, atom()}.
 
-read(GpioRef) -> gpio:read(GpioRef).
+read(GpioRef) -> 'Elixir.ElixirALE.GPIO':read(GpioRef).
 
 
 %%
@@ -86,7 +77,7 @@ read(GpioRef) -> gpio:read(GpioRef).
 -spec write(GpioRef :: pid(),
             PinState :: 0 | 1) -> ok | {error, atom()}.
 
-write(GpioRef, PinState) -> gpio:write(GpioRef, PinState).
+write(GpioRef, PinState) -> 'Elixir.ElixirALE.GPIO':write(GpioRef, PinState).
 
 
 %%
@@ -94,7 +85,7 @@ write(GpioRef, PinState) -> gpio:write(GpioRef, PinState).
 %%
 -spec stop(GpioRef :: pid()) -> ok. 
 
-stop(GpioRef) ->gpio:stop(GpioRef).
+stop(GpioRef) -> 'Elixir.ElixirALE.GPIO':release(GpioRef).
 
 -endif.
 
@@ -118,14 +109,6 @@ stop(GpioRef) ->gpio:stop(GpioRef).
                  Direction :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
 
 start_link(_PinNumber, _Direction) -> {ok, make_ref()}.
-
-
-%%
-%% Test Register a channel to receive interrupts
-%%
--spec register_int(GpioRef :: pid()) -> ok | {error, atom()}.
-
-register_int(_GpioRef) -> ok.
 
 
 %%

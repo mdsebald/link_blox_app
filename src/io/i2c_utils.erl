@@ -48,7 +48,7 @@ is_installed(I2cDevice) ->
 -spec start_link(I2cDevice :: string(), 
                  I2cAddr :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
 
-start_link(I2cDevice, I2cAddr) -> i2c:start_link(I2cDevice, I2cAddr).
+start_link(I2cDevice, I2cAddr) -> 'Elixir.ElixirALE.I2C':start_link(I2cDevice, I2cAddr).
 
 
 %%
@@ -57,7 +57,7 @@ start_link(I2cDevice, I2cAddr) -> i2c:start_link(I2cDevice, I2cAddr).
 -spec write(I2cRef :: pid(),
             Data :: binary()) -> ok | {error, atom()}.
 
-write(I2cRef, Data) -> i2c:write(I2cRef, Data).
+write(I2cRef, Data) -> 'Elixir.ElixirALE.I2C':write(I2cRef, Data).
 
 
 %%
@@ -67,7 +67,7 @@ write(I2cRef, Data) -> i2c:write(I2cRef, Data).
                  WriteData :: binary(),
                  ReadCnt :: pos_integer()) -> binary() | {error, atom()}.
 
-write_read(I2cRef, WriteData, ReadCnt) -> i2c:write_read(I2cRef, WriteData, ReadCnt).
+write_read(I2cRef, WriteData, ReadCnt) -> 'Elixir.ElixirALE.I2C':write_read(I2cRef, WriteData, ReadCnt).
 
   
 %%
@@ -75,7 +75,7 @@ write_read(I2cRef, WriteData, ReadCnt) -> i2c:write_read(I2cRef, WriteData, Read
 %%
 -spec stop(I2cRef :: pid()) -> ok. 
 
-stop(I2cRef) -> i2c:stop(I2cRef).
+stop(I2cRef) -> 'Elixir.ElixirALE.I2C':stop(I2cRef).
 
 -endif.
 

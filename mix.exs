@@ -27,7 +27,7 @@ defmodule LinkBloxApp.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:erlang_ale, github: "esl/erlang_ale"},
+      {:elixir_ale, "~> 1.0"},
       {:emqttc, github: "emqtt/emqttc"},
       {:lager, github: "basho/lager", branch: "master"},
       # 01-May-2018: hex.pm package still had some warnings. Using github version for now

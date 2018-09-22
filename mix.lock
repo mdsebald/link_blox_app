@@ -1,5 +1,7 @@
 %{
   "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm"},
+  "elixir_ale": {:hex, :elixir_ale, "1.1.0", "06e77697fa0bd7aff5f9040d8be8ba7947e5833de2a12d1a25f54332556b4e90", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
+  "elixir_make": {:hex, :elixir_make, "0.4.2", "332c649d08c18bc1ecc73b1befc68c647136de4f340b548844efc796405743bf", [:mix], [], "hexpm"},
   "emqttc": {:git, "https://github.com/emqtt/emqttc.git", "cffa0aa356ec9dcabfc66ab6515fe5873f6a0bd3", []},
   "erlang_ale": {:git, "https://github.com/esl/erlang_ale.git", "37827e2c5ccc745c4eb5ab966b057b0c21ed920e", []},
   "eunit_formatters": {:hex, :eunit_formatters, "0.3.1", "7a6fc351eb5b873e2356b8852eb751e20c13a72fbca03393cf682b8483509573", [:rebar3], [], "hexpm"},
