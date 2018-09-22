@@ -22,7 +22,7 @@
 
 groups() -> [digital, input].
 
-version() -> "0.1.0". 
+version() -> "0.2.0". 
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -36,6 +36,7 @@ default_configs(BlockName, Description) ->
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {gpio_pin, {0}}, %| int | 0 | 0..40 |
+      {interrupt_edge, {falling}}, %| enum | falling | falling, rising, both |
       {invert_output, {false}} %| bool | false | true, false |
     ]). 
                             
@@ -132,13 +133,14 @@ upgrade({Config, Inputs, Outputs}) ->
 
 initialize({Config, Inputs, Outputs, Private}) ->
 
-  case config_utils:init_gpio(Config, Private, gpio_pin, input) of
-    {ok, Private1, GpioPinRef} ->
+  {ok, InterruptEdge} = attrib_utils:get_value(Config, interrupt_edge),
+
+  case config_utils:init_gpio(Config, gpio_pin, input) of
+    {ok, GpioPinRef} ->
+      Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}}),
       Status = initialed,
       Value = null,
-        % TODO: Make interrupt type selectable via config value, check return value
-      gpio_utils:register_int(GpioPinRef),
-      gpio_utils:set_int(GpioPinRef, both);
+      gpio_utils:set_int(GpioPinRef, InterruptEdge);
 
     {error, _Reason} ->
       Value = null, Status = proc_err,
@@ -188,7 +190,7 @@ delete({Config, Inputs, Outputs, Private}) ->
 
 
 %% 
-%% GPIO Interupt message from Erlang ALE library, 
+%% GPIO Interupt message from Elixir ALE library, 
 %% Execute this block
 %% 
 -spec handle_info(Info :: term(), 
