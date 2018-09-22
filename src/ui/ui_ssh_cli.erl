@@ -61,13 +61,13 @@ start(Options) ->
 start_shell(User, Peer) ->
   spawn(fun() ->
 	  io:setopts([{expand_fun, fun(Bef) -> expand(Bef) end}]),
-    format_out(welcome_str),
-		format_out(enter_command_str),
-		put(user, User),
-		put(peer_name, Peer),
-    % default current node to local node
-    curr_node(node()),
-		shell_loop()
+      format_out(welcome_str),
+	  format_out(enter_command_str),
+	  put(user, User),
+	  put(peer_name, Peer),
+      % default current node to local node
+      curr_node(node()),
+	  shell_loop()
 	end).
 
 
@@ -80,15 +80,14 @@ shell_loop() ->
   % read user input
   Line = ui_utils:get_input(Prompt),
 
-  Result = eval_input(Line),
-  case Result of
-	  done -> 
-	    exit(normal);
-	  _ -> 
+  case eval_input(Line) of
+	done -> 
+	  exit(normal);
+	_ -> 
       % Put and extra blank line after each command
       io:format("~n"),
-	    shell_loop()
-    end.
+	  shell_loop()
+  end.
 
 
 %% 
@@ -188,25 +187,37 @@ expand([$  | _]) ->
   {no, "", []};
 expand(RevBefore) ->
   Before = lists:reverse(RevBefore),
-    case longest_prefix(ui_utils:get_ui_cmds(), Before) of
-	    {prefix, P, [_]} -> {yes, P ++ " ", []};
-	    {prefix, "", M}  -> {yes, "", M};
-	    {prefix, P, _M}  -> {yes, P, []};
-	    {none, _M}       -> {no, "", []}
-    end.
+  case longest_prefix(ui_cmd_str_list(), Before) of
+    {prefix, P, [_]} -> {yes, P ++ " ", []};
+    {prefix, "", M}  -> {yes, "", M};
+    {prefix, P, _M}  -> {yes, P, []};
+    {none, _M}       -> {no, "", []}
+  end.
+
+
+%%
+%% Return a list of all possible command strings, 
+%% Used for TAB expansion
+%% Each command is a 4-tuple, just need the first element from each, The command string
+%%
+-spec ui_cmd_str_list() -> [string()].
+
+ui_cmd_str_list() ->
+    [Cmd || {Cmd, _, _, _} <- ui_utils:get_ui_cmds()].
+
 
 %% longest prefix in a list, given a prefix
 longest_prefix(List, Prefix) ->
-  case [A || {A, _, _} <- List, lists:prefix(Prefix, A)] of
-	  [] ->
-	    {none, List};
-	  [S | Rest] ->
-	    NewPrefix0 =
-		    lists:foldl(fun(A, P) ->
-				              common_prefix(A, P, [])
-			              end, S, Rest),
-	    NewPrefix = nthtail(length(Prefix), NewPrefix0),
-	    {prefix, NewPrefix, [S | Rest]}
+  case [A || A <- List, lists:prefix(Prefix, A)] of
+    [] ->
+    {none, List};
+    [S | Rest] ->
+    NewPrefix0 =
+        lists:foldl(fun(A, P) ->
+                            common_prefix(A, P, [])
+                        end, S, Rest),
+    NewPrefix = nthtail(length(Prefix), NewPrefix0),
+    {prefix, NewPrefix, [S | Rest]}
     end.			
 
 
