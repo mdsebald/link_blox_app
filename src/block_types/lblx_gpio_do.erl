@@ -21,7 +21,7 @@
 
 groups() -> [digital, output].
 
-version() -> "0.1.0". 
+version() -> "0.1.1". 
 
 %% Merge the block type specific, Config, Input, and Output attributes
 %% with the common Config, Input, and Output attributes, that all block types have
@@ -134,8 +134,9 @@ initialize({Config, Inputs, Outputs, Private}) ->
     {ok, DefaultValue} ->
       case config_utils:get_boolean(Config, invert_output) of
         {ok, InvertOutput} ->
-          case config_utils:init_gpio(Config, Private, gpio_pin, output) of
-            {ok, Private1, GpioPinRef} ->
+          case config_utils:init_gpio(Config, gpio_pin, output) of
+            {ok, GpioPinRef} ->
+              Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}}),
               Status = initialed,
               Value = DefaultValue,
               set_pin_value_bool(GpioPinRef, DefaultValue, InvertOutput);
