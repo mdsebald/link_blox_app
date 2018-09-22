@@ -20,10 +20,11 @@
 %% ====================================================================
 -export([groups/0, version/0]).
 -export([create/2, create/4, create/5, upgrade/1, initialize/1, execute/2, delete/1]).
+-export([handle_info/2]).
 
 groups() -> [digital, input].
 
-version() -> "0.1.0".
+version() -> "0.2.0".
 
 
 %% Merge the block type specific, Config, Input, and Output attributes
@@ -38,9 +39,7 @@ default_configs(BlockName, Description) ->
     [
       {gpio_pin_phase_A, {0}}, %| int | 0 | 0..40 |
       {gpio_pin_phase_B, {0}}, %| int | 0 | 0..40 |
-      {phase_int_edge, {both}}, %| enum | both | falling, rising, both |
-      {gpio_pin_switch, {0}}, %| int | 0 | 0..40 |
-      {switch_int_edge, {falling}} %| enum | falling | falling, rising, both |
+      {phase_int_edge, {both}} %| enum | both | falling, rising, both |
     ]). 
 
 
@@ -59,7 +58,6 @@ default_outputs() ->
   attrib_utils:merge_attribute_lists(
     block_common:outputs(),
     [
-      {switch, {null, []}} %| bool | null | true, false |
     ]). 
 
 %%  
@@ -136,54 +134,40 @@ initialize({Config, Inputs, Outputs, Private}) ->
     
   % Get the GPIO interrupt edge directions used by this block
   {ok, PhaseIntEdge} = attrib_utils:get_value(Config, phase_int_edge),
-  {ok, SwitchIntEdge} = attrib_utils:get_value(Config, switch_int_edge),
   
   % Initialize the GPIO pins
-  case config_utils:init_gpio(Config, Private, gpio_pin_phase_A, input) of
-    {ok, Private1, GpioPinA_Ref} ->
-      gpio_utils:register_int(GpioPinA_Ref),
+  case config_utils:init_gpio(Config, gpio_pin_phase_A, input) of
+    {ok, GpioPinA_Ref} ->
+      Private1 = attrib_utils:add_attribute(Private, {gpio_pin_A_ref,{GpioPinA_Ref}}),
       gpio_utils:set_int(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = gpio_utils:read_bool(GpioPinA_Ref),
       Private2 = attrib_utils:add_attribute(Private1, {last_A_value, {LastA_Value}}),
 
-      case config_utils:init_gpio(Config, Private2, gpio_pin_phase_B, input) of
-        {ok, Private3, GpioPinB_Ref} ->
-          gpio_utils:register_int(GpioPinB_Ref),
+      case config_utils:init_gpio(Config, gpio_pin_phase_B, input) of
+        {ok, GpioPinB_Ref} ->
+          Private3 = attrib_utils:add_attribute(Private2, {gpio_pin_B_ref, {GpioPinB_Ref}}),
           gpio_utils:set_int(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = gpio_utils:read_bool(GpioPinB_Ref),
           Private4 = attrib_utils:add_attribute(Private3, {last_B_value, {LastB_Value}}),
-      
-          case config_utils:init_gpio(Config, Private4, gpio_pin_switch, input) of
-            {ok, Private5, GpioPinSwRef} ->
-              gpio_utils:register_int(GpioPinSwRef),
-              gpio_utils:set_int(GpioPinSwRef, SwitchIntEdge),
-              LastSwValue = gpio_utils:read_bool(GpioPinSwRef),
-              Private6 = attrib_utils:add_attribute(Private5, {last_sw_value, {LastSwValue}}),
-              Value = null,
-              Status = initialed;
-              
-            {error, _Reason} ->
-              Value = null, 
-              Status = proc_err,
-              Private6 = Private4
-          end;
+          Value = null,
+          Status = initialed;
 
         {error, _Reason} ->
-           Value = null, 
+          Value = null, 
           Status = proc_err,
-          Private6 = Private2
+          Private4 = Private2
       end;
 
     {error, _Reason} ->
       Value = null, 
       Status = proc_err,
-      Private6 = Private
+      Private4 = Private
   end,
   
   Outputs1 = output_utils:set_value_status(Outputs, Value, Status),
   
   % This is the block state
-  {Config, Inputs, Outputs1, Private6}.
+  {Config, Inputs, Outputs1, Private4}.
 
 %%
 %%  Execute the block specific functionality
@@ -206,13 +190,9 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   PhaseB = gpio_utils:read_bool(GpioPinB_Ref),
   {ok, _LastB_Value} = attrib_utils:get_value(Private, last_B_value),
 
-  {ok, GpioPinSwRef} = attrib_utils:get_value(Private, gpio_pin_sw_ref),
-  SwValue = gpio_utils:read_bool(GpioPinSwRef),
-  {ok, _LastSwValue} = attrib_utils:get_value(Private, last_sw_value),
-  
   case attrib_utils:get_value(Outputs, value) of
-    {ok, null} -> Count = 0;
-    {ok, Count}      -> Count
+    {ok, null}  -> Count = 0;
+    {ok, Count} -> Count
   end,
  
   if (LastA_Value) andalso (not PhaseA) ->
@@ -230,12 +210,10 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
   
   {ok, Outputs1} = attrib_utils:set_values(Outputs, [{value, NewCount},
-                                              {switch, SwValue},
                                               {status, normal}]),
                                               
   {ok, Private1} = attrib_utils:set_values(Private, [{last_A_value, PhaseA},
-                                              {last_B_value, PhaseB},
-                                              {last_sw_value, SwValue}]),
+                                              {last_B_value, PhaseB}]),
 
   % Return updated block state
   {Config, Inputs, Outputs1, Private1}.
@@ -260,12 +238,28 @@ delete({Config, Inputs, Outputs, Private}) ->
       _DoNothingB -> ok
   end,
 
-  case attrib_utils:get_value(Private, gpio_pin_sw_ref) of
-      {ok, GpioRefSw} -> gpio_utils:stop(GpioRefSw);
-  
-      _DoNothingSw -> ok
-  end,
   {Config, Inputs, Outputs}.
+
+
+%% 
+%% GPIO Interupt message from Elixir ALE library, 
+%% Execute this block
+%% 
+-spec handle_info(Info :: term(), 
+                  BlockState :: block_state()) -> {noreply, block_state()}.
+
+handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
+  m_logger:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
+  NewBlockState = block_common:execute(BlockState, hardware),
+  {noreply, NewBlockState};
+
+%%
+%% Unknown Info message, just log a warning
+%% 
+handle_info(Info, BlockState) ->
+  {BlockName, BlockModule} = config_utils:name_module(BlockState),
+  m_logger:warning(block_type_name_unknown_info_msg, [BlockModule, BlockName, Info]),
+  {noreply, BlockState}.  
 
 
 %% ====================================================================
