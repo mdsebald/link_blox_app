@@ -29,7 +29,7 @@
           get_node/2,
           get_value/3,
           init_i2c/2,
-          init_gpio/4,
+          init_gpio/3,
           resize_attribute_array_value/4,
           log_error/3
 ]).
@@ -347,17 +347,16 @@ init_i2c(Config, Private) ->
 %% Initialize a GPIO pin before use
 %%
 -spec init_gpio(Config :: config_attribs(),
-                Private :: private_attribs(),
                 Name :: value_name(),
                 Direction :: atom()) -> {ok, private_attribs(), pid()} | {error, atom()}.
               
-init_gpio(Config, Private, Name, Direction) ->
+init_gpio(Config, Name, Direction) ->
 
   case config_utils:get_integer_range(Config, Name, 1, 40) of
     {ok, PinNumber} ->
       case gpio_utils:start_link(PinNumber, Direction) of
         {ok, GpioPinRef} ->
-          {ok, attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}}), GpioPinRef};
+          {ok, GpioPinRef};
         
         {error, Reason} ->
           BlockName = config_utils:name(Config),
