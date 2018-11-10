@@ -139,14 +139,14 @@ initialize({Config, Inputs, Outputs, Private}) ->
   case config_utils:init_gpio(Config, gpio_pin_phase_A, input) of
     {ok, GpioPinA_Ref} ->
       Private1 = attrib_utils:add_attribute(Private, {gpio_pin_A_ref,{GpioPinA_Ref}}),
-      gpio_utils:set_int(GpioPinA_Ref, PhaseIntEdge),
+      gpio_utils:set_edge_mode(GpioPinA_Ref, PhaseIntEdge),
       LastA_Value = gpio_utils:read_bool(GpioPinA_Ref),
       Private2 = attrib_utils:add_attribute(Private1, {last_A_value, {LastA_Value}}),
 
       case config_utils:init_gpio(Config, gpio_pin_phase_B, input) of
         {ok, GpioPinB_Ref} ->
           Private3 = attrib_utils:add_attribute(Private2, {gpio_pin_B_ref, {GpioPinB_Ref}}),
-          gpio_utils:set_int(GpioPinB_Ref, PhaseIntEdge),
+          gpio_utils:set_edge_mode(GpioPinB_Ref, PhaseIntEdge),
           LastB_Value = gpio_utils:read_bool(GpioPinB_Ref),
           Private4 = attrib_utils:add_attribute(Private3, {last_B_value, {LastB_Value}}),
           Value = null,
@@ -224,31 +224,19 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 %%  
 -spec delete(BlockState :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, Private}) -> 
-  % Release the GPIO pins, if used
-  case attrib_utils:get_value(Private, gpio_pin_A_ref) of
-      {ok, GpioRefA} -> gpio_utils:stop(GpioRefA);
-  
-      _DoNothingA -> ok
-  end,
-
-  case attrib_utils:get_value(Private, gpio_pin_B_ref) of
-      {ok, GpioRefB} -> gpio_utils:stop(GpioRefB);
-  
-      _DoNothingB -> ok
-  end,
-
+delete({Config, Inputs, Outputs, _Private}) -> 
+  % Nothing to close, stop, or release for the GPIO pins
   {Config, Inputs, Outputs}.
 
 
 %% 
-%% GPIO Interupt message from Elixir ALE library, 
+%% GPIO Interupt message from Circuits GPIO library, 
 %% Execute this block
 %% 
 -spec handle_info(Info :: term(), 
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
-handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
+handle_info({gpio, Pin, _Timestamp, Condition}, BlockState) ->
   m_logger:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
   NewBlockState = block_common:execute(BlockState, hardware),
   {noreply, NewBlockState};
