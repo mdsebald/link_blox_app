@@ -41,7 +41,7 @@ jobs:
       - run: mix deps.get
       - run: mix format --check-formatted
       - run: mix test
-      - run: mix docs
+    # - run: mix docs
       - run: mix dialyzer --halt-exit-status
       - save_cache:
           key: v1-dependency-cache-{{ checksum "mix.lock" }}
