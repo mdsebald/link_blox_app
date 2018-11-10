@@ -35,7 +35,8 @@ defmodule LinkBloxApp.MixProject do
       {:lager, github: "basho/lager", branch: "master"},
       # 01-May-2018: hex.pm package still had some warnings. Using github version for now
       {:mix_eunit, github: "dantswain/mix_eunit", only: [:dev], runtime: false},
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
+      {:ex_doc, "~> 0.11", only: :dev, runtime: false},
+      {:dialyxir, "1.0.0-rc.4", only: :dev, runtime: false}
     ]
   end
 
