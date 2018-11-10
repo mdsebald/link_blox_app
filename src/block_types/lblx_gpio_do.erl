@@ -205,13 +205,8 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 %%
 -spec delete(BlockState :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, Private}) ->
-  % Release the GPIO pin, if used
-  case attrib_utils:get_value(Private, gpio_pin_ref) of
-    {ok, GpioRef} -> gpio_utils:stop(GpioRef);
-
-    _DoNothing -> ok
-  end,
+delete({Config, Inputs, Outputs, _Private}) ->
+  % Nothing to close, stop, or release for a GPIO pin
   {Config, Inputs, Outputs}.
 
 

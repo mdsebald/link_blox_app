@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, {"i2c-1"}},  %| string | "i2c-1" | N/A |
+      {i2c_bus, {"i2c-1"}},  %| string | "i2c-1" | N/A |
       {i2c_addr, {16#70}}  %| byte | 70h | 0..FFh |
     ]). 
 
@@ -138,8 +138,8 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
   % Setup I2C comm channel of the display
   case config_utils:init_i2c(Config, Private) of
-	  {ok, Private1, I2cRef} ->
-      init_led_driver(I2cRef),
+	  {ok, Private1, I2cDevice} ->
+      init_led_driver(I2cDevice),
       Status = initialed,
       Value = 0;
       
@@ -166,7 +166,7 @@ execute({Config, Inputs, Outputs, Private}, disable) ->
 
 execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
-  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
+  {ok, I2cDevice} = attrib_utils:get_value(Private, i2c_dev),
   
   case input_utils:get_boolean(Inputs, display_on) of
     {error, Reason} ->
@@ -182,7 +182,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
         
         {ok, BlinkRate} ->
           % Display State and Blink Rate are write to the same byte 
-          set_blink_rate(I2cRef, DisplayState, BlinkRate),
+          set_blink_rate(I2cDevice, DisplayState, BlinkRate),
           
           case input_utils:get_integer(Inputs, brightness) of
             {error, Reason} ->
@@ -193,7 +193,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
               Value = null, Status = normal;
                                 
             {ok, Brightness} ->
-              set_brightness(I2cRef, Brightness),
+              set_brightness(I2cDevice, Brightness),
               
               case input_utils:get_integer(Inputs, digit1) of
                 {error, Reason} ->
@@ -204,7 +204,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                   Value = null, Status = normal;
                      
                 {ok, Segments1} ->
-                  write_segments(I2cRef, 1, Segments1),
+                  write_segments(I2cDevice, 1, Segments1),
                   
                   case input_utils:get_integer(Inputs, digit2) of
                     {error, Reason} ->
@@ -215,7 +215,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                       Value = null, Status = normal;
                       
                     {ok, Segments2} ->
-                      write_segments(I2cRef, 2, Segments2),
+                      write_segments(I2cDevice, 2, Segments2),
                       
                       case input_utils:get_boolean(Inputs, colon) of
                         {error, Reason} ->
@@ -226,7 +226,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                           Value = null, Status = normal;
                    
                         {ok, ColonState} ->
-                          set_colon(I2cRef, ColonState),
+                          set_colon(I2cDevice, ColonState),
                            
                           case input_utils:get_integer(Inputs, digit3) of
                             {error, Reason} ->
@@ -237,7 +237,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                               Value = null, Status = normal;
 
                             {ok, Segments3} ->
-                              write_segments(I2cRef, 3, Segments3),
+                              write_segments(I2cDevice, 3, Segments3),
                               
                               case input_utils:get_integer(Inputs, digit4) of
                                 {error, Reason} ->
@@ -248,7 +248,7 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
                                   Value = null, Status = normal;
 
                                 {ok, Segments4} ->
-                                  write_segments(I2cRef, 4, Segments4),
+                                  write_segments(I2cDevice, 4, Segments4),
                                   Value = 0, Status = normal
                               end
                           end
@@ -272,12 +272,13 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 -spec delete(BlockState :: block_state()) -> block_defn().
 
 delete({Config, Inputs, Outputs, Private}) -> 
-  case attrib_utils:get_value(Private, i2c_ref) of
-    {ok, I2cRef} ->
+  case attrib_utils:get_value(Private, i2c_dev) of
+    {ok, I2cDevice} ->
       % Turn off the display 
-      shutdown_led_driver(I2cRef),  
+      shutdown_led_driver(I2cDevice),  
       % Close the I2C Channel
-      i2c_utils:stop(I2cRef);
+      {I2cRef, _I2cAddr} = I2cDevice,
+      i2c_utils:close(I2cRef);
       
     _ -> ok
   end,
@@ -315,80 +316,80 @@ delete({Config, Inputs, Outputs, Private}) ->
 %%
 %% Initialize the LED driver 
 %%
--spec init_led_driver(I2cRef :: pid()) -> ok.
+-spec init_led_driver(I2cDevice :: lb_types:i2c_device()) -> ok.
                       
-init_led_driver(I2cRef) ->
-  i2c_utils:write(I2cRef, <<?DISPLAY_OSCILLATOR_ON>>),
-  i2c_utils:write(I2cRef, <<?DISPLAY_BLANK>>),
-  i2c_utils:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
+init_led_driver(I2cDevice) ->
+  i2c_utils:write(I2cDevice, <<?DISPLAY_OSCILLATOR_ON>>),
+  i2c_utils:write(I2cDevice, <<?DISPLAY_BLANK>>),
+  i2c_utils:write(I2cDevice, <<(?BRIGHTNESS_REGISTER bor ?MAX_BRIGHTNESS)>>),
   
   % Clear the display buffer (clears the screen)
-  clear(I2cRef),
+  clear(I2cDevice),
   ok.
 
  
 %%
 %% Shutdown the LED driver
 %% 
--spec shutdown_led_driver(I2cRef :: pid()) -> ok | {error, atom()}.
+-spec shutdown_led_driver(I2cDevice :: lb_types:i2c_device()) -> ok | {error, atom()}.
 
-shutdown_led_driver(I2cRef) ->
-  clear(I2cRef),
-  i2c_utils:write(I2cRef, <<?DISPLAY_BLANK>>),
-  i2c_utils:write(I2cRef, <<?DISPLAY_OSCILLATOR_OFF>>).
+shutdown_led_driver(I2cDevice) ->
+  clear(I2cDevice),
+  i2c_utils:write(I2cDevice, <<?DISPLAY_BLANK>>),
+  i2c_utils:write(I2cDevice, <<?DISPLAY_OSCILLATOR_OFF>>).
       
   
 %%
 %% Clear the display and buffer
 %%
--spec clear(I2cRef :: pid()) -> ok | {error, atom()}.
+-spec clear(I2cDevice :: lb_types:i2c_device()) -> ok | {error, atom()}.
 
-clear(I2cRef) ->
+clear(I2cDevice) ->
   % 2 digits, colon, and 2 digits, requrires 10 bytes of buffer storage
   % Only first byte (even bytes, index: 0, 2, 4, 6, and 8) are significant
   % Clear out all 16 bytes of the display buffer, regardless
   Buffer = <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>,
   
   % clear the display buffer, starting at register 0
-  i2c_utils:write(I2cRef, <<16#00, Buffer/binary>>).
+  i2c_utils:write(I2cDevice, <<16#00, Buffer/binary>>).
 
 
 %%
 %% Set the blink rate
 %%
--spec set_blink_rate(I2cRef :: pid(),
+-spec set_blink_rate(I2cDevice :: lb_types:i2c_device(),
                      DisplayState :: boolean(), 
                      BlinkRate :: integer()) -> ok | {error, atom()}.
 
-set_blink_rate(I2cRef, DisplayState, BlinkRate) ->
+set_blink_rate(I2cDevice, DisplayState, BlinkRate) ->
   case DisplayState of
     true  -> DisplaySetup = (?DISPLAY_ON    bor (BlinkRate*2));
     false -> DisplaySetup = (?DISPLAY_BLANK bor (BlinkRate*2))
   end,
-  i2c_utils:write(I2cRef, <<DisplaySetup>>).
+  i2c_utils:write(I2cDevice, <<DisplaySetup>>).
    
 
 %%
 %% Set the brightness level
 %%
--spec set_brightness(I2cRef :: pid(),
+-spec set_brightness(I2cDevice :: lb_types:i2c_device(),
                      Brightness :: integer()) -> ok | {error, atom()}.
 
-set_brightness(I2cRef, Brightness) ->
-  i2c_utils:write(I2cRef, <<(?BRIGHTNESS_REGISTER bor Brightness)>>).
+set_brightness(I2cDevice, Brightness) ->
+  i2c_utils:write(I2cDevice, <<(?BRIGHTNESS_REGISTER bor Brightness)>>).
   
 %%
 %% Set the the colon segment state
 %%
--spec set_colon(I2cRef :: pid(),
+-spec set_colon(I2cDevice :: lb_types:i2c_device(),
                 ColonState :: boolean()) -> ok | {error, atom()}.
 
-set_colon(I2cRef, ColonState) ->
+set_colon(I2cDevice, ColonState) ->
   case ColonState of
     true  -> ColonSegment = ?COLON_SEGMENT_ON;
     false -> ColonSegment = ?COLON_SEGMENT_OFF
   end,
-  i2c_utils:write(I2cRef, <<?COLON_ADDRESS, ColonSegment>>). 
+  i2c_utils:write(I2cDevice, <<?COLON_ADDRESS, ColonSegment>>). 
 
 
 %%
@@ -398,13 +399,13 @@ set_colon(I2cRef, ColonState) ->
 %% Segments Value: 0x01|0x02|0x04|0x08|0x10|0x20|0x40|0x80
 %% --------------------------------------------------------
 %%
--spec write_segments(I2cRef :: pid(),
+-spec write_segments(I2cDevice :: lb_types:i2c_device(),
                      Digit :: integer(),
                      Segments :: byte()) -> ok | {error, atom()}.
 
-write_segments(I2cRef, Digit, Segments) ->
+write_segments(I2cDevice, Digit, Segments) ->
   BufferAddress = lists:nth(Digit, [16#00, 16#02, 16#06, 16#08]),
-  i2c_utils:write(I2cRef, <<BufferAddress, Segments>>).
+  i2c_utils:write(I2cDevice, <<BufferAddress, Segments>>).
   
 
 %% ====================================================================

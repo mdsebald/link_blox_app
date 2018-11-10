@@ -19,7 +19,7 @@ defmodule LinkBloxApp.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {:link_blox_app, [:LinkBlox, :lang_en_us, 1111, :debug, :LinkBlox_cookie]},
+      mod: {:link_blox_app, [:LinkBlox, :lang_en_us, 1111, :debug, :LinkBlox_cookie]}
       # extra_applications: [:logger]
     ]
   end
@@ -27,7 +27,10 @@ defmodule LinkBloxApp.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_ale, "~> 1.0"},
+      {:link_blox_cmn, github: "mdsebald/link_blox_cmn"},
+      {:circuits_i2c, "~>0.1.0"},
+      {:circuits_gpio, github: "elixir-circuits/circuits_gpio"},
+      {:circuits_spi, github: "elixir-circuits/circuits_spi"},
       {:emqttc, github: "emqtt/emqttc"},
       {:lager, github: "basho/lager", branch: "master"},
       # 01-May-2018: hex.pm package still had some warnings. Using github version for now
@@ -43,7 +46,7 @@ defmodule LinkBloxApp.MixProject do
       []
     end
   end
-  
+
   defp erlc_options(_target) do
     [{:d, :STANDALONE}]
   end

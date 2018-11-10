@@ -312,18 +312,19 @@ get_value(Config, ValueId, CheckType) ->
                Private :: private_attribs()) -> {ok, private_attribs(), pid()} | {error, atom()}.
 
 init_i2c(Config, Private) ->
-  case get_string(Config, i2c_device) of
+  case get_string(Config, i2c_bus) of
 
-    {ok, I2cDevice} ->
-      case i2c_utils:is_installed(I2cDevice) of
+    {ok, I2cBus} ->
+      case i2c_utils:is_installed(I2cBus) of
         true ->
           case get_integer_range(Config, i2c_addr, 2, 127) of
 
             {ok, I2cAddr} ->
-              case i2c_utils:start_link(I2cDevice, I2cAddr) of
+              case i2c_utils:open(I2cBus) of
 
                 {ok, I2cRef} ->
-                  {ok, attrib_utils:add_attribute(Private, {i2c_ref, {I2cRef}}), I2cRef};
+                  I2cDevice = {I2cRef, I2cAddr},
+                  {ok, attrib_utils:add_attribute(Private, {i2c_dev, {I2cDevice}}), I2cDevice};
 
                 {error, Reason} ->
                   m_logger:error(err_initiating_I2C_address, [Reason, I2cAddr]),
@@ -334,11 +335,11 @@ init_i2c(Config, Private) ->
               {error, Reason}
           end;
         false ->
-          m_logger:error(err_i2c_not_installed, [I2cDevice]),
+          m_logger:error(err_i2c_not_installed, [I2cBus]),
           {error, i2c_not_installed}
       end;
     {error, Reason} ->
-      log_error(Config, i2c_device, Reason),
+      log_error(Config, i2c_bus, Reason),
       {error, Reason}
   end.
 
@@ -354,7 +355,7 @@ init_gpio(Config, Name, Direction) ->
 
   case config_utils:get_integer_range(Config, Name, 1, 40) of
     {ok, PinNumber} ->
-      case gpio_utils:start_link(PinNumber, Direction) of
+      case gpio_utils:open(PinNumber, Direction) of
         {ok, GpioPinRef} ->
           {ok, GpioPinRef};
         

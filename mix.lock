@@ -1,4 +1,7 @@
 %{
+  "circuits_gpio": {:git, "https://github.com/elixir-circuits/circuits_gpio.git", "2da2415f2c37512dadf3d783ce0353a568ddaf38", []},
+  "circuits_i2c": {:hex, :circuits_i2c, "0.1.0", "852e53ce11322222fdaa6c1d36237038b56f8fc41fc9fbcaa09c40fe561386ca", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
+  "circuits_spi": {:git, "https://github.com/elixir-circuits/circuits_spi.git", "2fc54440417ed736b9674b0096dba89da8799e32", []},
   "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm"},
   "elixir_ale": {:hex, :elixir_ale, "1.1.0", "06e77697fa0bd7aff5f9040d8be8ba7947e5833de2a12d1a25f54332556b4e90", [:make, :mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}], "hexpm"},
   "elixir_make": {:hex, :elixir_make, "0.4.2", "332c649d08c18bc1ecc73b1befc68c647136de4f340b548844efc796405743bf", [:mix], [], "hexpm"},
@@ -8,5 +11,6 @@
   "gen_logger": {:git, "https://github.com/emqtt/gen_logger.git", "e3c9c60b153642193319c793501b10c263d76477", [branch: "master"]},
   "goldrush": {:git, "https://github.com/basho/goldrush.git", "8f1b715d36b650ec1e1f5612c00e28af6ab0de82", [tag: "0.1.9"]},
   "lager": {:git, "https://github.com/basho/lager.git", "81eaef0ce98fdbf64ab95665e3bc2ec4b24c7dac", [branch: "master"]},
+  "link_blox_cmn": {:git, "https://github.com/mdsebald/link_blox_cmn.git", "e61e7231661d6a2daf20b4d20fde79f31ba83b6e", []},
   "mix_eunit": {:git, "https://github.com/dantswain/mix_eunit.git", "2de69eb7c17807c146f997cf416f3161f4c4b0e6", []},
 }

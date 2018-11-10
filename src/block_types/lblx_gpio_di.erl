@@ -36,7 +36,7 @@ default_configs(BlockName, Description) ->
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
       {gpio_pin, {0}}, %| int | 0 | 0..40 |
-      {interrupt_edge, {falling}}, %| enum | falling | falling, rising, both |
+      {interrupt_edge, {both}}, %| enum | falling | falling, rising, both |
       {invert_output, {false}} %| bool | false | true, false |
     ]). 
                             
@@ -140,7 +140,7 @@ initialize({Config, Inputs, Outputs, Private}) ->
       Private1 = attrib_utils:add_attribute(Private, {gpio_pin_ref, {GpioPinRef}}),
       Status = initialed,
       Value = null,
-      gpio_utils:set_int(GpioPinRef, InterruptEdge);
+      gpio_utils:set_edge_mode(GpioPinRef, InterruptEdge);
 
     {error, _Reason} ->
       Value = null, Status = proc_err,
@@ -179,24 +179,19 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 %%  
 -spec delete(BlockState :: block_state()) -> block_defn().
 
-delete({Config, Inputs, Outputs, Private}) -> 
-  % Release the GPIO pin, if used
-  case attrib_utils:get_value(Private, gpio_pin_ref) of
-    {ok, GpioRef} -> gpio_utils:stop(GpioRef);
-
-    _DoNothing -> ok
-  end,
+delete({Config, Inputs, Outputs, _Private}) -> 
+  % Nothing to close, stop, or release for a GPIO pin
   {Config, Inputs, Outputs}.
 
 
 %% 
-%% GPIO Interupt message from Elixir ALE library, 
+%% GPIO Interupt message from Circuits GPIO library, 
 %% Execute this block
 %% 
 -spec handle_info(Info :: term(), 
                   BlockState :: block_state()) -> {noreply, block_state()}.
 
-handle_info({gpio_interrupt, Pin, Condition}, BlockState) ->
+handle_info({gpio, Pin, _Timestamp, Condition}, BlockState) ->
   m_logger:debug("Rx interrupt: ~p from GPIO pin: ~p ~n", [Condition, Pin]),
   NewBlockState = block_common:execute(BlockState, hardware),
   {noreply, NewBlockState};

@@ -34,7 +34,7 @@ default_configs(BlockName, Description) ->
   attrib_utils:merge_attribute_lists(
     block_common:configs(BlockName, ?MODULE, version(), Description), 
     [
-      {i2c_device, {"i2c-1"}},  %| string | "i2c-1" | N/A |
+      {i2c_bus, {"i2c-1"}},  %| string | "i2c-1" | N/A |
       {i2c_addr, {16#18}}, %| byte | 70h | 0..FFh |
       {deg_f, {true}}, %| bool | true | true, false |
       {temp_offset, {0.0}} %| float | 0.0 | +/- max float |
@@ -132,12 +132,12 @@ initialize({Config, Inputs, Outputs, Private}) ->
 
   % Setup I2C comm channel of the sensor
   case config_utils:init_i2c(Config, Private) of
-    {ok, Private1, I2cRef} ->
+    {ok, Private1, I2cDevice} ->
       {ok, DegF} = attrib_utils:get_value(Config, deg_f),
       {ok, Offset} = attrib_utils:get_value(Config, temp_offset),
   
       % Read the ambient temperature
-      case read_ambient(I2cRef, DegF, Offset) of
+      case read_ambient(I2cDevice, DegF, Offset) of
        {ok, Value} ->
           Status = initialed;
 
@@ -178,12 +178,12 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
   % if ((UpperByte & 0x40) == 0x40){ //TA > TUPPER }
   % if ((UpperByte & 0x20) == 0x20){ //TA < TLOWER }
   
-  {ok, I2cRef} = attrib_utils:get_value(Private, i2c_ref),
+  {ok, I2cDevice} = attrib_utils:get_value(Private, i2c_dev),
   {ok, DegF} = attrib_utils:get_value(Config, deg_f),
   {ok, Offset} = attrib_utils:get_value(Config, temp_offset),
   
   % Read the ambient temperature
-  case read_ambient(I2cRef, DegF, Offset) of
+  case read_ambient(I2cDevice, DegF, Offset) of
     {ok, Value} ->
       Status = normal;
 
@@ -206,8 +206,8 @@ execute({Config, Inputs, Outputs, Private}, _ExecMethod) ->
 
 delete({Config, Inputs, Outputs, Private}) -> 
   % Close the I2C Channel
-  case attrib_utils:get_value(Private, i2c_ref) of
-    {ok, I2cRef} -> i2c_utils:stop(I2cRef);
+  case attrib_utils:get_value(Private, i2c_dev) of
+    {ok, {I2cRef, _I2cAddr}} -> i2c_utils:close(I2cRef);
     
     _ -> ok
   end,
@@ -228,17 +228,17 @@ delete({Config, Inputs, Outputs, Private}) ->
 %
 % Read the ambient temperature.
 %
--spec read_ambient(I2cRef :: pid(),
+-spec read_ambient(I2cDevice :: lb_types:i2c_device(),
                    DegF :: boolean(),
                    Offset :: float()) -> {ok, float()} | {error, atom()}.
                    
-read_ambient(I2cRef, DegF, Offset) ->
+read_ambient(I2cDevice, DegF, Offset) ->
 
   % Read two bytes from the ambient temperature register  
-  case i2c_utils:write_read(I2cRef, <<?AMBIENT_TEMP_REG>>, 2) of
+  case i2c_utils:write_read(I2cDevice, <<?AMBIENT_TEMP_REG>>, 2) of
     {error, Reason} -> {error, Reason};
   
-    Result ->
+    {ok, Result} ->
       RawBytes = binary:bin_to_list(Result),
       UpperByte = lists:nth(1, RawBytes),
       LowerByte = lists:nth(2, RawBytes),

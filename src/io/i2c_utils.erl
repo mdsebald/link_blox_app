@@ -15,14 +15,12 @@
 %% ====================================================================
 -export([
           is_installed/1,
-          start_link/2,
+          open/1,
           write/2,
           write_read/3,
-          stop/1
+          close/1
 ]).
 
-
-% TODO: Check if I2C system exists before calling start_link().
 
 %
 % Replace the real functions with test functions when performing unit Tests
@@ -32,50 +30,50 @@
 %%
 %% Check if i2c Channel exists
 %%
--spec is_installed(I2cDevice :: string()) -> boolean().
+-spec is_installed(I2cBus :: string()) -> boolean().
 
-is_installed(I2cDevice) ->
-  case file:read_file_info("/dev/" ++ I2cDevice) of
+is_installed(I2cBus) ->
+
+  case file:read_file_info("/dev/" ++ I2cBus) of
     {ok, _FileInfo} -> true;
     {error, _Reason} -> false
   end.
 
 
-
 %%
-%% Start I2C channel
+%% Open I2C channel/bus
 %%
--spec start_link(I2cDevice :: string(), 
-                 I2cAddr :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
+-spec open(I2cBus :: string()) -> {ok, reference()} | {error, atom()}.
 
-start_link(I2cDevice, I2cAddr) -> 'Elixir.ElixirALE.I2C':start_link(I2cDevice, I2cAddr).
+open(I2cBus) -> circuits_i2c:open(I2cBus).
 
 
 %%
 %% Write data to I2C channel
 %%
--spec write(I2cRef :: pid(),
+-spec write(I2cDevice :: lb_types:i2c_device(),
             Data :: binary()) -> ok | {error, atom()}.
 
-write(I2cRef, Data) -> 'Elixir.ElixirALE.I2C':write(I2cRef, Data).
+write({I2cRef, I2cAddr}, Data) -> circuits_i2c:write(I2cRef, I2cAddr, Data).
 
 
 %%
 %% Write and read data, to and from I2C channel
 %%
--spec write_read(I2cRef :: pid(),
+-spec write_read(I2cDevice :: lb_types:i2c_device(),
                  WriteData :: binary(),
                  ReadCnt :: pos_integer()) -> binary() | {error, atom()}.
 
-write_read(I2cRef, WriteData, ReadCnt) -> 'Elixir.ElixirALE.I2C':write_read(I2cRef, WriteData, ReadCnt).
+write_read({I2cRef, I2cAddr}, WriteData, ReadCnt) -> 
+  circuits_i2c:write_read(I2cRef, I2cAddr, WriteData, ReadCnt).
 
   
 %%
-%% Stop I2C channel
+%% Close I2C channel
 %%
--spec stop(I2cRef :: pid()) -> ok. 
+-spec close(I2cRef :: reference()) -> ok. 
 
-stop(I2cRef) -> 'Elixir.ElixirALE.I2C':stop(I2cRef).
+close(I2cRef) -> circuits_i2c:close(I2cRef).
 
 -endif.
 
@@ -101,31 +99,30 @@ is_installed(_I2cDevice) -> true.
 
 
 %%
-%% Test Start link
+%% Test Open
 %%
--spec start_link(I2cDevice :: string(), 
-                 I2cAddr :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
+-spec open(I2cBus :: string()) -> {ok, reference()} | {error, atom()}.
 
-start_link(_I2cDevice, _I2cAddr) -> {ok, make_ref()}.
+open(_I2cDevice) -> {ok, make_ref()}.
 
 
 %%
 %% Test Write data 
 %%
--spec write(I2cRef :: pid(),
+-spec write(I2cDevice :: lb_types:i2c_device(),
             Data :: binary()) -> ok | {error, atom()}.
 
-write(_I2cRef, _Data) -> ok.
+write(_I2cDevice, _Data) -> ok.
 
 
 %%
 %% Test Write and read data
 %%
--spec write_read(I2cRef :: pid(),
+-spec write_read(I2cDevice :: lb_types:i2c_device(),
                  WriteData :: binary(),
                  ReadCnt :: pos_integer()) -> binary() | {error, atom()}.
 
-write_read(_I2cRef, _WriteData, ReadCnt) ->
+write_read(_I2cDevice, _WriteData, ReadCnt) ->
       % make up a list of bytes, ReadCnt size, and return a binary
       create_binary_data(ReadCnt).
 
@@ -146,11 +143,11 @@ create_binary([H|T], Acc) -> create_binary(T, <<Acc/binary,H>>).
 
 
 %%
-%% Test Stop
+%% Test Close
 %%
--spec stop(I2cRef :: pid()) -> ok. 
+-spec close(I2cRef :: reference()) -> ok. 
 
-stop(_I2cRef) -> ok.
+close(_I2cRef) -> ok.
 
 
 -endif.

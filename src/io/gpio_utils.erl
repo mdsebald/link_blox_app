@@ -15,12 +15,13 @@
 %% API functions
 %% ====================================================================
 -export([
-          start_link/2,
-          set_int/2,
+          open/2,
           read_bool/1,
           read/1,
           write/2,
-          stop/1
+          set_edge_mode/2,
+          set_pull_mode/2,
+          close/1
 ]).
 
 % TODO: Combine functions for higher level of abstraction
@@ -35,26 +36,16 @@
 %%
 %% Start GPIO Channel
 %%
--spec start_link(PinNumber :: non_neg_integer(),
-                 Direction :: input | output) -> {ok, pid()} | {error, atom()}.
+-spec open(PinNumber :: non_neg_integer(),
+           Direction :: input | output) -> {ok, reference()} | {error, atom()}.
 
-start_link(PinNumber, Direction) -> 'Elixir.ElixirALE.GPIO':start_link(PinNumber, Direction).
+open(PinNumber, Direction) -> circuits_gpio:open(PinNumber, Direction).
  
-
-%%
-%% Set interrupt trigger condition
-%%
--spec set_int(GpioRef :: pid(),
-              Condition :: enabled | summerize | both | rising | falling | none ) -> 
-                    'ok' | {'error', atom()}.
-
-set_int(GpioRef, Condition) -> 'Elixir.ElixirALE.GPIO':set_int(GpioRef, Condition).
-
 
 %%
 %% Read the value of the gpio pin, return a boolean value
 %%
--spec read_bool(GpioPinRef :: pid()) -> true | false.
+-spec read_bool(GpioPinRef :: reference()) -> true | false.
 
 read_bool(GpioPinRef) ->
   case read(GpioPinRef) of
@@ -66,26 +57,46 @@ read_bool(GpioPinRef) ->
 %%
 %% Read the value of the GPIO pin
 %%
--spec read(GpioRef :: pid()) -> 0 | 1 | {error, atom()}.
+-spec read(GpioRef :: reference()) -> 0 | 1 | {error, atom()}.
 
-read(GpioRef) -> 'Elixir.ElixirALE.GPIO':read(GpioRef).
+read(GpioRef) -> circuits_gpio:read(GpioRef).
 
 
 %%
 %% Write the value of the GPIO pin
 %%
--spec write(GpioRef :: pid(),
+-spec write(GpioRef :: reference(),
             PinState :: 0 | 1) -> ok | {error, atom()}.
 
-write(GpioRef, PinState) -> 'Elixir.ElixirALE.GPIO':write(GpioRef, PinState).
+write(GpioRef, PinState) -> circuits_gpio:write(GpioRef, PinState).
 
 
 %%
-%% Stop GPIO Channel
+%% Set interrupt trigger condition
 %%
--spec stop(GpioRef :: pid()) -> ok. 
+-spec set_edge_mode(GpioRef :: reference(),
+                    Condition :: enabled | summerize | both | rising | falling | none ) -> 
+                    'ok' | {'error', atom()}.
 
-stop(GpioRef) -> 'Elixir.ElixirALE.GPIO':release(GpioRef).
+set_edge_mode(GpioRef, Condition) -> circuits_gpio:set_edge_mode(GpioRef, Condition).
+
+
+%%
+%% Set internal pull up/down resistor on GPIO pin
+%%
+-spec set_pull_mode(GpioRef :: reference(),
+                    Condition :: not_set | none | pullup | pulldown) -> 
+                    'ok' | {'error', atom()}.
+
+set_pull_mode(GpioRef, Condition) -> circuits_gpio:set_pull_mode(GpioRef, Condition).
+
+
+%%
+%% close GPIO Channel
+%%
+-spec close(GpioRef :: reference()) -> ok. 
+
+close(GpioRef) -> circuits_gpio:close(GpioRef).
 
 -endif.
 
@@ -103,28 +114,18 @@ stop(GpioRef) -> 'Elixir.ElixirALE.GPIO':release(GpioRef).
 -include_lib("eunit/include/eunit.hrl").
 
 %%
-%% Test Start link
+%% Test open
 %%
--spec start_link(PinNumber :: string(), 
-                 Direction :: non_neg_integer()) -> {ok, pid()} | {error, atom()}.
+-spec open(PinNumber :: non_neg_integer(),
+           Direction :: input | output) -> {ok, reference()} | {error, atom()}.
 
-start_link(_PinNumber, _Direction) -> {ok, make_ref()}.
-
-
-%%
-%% Test Set interrupt trigger condition
-%%
--spec set_int(GpioRef :: pid(), 
-              Condition :: enabled | summerize | both | rising | falling | none ) -> 
-                    'ok' | {'error', atom()}.
-
-set_int(_GpioRef, _Condition) -> ok.
+open(_PinNumber, _Direction) -> {ok, make_ref()}.
 
 
 %%
-%% Test Read the value of the gpio pin, return a boolean value
+%% Test read the value of the gpio pin, return a boolean value
 %%
--spec read_bool(GpioPinRef :: pid()) -> true | false.
+-spec read_bool(GpioPinRef :: reference()) -> true | false.
 
 read_bool(GpioPinRef) ->
   case read(GpioPinRef) of
@@ -133,30 +134,49 @@ read_bool(GpioPinRef) ->
   end.
 
 
-
 %%
 %% Test Read the value of the GPIO pin
 %%
--spec read(GpioRef :: pid()) -> 0 | 1 | {error, atom()}.
+-spec read(GpioRef :: reference()) -> 0 | 1 | {error, atom()}.
 
 read(_GpioRef) -> 1.
 
 
 %%
-%% Test Write the value of the GPIO pin
+%% Test write the value of the GPIO pin
 %%
--spec write(GpioRef :: pid(), 
+-spec write(GpioRef :: reference(), 
             PinState :: 0 | 1) -> ok | {error, atom()}.
 
 write(_GpioRef, _PinState) -> ok.
 
 
 %%
-%% Test Stop
+%% Test set interrupt trigger condition
 %%
--spec stop(GpioRef :: pid()) -> ok. 
+-spec set_edge_mode(GpioRef :: reference(), 
+                    Condition :: enabled | summerize | both | rising | falling | none ) -> 
+                    'ok' | {'error', atom()}.
 
-stop(_GpioRef) -> ok.
+set_edge_mode(_GpioRef, _Condition) -> ok.
+
+
+%%
+%% Test set internal pull up/down resistor on GPIO pin
+%%
+-spec set_pull_mode(GpioRef :: reference(),
+                    Condition :: not_set | none | pullup | pulldown) -> 
+                    'ok' | {'error', atom()}.
+
+set_pull_mode(_GpioRef, _Condition) -> ok.
+
+
+%%
+%% Test Close
+%%
+-spec close(GpioRef :: reference()) -> ok. 
+
+close(_GpioRef) -> ok.
 
 
 -endif.
