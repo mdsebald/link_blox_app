@@ -2,8 +2,8 @@
 
 #### An application to implement a block programming language targeting embedded and IoT devices ####
 
-[![Build Status](https://travis-ci.org/mdsebald/link_blox_app.png?branch=master)](https://travis-ci.org/mdsebald/link_blox_app)
-
+[![CircleCI](https://circleci.com/gh/mdsebald/link_blox_app.svg?style=svg)](https://circleci.com/gh/mdsebald/link_blox_app)
+[![Hex version](https://img.shields.io/hexpm/v/link_blox_app.svg "Hex version")](https://hex.pm/packages/link_blox_app)
 
 The purpose of LinkBlox is to abstract away programming complexity into discrete blocks of functionality that can be created and linked to other blocks to create a device with desired functionality.
 
