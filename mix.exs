@@ -6,8 +6,8 @@ defmodule LinkBloxApp.MixProject do
   def project do
     [
       app: :link_blox_app,
-      version: "0.5.0",
-      elixir: "~> 1.6",
+      version: "0.6.0",
+      elixir: "~> 1.10",
       language: :erlang,
       erlc_options: erlc_options(@target),
       start_permanent: Mix.env() == :prod,
@@ -28,10 +28,10 @@ defmodule LinkBloxApp.MixProject do
   defp deps do
     [
       {:link_blox_cmn, github: "mdsebald/link_blox_cmn"},
-      {:circuits_i2c, "~>0.1.0"},
-      {:circuits_gpio, github: "elixir-circuits/circuits_gpio"},
-      {:circuits_spi, github: "elixir-circuits/circuits_spi"},
-      {:emqttc, github: "emqtt/emqttc"},
+      {:circuits_i2c, "~>0.3"},
+      {:circuits_gpio, "~>0.4"},
+      {:circuits_spi, "~>0.1"},
+      {:emqtt, github: "emqx/emqtt"},
       {:lager, github: "basho/lager", branch: "master"},
       # 01-May-2018: hex.pm package still had some warnings. Using github version for now
       {:mix_eunit, github: "dantswain/mix_eunit", only: [:dev], runtime: false},
