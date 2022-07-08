@@ -29,7 +29,7 @@ Block data is defined as a tuple of 3 lists:
  
 #### Block Types ####
 
-Current list of block types may be found here: http://www.linkblox.org/BlockTypes.html
+Current list of block types may be found here: http://www.linkblox.com/BlockTypes.html
 
 #### Building and Running ####
 
